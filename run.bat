@@ -45,6 +45,14 @@ goto wait_mysql
 
 :mysql_ready
 echo [info] MySQL is ready.
+
+echo [info] Applying database migrations...
+".venv\Scripts\python.exe" -m alembic upgrade head
+if errorlevel 1 (
+    echo [error] Migrations failed. See the message above.
+    exit /b 1
+)
+
 echo [info] API:  http://localhost:%PORT%/api/v1/health
 echo [info] Docs: http://localhost:%PORT%/docs
 echo [info] Press Ctrl+C to stop.
