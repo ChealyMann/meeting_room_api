@@ -12,6 +12,7 @@ from app.security import (
     create_refresh_token,
     hash_password,
     needs_rehash,
+    user_from_token,
     verify_password,
 )
 from app.services.login_rate_limit import LoginRateLimiter
@@ -68,4 +69,11 @@ def login(
         user.password_hash = hash_password(password)
     user.last_login_at = utcnow()
     session.commit()
+    return issue_tokens(user, settings)
+
+
+def refresh(session: Session, settings: Settings, refresh_token: str) -> Tokens:
+    """New tokens for a valid refresh token (401 if expired, wrong type, user inactive or
+    password changed). Tokens are stateless, so the old refresh token is not revoked."""
+    user = user_from_token(session, refresh_token, "refresh", settings)
     return issue_tokens(user, settings)

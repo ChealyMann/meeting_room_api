@@ -11,6 +11,10 @@ class LoginRequest(RequestModel):
     password: Annotated[str, Field(min_length=1, max_length=1024)]
 
 
+class RefreshRequest(RequestModel):
+    refresh_token: Annotated[str, Field(min_length=1, max_length=4096)]
+
+
 class Tokens(BaseModel):
     access_token: str
     refresh_token: str

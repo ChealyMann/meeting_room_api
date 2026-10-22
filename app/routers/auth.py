@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_app_settings
 from app.db import get_db
-from app.schemas.auth import LoginRequest, Tokens
+from app.schemas.auth import LoginRequest, RefreshRequest, Tokens
 from app.services import auth as auth_service
 from app.services.login_rate_limit import LoginRateLimiter
 
@@ -31,3 +31,17 @@ def login(
 ) -> Tokens:
     client_ip = request.client.host if request.client else "unknown"
     return auth_service.login(session, settings, limiter, body.email, body.password, client_ip)
+
+
+@router.post(
+    "/refresh",
+    response_model=Tokens,
+    summary="Get new tokens with a refresh token",
+    responses={401: {"description": "UNAUTHORIZED"}},
+)
+def refresh(
+    body: RefreshRequest,
+    session: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> Tokens:
+    return auth_service.refresh(session, settings, body.refresh_token)

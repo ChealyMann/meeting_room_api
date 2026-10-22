@@ -117,6 +117,21 @@ def decode_token(token: str, expected_type: TokenType, settings: Settings) -> di
     return claims
 
 
+def user_from_token(
+    session: Session, token: str, token_type: TokenType, settings: Settings
+) -> User:
+    """Checks 1-3 of spec section 5 for any token: valid and of `token_type`, the user
+    exists and is active, and the password has not changed since the token was issued.
+    Anything else is 401 UNAUTHORIZED."""
+    claims = decode_token(token, token_type, settings)
+    user = session.get(User, int(claims["sub"]))
+    if user is None or not user.is_active:
+        raise _unauthorized()
+    if not hmac.compare_digest(claims["pwd"], password_fingerprint(user.password_hash)):
+        raise _unauthorized()
+    return user
+
+
 # --- Current user ----------------------------------------------------------------------
 
 _ROLE_ORDER = {code.value: index for index, code in enumerate(RoleCode)}
@@ -159,12 +174,7 @@ def get_current_user_allow_password_change(
     change their password: POST /auth/change-password, POST /auth/logout and GET /me."""
     if credentials is None:
         raise _unauthorized()
-    claims = decode_token(credentials.credentials, "access", settings)
-    user = session.get(User, int(claims["sub"]))
-    if user is None or not user.is_active:
-        raise _unauthorized()
-    if not hmac.compare_digest(claims["pwd"], password_fingerprint(user.password_hash)):
-        raise _unauthorized()
+    user = user_from_token(session, credentials.credentials, "access", settings)
     return CurrentUser(user=user, role_codes=load_role_codes(session, user.id))
 
 
