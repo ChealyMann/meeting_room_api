@@ -15,6 +15,11 @@ class RefreshRequest(RequestModel):
     refresh_token: Annotated[str, Field(min_length=1, max_length=4096)]
 
 
+class LogoutRequest(RequestModel):
+    # Accepted for clients that send it; tokens are stateless, so nothing is revoked.
+    refresh_token: Annotated[str, Field(max_length=4096)] | None = None
+
+
 class ChangePasswordRequest(RequestModel):
     current_password: Annotated[str, Field(min_length=1, max_length=1024)]
     new_password: Password

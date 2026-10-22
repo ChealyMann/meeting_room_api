@@ -3,7 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 
 from app.routers.common import AppSettings, DbSession
-from app.schemas.auth import ChangePasswordRequest, LoginRequest, RefreshRequest, Tokens
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    Tokens,
+)
 from app.security import PasswordChangeAllowedUser
 from app.services import auth as auth_service
 from app.services.login_rate_limit import LoginRateLimiter
@@ -40,6 +46,17 @@ def login(
 )
 def refresh(body: RefreshRequest, session: DbSession, settings: AppSettings) -> Tokens:
     return auth_service.refresh(session, settings, body.refresh_token)
+
+
+@router.post(
+    "/logout",
+    status_code=204,
+    summary="Sign out (the client deletes its tokens)",
+)
+def logout(current: PasswordChangeAllowedUser, body: LogoutRequest | None = None) -> None:
+    """Tokens are stateless, so nothing is revoked on the server: a token stays valid until
+    it expires, the password changes, or the user is deactivated (spec section 9)."""
+    return None
 
 
 @router.post(
