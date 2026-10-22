@@ -18,6 +18,7 @@ Response models
     are returned as `2026-10-21T02:15:00Z`. Lists use `Page[Item]` or `ItemList[Item]`.
 """
 
+import re
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -52,6 +53,40 @@ def Text(max_length: int) -> Any:  # noqa: N802 - used like a type: `name_en: Te
 def OptionalText(max_length: int) -> Any:  # noqa: N802
     """Optional text: trimmed; empty becomes None; at most `max_length` characters."""
     limited = Annotated[str, Field(max_length=max_length)]
+    return Annotated[limited | None, BeforeValidator(_strip_to_none)]
+
+
+# A practical check, not full RFC 5322: one @, no spaces, a dot in the domain.
+_EMAIL = re.compile(r"[^@\s]+@[^@\s.]+(\.[^@\s.]+)+")
+
+
+def _check_email(value: str) -> str:
+    if not _EMAIL.fullmatch(value):
+        raise ValueError("Must be a valid email address.")
+    return value.lower()
+
+
+# Trimmed and saved lowercase, at most 254 characters.
+Email = Annotated[
+    Annotated[str, Field(min_length=1, max_length=254), AfterValidator(_check_email)],
+    BeforeValidator(_strip),
+]
+OptionalEmail = Annotated[
+    Annotated[str, Field(max_length=254), AfterValidator(_check_email)] | None,
+    BeforeValidator(_strip_to_none),
+]
+
+
+def _check_link(value: str) -> str:
+    # "//host" would be a link to another site, so a single leading slash only.
+    if not value.startswith(("http://", "https://", "/")) or value.startswith("//"):
+        raise ValueError("Must start with http://, https:// or /.")
+    return value
+
+
+def OptionalLink(max_length: int) -> Any:  # noqa: N802
+    """Optional link such as a photo URL: http://, https:// or a path starting with /."""
+    limited = Annotated[str, Field(max_length=max_length), AfterValidator(_check_link)]
     return Annotated[limited | None, BeforeValidator(_strip_to_none)]
 
 

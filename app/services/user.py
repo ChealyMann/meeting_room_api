@@ -1,9 +1,10 @@
-"""Users: building their detail view. Account management (admin) arrives with tasks 47-52."""
+"""Users: detail view and self-service profile. Admin account management: tasks 47-52."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.constants.roles import RoleCode
+from app.errors import AppError, ErrorCode
 from app.models import Role, Room, User, user_roles
 from app.schemas.refs import NamedRef, ProvinceRef, RoleRef
 from app.schemas.user import UserDetail
@@ -54,3 +55,20 @@ def build_user_detail(session: Session, user: User) -> UserDetail:
         created_at=user.created_at,
         updated_at=user.updated_at,
     )
+
+
+def update_me(session: Session, user: User, changes: dict) -> UserDetail:
+    """Apply a PATCH /me. `changes` holds only the fields sent (secondary email, phone,
+    photo link, email notifications), already trimmed and checked by the schema."""
+    secondary_email = changes.get("secondary_email")
+    if secondary_email is not None and secondary_email == user.email:
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            422,
+            "Invalid request.",
+            {"secondary_email": "Second email must be different."},
+        )
+    for field, value in changes.items():
+        setattr(user, field, value)
+    session.commit()
+    return build_user_detail(session, user)
