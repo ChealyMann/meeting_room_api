@@ -1,5 +1,7 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import (
     MYSQL_TABLE,
@@ -10,6 +12,9 @@ from app.models.base import (
     TimestampMixin,
     UnsignedInt,
 )
+
+if TYPE_CHECKING:
+    from app.models.location import Location
 
 
 class Building(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
@@ -23,3 +28,5 @@ class Building(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
     name_en: Mapped[str] = mapped_column(String(100))
     name_kh: Mapped[str] = mapped_column(String(100))
     short_name: Mapped[str | None] = mapped_column(String(20))
+
+    location: Mapped["Location"] = relationship()

@@ -1,9 +1,15 @@
 from datetime import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, ForeignKey, String, Time, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import MYSQL_TABLE, ActiveMixin, Base, IdMixin, TimestampMixin, UnsignedInt
+
+if TYPE_CHECKING:
+    from app.models.category import Category
+    from app.models.floor import Floor
+    from app.models.user import User
 
 
 class Room(IdMixin, ActiveMixin, TimestampMixin, Base):
@@ -37,3 +43,7 @@ class Room(IdMixin, ActiveMixin, TimestampMixin, Base):
     # Cambodia local time (UTC+7), the same every day.
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
+
+    floor: Mapped["Floor"] = relationship()
+    category: Mapped["Category"] = relationship()
+    owner: Mapped["User | None"] = relationship()

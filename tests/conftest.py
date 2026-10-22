@@ -57,12 +57,31 @@ def db_session(conn):
         yield session
 
 
-@pytest.fixture
-def make_user(db_session):
-    """`make_user(roles=["ADMIN"], **fields)` -> a saved, active user."""
-    from tests.factories import make_user as factory
+def _factory_fixture(name: str):
+    """A fixture that returns `tests.factories.<name>` bound to the test's session."""
 
-    return lambda roles=(), **fields: factory(db_session, roles=roles, **fields)
+    @pytest.fixture(name=name)
+    def fixture(db_session):
+        from tests import factories
+
+        factory = getattr(factories, name)
+        return lambda *args, **kwargs: factory(db_session, *args, **kwargs)
+
+    fixture.__doc__ = f"`{name}(...)` from tests/factories.py, saved in the test's session."
+    return fixture
+
+
+# make_user(roles=["ADMIN"]), make_room(), make_location(province="SIEM_REAP"), ...
+make_location = _factory_fixture("make_location")
+make_building = _factory_fixture("make_building")
+make_floor = _factory_fixture("make_floor")
+make_category = _factory_fixture("make_category")
+make_room = _factory_fixture("make_room")
+make_equipment = _factory_fixture("make_equipment")
+make_department = _factory_fixture("make_department")
+make_division = _factory_fixture("make_division")
+make_position = _factory_fixture("make_position")
+make_user = _factory_fixture("make_user")
 
 
 @pytest.fixture

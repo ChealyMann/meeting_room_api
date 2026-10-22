@@ -1,5 +1,7 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import (
     MYSQL_TABLE,
@@ -11,6 +13,9 @@ from app.models.base import (
     UnsignedInt,
 )
 
+if TYPE_CHECKING:
+    from app.models.building import Building
+
 
 class Floor(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
     __tablename__ = "floors"
@@ -20,3 +25,5 @@ class Floor(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
         UnsignedInt, ForeignKey("buildings.id", ondelete="RESTRICT", onupdate="RESTRICT")
     )
     floor_label: Mapped[str] = mapped_column(String(100))  # one language, not bilingual
+
+    building: Mapped["Building"] = relationship()

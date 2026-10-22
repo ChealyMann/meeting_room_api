@@ -84,13 +84,22 @@ def _field_path(loc: tuple) -> str:
 
 
 def _field_message(error: dict) -> str:
+    context = error.get("ctx") or {}
+    if error["type"] == "missing" or (error["input"] is None and error["type"].endswith("_type")):
+        # Left out, or `null` sent for a required field.
+        return "This field is required."
     match error["type"]:
-        case "missing":
+        case "string_too_short" if context.get("min_length") == 1:
             return "This field is required."
+        case "string_too_long":
+            return f"Too long (max {context['max_length']})."
         case "extra_forbidden":
             return "Unknown field."
         case "json_invalid":
             return "Invalid JSON."
+        case "value_error":
+            # Our own validators: the message is written for the client already.
+            return str(context["error"])
         case _:
             return error["msg"]
 

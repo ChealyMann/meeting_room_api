@@ -1,9 +1,14 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import MYSQL_TABLE, ActiveMixin, Base, IdMixin, TimestampMixin, UnsignedInt
+
+if TYPE_CHECKING:
+    from app.models.division import Division
+    from app.models.position import Position
 
 
 class User(IdMixin, ActiveMixin, TimestampMixin, Base):
@@ -37,3 +42,6 @@ class User(IdMixin, ActiveMixin, TimestampMixin, Base):
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("1")
     )
+
+    division: Mapped["Division | None"] = relationship()
+    position: Mapped["Position"] = relationship()
