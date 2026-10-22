@@ -3,7 +3,14 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Path, Query
+from fastapi import Depends, Path, Query
+from sqlalchemy.orm import Session
+
+from app.config import Settings, get_app_settings
+from app.db import get_db
+
+DbSession = Annotated[Session, Depends(get_db)]
+AppSettings = Annotated[Settings, Depends(get_app_settings)]
 
 # Path ids are positive integers: `abc`, `0` or `-1` return 422.
 IdPath = Annotated[int, Path(gt=0)]

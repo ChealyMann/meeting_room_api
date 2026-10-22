@@ -16,6 +16,7 @@ from app.security import (
     verify_password,
 )
 from app.services.login_rate_limit import LoginRateLimiter
+from app.services.passwords import check_new_password
 
 
 def normalize_email(email: str) -> str:
@@ -68,6 +69,23 @@ def login(
         # fingerprint, so the user's older tokens on other devices stop working.
         user.password_hash = hash_password(password)
     user.last_login_at = utcnow()
+    session.commit()
+    return issue_tokens(user, settings)
+
+
+def change_password(
+    session: Session, settings: Settings, user: User, current_password: str, new_password: str
+) -> Tokens:
+    """Save a new password and return fresh tokens.
+
+    The new hash changes the password fingerprint, so every older token of this user, on
+    every device, stops working; the client must switch to the returned tokens.
+    """
+    if not verify_password(user.password_hash, current_password):
+        raise AppError(ErrorCode.WRONG_PASSWORD, 400, "Current password is wrong.")
+    check_new_password(new_password, user.email, "new_password", current_password)
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = False
     session.commit()
     return issue_tokens(user, settings)
 

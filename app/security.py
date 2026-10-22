@@ -204,3 +204,9 @@ def require_roles(*codes: str):
         return current
 
     return dependency
+
+
+# Short names for route parameters, e.g. `def list_rooms(current: AnyUser): ...`
+AnyUser = Annotated[CurrentUser, Depends(get_current_user)]
+PasswordChangeAllowedUser = Annotated[CurrentUser, Depends(get_current_user_allow_password_change)]
+AdminUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.ADMIN))]

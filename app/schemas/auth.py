@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import RequestModel, Text
+from app.schemas.common import Password, RequestModel, Text
 
 
 class LoginRequest(RequestModel):
@@ -13,6 +13,11 @@ class LoginRequest(RequestModel):
 
 class RefreshRequest(RequestModel):
     refresh_token: Annotated[str, Field(min_length=1, max_length=4096)]
+
+
+class ChangePasswordRequest(RequestModel):
+    current_password: Annotated[str, Field(min_length=1, max_length=1024)]
+    new_password: Password
 
 
 class Tokens(BaseModel):
