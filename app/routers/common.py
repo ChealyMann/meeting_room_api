@@ -32,3 +32,9 @@ IsActiveQuery = Annotated[bool | None, Query()]
 
 # `?search=...`; trimmed, empty means no filter.
 SearchQuery = Annotated[str | None, Query()]
+
+# `?location_id=1` style filters: a positive id.
+IdQuery = Annotated[int | None, Query(gt=0)]
+
+# `?province=SIEM_REAP`; checked against the fixed list by the service (R1).
+ProvinceQuery = Annotated[str | None, Query()]

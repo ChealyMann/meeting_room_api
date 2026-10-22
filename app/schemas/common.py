@@ -90,6 +90,18 @@ def OptionalLink(max_length: int) -> Any:  # noqa: N802
     return Annotated[limited | None, BeforeValidator(_strip_to_none)]
 
 
+def _check_province_code(value: str) -> str:
+    from app.constants.provinces import PROVINCE_CODES
+
+    if value not in PROVINCE_CODES:
+        raise ValueError("Must be a province code from GET /provinces.")
+    return value
+
+
+# Rule R1: a code from the fixed list, e.g. "PHNOM_PENH".
+ProvinceCode = Annotated[str, AfterValidator(_check_province_code)]
+
+
 def _check_password_length(value: str) -> str:
     if not 8 <= len(value) <= 128:
         raise ValueError("Password must be 8 to 128 characters.")
