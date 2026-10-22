@@ -5,7 +5,7 @@ from app.schemas.user import MeUpdate, UserDetail
 from app.security import AnyUser, PasswordChangeAllowedUser
 from app.services import user as user_service
 
-router = APIRouter(prefix="/me", tags=["me"])
+router = APIRouter(prefix="/me", tags=["Auth"])
 
 
 @router.get(

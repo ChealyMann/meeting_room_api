@@ -5,7 +5,7 @@ from app.schemas.common import ItemList
 from app.schemas.refs import ProvinceRef
 from app.security import AnyUser
 
-router = APIRouter(prefix="/provinces", tags=["places"])
+router = APIRouter(prefix="/provinces", tags=["Location"])
 
 
 @router.get(

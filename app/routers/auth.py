@@ -14,7 +14,7 @@ from app.security import PasswordChangeAllowedUser
 from app.services import auth as auth_service
 from app.services.login_rate_limit import LoginRateLimiter
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 def get_login_limiter(request: Request) -> LoginRateLimiter:

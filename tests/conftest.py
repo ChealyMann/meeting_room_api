@@ -111,6 +111,18 @@ def auth_headers(settings):
 
 
 @pytest.fixture
+def as_admin(make_user, auth_headers):
+    """Headers of a fresh, active Admin."""
+    return auth_headers(make_user(roles=["ADMIN"]))
+
+
+@pytest.fixture
+def as_staff(make_user, auth_headers):
+    """Headers of a fresh, active Staff user (reads only)."""
+    return auth_headers(make_user(roles=["STAFF"]))
+
+
+@pytest.fixture
 def settings(tmp_path):
     from app.config import Settings
 
