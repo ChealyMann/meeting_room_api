@@ -1,0 +1,8 @@
+[
+  { "code": "ADMIN", "name_en": "Admin", "name_kh": "Admin" },
+  { "code": "ROOM_OWNER", "name_en": "Room owner", "name_kh": "Room owner" },
+  { "code": "STAFF", "name_en": "Staff", "name_kh": "Staff" },
+  { "code": "PITIKA", "name_en": "Pitika", "name_kh": "Pitika" },
+  { "code": "IT_LEAD", "name_en": "IT Lead", "name_kh": "IT Lead" },
+  { "code": "IT_STAFF", "name_en": "IT Staff", "name_kh": "IT Staff" }
+]

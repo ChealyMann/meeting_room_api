@@ -53,6 +53,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo [info] Seeding roles and the first Admin (skips what already exists)...
+".venv\Scripts\python.exe" -m scripts.seed
+if errorlevel 1 exit /b 1
+
 echo [info] API:  http://localhost:%PORT%/api/v1/health
 echo [info] Docs: http://localhost:%PORT%/docs
 echo [info] Press Ctrl+C to stop.
