@@ -102,6 +102,10 @@ def _check_province_code(value: str) -> str:
 ProvinceCode = Annotated[str, AfterValidator(_check_province_code)]
 
 
+# A record linked by id in a request body: a positive whole number.
+RefId = Annotated[int, Field(gt=0)]
+
+
 def _check_password_length(value: str) -> str:
     if not 8 <= len(value) <= 128:
         raise ValueError("Password must be 8 to 128 characters.")

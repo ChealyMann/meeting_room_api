@@ -1,4 +1,3 @@
-from app.constants.provinces import get_province
 from app.models import Location
 from app.schemas.common import (
     OptionalText,
@@ -46,14 +45,13 @@ class LocationOut(ResponseModel):
 
     @classmethod
     def from_model(cls, location: Location) -> "LocationOut":
-        province = get_province(location.province)
         return cls(
             id=location.id,
             name_en=location.name_en,
             name_kh=location.name_kh,
             description=location.description,
             address=location.address,
-            province=ProvinceRef.model_validate(province._asdict()),
+            province=ProvinceRef.from_code(location.province),
             map_query=location.map_query,
             is_active=location.is_active,
             created_at=location.created_at,
