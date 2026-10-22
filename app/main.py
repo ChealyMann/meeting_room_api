@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestIdLogFilter, RequestIdMiddleware
-from app.routers import auth, health, me
+from app.routers import auth, health, me, provinces
 from app.services.login_rate_limit import LoginRateLimiter
 
 API_PREFIX = "/api/v1"
@@ -38,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(health.router)
     api.include_router(auth.router)
     api.include_router(me.router)
+    api.include_router(provinces.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
