@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import MYSQL_TABLE, ActiveMixin, Base, IdMixin, TimestampMixin, UnsignedInt
@@ -37,34 +37,3 @@ class User(IdMixin, ActiveMixin, TimestampMixin, Base):
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("1")
     )
-
-
-class Role(IdMixin, ActiveMixin, TimestampMixin, Base):
-    """The six fixed roles. Code checks `code`, never the display name."""
-
-    __tablename__ = "roles"
-    __table_args__ = (UniqueConstraint("code"), MYSQL_TABLE)
-
-    code: Mapped[str] = mapped_column(String(50))
-    name_en: Mapped[str] = mapped_column(String(100))
-    name_kh: Mapped[str] = mapped_column(String(100))
-
-
-user_roles = Table(
-    "user_roles",
-    Base.metadata,
-    Column(
-        "user_id",
-        UnsignedInt,
-        ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT"),
-        primary_key=True,
-    ),
-    Column(
-        "role_id",
-        UnsignedInt,
-        ForeignKey("roles.id", ondelete="RESTRICT", onupdate="RESTRICT"),
-        primary_key=True,
-        index=True,
-    ),
-    **MYSQL_TABLE,
-)
