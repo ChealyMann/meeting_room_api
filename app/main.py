@@ -7,7 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
 from app.middleware import RequestIdLogFilter, RequestIdMiddleware
-from app.routers import health
+from app.routers import auth, health
+from app.services.login_rate_limit import LoginRateLimiter
 
 API_PREFIX = "/api/v1"
 
@@ -30,10 +31,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Room Booking API", version="1.0.0")
     app.state.settings = settings
+    app.state.login_limiter = LoginRateLimiter()
     register_error_handlers(app)
 
     api = APIRouter(prefix=API_PREFIX)
     api.include_router(health.router)
+    api.include_router(auth.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
