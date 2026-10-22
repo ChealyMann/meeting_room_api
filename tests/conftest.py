@@ -19,6 +19,22 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("JWT_SECRET", TEST_JWT_SECRET)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def fast_password_hashing():
+    """Argon2 is slow on purpose. Tests use cheap (still Argon2id) settings so the suite
+    stays fast; the app itself always uses the library defaults."""
+    from argon2 import PasswordHasher
+
+    import app.security as security
+
+    original = security._hasher
+    security._hasher = PasswordHasher(time_cost=1, memory_cost=1024, parallelism=1)
+    security._dummy_hash.cache_clear()
+    yield
+    security._hasher = original
+    security._dummy_hash.cache_clear()
+
+
 def alembic_config(url: str = TEST_DATABASE_URL) -> Config:
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(ROOT / "alembic"))
@@ -28,12 +44,14 @@ def alembic_config(url: str = TEST_DATABASE_URL) -> Config:
 
 @pytest.fixture(scope="session")
 def migrated_engine():
-    """The test database, freshly migrated to the latest schema once per test run."""
+    """The test database, migrated to the latest schema once per test run.
+
+    Every test's changes are rolled back, so the tables stay empty between runs and only
+    new migrations need applying. (test_migrations.py tests the full down and up.)
+    """
     from app.db import create_db_engine
 
-    config = alembic_config()
-    command.downgrade(config, "base")
-    command.upgrade(config, "head")
+    command.upgrade(alembic_config(), "head")
     engine = create_db_engine(TEST_DATABASE_URL)
     yield engine
     engine.dispose()

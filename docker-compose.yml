@@ -4,6 +4,10 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
+      # Dev/test speed: sync to disk about once a second instead of on every commit,
+      # and keep no binary log. A crash can lose the last second of dev data. Not for production.
+      - --innodb-flush-log-at-trx-commit=2
+      - --skip-log-bin
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: rooms
