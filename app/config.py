@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from starlette.requests import Request
 
 
 class Settings(BaseSettings):
@@ -30,3 +31,8 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def get_app_settings(request: Request) -> Settings:
+    """FastAPI dependency: the settings the running app was created with."""
+    return request.app.state.settings

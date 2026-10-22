@@ -29,6 +29,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging()
 
     app = FastAPI(title="Room Booking API", version="1.0.0")
+    app.state.settings = settings
     register_error_handlers(app)
 
     api = APIRouter(prefix=API_PREFIX)

@@ -49,6 +49,31 @@ def conn(migrated_engine):
 
 
 @pytest.fixture
+def db_session(conn):
+    """An ORM session inside the test's transaction. `commit()` only releases a savepoint."""
+    from sqlalchemy.orm import Session
+
+    with Session(bind=conn, join_transaction_mode="create_savepoint") as session:
+        yield session
+
+
+@pytest.fixture
+def make_user(db_session):
+    """`make_user(roles=["ADMIN"], **fields)` -> a saved, active user."""
+    from tests.factories import make_user as factory
+
+    return lambda roles=(), **fields: factory(db_session, roles=roles, **fields)
+
+
+@pytest.fixture
+def auth_headers(settings):
+    """`auth_headers(user)` -> an Authorization header with a fresh access token."""
+    from app.security import create_access_token
+
+    return lambda user: {"Authorization": f"Bearer {create_access_token(user, settings)}"}
+
+
+@pytest.fixture
 def settings(tmp_path):
     from app.config import Settings
 
@@ -69,6 +94,11 @@ def app(settings):
 
 
 @pytest.fixture
-def client(app):
+def client(app, db_session):
+    """Calls the API with requests that share the test's session, so data is rolled back."""
+    from app.db import get_db
+
+    app.dependency_overrides[get_db] = lambda: db_session
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
+    app.dependency_overrides.clear()
