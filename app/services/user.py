@@ -19,6 +19,7 @@ from app.services.listing import apply_active_filter, apply_default_order, apply
 from app.services.passwords import check_new_password
 from app.services.province import check_province_code, get_user_province
 from app.services.records import apply_changes, get_or_404, get_reference, save
+from app.services.user_signature import signature_url
 
 POSITION = "Job position"
 DIVISION = "Division"
@@ -82,6 +83,7 @@ def build_user_detail(session: Session, user: User) -> UserDetail:
         secondary_email=user.secondary_email,
         phone=user.phone,
         avatar_url=user.avatar_url,
+        signature_url=signature_url(user),
         email_notifications=user.email_notifications,
         division=NamedRef.model_validate(division) if division else None,
         department=NamedRef.model_validate(division.department) if division else None,

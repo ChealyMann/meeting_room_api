@@ -95,6 +95,7 @@ alembic/
 scripts/seed.py        # roles + first admin
 tests/
 uploads/               # photo files (not in git)
+signatures/            # signature images (not in git, never served publicly)
 ```
 
 **Environment variables**
@@ -106,6 +107,7 @@ uploads/               # photo files (not in git)
 | `ACCESS_TOKEN_MINUTES` | `15` |  |
 | `REFRESH_TOKEN_DAYS` | `7` |  |
 | `UPLOAD_DIR` | `./uploads` | Created on start if missing |
+| `SIGNATURE_DIR` | `./signatures` | Signature images (R19). Must not be inside `UPLOAD_DIR`, which is public. Created when the first signature is saved |
 | `MAX_UPLOAD_MB` | `5` |  |
 | `FIRST_ADMIN_EMAIL`, `FIRST_ADMIN_PASSWORD`, `FIRST_ADMIN_STAFF_ID` |  | Used only by the seed script |
 | `CORS_ORIGINS` | `https://rooms.company.com` | Comma separated |
@@ -359,6 +361,7 @@ These 6 tables follow the ERD, plus the three columns added for sign-in and role
 | `secondary_email` | `VARCHAR(254)` | Yes | Stored lowercase. Must differ from `email` |
 | `phone` | `VARCHAR(20)` | Yes | Free text, no format check beyond length |
 | `avatar_url` | `VARCHAR(3000)` | Yes |  |
+| `user_signature` | `VARCHAR(3000)` | Yes | **Added.** Path of the user's signature PNG inside `SIGNATURE_DIR`, e.g. `users/15/7f3c….png` (R19). Never returned; responses show `signature_url` |
 | `email_notifications` | `BOOLEAN` | No | Default `TRUE`. Stored now, used by bookings later |
 | `is_active` |  |  | Common column |
 | `last_login_at` | `DATETIME` | Yes | Set on each successful login |
@@ -479,6 +482,7 @@ After 5 failed logins for the same email from the same IP within 15 minutes, ret
 - `password_hash` never appears in any response, log or error message.
 - `door_code` appears only in `GET /rooms/{id}/door-code` (section 13), never in room lists, room detail or logs.
 - Photo files are served at `/uploads/...` without a token, because browser `<img>` tags cannot send one. File names are random UUIDs, so they cannot be guessed. Directory listing is off.
+- Signature images are **not** under `/uploads`. They are served only by `GET /users/{id}/signature`, which needs a token (R19).
 - CORS allows only the origins in `CORS_ORIGINS`.
 - Database access goes through the ORM or bound parameters only; never build SQL by joining strings.
 - Error responses never include stack traces or SQL.
@@ -582,6 +586,7 @@ Every endpoint returns one of these shapes. Build each as one Pydantic response 
   "UserDetail": {
     "id": 15, "staff_id": "EMP-00123", "title": "Mr.", "name_en": "Sok Dara", "name_kh": "សុខ ដារ៉ា",
     "email": "sok.dara@company.com", "secondary_email": null, "phone": "012 345 678", "avatar_url": null,
+    "signature_url": "/api/v1/users/15/signature",
     "email_notifications": true,
     "division": "<NamedRef or null>", "department": "<NamedRef or null>", "position": "<NamedRef>",
     "province": "<ProvinceRef or null>", "roles": ["<RoleRef>"], "owned_room_ids": [12, 14],
@@ -596,12 +601,13 @@ Every endpoint returns one of these shapes. Build each as one Pydantic response 
 ```
 
 - `GET /me` returns `UserDetail` for the signed-in user.
+- `signature_url` is the link to `GET /users/{id}/signature`, or `null` when the user has no signature (R19). The stored file path is never returned.
 - Changes to users or roles that clear room owners add `"rooms_unassigned": [12, 14]` to the `UserDetail` response (rule R9). The list is empty when nothing was cleared.
 - `roles` and `role_codes` are sorted in the seed order: `ADMIN`, `ROOM_OWNER`, `STAFF`, `PITIKA`, `IT_LEAD`, `IT_STAFF`.
 
 ## 11. Endpoints: auth and current user
 
-Six endpoints. Rule numbers (R1…) refer to section 15; error codes to section 17.
+Eight endpoints. Rule numbers (R1…) refer to section 15; error codes to section 17.
 
 | Method | Path | Access | Success | Errors |
 | --- | --- | --- | --- | --- |
@@ -611,6 +617,8 @@ Six endpoints. Rule numbers (R1…) refer to section 15; error codes to section 
 | POST | `/auth/logout` | Any (allowed while `must_change_password`) | 204 | 401 |
 | GET | `/me` | Any (allowed while `must_change_password`) | 200 `UserDetail` | 401 |
 | PATCH | `/me` | Any | 200 `UserDetail` | 403 `PASSWORD_CHANGE_REQUIRED`, 422 |
+| PUT | `/me/signature` | Any | 200 `UserDetail` | 403 `PASSWORD_CHANGE_REQUIRED`, 413, 415, 422 |
+| DELETE | `/me/signature` | Any | 204 | 403 `PASSWORD_CHANGE_REQUIRED` |
 
 **`POST /auth/login`**
 
@@ -931,6 +939,9 @@ List filters: `is_active`, `search` (`name_en`, `name_kh`). Body: `{ "name_en": 
 | PATCH | `/users/{id}` | Admin | 200 `UserDetail` + `rooms_unassigned` | 403, 404, 409, 422 |
 | POST | `/users/{id}/reset-password` | Admin | 204 | 403, 404, 422 |
 | PUT | `/users/{id}/roles` | Admin | 200 `UserDetail` + `rooms_unassigned` | 403, 404, 409, 422 |
+| GET | `/users/{id}/signature` | Any | 200 `image/png` | 404 |
+| PUT | `/users/{id}/signature` | Admin | 200 `UserDetail` | 403, 404, 413, 415, 422 |
+| DELETE | `/users/{id}/signature` | Admin | 204 | 403, 404 |
 
 List filters: `division_id`, `department_id`, `position_id`, `role` (code), `province` (code), `is_active`, `search` (`name_en`, `name_kh`, `staff_id`, `email`). An unknown role or province code → 422.
 
@@ -975,6 +986,18 @@ The new user has no roles and `must_change_password = true`. Roles are set with 
 
 **`PUT /users/{id}/roles`**: `{ "role_codes": ["STAFF", "IT_STAFF"] }`. Replaces all roles in one transaction. Duplicates are ignored, unknown codes → 422, `[]` removes every role. Checked against R6, R9, R10 and R11.
 
+**Signatures** (R19). Each user can have one signature image, printed on booking approval forms when bookings arrive. Best results: sign with a dark pen on blank white paper, in good light. A user sets their own with `PUT /me/signature`; the Admin sets anyone's with `PUT /users/{id}/signature`. Both take `multipart/form-data` with one field, `file`. Steps, in order:
+
+1. Read and check the file exactly like a room photo (section 13, upload steps 2 and 3): at most `MAX_UPLOAD_MB`, JPEG, PNG or WebP by content, at most 40 million pixels.
+2. Apply EXIF rotation, then drop all metadata.
+3. Make the paper transparent. Judge each pixel against the paper around it (the lightest nearby area, so grey paper and shadows in phone photos count as paper): darker than its paper by 80 or more (on a 0–255 scale) stays opaque, by 25 or less becomes transparent, and values between fade, so stroke edges stay smooth. Existing transparency is kept.
+4. Make the ink pure black (`#000000`), whatever the pen colour; only its opacity varies, at stroke edges. The result is black and white: black ink on transparent paper, which reads as black on white on a form.
+5. Crop to the ink, ignoring faint pixels (opacity below 25%). If nothing is left (a blank page) → 422 `INVALID_IMAGE` "No signature found in the image."
+6. Scale down to fit 600 × 300 px (never up) and save as PNG: `SIGNATURE_DIR/users/{user_id}/{uuid4}.png`.
+7. Save the path in `users.user_signature`, then delete the file it replaces. If saving the path fails, delete the new file and keep the old signature.
+
+`DELETE` clears the signature and deletes its file; it returns 204 even when there was none. `GET /users/{id}/signature` returns the PNG with `Cache-Control: private, no-cache` to any signed-in user, also for inactive users (old approvals still show it). It returns 404 when the user has no signature, or when its file is missing on disk (logged as a warning).
+
 ### Roles
 
 | Method | Path | Access | Success | Errors |
@@ -1008,6 +1031,7 @@ Eighteen rules, each enforced in a service function inside a database transactio
 | R16 | While `must_change_password` is true, only `POST /auth/change-password`, `POST /auth/logout` and `GET /me` work. | 403 `PASSWORD_CHANGE_REQUIRED` |
 | R17 | Roles are only the six seeded ones. Their `code` and `is_active` never change through the API; there is no create or deactivate. | 422 `VALIDATION_ERROR` |
 | R18 | New passwords are 8 to 128 characters, not equal to the user's email, and not trimmed. A changed password must differ from the current one. | 422 `VALIDATION_ERROR` |
+| R19 | A user has at most one signature image, cleaned as in section 14 (upright, no metadata, black ink on transparent paper, cropped, at most 600 × 300 px PNG). It is stored outside `UPLOAD_DIR` and served only to signed-in users. A user changes only their own; the Admin changes anyone's. | 413, 415, 422 `INVALID_IMAGE`, 403 |
 
 ## 16. Edge cases
 
@@ -1143,6 +1167,23 @@ Each row is one test: the situation and the exact expected result. Build every o
 | `GET /users?role=PITIKA&province=SIEM_REAP` | Only active and inactive Pitika users whose division's department is in a Siem Reap location |
 | User with no division in a `province` filter | Never matches any province |
 
+### Signatures
+
+| Case | Expected |
+| --- | --- |
+| Phone photo of a signature on white paper | 200; saved as a PNG with transparent paper, cropped to the ink |
+| Signature in blue or red pen | Saved as black ink |
+| Photo on light grey paper with a shadow | Paper and shadow become fully transparent |
+| Signature of 6000 × 4000 pixels | Saved at most 600 × 300 |
+| Blank white image | 422 `INVALID_IMAGE` "No signature found in the image." |
+| GIF, BMP, a text file, a 0-byte file, a 6 MB file | 415, 422, 422, 413; no file left on disk |
+| Upload a second signature | Old file deleted; only the new one remains |
+| Database fails while saving the new path | New file deleted; old signature still served |
+| Staff calls `PUT /users/{id}/signature` for someone else | 403 `FORBIDDEN` |
+| `GET /users/{id}/signature` without a token | 401 `UNAUTHORIZED` |
+| Signature file under `/uploads/...` | Never: signatures are not in the public folder |
+| User with no signature | `signature_url: null`; `GET /users/{id}/signature` → 404 |
+
 ### Data integrity
 
 | Case | Expected |
@@ -1212,7 +1253,7 @@ The work is not done until every rule (R1–R18) and every edge case in section 
 
 ## 19. Team tasks: one endpoint at a time, and definition of done
 
-The work is split into 66 small tasks: 5 foundation tasks, one task per endpoint (58), and 3 final checks. Either person takes the next free task; there is no fixed split.
+The work is split into 66 small tasks: 5 foundation tasks, one task per endpoint (58), and 3 final checks. Tasks 67–69 (user signatures) were added later. Either person takes the next free task; there is no fixed split.
 
 **How to work as a team**
 
@@ -1311,6 +1352,14 @@ The work is split into 66 small tasks: 5 foundation tasks, one task per endpoint
 | 66 | README and final check against the definition of done | 64, 65 | Section 19 |  | To do |
 
 Task 53 creates room owners with the `make_user(roles=["ROOM_OWNER"])` factory, so it does not wait for the users endpoints. Tasks 50 and 51 wait for task 53 because rule R9 clears room owners and needs rooms to test.
+
+**Tasks 67–69: user signatures (added 23 Oct 2026)**
+
+| # | Task | Needs | Rules | Owner | Status |
+| --- | --- | --- | --- | --- | --- |
+| 67 | `PUT /me/signature`, `DELETE /me/signature`, plus migration for `users.user_signature` | 10 | R19 |  | Done |
+| 68 | `PUT /users/{id}/signature`, `DELETE /users/{id}/signature` | 47, 67 | R19 |  | Done |
+| 69 | `GET /users/{id}/signature` | 67 | R19 |  | Done |
 
 **Definition of done**
 

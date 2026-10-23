@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile
+from fastapi.responses import FileResponse
 
 from app.routers.common import (
+    AppSettings,
     DbSession,
     IdPath,
     IdQuery,
@@ -21,8 +23,9 @@ from app.schemas.user import (
     UserListItem,
     UserUpdate,
 )
-from app.security import AdminUser
+from app.security import AdminUser, AnyUser
 from app.services import user as user_service
+from app.services import user_signature as signature_service
 
 router = APIRouter(prefix="/users", tags=["User & roles"])
 
@@ -114,3 +117,51 @@ def set_roles(
         session, user_id, body.role_codes, current.id
     )
     return _changed(session, user, rooms_unassigned)
+
+
+@router.get(
+    "/{user_id}/signature",
+    response_class=FileResponse,
+    summary="See a user's signature (PNG)",
+    responses={200: {"content": {"image/png": {}}}, 404: {"description": "NOT_FOUND"}},
+)
+def get_signature(
+    user_id: IdPath, current: AnyUser, session: DbSession, settings: AppSettings
+) -> FileResponse:
+    """Any signed-in user, for booking approval forms. 404 when the user has none."""
+    user = user_service.get_user(session, user_id)
+    path = signature_service.signature_file(settings, user)
+    return FileResponse(
+        path, media_type="image/png", headers={"Cache-Control": "private, no-cache"}
+    )
+
+
+@router.put(
+    "/{user_id}/signature",
+    response_model=UserDetail,
+    summary="Upload a user's signature (JPEG, PNG or WebP)",
+    responses={
+        413: {"description": "FILE_TOO_LARGE"},
+        415: {"description": "UNSUPPORTED_FILE_TYPE"},
+        422: {"description": "INVALID_IMAGE or VALIDATION_ERROR"},
+    },
+)
+def set_signature(
+    user_id: IdPath,
+    file: UploadFile,
+    current: AdminUser,
+    session: DbSession,
+    settings: AppSettings,
+) -> UserDetail:
+    """Saved as a transparent PNG cropped to the ink; replaces any earlier signature."""
+    user = user_service.get_user(session, user_id)
+    signature_service.set_signature(session, settings, user, file.file)
+    return user_service.build_user_detail(session, user)
+
+
+@router.delete("/{user_id}/signature", status_code=204, summary="Remove a user's signature")
+def remove_signature(
+    user_id: IdPath, current: AdminUser, session: DbSession, settings: AppSettings
+) -> None:
+    user = user_service.get_user(session, user_id)
+    signature_service.remove_signature(session, settings, user)

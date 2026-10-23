@@ -131,6 +131,7 @@ def settings(tmp_path):
         database_url=TEST_DATABASE_URL,
         jwt_secret=TEST_JWT_SECRET,
         upload_dir=tmp_path / "uploads",
+        signature_dir=tmp_path / "signatures",
         cors_origins="https://rooms.company.com",
     )
 

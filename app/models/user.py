@@ -34,6 +34,8 @@ class User(IdMixin, ActiveMixin, TimestampMixin, Base):
     secondary_email: Mapped[str | None] = mapped_column(String(254))
     phone: Mapped[str | None] = mapped_column(String(20))
     avatar_url: Mapped[str | None] = mapped_column(String(3000))
+    # Signature PNG for booking approval forms: its path inside SIGNATURE_DIR. Never returned.
+    user_signature: Mapped[str | None] = mapped_column(String(3000))
     email_notifications: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("1")
     )

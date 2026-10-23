@@ -1,5 +1,5 @@
 """Room photos. Rule R14: at most `MAX_PHOTOS_PER_ROOM` per room; JPEG, PNG or WebP by
-content; at most `MAX_UPLOAD_MB` and 40 million pixels.
+content; at most `MAX_UPLOAD_MB` and 40 million pixels (checks in app/services/images.py).
 
 Every upload is re-encoded: turned upright from its EXIF data, stripped of all metadata
 (GPS included), flattened onto white, and saved as a JPEG plus a thumbnail under a random
@@ -7,13 +7,11 @@ name. The client's file name and Content-Type are never trusted.
 """
 
 import io
-import logging
 import uuid
-import warnings
 from pathlib import Path
 from typing import BinaryIO
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageOps
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -21,52 +19,16 @@ from app.config import Settings
 from app.errors import AppError, ErrorCode
 from app.models import Room, RoomPhoto
 from app.security import CurrentUser
+from app.services.images import open_image, read_upload, remove_files
 from app.services.records import get_or_404, not_found, save
 from app.services.room import check_can_manage, room_photos
 
-logger = logging.getLogger(__name__)
-
-MAX_PIXELS = 40_000_000
-Image.MAX_IMAGE_PIXELS = MAX_PIXELS
-ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAIN_SIDE = 2560
 THUMB_SIDE = 400
 JPEG_QUALITY = 85
 
 
-def _invalid_image() -> AppError:
-    return AppError(ErrorCode.INVALID_IMAGE, 422, "Not a real image.")
-
-
 # --- Image processing ------------------------------------------------------------------
-
-
-def _open_image(data: bytes) -> Image.Image:
-    """Decode the first frame, or raise 422 INVALID_IMAGE / 415 UNSUPPORTED_FILE_TYPE."""
-    try:
-        with warnings.catch_warnings():
-            # Over MAX_PIXELS Pillow only warns (it raises at twice that); refuse both.
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            image = Image.open(io.BytesIO(data))
-            if image.format not in ALLOWED_FORMATS:
-                raise AppError(ErrorCode.UNSUPPORTED_FILE_TYPE, 415, "Wrong file type.")
-            if image.width * image.height > MAX_PIXELS:
-                raise _invalid_image()
-            image.seek(0)  # animated images keep only the first frame
-            image.load()
-    except AppError:
-        raise
-    except (
-        UnidentifiedImageError,
-        Image.DecompressionBombError,
-        Image.DecompressionBombWarning,
-        OSError,
-        SyntaxError,
-        ValueError,
-        EOFError,
-    ):
-        raise _invalid_image() from None
-    return image
 
 
 def _flatten(image: Image.Image) -> Image.Image:
@@ -95,9 +57,7 @@ def _jpeg(image: Image.Image, longest_side: int) -> bytes:
 
 def process_image(data: bytes) -> tuple[bytes, bytes]:
     """The main JPEG (longest side 2560) and the thumbnail JPEG (longest side 400)."""
-    if not data:
-        raise _invalid_image()
-    image = _flatten(_open_image(data))
+    image = _flatten(open_image(data))
     return _jpeg(image, MAIN_SIDE), _jpeg(image, THUMB_SIDE)
 
 
@@ -109,14 +69,6 @@ def _file_path(upload_dir: Path, url: str) -> Path | None:
     root = upload_dir.resolve()
     path = (root / url.removeprefix("/uploads/")).resolve()
     return path if path.is_relative_to(root) else None
-
-
-def _remove_files(paths: list[Path]) -> None:
-    for path in paths:
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            logger.warning("Photo file already missing: %s", path)
 
 
 # --- Endpoints -------------------------------------------------------------------------
@@ -156,13 +108,7 @@ def add_photo(
             f"This room has {settings.max_photos_per_room} photos already.",
         )
 
-    limit = settings.max_upload_mb * 1024 * 1024
-    data = file.read(limit + 1)
-    if len(data) > limit:
-        raise AppError(
-            ErrorCode.FILE_TOO_LARGE, 413, f"File too big (max {settings.max_upload_mb} MB)."
-        )
-    main, thumbnail = process_image(data)
+    main, thumbnail = process_image(read_upload(file, settings.max_upload_mb))
 
     folder = settings.upload_dir / "rooms" / str(room.id)
     folder.mkdir(parents=True, exist_ok=True)
@@ -174,7 +120,7 @@ def add_photo(
     try:
         return _insert_photo(session, room.id, f"{base}.jpg", f"{base}_thumb.jpg")
     except BaseException:
-        _remove_files([main_path, thumb_path])
+        remove_files([main_path, thumb_path])
         raise
 
 
@@ -211,4 +157,4 @@ def delete_photo(
     session.delete(photo)
     session.commit()
     paths = [path for url in urls if (path := _file_path(settings.upload_dir, url))]
-    _remove_files(paths)
+    remove_files(paths)

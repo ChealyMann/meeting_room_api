@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = Field(default=15, ge=1)
     refresh_token_days: int = Field(default=7, ge=1)
     upload_dir: Path = Path("./uploads")
+    # Signature images. Kept apart from upload_dir, which is served publicly at /uploads.
+    signature_dir: Path = Path("./signatures")
     max_upload_mb: int = Field(default=5, ge=1)
     max_photos_per_room: int = Field(default=20, ge=1)
     cors_origins: str = ""

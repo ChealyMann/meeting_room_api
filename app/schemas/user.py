@@ -106,6 +106,7 @@ class UserDetail(ResponseModel):
     secondary_email: str | None
     phone: str | None
     avatar_url: str | None
+    signature_url: str | None  # GET /users/{id}/signature, or null when there is none
     email_notifications: bool
     division: NamedRef | None
     department: NamedRef | None

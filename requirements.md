@@ -96,6 +96,7 @@ People sign in with email and password. There is no sign-up: only the Admin crea
 | AUTH-F05 | First sign-in: a new user must change their password before they can do anything else. | Everyone | — |
 | AUTH-F06 | See my profile: my name, team, job, province and roles. | Everyone | `GET /me` |
 | AUTH-F07 | Change my profile: second email, phone, photo link, email notifications on or off. | Everyone | `PATCH /me` |
+| AUTH-F08 | Add, change or remove my signature (a picture of how I sign). It is printed on booking approval forms. | Everyone | `PUT /me/signature`, `DELETE /me/signature` |
 
 **Validation**
 
@@ -145,6 +146,8 @@ Only the Admin manages user accounts and roles. One user can have more than one 
 | USR-F08 | See the list of the 6 roles. | Admin | `GET /roles` |
 | USR-F09 | Change a role's name in English or Khmer. | Admin | `PATCH /roles/{id}` |
 | USR-F10 | When a user is turned off, or loses the Room owner role, their rooms become **no-owner** rooms. The system shows which rooms changed. | System | — |
+| USR-F11 | Add, change or remove a user's signature for them. | Admin | `PUT /users/{id}/signature`, `DELETE /users/{id}/signature` |
+| USR-F12 | See a user's signature. | Everyone | `GET /users/{id}/signature` |
 
 **User fields**
 
@@ -161,6 +164,7 @@ Only the Admin manages user accounts and roles. One user can have more than one 
 | Division (team) | No | Must exist |
 | Email notifications | No | On by default |
 | Temporary password | Yes, when creating | 8 to 128 |
+| Signature | No | A JPG, PNG or WebP picture, max 5 MB |
 
 **Validation**
 
@@ -179,6 +183,9 @@ Only the Admin manages user accounts and roles. One user can have more than one 
 | USR-V11 | Roles cannot be added, turned off, or have their code changed. Only their names can change. | "You cannot change this field." |
 | USR-V12 | A user's province is not typed. It comes from: division → department → office → province. | — |
 | USR-V13 | Users never see passwords. The API never sends them. | — |
+| USR-V14 | Signature: a JPG, PNG or WebP picture, at most 5 MB and 40 million pixels. The system checks the file itself, not its name. | "File too big" / "Wrong file type" / "Not a real image." |
+| USR-V15 | The system cleans every signature: turns it the right way up, removes hidden data, makes the paper see-through, makes the ink black (any pen colour), cuts it to the signature and makes it small (at most 600 × 300). The result is black and white. A blank page is refused. For the best result, sign with a dark pen on blank white paper, in good light. | "No signature found in the image." |
+| USR-V16 | Only signed-in people can see a signature. It is never in the public photo folder. A person changes only their own signature; the Admin can change anyone's. | "You are not allowed." |
 
 ## Module 3 — Organisation
 
@@ -441,6 +448,7 @@ These come later, in part 2 or after.
 
 - Booking rooms, and checking if a room is free.
 - Approving bookings (Pitika, room owner).
+- Printing signatures on approval forms. Signatures are saved now (AUTH-F08, USR-F11) and used when bookings come.
 - IT help for bookings (IT Lead, IT Staff).
 - Sending emails or notifications.
 - Signing up alone, or "forgot password" by email.

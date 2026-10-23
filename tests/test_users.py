@@ -18,6 +18,7 @@ DETAIL_FIELDS = {
     "secondary_email",
     "phone",
     "avatar_url",
+    "signature_url",
     "email_notifications",
     "division",
     "department",
