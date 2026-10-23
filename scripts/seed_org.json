@@ -1,0 +1,1423 @@
+{
+  "_about": [
+    "Organisation of the National Bank of Cambodia for scripts/seed_org.py.",
+    "Source: hrattend_public_office_clean.xlsx (HR attendance export). Only offices whose",
+    "department exists are included (dept_status OK); hr_id is the id in that export.",
+    "Offices are divisions. English names of divisions, and of departments the export left",
+    "blank, are DRAFT translations: have a Khmer speaker review them before production.",
+    "Every branch becomes an office (location) with one department holding the 4 shared",
+    "branch divisions."
+  ],
+  "head_office": {
+    "name_en": "Head Office",
+    "name_kh": "ការិយាល័យកណ្ដាល",
+    "province": "PHNOM_PENH"
+  },
+  "departments": [
+    {
+      "hr_id": 26,
+      "name_en": "Senior Management",
+      "name_kh": "ថ្នាក់ដឹកនាំជាន់ខ្ពស់ធនាគារជាតិនៃកម្ពុជា",
+      "sort_order": 0,
+      "divisions": []
+    },
+    {
+      "hr_id": 1,
+      "name_en": "Cabinet",
+      "name_kh": "ខុទ្ទកាល័យ",
+      "sort_order": 301,
+      "divisions": [
+        {
+          "hr_id": 1,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 2,
+          "name_en": "Protocol",
+          "name_kh": "ពិធីការ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 3,
+          "name_en": "Management and Supply",
+          "name_kh": "គ្រប់គ្រងនិងផ្គត់ផ្គង់",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 4,
+          "name_en": "Security",
+          "name_kh": "សន្តិសុខ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 92,
+          "name_en": "Governor's Secretariat",
+          "name_kh": "លេខាធិការទេសាភិបាល",
+          "sort_order": 5
+        },
+        {
+          "hr_id": 93,
+          "name_en": "Library",
+          "name_kh": "បណ្ណាល័យ",
+          "sort_order": 6
+        },
+        {
+          "hr_id": 94,
+          "name_en": "Preah Srei Eysan Varman Museum of Economy and Money",
+          "name_kh": "សារមន្ទីរសេដ្ឋកិច្ចនិងរូបិយវត្ថុ ព្រះស្រីឦសានវរ្ម័ន",
+          "sort_order": 7
+        }
+      ]
+    },
+    {
+      "hr_id": 3,
+      "name_en": "Personnel Department",
+      "name_kh": "នាយកដ្ឋានបុគ្គលិក",
+      "sort_order": 302,
+      "divisions": [
+        {
+          "hr_id": 9,
+          "name_en": "Personnel",
+          "name_kh": "បុគ្គលិក",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 11,
+          "name_en": "Training",
+          "name_kh": "បណ្តុះបណ្តាល",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 10,
+          "name_en": "Payroll",
+          "name_kh": "បៀវត្ស",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 4,
+      "name_en": "Accounting Department",
+      "name_kh": "នាយកដ្ឋានគណនេយ្យ",
+      "sort_order": 303,
+      "divisions": [
+        {
+          "hr_id": 12,
+          "name_en": "Permanent Control",
+          "name_kh": "ពិនិត្យអចិន្ត្រៃយ៍",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 13,
+          "name_en": "Branch Accounts",
+          "name_kh": "បញ្ជិកាសាខាធនាគារជាតិនៃកម្ពុជា",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 14,
+          "name_en": "Head Office Accounting",
+          "name_kh": "គណនេយ្យទីស្នាក់ការកណ្តាល",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 15,
+          "name_en": "Finance and Budget",
+          "name_kh": "ហិរញ្ញកិច្ច-ថវិកា",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 5,
+      "name_en": "Branch Management Department",
+      "name_kh": "នាយកដ្ឋានគ្រប់គ្រងសាខា",
+      "sort_order": 304,
+      "divisions": [
+        {
+          "hr_id": 16,
+          "name_en": "Regulation",
+          "name_kh": "បញ្ញត្តិកម្ម",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 17,
+          "name_en": "Branch Administration",
+          "name_kh": "រដ្ឋបាលសាខា",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "hr_id": 76,
+      "name_en": "Institute for Banking Studies",
+      "name_kh": "វិទ្យាស្ថានសិក្សាបច្ចេកទេសធនាគារ",
+      "sort_order": 305,
+      "divisions": [
+        {
+          "hr_id": 334,
+          "name_en": "Administration and Finance",
+          "name_kh": "រដ្ឋបាលនិងហិរញ្ញកិច្ច",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 335,
+          "name_en": "Academic and Student Affairs",
+          "name_kh": "សិក្សានិងកិច្ចការនិស្សិត",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 336,
+          "name_en": "National and International Cooperation",
+          "name_kh": "សហប្រតិបត្តិការជាតិនិងអន្តរជាតិ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 337,
+          "name_en": "Teaching Management",
+          "name_kh": "គ្រប់គ្រងកិច្ចការបង្រៀន",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 338,
+          "name_en": "Library Management",
+          "name_kh": "គ្រប់គ្រងបណ្ណាល័យ",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 2,
+      "name_en": "Information Technology Department",
+      "name_kh": "នាយកដ្ឋានព័ត៌មានវិទ្យា",
+      "sort_order": 306,
+      "divisions": [
+        {
+          "hr_id": 5,
+          "name_en": "IT Administration and Operations",
+          "name_kh": "រដ្ឋបាលនិងប្រតិបត្តិការព័ត៌មានវិទ្យា",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 6,
+          "name_en": "Network Management",
+          "name_kh": "គ្រប់គ្រងប្រព័ន្ធបណ្តាញ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 7,
+          "name_en": "Software Development",
+          "name_kh": "អភិវឌ្ឍកម្មវិធី",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 8,
+          "name_en": "Application Management",
+          "name_kh": "គ្រប់គ្រងកម្មវិធី",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 78,
+          "name_en": "Payment System Support",
+          "name_kh": "គាំទ្រប្រព័ន្ធទូទាត់",
+          "sort_order": 5
+        },
+        {
+          "hr_id": 79,
+          "name_en": "IT Security",
+          "name_kh": "សុវត្ថិភាពព័ត៌មានវិទ្យា",
+          "sort_order": 6,
+          "short_name": "IT Security"
+        }
+      ]
+    },
+    {
+      "hr_id": 24,
+      "name_en": "Legal Division",
+      "name_kh": "ការិយាល័យគតិយុត្ត",
+      "sort_order": 307,
+      "divisions": []
+    },
+    {
+      "hr_id": 48,
+      "name_en": "Statistics Department",
+      "name_kh": "នាយកដ្ឋានស្ថិតិ",
+      "sort_order": 501,
+      "divisions": [
+        {
+          "hr_id": 237,
+          "name_en": "External Sector Statistics",
+          "name_kh": "ស្ថិតិវិស័យក្រៅប្រទេស",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 238,
+          "name_en": "Surveys and Compilation Methods",
+          "name_kh": "អង្គេត និងវិធីសាស្ត្រចងក្រងស្ថិតិ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 239,
+          "name_en": "Monetary and Financial Statistics",
+          "name_kh": "ស្ថិតិរូបិយវត្ថុនិងហិរញ្ញវត្ថុ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 240,
+          "name_en": "Multi-sector Statistics and Macroprudential Indicators",
+          "name_kh": "ស្ថិតិពហុវិស័យនិងសូចនាករម៉ាក្រូប្រុងប្រយ័ត្ន",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 241,
+          "name_en": "Database Management and Business Information Monitoring",
+          "name_kh": "គ្រប់គ្រងមូលដ្ឋានទិន្នន័យនិងតាមដានព័ត៌មានអាជីវកម្ម",
+          "sort_order": 5
+        },
+        {
+          "hr_id": 242,
+          "name_en": "Statistics Publication and Dissemination",
+          "name_kh": "បោះពុម្ពនិងផ្សព្វផ្សាយស្ថិតិ",
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "hr_id": 49,
+      "name_en": "Monetary Policy and Research Department",
+      "name_kh": "នាយកដ្ឋាននយោបាយរូបិយវត្ថុនិងស្រាវជ្រាវ",
+      "sort_order": 502,
+      "divisions": [
+        {
+          "hr_id": 243,
+          "name_en": "Economic Analysis",
+          "name_kh": "វិភាគសេដ្ឋកិច្ច",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 244,
+          "name_en": "Liquidity Analysis and Forecasting",
+          "name_kh": "វិភាគ និងព្យាករណ៍សន្ទនីយភាព",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 245,
+          "name_en": "Monetary Policy",
+          "name_kh": "នយោបាយរូបិយវត្ថុ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 246,
+          "name_en": "Research",
+          "name_kh": "ស្រាវជ្រាវ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 247,
+          "name_en": "Riel Promotion",
+          "name_kh": "លើកកម្ពស់ប្រាក់រៀល",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 50,
+      "name_en": "Financial Stability Department",
+      "name_kh": "នាយកដ្ឋានស្ថិរភាពហិរញ្ញវត្ថុ",
+      "sort_order": 503,
+      "divisions": [
+        {
+          "hr_id": 248,
+          "name_en": "Financial Sector Monitoring",
+          "name_kh": "តាមដានវិស័យហិរញ្ញវត្ថុ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 249,
+          "name_en": "Macro-Financial Linkages Assessment",
+          "name_kh": "វាយតម្លៃទំនាក់ទំនងម៉ាក្រូហិរញ្ញវត្ថុ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 250,
+          "name_en": "Macroprudential Policy",
+          "name_kh": "គោលនយោបាយម៉ាក្រូប្រុងប្រយ័ត្ន",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 251,
+          "name_en": "Stress Testing",
+          "name_kh": "ស្ត្រេសតេស្ត",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 51,
+      "name_en": "International Cooperation Department",
+      "name_kh": "នាយកដ្ឋានសហប្រតិបត្តិការអន្តរជាតិ",
+      "sort_order": 504,
+      "divisions": [
+        {
+          "hr_id": 252,
+          "name_en": "Bilateral Cooperation",
+          "name_kh": "សហប្រតិបត្តិការទ្វេភាគី",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 253,
+          "name_en": "ASEAN Regional Cooperation",
+          "name_kh": "សហប្រតិបត្តិការតំបន់អាស៊ាន",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 254,
+          "name_en": "International Institutions Cooperation",
+          "name_kh": "សហប្រតិបត្តិការស្ថាប័នអន្តរជាតិ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 255,
+          "name_en": "International Cooperation Policy and Technical Assistance",
+          "name_kh": "គោលនយោបាយសហប្រតិបត្តិការអន្តរជាតិ និងជំនួយបច្ចេកទេស",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 256,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 60,
+      "name_en": "Deposit Protection and Bank Resolution Unit",
+      "name_kh": "អង្គភាពការពារប្រាក់បញ្ញើនិងក្របខ័ណ្ឌដំណោះស្រាយគ្រឹះស្ថានធនាគារនិងហិរញ្ញវត្ថុ",
+      "sort_order": 505,
+      "divisions": []
+    },
+    {
+      "hr_id": 61,
+      "name_en": "Communication Unit",
+      "name_kh": "អង្គភាពទំនាក់ទំនង",
+      "sort_order": 506,
+      "divisions": []
+    },
+    {
+      "hr_id": 55,
+      "name_en": "Exchange Management Department",
+      "name_kh": "នាយកដ្ឋានគ្រប់គ្រងការប្តូរប្រាក់",
+      "sort_order": 601,
+      "divisions": [
+        {
+          "hr_id": 257,
+          "name_en": "Monitoring and Data Collection",
+          "name_kh": "តាមដាន និងប្រមូលទិន្នន័យ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 258,
+          "name_en": "Foreign Exchange Market Operations",
+          "name_kh": "គ្រប់គ្រងប្រតិបត្តិការទីផ្សារប្តូរប្រាក់",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 259,
+          "name_en": "Exchange Rate Policy",
+          "name_kh": "គោលនយោបាយអត្រាប្តូរប្រាក់",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 260,
+          "name_en": "Foreign Exchange Market Regulation",
+          "name_kh": "បទប្បញ្ញត្តិគ្រប់គ្រងទីផ្សារប្តូរប្រាក់",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 261,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 56,
+      "name_en": "Reserve Management Department",
+      "name_kh": "នាយកដ្ឋានគ្រប់គ្រងទុនបម្រុង",
+      "sort_order": 602,
+      "divisions": [
+        {
+          "hr_id": 262,
+          "name_en": "Front Office",
+          "name_kh": "ជួរមុខ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 263,
+          "name_en": "Middle Office",
+          "name_kh": "ជួរកណ្តាល",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 264,
+          "name_en": "Back Office",
+          "name_kh": "ជួរក្រោយ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 265,
+          "name_en": "International Payments",
+          "name_kh": "ទូទាត់អន្តរជាតិ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 266,
+          "name_en": "Other Fund Investments",
+          "name_kh": "វិនិយោគមូលនិធិផ្សេងៗ",
+          "sort_order": 5
+        },
+        {
+          "hr_id": 267,
+          "name_en": "Compliance",
+          "name_kh": "ប្រតិបត្តិតាម",
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "hr_id": 57,
+      "name_en": "Payment System Department",
+      "name_kh": "នាយកដ្ឋានប្រព័ន្ធទូទាត់សងប្រាក់",
+      "sort_order": 603,
+      "divisions": [
+        {
+          "hr_id": 268,
+          "name_en": "Payment System Policy and Development",
+          "name_kh": "គោលនយោបាយ និងអភិវឌ្ឍប្រព័ន្ធទូទាត់សងប្រាក់",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 269,
+          "name_en": "Payment Services Management",
+          "name_kh": "គ្រប់គ្រងសេវាទូទាត់សងប្រាក់",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 270,
+          "name_en": "Payment System Oversight",
+          "name_kh": "ត្រួតពិនិត្យប្រព័ន្ធទូទាត់សងប្រាក់",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 271,
+          "name_en": "Communication and Cooperation",
+          "name_kh": "ទំនាក់ទំនង និងកិច្ចសហប្រតិបត្តិការ",
+          "sort_order": 5
+        },
+        {
+          "hr_id": 272,
+          "name_en": "Financial Technology",
+          "name_kh": "បច្ចេកវិទ្យាហិរញ្ញវត្ថុ",
+          "sort_order": 6
+        }
+      ]
+    },
+    {
+      "hr_id": 58,
+      "name_en": "Bank Services Department",
+      "name_kh": "នាយកដ្ឋានសេវាធនាគារ",
+      "sort_order": 604,
+      "divisions": [
+        {
+          "hr_id": 273,
+          "name_en": "Account Management",
+          "name_kh": "គ្រប់គ្រងគណនី",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 274,
+          "name_en": "Payment System Management",
+          "name_kh": "គ្រប់គ្រងប្រព័ន្ធទូទាត់",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 275,
+          "name_en": "Securities Management",
+          "name_kh": "គ្រប់គ្រងមូលបត្រ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 276,
+          "name_en": "Settlement",
+          "name_kh": "ទូទាត់",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 59,
+      "name_en": "Monetary Markets Department",
+      "name_kh": "នាយកដ្ឋានទីផ្សាររូបិយវត្ថុ",
+      "sort_order": 605,
+      "divisions": [
+        {
+          "hr_id": 277,
+          "name_en": "Money Market Analysis and Monitoring",
+          "name_kh": "វិភាគ និងតាមដានទីផ្សាររូបិយវត្ថុ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 278,
+          "name_en": "Money Market Operations",
+          "name_kh": "ប្រតិបត្តិការទីផ្សាររូបិយវត្ថុ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 279,
+          "name_en": "Market Infrastructure Development",
+          "name_kh": "អភិវឌ្ឍន៍ហេដ្ឋារចនាសម្ព័ន្ធទីផ្សារ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 280,
+          "name_en": "Risk Management",
+          "name_kh": "គ្រប់គ្រងហានិភ័យ",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 10,
+      "name_en": "Supervision Department 1",
+      "name_kh": "នាយកដ្ឋានត្រួតពិនិត្យ១",
+      "sort_order": 703,
+      "divisions": [
+        {
+          "hr_id": 25,
+          "name_en": "Supervision 1",
+          "name_kh": "ត្រួតពិនិត្យទី១",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 26,
+          "name_en": "Supervision 2",
+          "name_kh": "ត្រួតពិនិត្យទី២",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 27,
+          "name_en": "Supervision 3",
+          "name_kh": "ត្រួតពិនិត្យទី៣",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 28,
+          "name_en": "Supervision 4",
+          "name_kh": "ត្រួតពិនិត្យទី៤",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 213,
+          "name_en": "Supervision 5",
+          "name_kh": "ត្រួតពិនិត្យទី៥",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 11,
+      "name_en": "Supervision Department 2",
+      "name_kh": "នាយកដ្ឋានត្រួតពិនិត្យ២",
+      "sort_order": 704,
+      "divisions": [
+        {
+          "hr_id": 29,
+          "name_en": "Supervision 1",
+          "name_kh": "ត្រួតពិនិត្យទី១",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 30,
+          "name_en": "Supervision 2",
+          "name_kh": "ត្រួតពិនិត្យទី២",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 31,
+          "name_en": "Supervision 3",
+          "name_kh": "ត្រួតពិនិត្យទី៣",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 32,
+          "name_en": "Supervision 4",
+          "name_kh": "ត្រួតពិនិត្យទី៤",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 214,
+          "name_en": "Supervision 5",
+          "name_kh": "ត្រួតពិនិត្យទី៥",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 62,
+      "name_en": "Data Management and Risk Assessment Department",
+      "name_kh": "នាយកដ្ឋានគ្រប់គ្រងទិន្នន័យនិងវាយតម្លៃហានិភ័យ",
+      "sort_order": 705,
+      "divisions": [
+        {
+          "hr_id": 281,
+          "name_en": "Data Collection and Analysis",
+          "name_kh": "ប្រមូលនិងវិភាគទិន្នន័យ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 282,
+          "name_en": "Risk Assessment",
+          "name_kh": "វាយតម្លៃហានិភ័យ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 283,
+          "name_en": "Communication and Coordination",
+          "name_kh": "ទំនាក់ទំនងនិងសម្របសម្រួល",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 333,
+          "name_en": "Supervision Training",
+          "name_kh": "បណ្តុះបណ្តាលផ្នែកត្រួតពិនិត្យ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 284,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 63,
+      "name_en": "Technology Risk and Innovation Supervision Department",
+      "name_kh": "នាយកដ្ឋានត្រួតពិនិត្យហានិភ័យបច្ចេកវិទ្យានិងនវានុវត្តន៍",
+      "sort_order": 706,
+      "divisions": [
+        {
+          "hr_id": 285,
+          "name_en": "Technology Risk Supervision",
+          "name_kh": "ត្រួតពិនិត្យហានិភ័យបច្ចេកវិទ្យា",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 286,
+          "name_en": "Cybersecurity Supervision",
+          "name_kh": "ត្រួតពិនិត្យសន្តិសុខសាយប័រ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 287,
+          "name_en": "Technology Innovation",
+          "name_kh": "នវានុវត្តន៍បច្ចេកវិទ្យា",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 71,
+      "name_en": "Regulation Department",
+      "name_kh": "នាយកដ្ឋានបទប្បញ្ញត្តិ",
+      "sort_order": 801,
+      "divisions": [
+        {
+          "hr_id": 312,
+          "name_en": "Deposit-taking Institutions Regulation",
+          "name_kh": "បទប្បញ្ញត្តិគ្រឹះស្ថានទទួលប្រាក់បញ្ញើ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 313,
+          "name_en": "Non-deposit-taking Institutions Regulation",
+          "name_kh": "បទប្បញ្ញត្តិគ្រឹះស្ថានមិនទទួលប្រាក់បញ្ញើ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 314,
+          "name_en": "Regulation Training",
+          "name_kh": "បណ្តុះបណ្តាលផ្នែកបទប្បញ្ញត្តិ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 315,
+          "name_en": "Administration and General Coordination",
+          "name_kh": "រដ្ឋបាល និងសម្របសម្រួលទូទៅ",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 72,
+      "name_en": "Financial Inclusion Department",
+      "name_kh": "នាយកដ្ឋានបរិយាបន្នហិរញ្ញវត្ថុ",
+      "sort_order": 802,
+      "divisions": [
+        {
+          "hr_id": 316,
+          "name_en": "Planning and Policy",
+          "name_kh": "ផែនការនិងគោលនយោបាយ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 317,
+          "name_en": "Project Development and Management",
+          "name_kh": "អភិវឌ្ឍន៍និងគ្រប់គ្រងគម្រោង",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 318,
+          "name_en": "Cooperation",
+          "name_kh": "សហប្រតិបត្តិការ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 319,
+          "name_en": "Monitoring and Evaluation",
+          "name_kh": "តាមដាននិងវាយតម្លៃ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 320,
+          "name_en": "Sustainable Finance",
+          "name_kh": "ហិរញ្ញវត្ថុប្រកបដោយចីរភាព",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 73,
+      "name_en": "Consumer Protection Department",
+      "name_kh": "នាយកដ្ឋានកិច្ចការពារអតិថិជន",
+      "sort_order": 803,
+      "divisions": [
+        {
+          "hr_id": 321,
+          "name_en": "Policy Development",
+          "name_kh": "អភិវឌ្ឍន៍គោលនយោបាយ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 322,
+          "name_en": "Market Conduct Supervision",
+          "name_kh": "ត្រួតពិនិត្យក្រមប្រតិបត្តិទីផ្សារ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 323,
+          "name_en": "Complaint Handling and Consumer Protection",
+          "name_kh": "ដោះស្រាយបណ្តឹងនិងកិច្ចការពារអតិថិជន",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 324,
+          "name_en": "Financial Literacy",
+          "name_kh": "ចំណេះដឹងផ្នែកហិរញ្ញវត្ថុ",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 74,
+      "name_en": "Deposit Protection Department",
+      "name_kh": "នាយកដ្ឋានកិច្ចការពារប្រាក់បញ្ញើ",
+      "sort_order": 804,
+      "divisions": [
+        {
+          "hr_id": 325,
+          "name_en": "Research and Planning",
+          "name_kh": "ស្រាវជ្រាវនិងផែនការ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 326,
+          "name_en": "Premiums and Compensation",
+          "name_kh": "បុព្វលាភនិងសំណង",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 327,
+          "name_en": "Fund Management",
+          "name_kh": "គ្រប់គ្រងមូលនិធិ",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 328,
+          "name_en": "Rehabilitation and Liquidation",
+          "name_kh": "បុននីតិសម្បទានិងជម្រះបញ្ជី",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 329,
+          "name_en": "Public Relations",
+          "name_kh": "ទំនាក់ទំនងសាធារណៈ",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 21,
+      "name_en": "Internal Audit Department",
+      "name_kh": "នាយកដ្ឋានសវនកម្មផ្ទៃក្នុង",
+      "sort_order": 901,
+      "divisions": [
+        {
+          "hr_id": 67,
+          "name_en": "Audit 1",
+          "name_kh": "សវនកម្មទី១",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 68,
+          "name_en": "Audit 2",
+          "name_kh": "សវនកម្មទី២",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 69,
+          "name_en": "Audit 3",
+          "name_kh": "សវនកម្មទី៣",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 20,
+      "name_en": "Inspection Department",
+      "name_kh": "នាយកដ្ឋានអធិការកិច្ច",
+      "sort_order": 902,
+      "divisions": [
+        {
+          "hr_id": 64,
+          "name_en": "Inspection 1",
+          "name_kh": "អធិការកិច្ចទី១",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 65,
+          "name_en": "Inspection 2",
+          "name_kh": "អធិការកិច្ចទី២",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 66,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 68,
+      "name_en": "General Management Department",
+      "name_kh": "នាយកដ្ឋានគ្រប់គ្រងទូទៅ",
+      "sort_order": 1003,
+      "divisions": [
+        {
+          "hr_id": 299,
+          "name_en": "Administration, Planning and Subsidiary Accounting",
+          "name_kh": "រដ្ឋបាល-ផែនការ-គណនេយ្យជំនួយ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 300,
+          "name_en": "Production Statistics",
+          "name_kh": "បូកសរុបស្ថិតិផលិតកម្ម",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 301,
+          "name_en": "Warehouse",
+          "name_kh": "ឃ្លាំង",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 302,
+          "name_en": "Security Systems and M&E Management",
+          "name_kh": "ប្រព័ន្ធសុវត្ថិភាព គ្រប់គ្រង M&E",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 69,
+      "name_en": "Production Department",
+      "name_kh": "នាយកដ្ឋានផលិតកម្ម",
+      "sort_order": 1004,
+      "divisions": [
+        {
+          "hr_id": 303,
+          "name_en": "Offset Printing",
+          "name_kh": "អុបសិត",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 304,
+          "name_en": "Special Production",
+          "name_kh": "ផលិតកម្មពិសេស",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 305,
+          "name_en": "Numbering",
+          "name_kh": "លេខ-មាលា",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 306,
+          "name_en": "Ink Mixing and Technical Materials",
+          "name_kh": "រៀបចំល្បាយនិងសម្ភារបច្ចេកទេស",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 70,
+      "name_en": "Quality Control Department",
+      "name_kh": "នាយកដ្ឋានពិនិត្យគុណភាព",
+      "sort_order": 1005,
+      "divisions": [
+        {
+          "hr_id": 307,
+          "name_en": "Quality Inspection",
+          "name_kh": "ពិនិត្យគុណភាព",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 308,
+          "name_en": "Cutting Machines",
+          "name_kh": "ម៉ាស៊ីនកាត់",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 309,
+          "name_en": "Sorting and Counting",
+          "name_kh": "ជ្រើសរាប់",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 310,
+          "name_en": "Final Inspection",
+          "name_kh": "ត្រួតពិនិត្យចុងក្រោយ",
+          "sort_order": 4
+        },
+        {
+          "hr_id": 311,
+          "name_en": "Packaging",
+          "name_kh": "វេចខ្ចប់",
+          "sort_order": 5
+        }
+      ]
+    },
+    {
+      "hr_id": 64,
+      "name_en": "Issue Department",
+      "name_kh": "នាយកដ្ឋានបោះផ្សាយ",
+      "sort_order": 1101,
+      "divisions": [
+        {
+          "hr_id": 288,
+          "name_en": "Reserve Vault",
+          "name_kh": "ឃ្លាំងត្រៀមបម្រុង",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 289,
+          "name_en": "Issue Coordination Vault",
+          "name_kh": "ឃ្លាំងសម្របសម្រួលបោះផ្សាយ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 290,
+          "name_en": "Vault Accounting",
+          "name_kh": "គណនេយ្យឃ្លាំង",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 75,
+      "name_en": "Cash Operation Department",
+      "name_kh": "នាយកដ្ឋានបេឡាប្រតិបត្តិការ",
+      "sort_order": 1102,
+      "divisions": [
+        {
+          "hr_id": 330,
+          "name_en": "Cashier",
+          "name_kh": "បេឡា",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 331,
+          "name_en": "Subsidiary Accounting",
+          "name_kh": "គណនេយ្យជំនួយ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 332,
+          "name_en": "Counterfeit Examination",
+          "name_kh": "កោសល្យវិច័យ",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 66,
+      "name_en": "Banknote Transport Department",
+      "name_kh": "នាយកដ្ឋានដឹកជញ្ជូនធនបត្រ",
+      "sort_order": 1103,
+      "divisions": [
+        {
+          "hr_id": 291,
+          "name_en": "General Management",
+          "name_kh": "គ្រប់គ្រងទូទៅ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 292,
+          "name_en": "Domestic Transport",
+          "name_kh": "ដឹកជញ្ជូនក្នុងប្រទេស",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 293,
+          "name_en": "International Transport",
+          "name_kh": "ដឹកជញ្ជូនក្រៅប្រទេស",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 294,
+          "name_en": "Records Management",
+          "name_kh": "គ្រប់គ្រងឯកសារ",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 67,
+      "name_en": "Sorting and Destruction Department",
+      "name_kh": "នាយកដ្ឋានស្រាល់ជ្រើសនិងកាត់កម្ទេច",
+      "sort_order": 1104,
+      "divisions": [
+        {
+          "hr_id": 295,
+          "name_en": "Counting and Sorting",
+          "name_kh": "រាប់-ស្រាល់ជ្រើស",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 296,
+          "name_en": "Bookkeeping",
+          "name_kh": "កិច្ចបញ្ជីការ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 297,
+          "name_en": "Old Banknote Destruction",
+          "name_kh": "កាត់ដុតក្រដាសប្រាក់ចាស់",
+          "sort_order": 3
+        },
+        {
+          "hr_id": 298,
+          "name_en": "Machine Technical Management",
+          "name_kh": "គ្រប់គ្រងបច្ចេកទេសម៉ាស៊ីន",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 42,
+      "name_en": "Department of Internal Affairs",
+      "name_kh": "នាយកដ្ឋានកិច្ចការផ្ទៃក្នុង",
+      "sort_order": 1201,
+      "divisions": [
+        {
+          "hr_id": 217,
+          "name_en": "Administration",
+          "name_kh": "រដ្ឋបាល",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 218,
+          "name_en": "Public Relations",
+          "name_kh": "ទំនាក់ទំនងសាធារណៈ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 219,
+          "name_en": "Hospitality",
+          "name_kh": "បដិសណ្ឋារកិច្ច",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 43,
+      "name_en": "Department of Analysis",
+      "name_kh": "នាយកដ្ឋានវិភាគ",
+      "sort_order": 1202,
+      "divisions": [
+        {
+          "hr_id": 220,
+          "name_en": "Operational Analysis",
+          "name_kh": "វិភាគប្រតិបត្តិការ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 221,
+          "name_en": "Strategic Analysis",
+          "name_kh": "វិភាគយុទ្ធសាស្ត្រ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 222,
+          "name_en": "Data Management",
+          "name_kh": "គ្រប់គ្រងទិន្នន័យ",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 44,
+      "name_en": "Department of Anti-Money Laundering and Combating the Financing of Terrorism Supervision",
+      "name_kh": "នាយកដ្ឋានត្រួតពិនិត្យការប្រឆាំងការសម្អាតប្រាក់និងហិរញ្ញប្បទានភេរវកម្ម",
+      "sort_order": 1203,
+      "divisions": [
+        {
+          "hr_id": 224,
+          "name_en": "Banking Sector Supervision",
+          "name_kh": "ត្រួតពិនិត្យវិស័យធនាគារ",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 223,
+          "name_en": "Non-bank Financial Sector Supervision",
+          "name_kh": "ត្រួតពិនិត្យវិស័យហិរញ្ញវត្ថុមិនមែនធនាគារ",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 233,
+          "name_en": "Non-financial Businesses and Professions Supervision",
+          "name_kh": "ត្រួតពិនិត្យមុខរបរនិងវិជ្ជាជីវៈមិនមែនហិរញ្ញវត្ថុ",
+          "sort_order": 3
+        }
+      ]
+    },
+    {
+      "hr_id": 45,
+      "name_en": "Department of Cooperation",
+      "name_kh": "នាយកដ្ឋានសហប្រតិបត្តិការ",
+      "sort_order": 1204,
+      "divisions": [
+        {
+          "hr_id": 225,
+          "name_en": "Domestic Cooperation",
+          "name_kh": "សហប្រតិបត្តិការក្នុងស្រុក",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 226,
+          "name_en": "FATF and APG Affairs",
+          "name_kh": "កិច្ចការក្រុមការងារហិរញ្ញវត្ថុ(FATF)និងក្រុមប្រទេសអាស៊ីប៉ាស៊ីហ្វិកស្តីពីការសម្អាតប្រាក់(APG)",
+          "sort_order": 2,
+          "short_name": "FATF/APG"
+        },
+        {
+          "hr_id": 227,
+          "name_en": "Egmont Group Affairs",
+          "name_kh": "ទទួលបន្ទុកកិច្ចការក្រុមអ៊ិកម៉ុង (Egmont)",
+          "sort_order": 3,
+          "short_name": "Egmont"
+        },
+        {
+          "hr_id": 228,
+          "name_en": "International Cooperation",
+          "name_kh": "សហប្រតិបត្តិការក្រៅប្រទេស",
+          "sort_order": 4
+        }
+      ]
+    },
+    {
+      "hr_id": 46,
+      "name_en": "Department of Legal Affairs and Training",
+      "name_kh": "នាយកដ្ឋាននីតិកម្មនិងបណ្តុះបណ្តាល",
+      "sort_order": 1205,
+      "divisions": [
+        {
+          "hr_id": 229,
+          "name_en": "Legislation",
+          "name_kh": "នីតិកម្ម",
+          "sort_order": 1
+        },
+        {
+          "hr_id": 230,
+          "name_en": "Dissemination and Training",
+          "name_kh": "ផ្សព្វផ្សាយនិងបណ្តុះបណ្តាល",
+          "sort_order": 2
+        },
+        {
+          "hr_id": 231,
+          "name_en": "Research",
+          "name_kh": "សិក្សាស្រាវជ្រាវ",
+          "sort_order": 3
+        }
+      ]
+    }
+  ],
+  "branch_divisions": [
+    {
+      "hr_id": 74,
+      "name_en": "Administration and Personnel",
+      "name_kh": "រដ្ឋបាល និងបុគ្គលិក",
+      "sort_order": 1
+    },
+    {
+      "hr_id": 75,
+      "name_en": "Monetary Affairs",
+      "name_kh": "រូបិយវត្ថុ",
+      "sort_order": 2
+    },
+    {
+      "hr_id": 76,
+      "name_en": "Operations",
+      "name_kh": "ប្រតិបត្តិការ",
+      "sort_order": 3
+    },
+    {
+      "hr_id": 77,
+      "name_en": "Accounting",
+      "name_kh": "គណនេយ្យ",
+      "sort_order": 4
+    }
+  ],
+  "branches": [
+    {
+      "hr_id": 102,
+      "province": "PHNOM_PENH",
+      "name_en": "Phnom Penh Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា រាជធានីភ្នំពេញ"
+    },
+    {
+      "hr_id": 103,
+      "province": "KANDAL",
+      "name_en": "Kandal Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកណ្តាល"
+    },
+    {
+      "hr_id": 104,
+      "province": "KAMPONG_CHAM",
+      "name_en": "Kampong Cham Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ចាម"
+    },
+    {
+      "hr_id": 105,
+      "province": "BATTAMBANG",
+      "name_en": "Battambang Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តបាត់ដំបង"
+    },
+    {
+      "hr_id": 106,
+      "province": "PREY_VENG",
+      "name_en": "Prey Veng Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តព្រៃវែង"
+    },
+    {
+      "hr_id": 107,
+      "province": "SIEM_REAP",
+      "name_en": "Siem Reap Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តសៀមរាប"
+    },
+    {
+      "hr_id": 108,
+      "province": "KAMPONG_THOM",
+      "name_en": "Kampong Thom Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ធំ"
+    },
+    {
+      "hr_id": 109,
+      "province": "TAKEO",
+      "name_en": "Takeo Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តតាកែវ"
+    },
+    {
+      "hr_id": 110,
+      "province": "SVAY_RIENG",
+      "name_en": "Svay Rieng Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តស្វាយរៀង"
+    },
+    {
+      "hr_id": 111,
+      "province": "PURSAT",
+      "name_en": "Pursat Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តពោធិ៍សាត់"
+    },
+    {
+      "hr_id": 112,
+      "province": "KAMPONG_CHHNANG",
+      "name_en": "Kampong Chhnang Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ឆ្នាំង"
+    },
+    {
+      "hr_id": 113,
+      "province": "KAMPONG_SPEU",
+      "name_en": "Kampong Speu Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ស្ពឺ"
+    },
+    {
+      "hr_id": 114,
+      "province": "KAMPOT",
+      "name_en": "Kampot Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពត"
+    },
+    {
+      "hr_id": 115,
+      "province": "PREAH_SIHANOUK",
+      "name_en": "Preah Sihanouk Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តព្រះសីហនុ"
+    },
+    {
+      "hr_id": 116,
+      "province": "KOH_KONG",
+      "name_en": "Koh Kong Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកោះកុង"
+    },
+    {
+      "hr_id": 118,
+      "province": "KRATIE",
+      "name_en": "Kratie Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តក្រចេះ"
+    },
+    {
+      "hr_id": 119,
+      "province": "RATANAKIRI",
+      "name_en": "Ratanakiri Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តរតនគិរី"
+    },
+    {
+      "hr_id": 121,
+      "province": "STUNG_TRENG",
+      "name_en": "Stung Treng Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តស្ទឹងត្រែង"
+    },
+    {
+      "hr_id": 122,
+      "province": "BANTEAY_MEANCHEY",
+      "name_en": "Banteay Meanchey Branch",
+      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តបន្ទាយមានជ័យ"
+    }
+  ]
+}
