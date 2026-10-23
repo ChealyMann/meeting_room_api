@@ -14,3 +14,11 @@ class RoleCode(StrEnum):
     PITIKA = "PITIKA"
     IT_LEAD = "IT_LEAD"
     IT_STAFF = "IT_STAFF"
+
+
+_SEED_ORDER = {code.value: index for index, code in enumerate(RoleCode)}
+
+
+def seed_order(code: str) -> int:
+    """Sort key for roles and role codes: seed order, unknown codes last."""
+    return _SEED_ORDER.get(code, len(_SEED_ORDER))

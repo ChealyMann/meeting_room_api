@@ -3,14 +3,12 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.constants.roles import RoleCode
+from app.constants.roles import seed_order
 from app.errors import AppError, ErrorCode
 from app.models import Role, Room, User, user_roles
 from app.schemas.refs import NamedRef, ProvinceRef, RoleRef
 from app.schemas.user import UserDetail
 from app.services.province import get_user_province
-
-_ROLE_ORDER = {code.value: index for index, code in enumerate(RoleCode)}
 
 
 def load_roles(session: Session, user_id: int) -> list[Role]:
@@ -20,7 +18,7 @@ def load_roles(session: Session, user_id: int) -> list[Role]:
         .join(user_roles, user_roles.c.role_id == Role.id)
         .where(user_roles.c.user_id == user_id)
     ).all()
-    return sorted(roles, key=lambda role: _ROLE_ORDER.get(role.code, len(_ROLE_ORDER)))
+    return sorted(roles, key=lambda role: seed_order(role.code))
 
 
 def owned_room_ids(session: Session, user_id: int) -> list[int]:
