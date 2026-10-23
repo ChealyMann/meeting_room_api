@@ -19,7 +19,7 @@ Response models
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
@@ -104,6 +104,33 @@ ProvinceCode = Annotated[str, AfterValidator(_check_province_code)]
 
 # A record linked by id in a request body: a positive whole number.
 RefId = Annotated[int, Field(gt=0)]
+# The same, where `null` is allowed (e.g. a user's division, a room's owner).
+OptionalRefId = RefId | None
+
+TITLES = ("Mr.", "Ms.", "Mrs.", "Dr.")
+
+
+def _check_title(value: str) -> str:
+    if value not in TITLES:
+        raise ValueError("Must be one of Mr., Ms., Mrs., Dr.")
+    return value
+
+
+# A person's title, exactly one of TITLES; empty after trimming is saved as None.
+OptionalTitle = Annotated[
+    Annotated[str, AfterValidator(_check_title)] | None, BeforeValidator(_strip_to_none)
+]
+
+
+def IntRange(low: int, high: int) -> Any:  # noqa: N802 - used like a type: `capacity: IntRange(1, 10000)`
+    """A whole number from `low` to `high`."""
+
+    def check(value: int) -> int:
+        if not low <= value <= high:
+            raise ValueError(f"Must be {low} to {high}.")
+        return value
+
+    return Annotated[int, AfterValidator(check)]
 
 
 def _check_password_length(value: str) -> str:
@@ -123,6 +150,30 @@ def _check_sort_order(value: int) -> int:
 
 
 SortOrder = Annotated[int, AfterValidator(_check_sort_order)]
+
+
+_TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
+
+
+def _parse_local_time(value: Any) -> Any:
+    if value is None or isinstance(value, time):
+        return value.replace(second=0, microsecond=0) if value else value
+    match = _TIME.fullmatch(value.strip()) if isinstance(value, str) else None
+    if match is None:
+        raise ValueError("Must be a time as HH:MM.")
+    hour, minute, second = int(match[1]), int(match[2]), int(match[3] or 0)
+    if hour > 23 or minute > 59 or second > 59:
+        raise ValueError("Must be a time as HH:MM.")
+    return time(hour, minute)
+
+
+# Room hours, Cambodia local time. Accepts "8:00", "08:00" or "08:00:30" (seconds are
+# dropped); "24:00" is refused. Always returned as "HH:MM".
+LocalTime = Annotated[
+    time,
+    BeforeValidator(_parse_local_time),
+    PlainSerializer(lambda value: value.strftime("%H:%M"), return_type=str, when_used="json"),
+]
 
 
 def _format_utc(value: datetime) -> str:

@@ -21,6 +21,10 @@ from app.routers import (
     positions,
     provinces,
     roles,
+    room_equipment,
+    room_photos,
+    rooms,
+    users,
 )
 from app.services.login_rate_limit import LoginRateLimiter
 
@@ -62,6 +66,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(divisions.router)
     api.include_router(positions.router)
     api.include_router(roles.router)
+    api.include_router(users.router)
+    api.include_router(rooms.router)
+    api.include_router(room_photos.router)
+    api.include_router(room_equipment.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)

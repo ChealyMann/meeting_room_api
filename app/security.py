@@ -210,3 +210,7 @@ def require_roles(*codes: str):
 AnyUser = Annotated[CurrentUser, Depends(get_current_user)]
 PasswordChangeAllowedUser = Annotated[CurrentUser, Depends(get_current_user_allow_password_change)]
 AdminUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.ADMIN))]
+# "Admin, Owner": the service then checks the owner owns that room (R8).
+AdminOrOwnerUser = Annotated[
+    CurrentUser, Depends(require_roles(RoleCode.ADMIN, RoleCode.ROOM_OWNER))
+]
