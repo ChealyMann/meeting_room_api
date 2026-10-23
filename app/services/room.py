@@ -109,6 +109,7 @@ def _list_item_fields(room: Room, cover: RoomPhoto | None) -> dict:
         "cover_photo": CoverPhoto.model_validate(cover) if cover else None,
         "is_active": room.is_active,
         "is_bookable": is_bookable(room),
+        "is_private": room.is_private,
     }
 
 
@@ -169,6 +170,7 @@ def list_rooms(
     is_active: bool | None = None,
     bookable: bool | None = None,
     search: str | None = None,
+    is_private: bool | None = None,
 ) -> dict:
     """Paged rooms sorted by English name. All filters combine with AND."""
     check_province_code(province)
@@ -206,6 +208,8 @@ def list_rooms(
         owned = Room.room_owner_id.is_not(None)
         query = query.where(owned if has_owner else not_(owned))
     query = apply_active_filter(query, Room, is_active)
+    if is_private is not None:
+        query = query.where(Room.is_private.is_(is_private))
     if bookable is not None:
         query = query.where(_BOOKABLE if bookable else not_(_BOOKABLE))
     query = apply_search(query, search, [Room.name_en, Room.name_kh, Room.short_desc])

@@ -285,9 +285,10 @@ These 8 tables follow the ERD (`User_Room_Final.drawio`) exactly; only types, li
 | `is_active` |  |  | Common column |
 | `start_time` | `TIME` | No | Opening time, Cambodia local, same every day |
 | `end_time` | `TIME` | No | `CHECK (start_time < end_time)`. Rooms do not stay open past midnight |
+| `is_private` | `BOOLEAN` | No | Default `FALSE` (public). A label only (see below) |
 | `created_at`, `updated_at` |  |  | Common columns |
 
-The ERD's `is_private` column is removed. Rooms have no `sort_order`; they sort by `name_en`, then `id`.
+`is_private` (from the ERD, added back on 23 Oct 2026) is **a label only**: it is shown on every room and can be filtered, but it changes no access, visibility or booking rule. It does not depend on the owner: a private room with no owner is allowed (find them with `?is_private=true&has_owner=false`). Rooms have no `sort_order`; they sort by `name_en`, then `id`.
 
 **`room_photos`**
 
@@ -541,7 +542,7 @@ Every endpoint returns one of these shapes. Build each as one Pydantic response 
     "category": "<NamedRef>", "floor": "<FloorRef>", "building": "<BuildingRef>",
     "location": "<NamedRef>", "province": "<ProvinceRef>", "owner": "<OwnerRef or null>",
     "cover_photo": { "url": "/uploads/rooms/12/7f3c.jpg", "thumbnail_url": "/uploads/rooms/12/7f3c_thumb.jpg" },
-    "is_active": true, "is_bookable": true
+    "is_active": true, "is_bookable": true, "is_private": false
   },
   "RoomDetail": "RoomListItem + \"description\" + \"photos\": [<Photo>] + \"equipment\": [<Equipment>] + \"created_at\" + \"updated_at\"",
   "Photo": {
@@ -787,6 +788,7 @@ Admin manages all rooms; a room owner manages only their own rooms, with a small
 | `equipment_ids` | Comma list; room must have every one |
 | `owner_id` | Rooms owned by that user |
 | `has_owner` | `true` = owned rooms, `false` = no-owner rooms |
+| `is_private` | `true` = private rooms, `false` = public rooms |
 | `is_active` | The room's own flag |
 | `is_bookable` | Computed flag (R12) |
 | `search` | `name_en`, `name_kh`, `short_desc` |
@@ -821,11 +823,12 @@ Admin manages all rooms; a room owner manages only their own rooms, with a small
 | `description` | No | Max 1000 |
 | `door_code` | No | Max 50. Write-only: accepted here, never returned except by the door-code endpoint |
 | `room_owner_id` | No | Null or missing = no-owner room. Else R7 |
+| `is_private` | No | `true` or `false`; default `false` (public). `null` → 422. A label only |
 
 **`PATCH /rooms/{id}`**
 
 - Admin may change every field above plus `is_active`.
-- Owner may change only: `name_en`, `name_kh`, `short_desc`, `description`, `capacity`, `size_sqm`, `start_time`, `end_time`, `door_code`, `category_id`. Sending `floor_id`, `room_owner_id` or `is_active` returns 403 `FORBIDDEN` and changes nothing (R8).
+- Owner may change only: `name_en`, `name_kh`, `short_desc`, `description`, `capacity`, `size_sqm`, `start_time`, `end_time`, `door_code`, `category_id`, `is_private`. Sending `floor_id`, `room_owner_id` or `is_active` returns 403 `FORBIDDEN` and changes nothing (R8).
 - Sending only one of `start_time` / `end_time` is checked against the stored other value (R13).
 
 **`GET /rooms/{id}/door-code`** returns `{ "room_id": 12, "door_code": "4821#" }`, or `"door_code": null` when none is set.
@@ -1121,6 +1124,9 @@ Each row is one test: the situation and the exact expected result. Build every o
 | `GET /rooms?is_bookable=true` with an inactive building | Rooms in that building are excluded |
 | `equipment_ids=1,4` | Only rooms having both 1 and 4 |
 | Move a room to another floor with the same room name | 409 `DUPLICATE` |
+| Create a room without `is_private` | Public (`is_private: false`) |
+| Private room with no owner | Allowed; listed by `?is_private=true&has_owner=false` |
+| Owner marks their own room private | 200; on someone else's room 403 `FORBIDDEN` |
 
 ### Photos and equipment
 

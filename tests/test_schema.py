@@ -61,6 +61,7 @@ EXPECTED_COLUMNS = {
         "description": ("varchar(1000)", True),
         "start_time": ("time", False),
         "end_time": ("time", False),
+        "is_private": ("tinyint(1)", False),
     },
     "room_photos": {
         "id": ("int unsigned", False),

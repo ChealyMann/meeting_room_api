@@ -286,7 +286,7 @@ A room is on a floor and has a **type** (category), for example "Meeting room". 
 | ROOM-F02 | See one room type. | Everyone | `GET /categories/{id}` |
 | ROOM-F03 | Create a room type. | Admin | `POST /categories` |
 | ROOM-F04 | Change a room type, or turn it off or on. | Admin | `PATCH /categories/{id}` |
-| ROOM-F05 | See the list of rooms. Filter by province, office, building, floor, room type, number of people, equipment, owner, "has owner", active, or bookable. Search by name. | Everyone | `GET /rooms` |
+| ROOM-F05 | See the list of rooms. Filter by province, office, building, floor, room type, number of people, equipment, owner, "has owner", active, bookable, or private. Search by name. | Everyone | `GET /rooms` |
 | ROOM-F06 | See one room: its place, type, owner, opening hours, photos, equipment, and if it is bookable. | Everyone | `GET /rooms/{id}` |
 | ROOM-F07 | Create a room. | Admin | `POST /rooms` |
 | ROOM-F08 | Change a room. The owner can change only some fields (see below). | Admin, Owner | `PATCH /rooms/{id}` |
@@ -313,6 +313,7 @@ A room is on a floor and has a **type** (category), for example "Meeting room". 
 | Description | No | Max 1000 | Yes |
 | Door code | No | Max 50, secret | Yes |
 | Owner | No | A user | No |
+| Private | No | Yes or no. New rooms are public. Only a label: it does not change who can see or book the room | Yes |
 | Active | — | On or off | No |
 
 **Validation**
@@ -336,6 +337,7 @@ A room is on a floor and has a **type** (category), for example "Meeting room". 
 | ROOM-V15 | The system turns photos the right way up, removes hidden data (like GPS location), and saves them as JPG with a small preview (thumbnail). | No error |
 | ROOM-V16 | The new photo order must list **every** photo of the room, each one once. | "The list of photos is not complete." |
 | ROOM-V17 | Room equipment: every item must exist. A new item must be active. Repeats are saved once. An empty list removes all equipment. | "Equipment not found" / "is inactive." |
+| ROOM-V18 | **Private** is only a label (private or public). Everyone can still see the room, and it is still bookable. A private room may have no owner; the Admin can find these with the "private" and "has owner" filters. | No error |
 
 ## Module 6 — Equipment
 

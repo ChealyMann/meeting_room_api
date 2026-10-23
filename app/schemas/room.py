@@ -29,6 +29,7 @@ OWNER_FIELDS = frozenset(
         "end_time",
         "door_code",
         "category_id",
+        "is_private",
     }
 )
 
@@ -46,6 +47,7 @@ class RoomCreate(RequestModel):
     description: OptionalText(1000) = None
     door_code: OptionalText(50) = None  # write-only: never returned here
     room_owner_id: OptionalRefId = None  # null = no-owner room; else R7
+    is_private: bool = False  # a label only; independent of the owner
 
 
 class RoomUpdate(RequestModel):
@@ -64,6 +66,7 @@ class RoomUpdate(RequestModel):
     description: OptionalText(1000) = None
     door_code: OptionalText(50) = None
     room_owner_id: OptionalRefId = None
+    is_private: bool = None
     is_active: bool = None
 
 
@@ -87,6 +90,7 @@ class RoomListItem(ResponseModel):
     cover_photo: CoverPhoto | None
     is_active: bool
     is_bookable: bool  # computed (R12), never stored
+    is_private: bool  # a label only
 
 
 class RoomDetail(RoomListItem):

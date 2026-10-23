@@ -37,6 +37,7 @@ def list_rooms(
     has_owner: Annotated[bool | None, Query()] = None,
     is_active: IsActiveQuery = None,
     is_bookable: Annotated[bool | None, Query()] = None,
+    is_private: Annotated[bool | None, Query(description="true = private, false = public")] = None,
     search: SearchQuery = None,
 ) -> Page[RoomListItem]:
     """All filters combine with AND. Search matches English name, Khmer name and short
@@ -57,6 +58,7 @@ def list_rooms(
         is_active,
         is_bookable,
         search,
+        is_private,
     )
     items = room_service.build_room_list_items(session, result["items"])
     return Page[RoomListItem](**{**result, "items": items})

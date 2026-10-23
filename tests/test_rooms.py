@@ -26,6 +26,7 @@ LIST_FIELDS = {
     "cover_photo",
     "is_active",
     "is_bookable",
+    "is_private",
 }
 DETAIL_FIELDS = LIST_FIELDS | {"description", "photos", "equipment", "created_at", "updated_at"}
 
@@ -290,11 +291,36 @@ def test_create_missing_required_fields(client, as_admin):
 
 
 @pytest.mark.parametrize(
-    "field", ["id", "is_active", "is_bookable", "created_at", "cover_photo", "is_private"]
+    "field", ["id", "is_active", "is_bookable", "created_at", "cover_photo", "private"]
 )
 def test_create_refuses_unknown_and_server_fields(client, as_admin, floor, category, field):
     response = client.post(URL, json=new(floor, category, **{field: True}), headers=as_admin)
     assert _fields(response) == {field: "Unknown field."}
+
+
+def test_create_is_public_by_default(client, as_admin, floor, category):
+    room = client.post(URL, json=new(floor, category), headers=as_admin).json()
+    assert room["is_private"] is False
+
+
+def test_create_private_room(client, as_admin, floor, category):
+    body = new(floor, category, is_private=True)
+    room = client.post(URL, json=body, headers=as_admin).json()
+    assert room["is_private"] is True
+
+
+def test_private_room_without_owner_is_allowed(client, as_admin, floor, category):
+    # is_private is only a label; it does not depend on the owner.
+    body = new(floor, category, is_private=True, room_owner_id=None)
+    room = client.post(URL, json=body, headers=as_admin).json()
+    assert (room["is_private"], room["owner"]) == (True, None)
+
+
+@pytest.mark.parametrize("value", [None, "maybe", 2])
+def test_create_invalid_is_private(client, as_admin, floor, category, value):
+    response = client.post(URL, json=new(floor, category, is_private=value), headers=as_admin)
+    assert _error(response) == (422, "VALIDATION_ERROR")
+    assert set(_fields(response)) == {"is_private"}
 
 
 def test_create_needs_admin(client, as_owner, as_staff, floor, category):
@@ -341,7 +367,9 @@ def rooms(
             short_desc="River view",
         ),
         "tonle": make_room(floor=other_floor, category=training, name_en="Tonle Room", capacity=30),
-        "angkor": make_room(floor=floor, category=category, name_en="Angkor Room", capacity=6),
+        "angkor": make_room(
+            floor=floor, category=category, name_en="Angkor Room", capacity=6, is_private=True
+        ),
         "closed": make_room(floor=floor, name_en="Closed Room", is_active=False),
         "offbuilding": make_room(
             floor=make_floor(building=off_building), name_en="Off Building Room"
@@ -449,6 +477,24 @@ def test_list_filter_ids(client, as_staff, rooms, floor, building, category, own
     assert _names(client.get(f"{URL}?owner_id={owner.id}", headers=as_staff)) == ["Mekong Room"]
 
 
+def test_list_filter_private(client, as_staff, rooms):
+    assert _names(client.get(f"{URL}?is_private=true", headers=as_staff)) == ["Angkor Room"]
+    public = _names(client.get(f"{URL}?is_private=false", headers=as_staff))
+    assert len(public) == 5 and "Angkor Room" not in public
+
+
+def test_list_private_rooms_without_owner(client, as_staff, rooms):
+    # How the Admin finds private rooms nobody is in charge of.
+    query = f"{URL}?is_private=true&has_owner=false"
+    assert _names(client.get(query, headers=as_staff)) == ["Angkor Room"]
+
+
+def test_list_shows_private_label(client, as_staff, rooms):
+    items = client.get(URL, headers=as_staff).json()["items"]
+    labels = {item["name_en"]: item["is_private"] for item in items}
+    assert labels["Angkor Room"] is True and labels["Mekong Room"] is False
+
+
 def test_list_has_no_owner(client, as_staff, rooms):
     assert "Mekong Room" not in _names(client.get(f"{URL}?has_owner=false", headers=as_staff))
 
@@ -502,6 +548,7 @@ def test_list_paging(client, as_staff, rooms):
         ("min_capacity=0", "min_capacity"),
         ("min_capacity=abc", "min_capacity"),
         ("has_owner=maybe", "has_owner"),
+        ("is_private=maybe", "is_private"),
         ("is_bookable=maybe", "is_bookable"),
         ("floor_id=abc", "floor_id"),
         ("owner_id=0", "owner_id"),
@@ -641,6 +688,7 @@ def test_patch_same_values(client, as_admin, room):
         "start_time",
         "end_time",
         "is_active",
+        "is_private",
     ],
 )
 def test_patch_null_for_required(client, as_admin, room, field):
@@ -757,6 +805,32 @@ def test_owner_edits_own_room(client, as_owner, room, make_category, db_session)
     assert response.json()["name_en"] == "My Room"
     db_session.refresh(room)
     assert room.door_code == "9999"
+
+
+def test_admin_marks_room_private_and_public(client, as_admin, room):
+    assert patch(client, as_admin, room, {"is_private": True}).json()["is_private"] is True
+    assert patch(client, as_admin, room, {"is_private": False}).json()["is_private"] is False
+
+
+def test_owner_marks_own_room_private(client, as_owner, room, db_session):
+    response = patch(client, as_owner, room, {"is_private": True})
+    assert response.status_code == 200, response.text
+    assert response.json()["is_private"] is True
+    db_session.refresh(room)
+    assert room.is_private is True
+
+
+def test_owner_cannot_mark_others_room_private(client, as_owner, make_room, make_user):
+    others = make_room(owner=make_user(roles=["ROOM_OWNER"]))
+    assert _error(patch(client, as_owner, others, {"is_private": True})) == (403, "FORBIDDEN")
+
+
+def test_private_label_changes_nothing_else(client, as_admin, as_staff, room):
+    # Still listed, still bookable, still readable by everyone.
+    patch(client, as_admin, room, {"is_private": True})
+    detail = client.get(f"{URL}/{room.id}", headers=as_staff).json()
+    assert (detail["is_private"], detail["is_bookable"]) == (True, True)
+    assert room.id in [r["id"] for r in client.get(URL, headers=as_staff).json()["items"]]
 
 
 @pytest.mark.parametrize(
