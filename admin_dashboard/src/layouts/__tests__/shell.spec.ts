@@ -107,3 +107,31 @@ describe('AppShell photo', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('AppShell toggles', () => {
+  it('folds the sidebar to icons and opens it again', async () => {
+    localStorage.clear()
+    const { wrapper } = await mountShell('/')
+
+    await wrapper.get('button[aria-label="Collapse sidebar"]').trigger('click')
+
+    expect(wrapper.get('aside.rail').classes()).toContain('compact')
+    expect(wrapper.get('.shell').classes()).toContain('compact')
+    expect(localStorage.getItem('nbc.admin.rail')).toBe('collapsed')
+
+    await wrapper.get('button[aria-label="Expand sidebar"]').trigger('click')
+
+    expect(wrapper.get('aside.rail').classes()).not.toContain('compact')
+  })
+
+  it('switches between day and night', async () => {
+    localStorage.clear()
+    const { wrapper } = await mountShell('/')
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    await wrapper.get('button[aria-label="Switch to night mode"]').trigger('click')
+
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(wrapper.find('button[aria-label="Switch to day mode"]').exists()).toBe(true)
+  })
+})

@@ -1,13 +1,12 @@
 <script setup lang="ts">
-// The Bakong temple as a diamond halftone, printed in rail ink on the paper.
+// The Bakong temple as a diamond halftone: ink dots on the paper, in the current theme.
 // Decorative only: hidden from assistive tech, and drawn only once the photo loads.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import templeUrl from '../assets/bakong-temple.jpg'
+import { useUiStore } from '../stores/ui'
 
 const CELL = 5 // px between dot centres
-const INK = '#260707'
-const PAPER = '#f9f7f5'
 const RIPPLE_RADIUS = 90
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -65,9 +64,11 @@ function draw() {
   if (!ctx) return
   const ratio = window.devicePixelRatio || 1
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-  ctx.fillStyle = PAPER
+  // Read the theme's colours at draw time, so day and night both look printed.
+  const root = getComputedStyle(document.documentElement)
+  ctx.fillStyle = root.getPropertyValue('--color-paper').trim() || '#f9f7f5'
   ctx.fillRect(0, 0, width, height)
-  ctx.fillStyle = INK
+  ctx.fillStyle = root.getPropertyValue('--color-ink').trim() || '#2a1c13'
 
   for (let y = CELL / 2; y < height; y += CELL) {
     for (let x = CELL / 2; x < width; x += CELL) {
@@ -124,6 +125,14 @@ function onLeave() {
   pointer = { x: -1000, y: -1000 }
   schedule()
 }
+
+// Redraw in the new colours when day/night changes.
+const ui = useUiStore()
+watch(
+  () => ui.theme,
+  () => schedule(),
+  { flush: 'post' },
+)
 
 onMounted(() => {
   const image = new Image()

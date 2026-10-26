@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppToast from '../components/base/AppToast.vue'
+import { useMediaQuery } from '../composables/useMediaQuery'
+import { useUiStore } from '../stores/ui'
 import AppRail from './AppRail.vue'
 import AppTopbar from './AppTopbar.vue'
 
 // Below 760px the rail is a drawer opened from the top bar.
 const railOpen = ref(false)
+
+// Icons-only rail: on tablets always, on wide screens when the user folds it.
+const ui = useUiStore()
+const phone = useMediaQuery('(max-width: 760px)')
+const tablet = useMediaQuery('(min-width: 761px) and (max-width: 1100px)')
+const compact = computed(() => !phone.value && (tablet.value || ui.railCollapsed))
 const route = useRoute()
 watch(
   () => route.fullPath,
@@ -16,9 +24,9 @@ watch(
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ compact }">
     <a href="#main" class="skip">Skip to content</a>
-    <AppRail :open="railOpen" @close="railOpen = false" />
+    <AppRail :open="railOpen" :compact="compact" @close="railOpen = false" />
     <div v-if="railOpen" class="drawer-scrim" aria-hidden="true" @click="railOpen = false" />
     <div class="work">
       <AppTopbar :menu-open="railOpen" @toggle-menu="railOpen = !railOpen" />
@@ -73,10 +81,8 @@ watch(
 .drawer-scrim {
   display: none;
 }
-@media (max-width: 1100px) {
-  .shell {
-    grid-template-columns: 64px minmax(0, 1fr);
-  }
+.shell.compact {
+  grid-template-columns: 64px minmax(0, 1fr);
 }
 @media (max-width: 760px) {
   .shell {

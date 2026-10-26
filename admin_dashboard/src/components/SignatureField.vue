@@ -160,7 +160,8 @@ onBeforeUnmount(() => setImage(null))
   overflow: hidden;
   border: 1px solid var(--color-rule-strong);
   border-radius: 8px;
-  background: var(--color-sheet);
+  /* Always white paper, also at night: the signature is black ink on a transparent ground. */
+  background: #ffffff;
 }
 .sheet img {
   display: block;
@@ -182,7 +183,7 @@ onBeforeUnmount(() => setImage(null))
 .empty {
   margin: 0;
   font-size: 13px;
-  color: var(--color-ink-off);
+  color: #7a6355; /* day off-ink: the sheet is white in both themes */
 }
 .hint {
   margin: 0;

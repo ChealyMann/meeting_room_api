@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ChevronRight, Clock, Menu } from 'lucide-vue-next'
+import { ChevronRight, Clock, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { useUiStore } from '../stores/ui'
 import { phnomPenhClock } from '../utils/time'
 
 defineProps<{ menuOpen: boolean }>()
 const emit = defineEmits<{ 'toggle-menu': [] }>()
 
 const route = useRoute()
+const ui = useUiStore()
 const title = computed(() => route.meta.title ?? '')
 
 const now = ref(phnomPenhClock(new Date()))
@@ -30,6 +32,17 @@ onBeforeUnmount(() => clearInterval(timer))
     >
       <Menu aria-hidden="true" />
     </button>
+    <button
+      type="button"
+      class="icon-btn rail-toggle"
+      :aria-label="ui.railCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      :title="ui.railCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      :aria-pressed="ui.railCollapsed"
+      @click="ui.toggleRail()"
+    >
+      <PanelLeftOpen v-if="ui.railCollapsed" aria-hidden="true" />
+      <PanelLeftClose v-else aria-hidden="true" />
+    </button>
     <nav class="path" aria-label="Breadcrumb">
       <span>Meeting Rooms</span>
       <ChevronRight aria-hidden="true" />
@@ -39,6 +52,16 @@ onBeforeUnmount(() => clearInterval(timer))
       <Clock aria-hidden="true" />
       <span>Phnom Penh {{ now }}</span>
     </div>
+    <button
+      type="button"
+      class="icon-btn"
+      :aria-label="ui.theme === 'dark' ? 'Switch to day mode' : 'Switch to night mode'"
+      :title="ui.theme === 'dark' ? 'Day mode' : 'Night mode'"
+      @click="ui.toggleTheme()"
+    >
+      <Sun v-if="ui.theme === 'dark'" aria-hidden="true" />
+      <Moon v-else aria-hidden="true" />
+    </button>
   </header>
 </template>
 
@@ -56,6 +79,9 @@ onBeforeUnmount(() => clearInterval(timer))
 .menu {
   display: none;
   margin-left: -6px;
+}
+.rail-toggle {
+  margin-left: -8px;
 }
 .path {
   display: flex;
@@ -83,6 +109,12 @@ onBeforeUnmount(() => clearInterval(timer))
   font-size: 12px;
   color: var(--color-intaglio);
   white-space: nowrap;
+}
+/* Tablets always show the folded rail, phones the drawer: no fold button there. */
+@media (max-width: 1100px) {
+  .rail-toggle {
+    display: none;
+  }
 }
 @media (max-width: 760px) {
   .topbar {

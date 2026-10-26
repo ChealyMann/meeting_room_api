@@ -445,6 +445,12 @@ Turning something off is confirmed on the page, not in a modal: a row with dange
 ### Sign-in Frame
 The pages outside the shell (sign-in, new password, no access) are the one place with a scene (owner decisions, 27 Oct 2026). They fill the whole window in two panels on the paper, with no outer card and no dark side panel. Left (46%, at least 440px): the logo in a 46px rail disc with a gold edge beside "Meeting Rooms / Admin" at the top; the form in the middle (max 380px, title 32px with an intaglio subtitle, 46px inputs and button, the primary button casting a soft crimson shadow); and one footer line under a hairline: "National Bank of Cambodia" and "Authorised NBC personnel only". Right (54%): the Bakong temple as a diamond halftone in rail ink on the paper, 5px cells, fading in along a wavy left edge; the dots ripple under the pointer except with reduced motion. At or below 900px the temple hides and the form centres. "Forgot password?" opens a note (there is no self-service reset). These pages carry no status pills, clocks, version labels or badges.
 
+### Night Theme
+A sun/moon button at the right of the top bar switches day and night. The app always starts in day; night is used only after the user picks it, and the choice is kept in that browser (owner decision, 27 Oct 2026). Night swaps the colour tokens on `<html data-theme="dark">`: paper #15100E, sheet #1E1714, rules #2E2420 / #4A3B33, ink #F2E8E1, intaglio #B9A397, off ink #9A867A, placeholder #998577. Crimson splits in two: crimson text, focus and error colour is #E0675E (5.6:1 on paper), and a separate fill token, crimson-fill, carries white text (by day #991B1B, at night #B8352D, 5.9:1) on the primary button and the switch. The rail darkens slightly (#1F0606). The signature sheet stays white in both themes, because a signature is black ink on a transparent ground. The sign-in temple is drawn in the theme's ink on its paper.
+
+### Folding the Sidebar
+On screens wider than 1100px, a panel button at the left of the top bar folds the rail to the 64px icons-only rail and opens it again; the choice is kept in that browser. From 761px to 1100px the rail is always folded and the button is hidden; at or below 760px the rail is the drawer opened by the Menu button.
+
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 280ms, toast 260ms, switch thumb 180ms); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
 

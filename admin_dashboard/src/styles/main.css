@@ -21,6 +21,8 @@
   --color-off-ring: #9c877a;
   --color-crimson: #991b1b;
   --color-crimson-deep: #7f1d1d;
+  /* Fill behind white text (primary button, switch on). Same as crimson by day. */
+  --color-crimson-fill: #991b1b;
   --color-crimson-wash: #f7ecea;
   --color-danger-line: #e3c2be;
   --color-error-field: #fffbfa;
@@ -41,6 +43,40 @@
   --shadow-halo: 0 0 0 3px rgba(153, 27, 27, 0.12);
 
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Night: warm brown-black paper, light warm ink. The rail keeps its crimson ground.
+   Crimson text is lighter than by day; filled crimson stays dark enough for white text. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-paper: #15100e;
+  --color-sheet: #1e1714;
+  --color-rule: #2e2420;
+  --color-rule-strong: #4a3b33;
+  --color-ink: #f2e8e1;
+  --color-intaglio: #b9a397;
+  --color-ink-off: #9a867a;
+  --color-placeholder: #998577;
+  --color-ink-disabled: #6f5f55;
+  --color-field-disabled: #241c18;
+  --color-off-ring: #7c6a5f;
+  --color-crimson: #e0675e;
+  --color-crimson-deep: #a02c25;
+  --color-crimson-fill: #b8352d;
+  --color-crimson-wash: #3a1a17;
+  --color-danger-line: #6b2c27;
+  --color-error-field: #241614;
+  --color-ok: #6fbf85;
+  --color-warn: #e0a060;
+  --color-row-hover: #221a16;
+  --color-saved-tint: #2e2118;
+  --color-skeleton: #2a211c;
+  --color-skeleton-light: #352a24;
+  --color-scrim: rgba(0, 0, 0, 0.35);
+  --color-rail: #1f0606;
+  --color-rail-raised: #331010;
+  --color-rail-line: #3d1513;
+  --shadow-toast: 0 8px 20px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
@@ -129,8 +165,8 @@
     transform: translateY(1px);
   }
   .btn.primary {
-    background: var(--color-crimson);
-    border-color: var(--color-crimson);
+    background: var(--color-crimson-fill);
+    border-color: var(--color-crimson-fill);
     color: #ffffff;
   }
   .btn.primary:hover {
@@ -275,6 +311,9 @@
     background-repeat: no-repeat;
     background-position: right 10px center;
   }
+  :root[data-theme='dark'] select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B9A397' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
   .input.has-error,
   .field.has-error .input {
     border-color: var(--color-crimson);
@@ -415,7 +454,7 @@
     transition: transform 180ms var(--ease-out-quint);
   }
   .switch[aria-checked='true'] {
-    background: var(--color-crimson);
+    background: var(--color-crimson-fill);
   }
   .switch[aria-checked='true']::after {
     transform: translateX(16px);

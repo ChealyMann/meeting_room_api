@@ -21,7 +21,7 @@ import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
 import { NAV_GROUPS } from './nav'
 
-defineProps<{ open: boolean }>()
+defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const ICONS: Record<string, Component> = {
@@ -73,7 +73,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <aside class="rail" :class="{ open }" aria-label="Main">
+  <aside class="rail" :class="{ open, compact }" aria-label="Main">
     <div class="brand">
       <img :src="LOGO" alt="National Bank of Cambodia" width="36" height="36" />
       <div class="brand-text"><b>Meeting Rooms</b><span>Admin</span></div>
@@ -296,41 +296,39 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* Collapsed rail: icons only; each link keeps its name for screen readers. */
-@media (max-width: 1100px) and (min-width: 761px) {
-  .brand {
-    padding: 16px 14px;
-  }
-  .brand-text,
-  .nav h2,
-  .me-text {
-    display: none;
-  }
-  .nav .label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .nav {
-    padding: 8px 8px 16px;
-  }
-  .nav a {
-    justify-content: center;
-    padding: 9px;
-  }
-  /* Initials over the sign-out button: the 64px rail still lets the user sign out. */
-  .who {
-    flex-direction: column;
-    justify-content: center;
-    padding: 12px 8px;
-  }
-  .me {
-    flex: none;
-    padding: 0;
-  }
+/* Folded rail (toggle, or always on tablets): icons only; links keep their names for screen readers. */
+.compact .brand {
+  padding: 16px 14px;
+}
+.compact .brand-text,
+.compact .nav h2,
+.compact .me-text {
+  display: none;
+}
+.compact .nav .label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.compact .nav {
+  padding: 8px 8px 16px;
+}
+.compact .nav a {
+  justify-content: center;
+  padding: 9px;
+}
+/* Initials over the sign-out button: the 64px rail still lets the user sign out. */
+.compact .who {
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 8px;
+}
+.compact .me {
+  flex: none;
+  padding: 0;
 }
 
 /* Phone: the rail is a drawer. */
