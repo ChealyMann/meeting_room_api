@@ -22,7 +22,8 @@ const photo = (id: number, sort: number): PhotoOut => ({
 const calls: Array<{ method: string; path: string; body?: unknown }> = []
 let nextId = 50
 let uploadAnswer: (file: File) => Response
-let orderAnswer: (ids: number[]) => Response
+let orderAnswer: (ids: number[]) => Response | Promise<Response>
+let serverPhotos: PhotoOut[] = []
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -45,6 +46,7 @@ beforeEach(() => {
       if (method === 'POST') return uploadAnswer(body as File)
       if (method === 'PUT') return orderAnswer((body as { photo_ids: number[] }).photo_ids)
       if (method === 'DELETE') return new Response(null, { status: 204 })
+      if (path === '/api/v1/rooms/12') return json({ id: 12, photos: serverPhotos })
       return json({})
     }),
   )
@@ -129,15 +131,20 @@ describe('RoomPhotos', () => {
     expect(lastChange(wrapper).map((p) => p.id)).toEqual([32, 31, 33])
   })
 
-  it('puts the order back when the server refuses it', async () => {
-    orderAnswer = () => json({ error: { code: 'VALIDATION_ERROR', message: 'The photo list changed.' } }, 422)
+  it("shows the server's order when it refuses a reorder (someone else changed the photos)", async () => {
+    // The API's real answer (app/services/room_photo.py reorder_photos).
+    orderAnswer = () =>
+      json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid request.', fields: { photo_ids: 'The list of photos is not complete.' } } }, 422)
+    serverPhotos = [photo(31, 1), photo(32, 2), photo(34, 3)]
     const wrapper = await mountPhotos([photo(31, 1), photo(32, 2)])
 
     await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Move earlier"]').trigger('click')
     await flushPromises()
 
-    expect(ids(wrapper)).toEqual([31, 32])
-    expect(wrapper.get('[role="alert"]').text()).toContain('The photo list changed.')
+    expect(calls.some((c) => c.method === 'GET' && c.path === '/api/v1/rooms/12')).toBe(true)
+    expect(ids(wrapper)).toEqual([31, 32, 34])
+    expect(wrapper.get('[role="alert"]').text()).toContain('The photos changed. This is the current order.')
+    expect(lastChange(wrapper).map((p) => p.id)).toEqual([31, 32, 34])
   })
 
   it('reorders by drag and drop', async () => {
@@ -177,5 +184,52 @@ describe('RoomPhotos delete confirm', () => {
 
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
     expect(ids(wrapper)).toEqual([31, 32])
+  })
+})
+
+describe('RoomPhotos one action at a time', () => {
+  it('blocks moves and deletes while an upload runs', async () => {
+    let finish: () => void = () => {}
+    const pending = new Promise<void>((resolve) => (finish = resolve))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async (_input, init) => {
+        if (init?.method === 'POST') {
+          await pending
+          return json(photo(nextId++, 9), 201)
+        }
+        calls.push({ method: init?.method ?? 'GET', path: '' })
+        return json({ items: [], total: 0 })
+      }),
+    )
+    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2)])
+
+    const input = wrapper.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', { value: [new File(['x'], 'a.jpg')], configurable: true })
+    await input.trigger('change')
+
+    const first = wrapper.findAll('li.photo')[0]!
+    expect(first.get('button[aria-label="Move later"]').attributes('disabled')).toBeDefined()
+    expect(first.get('button[aria-label="Delete photo"]').attributes('disabled')).toBeDefined()
+    finish()
+    await flushPromises()
+    expect(wrapper.findAll('li.photo')[0]!.get('button[aria-label="Move later"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('sends one reorder at a time', async () => {
+    let release: () => void = () => {}
+    orderAnswer = (order) =>
+      new Promise<Response>((resolve) =>
+        (release = () => resolve(json({ items: order.map((id, i) => photo(id, i + 1)), total: order.length }))),
+      )
+    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2), photo(33, 3)])
+
+    await wrapper.findAll('li.photo')[0]!.get('button[aria-label="Move later"]').trigger('click')
+    await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Move later"]').trigger('click')
+    release()
+    await flushPromises()
+
+    expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1)
+    expect(ids(wrapper)).toEqual([32, 31, 33])
   })
 })

@@ -51,14 +51,21 @@ onMounted(async () => {
   roomTypes.value = t
 })
 
+// Only the answer for the parent chosen last counts: answers can come back out of order.
 watch(
   () => num('location_id'),
-  async (id) => (buildings.value = id ? await listBuildings(api, id) : []),
+  async (id) => {
+    const items = id ? await listBuildings(api, id) : []
+    if (num('location_id') === id) buildings.value = items
+  },
   { immediate: true },
 )
 watch(
   () => num('building_id'),
-  async (id) => (floors.value = id ? await listFloors(api, id) : []),
+  async (id) => {
+    const items = id ? await listFloors(api, id) : []
+    if (num('building_id') === id) floors.value = items
+  },
   { immediate: true },
 )
 watch(

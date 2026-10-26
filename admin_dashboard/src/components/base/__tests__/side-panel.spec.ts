@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
-import { h, nextTick } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 
 import SidePanel from '../SidePanel.vue'
 
@@ -69,6 +69,28 @@ describe('SidePanel', () => {
 
     await wrapper.setProps({ open: false })
     await nextTick()
+    expect(document.activeElement).toBe(opener)
+  })
+})
+
+describe('SidePanel used with v-if, as the app does', () => {
+  it('gives focus back to what opened it when it is removed', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const shown = ref(true)
+    const Host = defineComponent({
+      setup: () => () =>
+        shown.value ? h(SidePanel, { open: true, title: 'Room' }, { default: () => [h('input', { id: 'first' })] }) : null,
+    })
+    mount(Host, { attachTo: document.body })
+    await nextTick()
+    await nextTick()
+    expect(document.activeElement?.id).toBe('first')
+
+    shown.value = false
+    await nextTick()
+
     expect(document.activeElement).toBe(opener)
   })
 })

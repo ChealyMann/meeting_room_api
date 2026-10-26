@@ -10,6 +10,7 @@ import { ApiError } from '../api/errors'
 import { getRoom, listRooms, type RoomFilters as RoomFilterParams } from '../api/rooms'
 import type { Page, RoomDetail, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
+import SidePanel from '../components/base/SidePanel.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
@@ -37,7 +38,14 @@ async function load() {
   error.value = ''
   try {
     const page = await listRooms(api, list.apiParams.value as RoomFilterParams)
-    if (request === latest) result.value = page
+    if (request !== latest) return
+    // A page past the end (after turning off the last room on it, or an old link): go to the last page.
+    const last = Math.ceil(page.total / list.size.value)
+    if (!page.items.length && page.total > 0 && list.page.value > last) {
+      list.page.value = last
+      return
+    }
+    result.value = page
   } catch (err) {
     if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
@@ -84,15 +92,24 @@ function startEdit() {
 }
 
 // The edit form needs the full room; load it here so a reload on ?edit=1 works too.
+// Only the answer for the room in the address counts; a failure is shown with "Try again".
 const editRoom = ref<RoomDetail | null>(null)
-watch(
-  [roomId, editing],
-  async ([id, edit]) => {
-    editRoom.value = null
-    if (id !== null && edit) editRoom.value = await getRoom(api, id)
-  },
-  { immediate: true },
-)
+const editError = ref('')
+let editRequest = 0
+async function loadEdit() {
+  const request = ++editRequest
+  editRoom.value = null
+  editError.value = ''
+  const id = roomId.value
+  if (id === null || !editing.value) return
+  try {
+    const room = await getRoom(api, id)
+    if (request === editRequest) editRoom.value = room
+  } catch (err) {
+    if (request === editRequest) editError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
+  }
+}
+watch([roomId, editing], loadEdit, { immediate: true })
 
 // A new room continues with its photos, then its equipment (DSH-R08).
 async function onCreated(room: RoomDetail) {
@@ -171,8 +188,26 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
       @saved="onEdited"
       @close="closePanel"
     />
+    <SidePanel
+      v-else-if="editing"
+      :open="true"
+      title="Edit room"
+      :serial="`RM·${String(roomId).padStart(4, '0')}`"
+      @close="closePanel"
+    >
+      <div v-if="editError" class="summary" role="alert">
+        <CircleAlert aria-hidden="true" />
+        <div>
+          <b>{{ editError }}</b>
+          <BaseButton variant="quiet" @click="loadEdit">Try again</BaseButton>
+        </div>
+      </div>
+      <div v-else class="panel-loading" aria-hidden="true">
+        <div v-for="n in 6" :key="n" class="skeleton-bar" :style="{ width: `${40 + n * 8}%` }" />
+      </div>
+    </SidePanel>
     <RoomDetailPanel
-      v-else-if="roomId !== null && !editing"
+      v-else-if="roomId !== null"
       :key="`room-${roomId}`"
       :room-id="roomId"
       :step="step"
@@ -241,6 +276,10 @@ h1 {
 }
 .steps .btn {
   margin-left: auto;
+}
+.panel-loading {
+  display: grid;
+  gap: 14px;
 }
 .load-error {
   margin: 16px 0;

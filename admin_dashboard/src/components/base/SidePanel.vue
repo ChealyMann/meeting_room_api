@@ -45,17 +45,21 @@ watch(
   { immediate: true },
 )
 
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
+// The app removes panels with v-if instead of setting open=false: give focus back then too.
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKey)
+  if (props.open && opener?.isConnected) opener.focus()
+})
 
 defineExpose({ focusFirst })
 </script>
 
 <template>
   <Teleport to="body">
-    <Transition name="scrim">
+    <Transition name="scrim" appear>
       <div v-if="open" class="scrim" aria-hidden="true" @click="emit('close')" />
     </Transition>
-    <Transition name="panel">
+    <Transition name="panel" appear>
       <aside
         v-if="open"
         ref="panel"

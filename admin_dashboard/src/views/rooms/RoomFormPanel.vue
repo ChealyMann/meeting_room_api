@@ -46,9 +46,21 @@ const drafts = useDraftsStore()
 const toast = useToast()
 const { errors, formMessage, apply, clear } = useFieldErrors()
 
+// A draft keeps typing across a forced sign-in (DSH-A06). It is dropped on Cancel/close, and
+// for an edit it only counts while the room is unchanged on the server (same updated_at).
+interface RoomDraft {
+  updatedAt: string | null
+  form: RoomForm
+}
 const draftKey = computed(() => (props.room ? `room:${props.room.id}` : 'room:new'))
 const base = () => (props.room ? roomFormOf(props.room) : emptyRoomForm())
-const form = ref<RoomForm>({ ...base(), ...drafts.get<RoomForm>(draftKey.value) })
+function restore(): RoomForm {
+  const draft = drafts.get<RoomDraft>(draftKey.value)
+  if (draft && draft.updatedAt === (props.room?.updated_at ?? null)) return { ...draft.form }
+  drafts.clear(draftKey.value)
+  return base()
+}
+const form = ref<RoomForm>(restore())
 const saving = ref(false)
 const panel = ref<InstanceType<typeof SidePanel> | null>(null)
 
@@ -63,8 +75,7 @@ onMounted(async () => {
   offices.value = o
   roomTypes.value = t
   owners.value = people
-  if (form.value.location_id) buildings.value = await listBuildings(api, form.value.location_id)
-  if (form.value.building_id) floors.value = await listFloors(api, form.value.building_id)
+  await Promise.all([loadBuildings(form.value.location_id), loadFloors(form.value.building_id)])
 })
 
 const officeOptions = computed(() =>
@@ -85,18 +96,49 @@ const idOf = (event: Event) => {
   return value ? Number(value) : null
 }
 
+// Only the answer for the parent chosen last counts: answers can come back out of order.
+async function loadBuildings(id: number | null) {
+  const items = id ? await listBuildings(api, id) : []
+  if (form.value.location_id === id) buildings.value = items
+}
+async function loadFloors(id: number | null) {
+  const items = id ? await listFloors(api, id) : []
+  if (form.value.building_id === id) floors.value = items
+}
+
 // Choosing a parent clears its children, so a floor from another office is never sent.
 async function chooseOffice(event: Event) {
   form.value.location_id = idOf(event)
   form.value.building_id = null
   form.value.floor_id = null
+  buildings.value = []
   floors.value = []
-  buildings.value = form.value.location_id ? await listBuildings(api, form.value.location_id) : []
+  await loadBuildings(form.value.location_id)
 }
 async function chooseBuilding(event: Event) {
   form.value.building_id = idOf(event)
   form.value.floor_id = null
-  floors.value = form.value.building_id ? await listFloors(api, form.value.building_id) : []
+  floors.value = []
+  await loadFloors(form.value.building_id)
+}
+
+// Active room owners, plus the room's current owner even when no longer one (G08).
+const ownerOptions = computed(() => {
+  const options = owners.value.map((o) => ({ value: o.id, label: o.name_en }))
+  const chosen = form.value.room_owner_id
+  if (chosen !== null && !options.some((o) => o.value === chosen)) {
+    const current = props.room?.owner
+    options.unshift({
+      value: chosen,
+      label: current?.id === chosen ? `${current.name_en} (off)` : 'Unknown owner',
+    })
+  }
+  return options
+})
+
+function close() {
+  drafts.clear(draftKey.value)
+  emit('close')
 }
 
 const changes = computed(() => (props.room ? roomChanges(form.value, props.room) : null))
@@ -109,7 +151,10 @@ const dirty = computed(() =>
 // Unsaved typing survives a forced sign-in (DSH-A06).
 watch(
   form,
-  () => (dirty.value ? drafts.set(draftKey.value, form.value) : drafts.clear(draftKey.value)),
+  () =>
+    dirty.value
+      ? drafts.set(draftKey.value, { updatedAt: props.room?.updated_at ?? null, form: form.value })
+      : drafts.clear(draftKey.value),
   { deep: true },
 )
 
@@ -162,7 +207,7 @@ async function save() {
     :title="room ? room.name_kh : 'New room'"
     :subtitle="room?.name_en"
     :serial="serial('RM', room?.id ?? null)"
-    @close="emit('close')"
+    @close="close"
   >
     <form id="room-form" class="form" novalidate @submit.prevent="save">
       <FormErrorSummary :errors="summary" />
@@ -279,7 +324,7 @@ async function save() {
           <template #default="{ describedBy, invalid }">
             <select id="room_owner_id" class="input" :value="form.room_owner_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="form.room_owner_id = idOf($event)">
               <option value="">No owner</option>
-              <option v-for="o in owners" :key="o.id" :value="o.id">{{ o.name_en }}</option>
+              <option v-for="o in ownerOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
           </template>
         </BaseField>
@@ -294,7 +339,7 @@ async function save() {
     </form>
 
     <template #foot>
-      <BaseButton variant="quiet" @click="emit('close')">Cancel</BaseButton>
+      <BaseButton variant="quiet" @click="close">Cancel</BaseButton>
       <BaseButton variant="primary" type="submit" form="room-form" :busy="saving" :disabled="!!room && !dirty">
         {{ saving ? (room ? 'Saving' : 'Creating') : room ? 'Save changes' : 'Create room' }}
       </BaseButton>

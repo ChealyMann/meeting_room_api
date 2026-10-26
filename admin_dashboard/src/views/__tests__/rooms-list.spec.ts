@@ -48,6 +48,8 @@ function room(id: number, overrides: Record<string, unknown> = {}) {
 type RoomsAnswer = () => Promise<Response> | Response
 let roomsAnswer: RoomsAnswer
 let roomCalls: string[]
+/** Lets a test delay or fail one call; return undefined to fall through. */
+let override: ((url: URL) => Promise<Response> | Response | undefined) | null = null
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -59,12 +61,15 @@ beforeEach(() => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   roomCalls = []
+  override = null
   roomsAnswer = () => json(page([room(12), room(13, { name_en: 'Tonle Room', owner: { id: 2, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' } })]))
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
       const q = url.searchParams
+      const special = override?.(url)
+      if (special) return special
       switch (url.pathname) {
         case '/api/v1/rooms':
           roomCalls.push(url.search)
@@ -237,5 +242,75 @@ describe('RoomsView panels', () => {
     await mountAt('/?room=new')
 
     expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('New room')
+  })
+})
+
+const detail = (id: number, name_en: string) => ({
+  ...room(id, { name_en }),
+  description: null,
+  photos: [],
+  equipment: [],
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-01T00:00:00Z',
+})
+
+describe('RoomsView review fixes', () => {
+  it('says why the edit form cannot open, with a way to try again', async () => {
+    override = (url) =>
+      url.pathname === '/api/v1/rooms/12'
+        ? json({ error: { code: 'NOT_FOUND', message: 'Room not found.' } }, 404)
+        : undefined
+    await mountAt('/?room=12&edit=1')
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.querySelector('[role="alert"]')?.textContent).toContain('Room not found.')
+    expect([...dialog!.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Try again')).toBe(true)
+  })
+
+  it('edits the room in the address even when an older room answers last', async () => {
+    let release12: () => void = () => {}
+    override = (url) => {
+      if (url.pathname === '/api/v1/rooms/12') {
+        return new Promise<Response>((resolve) => (release12 = () => resolve(json(detail(12, 'Mekong Room')))))
+      }
+      if (url.pathname === '/api/v1/rooms/13') return json(detail(13, 'Tonle Room'))
+      return undefined
+    }
+    const { router } = await mountAt('/?room=12&edit=1')
+
+    await router.push('/?room=13&edit=1')
+    await flushPromises()
+    release12()
+    await flushPromises()
+
+    expect((document.body.querySelector('#name_en') as HTMLInputElement).value).toBe('Tonle Room')
+  })
+
+  it('lists the buildings of the office chosen last, even if an older answer comes late', async () => {
+    let release3: () => void = () => {}
+    override = (url) =>
+      url.pathname === '/api/v1/buildings' && url.searchParams.get('location_id') === '3'
+        ? new Promise<Response>((resolve) => (release3 = () => resolve(json(page(BUILDINGS['3']!)))))
+        : undefined
+    const { wrapper, router } = await mountAt('/?location_id=3')
+
+    await router.push('/?location_id=4')
+    await flushPromises()
+    release3()
+    await flushPromises()
+
+    const options = wrapper.findAll('select#filter-building option').map((o) => o.text())
+    expect(options).toEqual(['All buildings', 'Main Building'])
+  })
+
+  it('goes to the last page when the page in the address is past the end', async () => {
+    roomsAnswer = () =>
+      roomCalls[roomCalls.length - 1]!.includes('page=3')
+        ? json({ items: [], page: 3, size: 20, total: 40 })
+        : json({ items: [room(12)], page: 2, size: 20, total: 40 })
+    const { wrapper, router } = await mountAt('/?page=3')
+
+    expect(router.currentRoute.value.query).toEqual({ page: '2' })
+    expect(wrapper.text()).not.toContain('No rooms yet')
   })
 })

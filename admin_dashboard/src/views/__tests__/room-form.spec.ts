@@ -44,6 +44,7 @@ const SAVED = {
 let posts: Array<{ method: string; path: string; body: string }>
 let saveAnswer: () => Response
 const fetchCalls: string[] = []
+let override: ((url: URL) => Promise<Response> | undefined) | null = null
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -54,6 +55,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   posts = []
   fetchCalls.length = 0
+  override = null
   saveAnswer = () => json(SAVED, 201)
   vi.stubGlobal(
     'fetch',
@@ -61,6 +63,8 @@ beforeEach(() => {
       const url = new URL(String(input))
       fetchCalls.push(url.pathname + url.search)
       const q = url.searchParams
+      const special = override?.(url)
+      if (special) return special
       if (init?.method === 'POST' || init?.method === 'PATCH') {
         posts.push({ method: init.method, path: url.pathname, body: String(init.body) })
         return saveAnswer()
@@ -197,5 +201,83 @@ describe('RoomFormPanel', () => {
 
     await submit(wrapper)
     expect(posts).toEqual([{ method: 'PATCH', path: '/api/v1/rooms/12', body: '{"capacity":14}' }])
+  })
+})
+
+describe('RoomFormPanel review fixes', () => {
+  const room = (changes: Record<string, unknown> = {}) => ({ ...SAVED, ...changes }) as unknown as RoomDetail
+  const value = (wrapper: Wrapper, id: string) => (wrapper.get(id).element as HTMLInputElement).value
+  const click = async (wrapper: Wrapper, text: string) => {
+    await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click')
+    await flushPromises()
+  }
+
+  it('lists the buildings of the office chosen last, even if an older answer comes late', async () => {
+    let release3: () => void = () => {}
+    override = (url) =>
+      url.pathname === '/api/v1/buildings' && url.searchParams.get('location_id') === '3'
+        ? new Promise<Response>((resolve) => (release3 = () => resolve(json(page(BUILDINGS['3']!)))))
+        : undefined
+    const wrapper = await mountPanel()
+
+    await wrapper.get('#location_id').setValue('3')
+    await wrapper.get('#location_id').setValue('4')
+    await flushPromises()
+    release3()
+    await flushPromises()
+
+    expect(wrapper.findAll('#building_id option').map((o) => o.text())).toEqual(['Choose a building', 'Main Building'])
+  })
+
+  it("keeps the room's current owner in the list, marked off, when they are no longer a room owner", async () => {
+    const wrapper = await mountPanel(room({ owner: { id: 9, name_en: 'Old Owner', name_kh: '' } }))
+
+    const select = wrapper.get('#room_owner_id').element as HTMLSelectElement
+    expect(select.value).toBe('9')
+    expect(select.selectedOptions[0]!.textContent).toBe('Old Owner (off)')
+  })
+
+  it('forgets unsaved edits after Cancel', async () => {
+    let wrapper = await mountPanel(room())
+    await wrapper.get('#capacity').setValue('14')
+    await click(wrapper, 'Cancel')
+    wrapper.unmount()
+
+    wrapper = await mountPanel(room())
+
+    expect(value(wrapper, '#capacity')).toBe('12')
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Save changes')!.attributes('disabled')).toBeDefined()
+  })
+
+  it('keeps unsaved edits when the panel goes away without being closed (sign-in needed)', async () => {
+    let wrapper = await mountPanel(room())
+    await wrapper.get('#capacity').setValue('14')
+    wrapper.unmount()
+
+    wrapper = await mountPanel(room())
+
+    expect(value(wrapper, '#capacity')).toBe('14')
+  })
+
+  it('drops a kept edit when someone else changed the room since', async () => {
+    let wrapper = await mountPanel(room())
+    await wrapper.get('#capacity').setValue('14')
+    wrapper.unmount()
+
+    wrapper = await mountPanel(room({ name_en: 'Renamed', updated_at: '2026-10-27T09:00:00Z' }))
+
+    expect(value(wrapper, '#capacity')).toBe('12')
+    expect(value(wrapper, '#name_en')).toBe('Renamed')
+  })
+
+  it('opens an empty create form after Cancel', async () => {
+    let wrapper = await mountPanel()
+    await wrapper.get('#name_en').setValue('Half typed')
+    await click(wrapper, 'Cancel')
+    wrapper.unmount()
+
+    wrapper = await mountPanel()
+
+    expect(value(wrapper, '#name_en')).toBe('')
   })
 })

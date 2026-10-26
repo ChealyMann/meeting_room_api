@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue'
 
 import { api, apiBaseUrl } from '../../api'
 import { ApiError } from '../../api/errors'
-import { deleteRoomPhoto, reorderRoomPhotos, uploadRoomPhoto } from '../../api/rooms'
+import { deleteRoomPhoto, getRoom, reorderRoomPhotos, uploadRoomPhoto } from '../../api/rooms'
 import type { PhotoOut } from '../../api/types'
 import { useConfirm } from '../../composables/useConfirm'
 
@@ -26,6 +26,9 @@ const uploading = ref(false)
 const problems = ref<string[]>([])
 const deleting = ref(false)
 const full = computed(() => list.value.length >= LIMIT)
+const reordering = ref(false)
+// One action at a time: an upload, a reorder and a delete must not overlap.
+const busy = computed(() => uploading.value || reordering.value || deleting.value)
 const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : 'Something went wrong.')
 
 function publish() {
@@ -56,21 +59,36 @@ async function onFiles(event: Event) {
   if (added) publish()
 }
 
-/** Send the new order; if the server refuses, put the old order back and say why. */
+/**
+ * Send the new order. If the server refuses it (someone else added or deleted a photo), show
+ * the server's photos instead, so the grid never stays out of step with the room.
+ */
 async function reorder(next: PhotoOut[]) {
   const before = list.value
   list.value = next
   problems.value = []
+  reordering.value = true
   try {
     list.value = (await reorderRoomPhotos(api, props.roomId, next.map((p) => p.id))).items
     publish()
   } catch (err) {
-    list.value = before
-    problems.value = [messageOf(err)]
+    try {
+      list.value = [...(await getRoom(api, props.roomId)).photos].sort((a, b) => a.sort_order - b.sort_order)
+      publish()
+      problems.value = [
+        err instanceof ApiError && err.status === 422 ? 'The photos changed. This is the current order.' : messageOf(err),
+      ]
+    } catch {
+      list.value = before
+      problems.value = [messageOf(err)]
+    }
+  } finally {
+    reordering.value = false
   }
 }
 
 function move(from: number, to: number) {
+  if (busy.value) return
   if (to < 0 || to >= list.value.length || from === to) return
   const next = [...list.value]
   const [photo] = next.splice(from, 1)
@@ -120,7 +138,7 @@ async function remove(photo: PhotoOut) {
         class="sr-only file"
         :accept="ACCEPT"
         multiple
-        :disabled="full || uploading"
+        :disabled="full || busy"
         aria-describedby="room-photos-hint"
         @change="onFiles"
       />
@@ -150,8 +168,8 @@ async function remove(photo: PhotoOut) {
         class="photo"
         :class="{ dragging: dragging === i }"
         :data-id="p.id"
-        draggable="true"
-        @dragstart="dragging = i"
+        :draggable="!busy"
+        @dragstart="dragging = busy ? null : i"
         @dragover.prevent
         @drop.prevent="onDrop(i)"
         @dragend="dragging = null"
@@ -159,13 +177,13 @@ async function remove(photo: PhotoOut) {
         <img :src="`${apiBaseUrl}${p.thumbnail_url}`" :alt="`Photo ${i + 1}`" loading="lazy" />
         <div class="bar">
           <span class="caption">{{ i === 0 ? 'Cover' : `${i + 1}` }}</span>
-          <button type="button" class="icon-btn" aria-label="Move earlier" :disabled="i === 0" @click="move(i, i - 1)">
+          <button type="button" class="icon-btn" aria-label="Move earlier" :disabled="busy || i === 0" @click="move(i, i - 1)">
             <ArrowLeft aria-hidden="true" />
           </button>
-          <button type="button" class="icon-btn" aria-label="Move later" :disabled="i === list.length - 1" @click="move(i, i + 1)">
+          <button type="button" class="icon-btn" aria-label="Move later" :disabled="busy || i === list.length - 1" @click="move(i, i + 1)">
             <ArrowRight aria-hidden="true" />
           </button>
-          <button type="button" class="icon-btn" aria-label="Delete photo" :disabled="deleting" @click="askRemove(p, i)">
+          <button type="button" class="icon-btn" aria-label="Delete photo" :disabled="busy" @click="askRemove(p, i)">
             <Trash2 aria-hidden="true" />
           </button>
         </div>
