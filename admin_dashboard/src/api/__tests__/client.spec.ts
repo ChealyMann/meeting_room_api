@@ -33,11 +33,11 @@ const authOf = (fn: FetchMock, n = 0) => new Headers(callOf(fn, n).init.headers)
 /** A client whose token store starts with A1 and becomes A2 after a successful refresh. */
 function setup(fetchImpl: FetchMock, refreshResult = true) {
   let token = 'A1'
-  const refresh = vi.fn(async () => {
+  const refresh = vi.fn<() => Promise<boolean>>(async () => {
     if (refreshResult) token = 'A2'
     return refreshResult
   })
-  const onAuthLost = vi.fn()
+  const onAuthLost = vi.fn<() => void>()
   const options: ClientOptions = {
     baseUrl: BASE,
     getAccessToken: () => token,
