@@ -155,3 +155,14 @@ describe('RoomDetailPanel', () => {
     expect(wrapper.emitted('edit')).toHaveLength(1)
   })
 })
+
+describe('RoomDetailPanel tabs', () => {
+  it('shows the photo tools in the Photos tab', async () => {
+    const wrapper = await mountPanel()
+
+    await wrapper.findAll('[role="tab"]').find((t) => t.text().startsWith('Photos'))!.trigger('click')
+
+    expect(wrapper.get('#tabpanel-photos').text()).toContain('Add photos')
+    expect(wrapper.get('#tabpanel-photos').text()).toContain('0/20')
+  })
+})

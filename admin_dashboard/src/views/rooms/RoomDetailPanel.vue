@@ -13,6 +13,7 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import StateMarks from '../../components/list/StateMarks.vue'
 import { serial } from '../../utils/serial'
 import { formatPhnomPenh } from '../../utils/time'
+import RoomPhotos from './RoomPhotos.vue'
 
 export type RoomStep = 'details' | 'photos' | 'equipment'
 
@@ -176,9 +177,11 @@ defineExpose({ update, tab })
       </section>
 
       <section v-show="tab === 'photos'" id="tabpanel-photos" role="tabpanel" aria-labelledby="tab-photos">
-        <slot name="photos" :room="room" :update="update">
-          <p class="none">{{ room.photos.length }} photos.</p>
-        </slot>
+        <RoomPhotos
+          :room-id="room.id"
+          :photos="room.photos"
+          @change="update({ photos: $event, cover_photo: $event[0] ? { url: $event[0].url, thumbnail_url: $event[0].thumbnail_url } : null })"
+        />
       </section>
 
       <section v-show="tab === 'equipment'" id="tabpanel-equipment" role="tabpanel" aria-labelledby="tab-equipment">
