@@ -16,7 +16,7 @@ const LOGO = '/nbc-logo.png'
         <div class="left">
           <div class="brand">
             <span class="seal"><img :src="LOGO" alt="" width="36" height="36" /></span>
-            <div>
+            <div class="name">
               <b>Meeting Rooms</b>
               <span>Admin</span>
             </div>
@@ -111,14 +111,14 @@ const LOGO = '/nbc-logo.png'
   width: 36px;
   height: 36px;
 }
-.brand b {
+.name b {
   display: block;
   font-size: 18px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
-.brand span {
+.name span {
   display: block;
   font-size: 12.5px;
   color: var(--color-intaglio);
