@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import type { BuildingDetail, LocationOut } from '../../api/types'
+import type { BuildingDetail, FloorDetail, LocationOut } from '../../api/types'
 import {
   buildingChanges,
   buildingCreateBody,
   buildingFormOf,
   buildingProblems,
   emptyBuildingForm,
+  emptyFloorForm,
+  floorChanges,
+  floorCreateBody,
+  floorFormOf,
+  floorProblems,
   emptyOfficeForm,
   officeChanges,
   officeCreateBody,
@@ -116,5 +121,50 @@ describe('building form', () => {
       short_name: null,
       sort_order: 2,
     })
+  })
+})
+
+const FLOOR = {
+  id: 7,
+  building_id: 5,
+  floor_label: '3rd floor',
+  sort_order: 3,
+  is_active: true,
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-01T00:00:00Z',
+  building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' },
+  location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
+  province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
+} as unknown as FloorDetail
+
+describe('floor form', () => {
+  it('needs an office, a building and a name', () => {
+    expect(floorProblems(emptyFloorForm())).toEqual({
+      location_id: 'Choose an office.',
+      building_id: 'Choose a building.',
+      floor_label: 'Enter the floor name.',
+    })
+    expect(floorProblems({ ...floorFormOf(FLOOR), floor_label: 'x'.repeat(101), sort_order: 'a' })).toEqual({
+      floor_label: 'Max 100 characters.',
+      sort_order: 'Order must be a whole number from 0.',
+    })
+  })
+
+  it('starts with the given office and building', () => {
+    expect(emptyFloorForm(3, 5)).toEqual({ location_id: 3, building_id: 5, floor_label: '', sort_order: '' })
+  })
+
+  it('sends the building, never the office, on create', () => {
+    expect(floorCreateBody({ ...emptyFloorForm(3, 5), floor_label: ' Ground ' })).toEqual({
+      building_id: 5,
+      floor_label: 'Ground',
+      sort_order: 0,
+    })
+  })
+
+  it('moves with a new building; the office alone is not sent', () => {
+    expect(floorChanges(floorFormOf(FLOOR), FLOOR)).toEqual({})
+    expect(floorChanges({ ...floorFormOf(FLOOR), location_id: 4, building_id: null }, FLOOR)).toEqual({})
+    expect(floorChanges({ ...floorFormOf(FLOOR), location_id: 4, building_id: 8 }, FLOOR)).toEqual({ building_id: 8 })
   })
 })

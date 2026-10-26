@@ -4,6 +4,9 @@ import type {
   BuildingCreate,
   BuildingDetail,
   BuildingUpdate,
+  FloorCreate,
+  FloorDetail,
+  FloorUpdate,
   LocationCreate,
   LocationOut,
   LocationUpdate,
@@ -143,5 +146,51 @@ export function buildingChanges(form: BuildingForm, building: BuildingDetail): B
   if (form.name_en.trim() !== before.name_en) changes.name_en = form.name_en.trim()
   if (optional(form.short_name) !== optional(before.short_name)) changes.short_name = optional(form.short_name)
   if (order(form.sort_order) !== building.sort_order) changes.sort_order = order(form.sort_order)
+  return changes
+}
+
+export interface FloorForm {
+  /** Only narrows the building select; the API takes the building. */
+  location_id: number | null
+  building_id: number | null
+  floor_label: string
+  sort_order: string
+}
+
+export function emptyFloorForm(locationId: number | null = null, buildingId: number | null = null): FloorForm {
+  return { location_id: locationId, building_id: buildingId, floor_label: '', sort_order: '' }
+}
+
+export function floorFormOf(floor: FloorDetail): FloorForm {
+  return {
+    location_id: floor.location.id,
+    building_id: floor.building_id,
+    floor_label: floor.floor_label,
+    sort_order: String(floor.sort_order),
+  }
+}
+
+export function floorProblems(form: FloorForm): Record<string, string> {
+  const problems: Record<string, string> = {}
+  if (form.location_id === null) problems.location_id = 'Choose an office.'
+  if (form.building_id === null) problems.building_id = 'Choose a building.'
+  const label = form.floor_label.trim()
+  if (!label) problems.floor_label = 'Enter the floor name.'
+  else if (length(label) > 100) problems.floor_label = 'Max 100 characters.'
+  orderProblem(form.sort_order, problems)
+  return problems
+}
+
+/** POST /floors. An empty order is sent as 0, the API's default. */
+export function floorCreateBody(form: FloorForm): FloorCreate {
+  return { building_id: form.building_id!, floor_label: form.floor_label.trim(), sort_order: order(form.sort_order) }
+}
+
+/** PATCH /floors/{id}: only what changed. A new building moves the floor; the office alone is not sent. */
+export function floorChanges(form: FloorForm, floor: FloorDetail): FloorUpdate {
+  const changes: FloorUpdate = {}
+  if (form.building_id !== null && form.building_id !== floor.building_id) changes.building_id = form.building_id
+  if (form.floor_label.trim() !== floor.floor_label) changes.floor_label = form.floor_label.trim()
+  if (order(form.sort_order) !== floor.sort_order) changes.sort_order = order(form.sort_order)
   return changes
 }

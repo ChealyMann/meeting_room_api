@@ -18,7 +18,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Offices', icon: 'landmark', route: 'offices' },
       { label: 'Buildings', icon: 'building-2', route: 'buildings' },
-      { label: 'Floors', icon: 'layers' },
+      { label: 'Floors', icon: 'layers', route: 'floors' },
     ],
   },
   {

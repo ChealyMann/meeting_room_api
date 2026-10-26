@@ -24,6 +24,7 @@ function makeRouter() {
           { path: 'profile', name: 'profile', component: Page, meta: { title: 'My profile' } },
           { path: 'offices', name: 'offices', component: Page, meta: { title: 'Offices' } },
           { path: 'buildings', name: 'buildings', component: Page, meta: { title: 'Buildings' } },
+          { path: 'floors', name: 'floors', component: Page, meta: { title: 'Floors' } },
         ],
       },
     ],
