@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     upload_dir: Path = Path("./uploads")
     # Signature images. Kept apart from upload_dir, which is served publicly at /uploads.
     signature_dir: Path = Path("./signatures")
+    # Profile photos (R20). Also private: served only to signed-in users, never under /uploads.
+    avatar_dir: Path = Path("./avatars")
     max_upload_mb: int = Field(default=5, ge=1)
     max_photos_per_room: int = Field(default=20, ge=1)
     cors_origins: str = ""

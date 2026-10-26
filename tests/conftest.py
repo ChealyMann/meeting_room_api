@@ -132,6 +132,7 @@ def settings(tmp_path):
         jwt_secret=TEST_JWT_SECRET,
         upload_dir=tmp_path / "uploads",
         signature_dir=tmp_path / "signatures",
+        avatar_dir=tmp_path / "avatars",
         cors_origins="https://rooms.company.com",
     )
 

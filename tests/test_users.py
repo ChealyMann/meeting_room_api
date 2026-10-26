@@ -88,7 +88,6 @@ def new(position, **overrides) -> dict:
         "email": "Chan.Sreymom@Company.com",
         "secondary_email": None,
         "phone": "098 765 432",
-        "avatar_url": None,
         "position_id": position.id,
         "email_notifications": True,
         "temporary_password": "Welcome@2026",
@@ -252,8 +251,7 @@ def test_create_bad_temporary_password(client, headers, position, password, mess
         ("email", "not-an-email"),
         ("email", "a@b"),
         ("secondary_email", "nope"),
-        ("avatar_url", "ftp://x.com/a.jpg"),
-        ("avatar_url", "//evil.com/a.jpg"),
+        ("avatar_url", "https://cdn.company.com/a.jpg"),  # uploaded instead (R20)
         ("email_notifications", "maybe"),
         ("name_kh", "   "),
     ],
@@ -653,9 +651,7 @@ def test_patch_null_for_required(client, headers, user, field):
     }
 
 
-@pytest.mark.parametrize(
-    "field", ["title", "secondary_email", "phone", "avatar_url", "division_id"]
-)
+@pytest.mark.parametrize("field", ["title", "secondary_email", "phone", "division_id"])
 def test_patch_null_clears_optional(client, headers, user, field):
     response = patch(client, headers, user, {field: None})
     assert response.status_code == 200, response.text

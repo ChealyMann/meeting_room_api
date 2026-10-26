@@ -19,6 +19,7 @@ from app.services.listing import apply_active_filter, apply_default_order, apply
 from app.services.passwords import check_new_password
 from app.services.province import check_province_code, get_user_province
 from app.services.records import apply_changes, get_or_404, get_reference, save
+from app.services.user_avatar import avatar_url
 from app.services.user_signature import signature_url
 
 POSITION = "Job position"
@@ -82,7 +83,7 @@ def build_user_detail(session: Session, user: User) -> UserDetail:
         email=user.email,
         secondary_email=user.secondary_email,
         phone=user.phone,
-        avatar_url=user.avatar_url,
+        avatar_url=avatar_url(user),
         signature_url=signature_url(user),
         email_notifications=user.email_notifications,
         division=NamedRef.model_validate(division) if division else None,
@@ -312,7 +313,7 @@ def reset_password(session: Session, user_id: int, password: str) -> None:
 
 def update_me(session: Session, user: User, changes: dict) -> UserDetail:
     """Apply a PATCH /me. `changes` holds only the fields sent (secondary email, phone,
-    photo link, email notifications), already trimmed and checked by the schema."""
+    email notifications), already trimmed and checked by the schema."""
     secondary_email = changes.get("secondary_email")
     if secondary_email is not None and secondary_email == user.email:
         raise _invalid("secondary_email", "Second email must be different.")

@@ -25,6 +25,7 @@ from app.schemas.user import (
 )
 from app.security import AdminUser, AnyUser
 from app.services import user as user_service
+from app.services import user_avatar as avatar_service
 from app.services import user_signature as signature_service
 
 router = APIRouter(prefix="/users", tags=["User & roles"])
@@ -165,3 +166,51 @@ def remove_signature(
 ) -> None:
     user = user_service.get_user(session, user_id)
     signature_service.remove_signature(session, settings, user)
+
+
+@router.get(
+    "/{user_id}/avatar",
+    response_class=FileResponse,
+    summary="See a user's photo (JPEG)",
+    responses={200: {"content": {"image/jpeg": {}}}, 404: {"description": "NOT_FOUND"}},
+)
+def get_avatar(
+    user_id: IdPath, current: AnyUser, session: DbSession, settings: AppSettings
+) -> FileResponse:
+    """Any signed-in user. 404 when the user has no photo."""
+    user = user_service.get_user(session, user_id)
+    path = avatar_service.avatar_file(settings, user)
+    return FileResponse(
+        path, media_type="image/jpeg", headers={"Cache-Control": "private, no-cache"}
+    )
+
+
+@router.put(
+    "/{user_id}/avatar",
+    response_model=UserDetail,
+    summary="Upload a user's photo (JPEG, PNG or WebP)",
+    responses={
+        413: {"description": "FILE_TOO_LARGE"},
+        415: {"description": "UNSUPPORTED_FILE_TYPE"},
+        422: {"description": "INVALID_IMAGE or VALIDATION_ERROR"},
+    },
+)
+def set_avatar(
+    user_id: IdPath,
+    file: UploadFile,
+    current: AdminUser,
+    session: DbSession,
+    settings: AppSettings,
+) -> UserDetail:
+    """Saved as a square JPEG (at most 512 x 512); replaces any earlier photo."""
+    user = user_service.get_user(session, user_id)
+    avatar_service.set_avatar(session, settings, user, file.file)
+    return user_service.build_user_detail(session, user)
+
+
+@router.delete("/{user_id}/avatar", status_code=204, summary="Remove a user's photo")
+def remove_avatar(
+    user_id: IdPath, current: AdminUser, session: DbSession, settings: AppSettings
+) -> None:
+    user = user_service.get_user(session, user_id)
+    avatar_service.remove_avatar(session, settings, user)

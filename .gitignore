@@ -8,6 +8,7 @@ htmlcov/
 .env
 uploads/
 signatures/
+avatars/
 
 # Design tool session files (screenshots, choice-page logs)
 .impeccable/review/

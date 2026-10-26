@@ -6,7 +6,6 @@ from app.constants.roles import RoleCode
 from app.schemas.common import (
     Email,
     OptionalEmail,
-    OptionalLink,
     OptionalRefId,
     OptionalText,
     OptionalTitle,
@@ -30,7 +29,6 @@ class UserCreate(RequestModel):
     email: Email
     secondary_email: OptionalEmail = None
     phone: OptionalText(20) = None
-    avatar_url: OptionalLink(3000) = None
     division_id: OptionalRefId = None  # must exist and be active (R2)
     position_id: RefId  # must exist and be active (R2)
     email_notifications: bool = True
@@ -47,7 +45,6 @@ class UserUpdate(RequestModel):
     email: Email = None
     secondary_email: OptionalEmail = None
     phone: OptionalText(20) = None
-    avatar_url: OptionalLink(3000) = None
     division_id: OptionalRefId = None
     position_id: RefId = None
     email_notifications: bool = None
@@ -86,11 +83,11 @@ class UserListItem(ResponseModel):
 
 
 class MeUpdate(RequestModel):
-    """PATCH /me: only these four fields. Name, email and roles are changed by the Admin."""
+    """PATCH /me: only these three fields. The photo is uploaded with PUT /me/avatar;
+    name, email and roles are changed by the Admin."""
 
     secondary_email: OptionalEmail = None
     phone: OptionalText(20) = None
-    avatar_url: OptionalLink(3000) = None
     email_notifications: bool = None  # `null` is refused
 
 
@@ -105,7 +102,7 @@ class UserDetail(ResponseModel):
     email: str
     secondary_email: str | None
     phone: str | None
-    avatar_url: str | None
+    avatar_url: str | None  # GET /users/{id}/avatar, or null when there is no photo
     signature_url: str | None  # GET /users/{id}/signature, or null when there is none
     email_notifications: bool
     division: NamedRef | None

@@ -101,7 +101,7 @@ EXPECTED_COLUMNS = {
         "email": ("varchar(254)", False),
         "secondary_email": ("varchar(254)", True),
         "phone": ("varchar(20)", True),
-        "avatar_url": ("varchar(3000)", True),
+        "user_avatar": ("varchar(3000)", True),
         "user_signature": ("varchar(3000)", True),
         "email_notifications": ("tinyint(1)", False),
         "last_login_at": ("datetime", True),

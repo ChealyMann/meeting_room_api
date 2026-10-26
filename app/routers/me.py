@@ -4,6 +4,7 @@ from app.routers.common import AppSettings, DbSession
 from app.schemas.user import MeUpdate, UserDetail
 from app.security import AnyUser, PasswordChangeAllowedUser
 from app.services import user as user_service
+from app.services import user_avatar as avatar_service
 from app.services import user_signature as signature_service
 
 router = APIRouter(prefix="/me", tags=["Auth"])
@@ -27,7 +28,7 @@ def get_me(current: PasswordChangeAllowedUser, session: DbSession) -> UserDetail
 @router.patch(
     "",
     response_model=UserDetail,
-    summary="Change my second email, phone, photo link or email notifications",
+    summary="Change my second email, phone or email notifications",
 )
 def update_me(body: MeUpdate, current: AnyUser, session: DbSession) -> UserDetail:
     changes = body.model_dump(exclude_unset=True)
@@ -51,3 +52,22 @@ def set_my_signature(
 @router.delete("/signature", status_code=204, summary="Remove my signature")
 def remove_my_signature(current: AnyUser, session: DbSession, settings: AppSettings) -> None:
     signature_service.remove_signature(session, settings, current.user)
+
+
+@router.put(
+    "/avatar",
+    response_model=UserDetail,
+    summary="Upload my photo (JPEG, PNG or WebP)",
+    responses=_IMAGE_ERRORS,
+)
+def set_my_avatar(
+    file: UploadFile, current: AnyUser, session: DbSession, settings: AppSettings
+) -> UserDetail:
+    """Saved as a square JPEG (at most 512 x 512); replaces any earlier photo."""
+    user = avatar_service.set_avatar(session, settings, current.user, file.file)
+    return user_service.build_user_detail(session, user)
+
+
+@router.delete("/avatar", status_code=204, summary="Remove my photo")
+def remove_my_avatar(current: AnyUser, session: DbSession, settings: AppSettings) -> None:
+    avatar_service.remove_avatar(session, settings, current.user)

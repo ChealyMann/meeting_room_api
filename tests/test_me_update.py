@@ -24,7 +24,6 @@ def user(make_user, db_session):
         email="sok.dara@company.com",
         secondary_email="dara.old@gmail.com",
         phone="011 111 111",
-        avatar_url="/uploads/avatars/old.jpg",
     )
     user.updated_at = OLD
     db_session.flush()
@@ -39,14 +38,13 @@ def headers(user, auth_headers):
 # --- Success ---------------------------------------------------------------------------
 
 
-def test_update_all_four_fields(client, headers, user, db_session):
+def test_update_all_three_fields(client, headers, user, db_session):
     response = patch(
         client,
         headers,
         {
             "secondary_email": "  Dara.Personal@Gmail.com ",
             "phone": " 012 345 678 ",
-            "avatar_url": "https://cdn.company.com/avatars/15.jpg",
             "email_notifications": False,
         },
     )
@@ -54,7 +52,6 @@ def test_update_all_four_fields(client, headers, user, db_session):
     body = response.json()
     assert body["secondary_email"] == "dara.personal@gmail.com"
     assert body["phone"] == "012 345 678"
-    assert body["avatar_url"] == "https://cdn.company.com/avatars/15.jpg"
     assert body["email_notifications"] is False
     assert body["updated_at"] != "2026-01-01T00:00:00Z"
     db_session.refresh(user)
@@ -71,7 +68,6 @@ def test_only_sent_fields_change(client, headers):
     body = patch(client, headers, {"phone": "099 999 999"}).json()
     assert body["phone"] == "099 999 999"
     assert body["secondary_email"] == "dara.old@gmail.com"
-    assert body["avatar_url"] == "/uploads/avatars/old.jpg"
     assert body["email_notifications"] is True
 
 
@@ -87,26 +83,21 @@ def test_same_value_does_not_change_updated_at(client, headers):
     assert body["updated_at"] == "2026-01-01T00:00:00Z"
 
 
-@pytest.mark.parametrize("field", ["secondary_email", "phone", "avatar_url"])
+@pytest.mark.parametrize("field", ["secondary_email", "phone"])
 def test_null_clears_optional_field(client, headers, field):
     assert patch(client, headers, {field: None}).json()[field] is None
 
 
-@pytest.mark.parametrize("field", ["secondary_email", "phone", "avatar_url"])
+@pytest.mark.parametrize("field", ["secondary_email", "phone"])
 def test_only_spaces_clears_optional_field(client, headers, field):
     assert patch(client, headers, {field: "   "}).json()[field] is None
 
 
-@pytest.mark.parametrize(
-    "url", ["https://cdn.company.com/a.jpg", "http://intranet/a.png", "/uploads/avatars/15.jpg"]
-)
-def test_accepted_avatar_links(client, headers, url):
-    assert patch(client, headers, {"avatar_url": url}).json()["avatar_url"] == url
-
-
-def test_avatar_link_of_3000_characters(client, headers):
-    url = "https://cdn.company.com/" + "a" * (3000 - 24)
-    assert patch(client, headers, {"avatar_url": url}).status_code == 200
+def test_photo_link_is_refused(client, headers):
+    """The photo is uploaded with PUT /me/avatar (R20); a link is an unknown field."""
+    assert _fields(patch(client, headers, {"avatar_url": "https://cdn.company.com/a.jpg"})) == {
+        "avatar_url": "Unknown field."
+    }
 
 
 def test_phone_of_20_characters(client, headers):
@@ -145,22 +136,6 @@ def test_second_email_max_254(client, headers):
 
 def test_phone_max_20(client, headers):
     assert _fields(patch(client, headers, {"phone": "1" * 21})) == {"phone": "Too long (max 20)."}
-
-
-@pytest.mark.parametrize(
-    "url", ["ftp://files/a.jpg", "javascript:alert(1)", "cdn.company.com/a.jpg", "//evil.com/a.jpg"]
-)
-def test_avatar_link_must_start_with_http_https_or_slash(client, headers, url):
-    assert _fields(patch(client, headers, {"avatar_url": url})) == {
-        "avatar_url": "Must start with http://, https:// or /."
-    }
-
-
-def test_avatar_link_max_3000(client, headers):
-    url = "https://cdn.company.com/" + "a" * 3000
-    assert _fields(patch(client, headers, {"avatar_url": url})) == {
-        "avatar_url": "Too long (max 3000)."
-    }
 
 
 @pytest.mark.parametrize(

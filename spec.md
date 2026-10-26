@@ -96,6 +96,7 @@ scripts/seed.py        # roles + first admin
 tests/
 uploads/               # photo files (not in git)
 signatures/            # signature images (not in git, never served publicly)
+avatars/               # profile photos (not in git, never served publicly)
 ```
 
 **Environment variables**
@@ -108,6 +109,7 @@ signatures/            # signature images (not in git, never served publicly)
 | `REFRESH_TOKEN_DAYS` | `7` |  |
 | `UPLOAD_DIR` | `./uploads` | Created on start if missing |
 | `SIGNATURE_DIR` | `./signatures` | Signature images (R19). Must not be inside `UPLOAD_DIR`, which is public. Created when the first signature is saved |
+| `AVATAR_DIR` | `./avatars` | Profile photos (R20). Must not be inside `UPLOAD_DIR`. Created when the first photo is saved |
 | `MAX_UPLOAD_MB` | `5` |  |
 | `FIRST_ADMIN_EMAIL`, `FIRST_ADMIN_PASSWORD`, `FIRST_ADMIN_STAFF_ID` |  | Used only by the seed script |
 | `CORS_ORIGINS` | `https://rooms.company.com` | Comma separated |
@@ -361,7 +363,7 @@ These 6 tables follow the ERD, plus the three columns added for sign-in and role
 | `email` | `VARCHAR(254)` | No | Unique. Stored lowercase |
 | `secondary_email` | `VARCHAR(254)` | Yes | Stored lowercase. Must differ from `email` |
 | `phone` | `VARCHAR(20)` | Yes | Free text, no format check beyond length |
-| `avatar_url` | `VARCHAR(3000)` | Yes |  |
+| `user_avatar` | `VARCHAR(3000)` | Yes | **Changed** (was `avatar_url`, a link). Path of the user's photo JPEG inside `AVATAR_DIR`, e.g. `users/15/2b9e….jpg` (R20). Never returned; responses show `avatar_url` |
 | `user_signature` | `VARCHAR(3000)` | Yes | **Added.** Path of the user's signature PNG inside `SIGNATURE_DIR`, e.g. `users/15/7f3c….png` (R19). Never returned; responses show `signature_url` |
 | `email_notifications` | `BOOLEAN` | No | Default `TRUE`. Stored now, used by bookings later |
 | `is_active` |  |  | Common column |
@@ -484,6 +486,7 @@ After 5 failed logins for the same email from the same IP within 15 minutes, ret
 - `door_code` appears only in `GET /rooms/{id}/door-code` (section 13), never in room lists, room detail or logs.
 - Photo files are served at `/uploads/...` without a token, because browser `<img>` tags cannot send one. File names are random UUIDs, so they cannot be guessed. Directory listing is off.
 - Signature images are **not** under `/uploads`. They are served only by `GET /users/{id}/signature`, which needs a token (R19).
+- Profile photos are **not** under `/uploads` either. They are served only by `GET /users/{id}/avatar`, which needs a token (R20).
 - CORS allows only the origins in `CORS_ORIGINS`.
 - Database access goes through the ORM or bound parameters only; never build SQL by joining strings.
 - Error responses never include stack traces or SQL.
@@ -586,7 +589,7 @@ Every endpoint returns one of these shapes. Build each as one Pydantic response 
   },
   "UserDetail": {
     "id": 15, "staff_id": "EMP-00123", "title": "Mr.", "name_en": "Sok Dara", "name_kh": "សុខ ដារ៉ា",
-    "email": "sok.dara@company.com", "secondary_email": null, "phone": "012 345 678", "avatar_url": null,
+    "email": "sok.dara@company.com", "secondary_email": null, "phone": "012 345 678", "avatar_url": "/api/v1/users/15/avatar",
     "signature_url": "/api/v1/users/15/signature",
     "email_notifications": true,
     "division": "<NamedRef or null>", "department": "<NamedRef or null>", "position": "<NamedRef>",
@@ -603,12 +606,13 @@ Every endpoint returns one of these shapes. Build each as one Pydantic response 
 
 - `GET /me` returns `UserDetail` for the signed-in user.
 - `signature_url` is the link to `GET /users/{id}/signature`, or `null` when the user has no signature (R19). The stored file path is never returned.
+- `avatar_url` is the link to `GET /users/{id}/avatar`, or `null` when the user has no photo (R20). It is not a field you send: photos are uploaded.
 - Changes to users or roles that clear room owners add `"rooms_unassigned": [12, 14]` to the `UserDetail` response (rule R9). The list is empty when nothing was cleared.
 - `roles` and `role_codes` are sorted in the seed order: `ADMIN`, `ROOM_OWNER`, `STAFF`, `PITIKA`, `IT_LEAD`, `IT_STAFF`.
 
 ## 11. Endpoints: auth and current user
 
-Eight endpoints. Rule numbers (R1…) refer to section 15; error codes to section 17.
+Ten endpoints. Rule numbers (R1…) refer to section 15; error codes to section 17.
 
 | Method | Path | Access | Success | Errors |
 | --- | --- | --- | --- | --- |
@@ -620,6 +624,8 @@ Eight endpoints. Rule numbers (R1…) refer to section 15; error codes to sectio
 | PATCH | `/me` | Any | 200 `UserDetail` | 403 `PASSWORD_CHANGE_REQUIRED`, 422 |
 | PUT | `/me/signature` | Any | 200 `UserDetail` | 403 `PASSWORD_CHANGE_REQUIRED`, 413, 415, 422 |
 | DELETE | `/me/signature` | Any | 204 | 403 `PASSWORD_CHANGE_REQUIRED` |
+| PUT | `/me/avatar` | Any | 200 `UserDetail` | 403 `PASSWORD_CHANGE_REQUIRED`, 413, 415, 422 |
+| DELETE | `/me/avatar` | Any | 204 | 403 `PASSWORD_CHANGE_REQUIRED` |
 
 **`POST /auth/login`**
 
@@ -657,13 +663,12 @@ The body is optional. Returns 204. Tokens are stateless, so nothing is revoked o
 
 **`PATCH /me`**
 
-Only these four fields are allowed; any other field returns 422.
+Only these three fields are allowed; any other field returns 422 (`avatar_url` too: the photo is uploaded with `PUT /me/avatar`).
 
 ```json
 {
   "secondary_email": "dara.personal@gmail.com",
   "phone": "012 345 678",
-  "avatar_url": "https://cdn.company.com/avatars/15.jpg",
   "email_notifications": false
 }
 ```
@@ -672,7 +677,6 @@ Only these four fields are allowed; any other field returns 422.
 | --- | --- |
 | `secondary_email` | Valid email, max 254, saved lowercase, must differ from `email` (R5). `null` clears it |
 | `phone` | Max 20 characters. `null` clears it |
-| `avatar_url` | Max 3000 characters, must start with `http://`, `https://` or `/`. `null` clears it |
 | `email_notifications` | `true` or `false`; `null` is rejected |
 
 ## 12. Endpoints: locations, buildings, floors & categories
@@ -945,6 +949,9 @@ List filters: `is_active`, `search` (`name_en`, `name_kh`). Body: `{ "name_en": 
 | GET | `/users/{id}/signature` | Any | 200 `image/png` | 404 |
 | PUT | `/users/{id}/signature` | Admin | 200 `UserDetail` | 403, 404, 413, 415, 422 |
 | DELETE | `/users/{id}/signature` | Admin | 204 | 403, 404 |
+| GET | `/users/{id}/avatar` | Any | 200 `image/jpeg` | 404 |
+| PUT | `/users/{id}/avatar` | Admin | 200 `UserDetail` | 403, 404, 413, 415, 422 |
+| DELETE | `/users/{id}/avatar` | Admin | 204 | 403, 404 |
 
 List filters: `division_id`, `department_id`, `position_id`, `role` (code), `province` (code), `is_active`, `search` (`name_en`, `name_kh`, `staff_id`, `email`). An unknown role or province code → 422.
 
@@ -959,7 +966,6 @@ List filters: `division_id`, `department_id`, `position_id`, `role` (code), `pro
   "email": "Chan.Sreymom@Company.com",
   "secondary_email": null,
   "phone": "098 765 432",
-  "avatar_url": null,
   "division_id": 3,
   "position_id": 7,
   "email_notifications": true,
@@ -978,7 +984,6 @@ List filters: `division_id`, `department_id`, `position_id`, `role` (code), `pro
 | `title` | No | One of `Mr.`, `Ms.`, `Mrs.`, `Dr.`; anything else → 422 |
 | `secondary_email` | No | Valid, max 254, lowercase, differs from `email` |
 | `phone` | No | Max 20 |
-| `avatar_url` | No | Max 3000, starts with `http://`, `https://` or `/` |
 | `email_notifications` | No | Default `true` |
 
 The new user has no roles and `must_change_password = true`. Roles are set with `PUT /users/{id}/roles`.
@@ -1000,6 +1005,16 @@ The new user has no roles and `must_change_password = true`. Roles are set with 
 7. Save the path in `users.user_signature`, then delete the file it replaces. If saving the path fails, delete the new file and keep the old signature.
 
 `DELETE` clears the signature and deletes its file; it returns 204 even when there was none. `GET /users/{id}/signature` returns the PNG with `Cache-Control: private, no-cache` to any signed-in user, also for inactive users (old approvals still show it). It returns 404 when the user has no signature, or when its file is missing on disk (logged as a warning).
+
+**Photos** (R20). Each user can have one profile photo. A user sets their own with `PUT /me/avatar`; the Admin sets anyone's with `PUT /users/{id}/avatar`. Both take `multipart/form-data` with one field, `file`. `POST /users` and `PATCH /users/{id}` do not take a photo or a link. Steps, in order:
+
+1. Read and check the file exactly like a room photo (section 13, upload steps 2 and 3): at most `MAX_UPLOAD_MB`, JPEG, PNG or WebP by content, at most 40 million pixels.
+2. Apply EXIF rotation, then drop all metadata (GPS included).
+3. Flatten transparent parts onto white.
+4. Crop to a square from the centre and scale down to at most 512 × 512 px (never up), then save as JPEG (quality 85): `AVATAR_DIR/users/{user_id}/{uuid4}.jpg`.
+5. Save the path in `users.user_avatar`, then delete the file it replaces. If saving the path fails, delete the new file and keep the old photo.
+
+`DELETE` clears the photo and deletes its file; it returns 204 even when there was none. `GET /users/{id}/avatar` returns the JPEG with `Cache-Control: private, no-cache` to any signed-in user, also for inactive users. It returns 404 when the user has no photo, or when its file is missing on disk (logged as a warning).
 
 ### Roles
 
@@ -1035,6 +1050,7 @@ Eighteen rules, each enforced in a service function inside a database transactio
 | R17 | Roles are only the six seeded ones. Their `code` and `is_active` never change through the API; there is no create or deactivate. | 422 `VALIDATION_ERROR` |
 | R18 | New passwords are 8 to 128 characters, not equal to the user's email, and not trimmed. A changed password must differ from the current one. | 422 `VALIDATION_ERROR` |
 | R19 | A user has at most one signature image, cleaned as in section 14 (upright, no metadata, black ink on transparent paper, cropped, at most 600 × 300 px PNG). It is stored outside `UPLOAD_DIR` and served only to signed-in users. A user changes only their own; the Admin changes anyone's. | 413, 415, 422 `INVALID_IMAGE`, 403 |
+| R20 | A user has at most one profile photo, uploaded (not a link) and cleaned as in section 14 (upright, no metadata, centred square, at most 512 × 512 px JPEG). It is stored outside `UPLOAD_DIR` and served only to signed-in users. A user changes only their own; the Admin changes anyone's. | 413, 415, 422 `INVALID_IMAGE`, 403 |
 
 ## 16. Edge cases
 
@@ -1189,6 +1205,23 @@ Each row is one test: the situation and the exact expected result. Build every o
 | `GET /users/{id}/signature` without a token | 401 `UNAUTHORIZED` |
 | Signature file under `/uploads/...` | Never: signatures are not in the public folder |
 | User with no signature | `signature_url: null`; `GET /users/{id}/signature` → 404 |
+
+### Photos
+
+| Case | Expected |
+| --- | --- |
+| 1200 × 800 photo | 200; saved as a 512 × 512 JPEG cropped from the centre |
+| 300 × 200 photo | Saved as 200 × 200; never enlarged |
+| Transparent PNG | Transparent parts become white |
+| Phone photo with EXIF rotation and GPS | Saved upright; no EXIF or GPS left |
+| GIF, BMP, a text file, a 0-byte file, a 6 MB file | 415, 422, 422, 413; no file left on disk |
+| Upload a second photo | Old file deleted; only the new one remains |
+| Database fails while saving the new path | New file deleted; old photo still served |
+| `PATCH /me` or `PATCH /users/{id}` with `avatar_url` | 422 `VALIDATION_ERROR`, `avatar_url: "Unknown field."` |
+| Staff calls `PUT /users/{id}/avatar` for someone else | 403 `FORBIDDEN` |
+| `GET /users/{id}/avatar` without a token | 401 `UNAUTHORIZED` |
+| Photo file under `/uploads/...` | Never: photos are not in the public folder |
+| User with no photo | `avatar_url: null`; `GET /users/{id}/avatar` → 404 |
 
 ### Data integrity
 
