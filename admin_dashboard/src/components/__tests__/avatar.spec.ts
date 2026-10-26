@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { answerConfirm, confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -44,6 +45,7 @@ afterEach(() => {
 })
 
 async function mountField(avatarUrl: string | null = AV, version = 't1') {
+  mountConfirmHost()
   const wrapper = mount(AvatarField, { props: { avatarUrl, version } })
   await flushPromises()
   return wrapper
@@ -133,11 +135,11 @@ describe('AvatarField', () => {
     const wrapper = await mountField()
 
     await wrapper.get('button.remove').trigger('click')
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
-    expect(wrapper.text()).toContain('Remove your photo?')
-
-    await wrapper.get('button.confirm-remove').trigger('click')
     await flushPromises()
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
+    expect(confirmDialog()?.textContent).toContain('Remove your photo?')
+
+    await answerConfirm('Remove photo')
 
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true)
     expect(wrapper.emitted('removed')).toHaveLength(1)

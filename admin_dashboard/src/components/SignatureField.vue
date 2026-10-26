@@ -5,6 +5,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import { ApiError } from '../api/errors'
 import { deleteMySignature, getImageBlob, uploadMySignature } from '../api/me'
+import { useConfirm } from '../composables/useConfirm'
 import BaseButton from './base/BaseButton.vue'
 
 const props = defineProps<{ signatureUrl: string | null }>()
@@ -18,7 +19,6 @@ const imageUrl = ref<string | null>(null)
 const loading = ref(false)
 const uploading = ref(false)
 const removing = ref(false)
-const confirming = ref(false)
 const error = ref('')
 
 function messageOf(err: unknown): string {
@@ -50,7 +50,6 @@ async function onFile(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   error.value = ''
-  confirming.value = false
   uploading.value = true
   try {
     const user = await uploadMySignature(api, file)
@@ -66,6 +65,18 @@ async function onFile(event: Event) {
   }
 }
 
+const { confirm } = useConfirm()
+
+async function askRemove() {
+  const ok = await confirm({
+    title: 'Remove your signature?',
+    text: 'It will no longer appear on booking approval forms.',
+    confirmLabel: 'Remove signature',
+    icon: 'trash',
+  })
+  if (ok) await remove()
+}
+
 async function remove() {
   error.value = ''
   removing.value = true
@@ -73,8 +84,7 @@ async function remove() {
     await deleteMySignature(api)
     current.value = null
     setImage(null)
-    confirming.value = false
-    emit('change', null)
+      emit('change', null)
   } catch (err) {
     error.value = messageOf(err)
   } finally {
@@ -110,20 +120,7 @@ onBeforeUnmount(() => setImage(null))
       <span>{{ error }}</span>
     </p>
 
-    <div v-if="confirming" class="confirm">
-      <p>
-        <b>Remove your signature?</b>
-        It will no longer appear on booking approval forms.
-      </p>
-      <div class="actions">
-        <BaseButton variant="quiet" @click="confirming = false">Keep it</BaseButton>
-        <BaseButton variant="danger" class="confirm-remove" :busy="removing" @click="remove">
-          {{ removing ? 'Removing' : 'Remove signature' }}
-        </BaseButton>
-      </div>
-    </div>
-
-    <div v-else class="actions">
+    <div class="actions">
       <input
         id="signature"
         type="file"
@@ -138,7 +135,7 @@ onBeforeUnmount(() => setImage(null))
         <Upload v-else aria-hidden="true" />
         {{ uploading ? 'Uploading' : imageUrl ? 'Replace signature' : 'Upload signature' }}
       </label>
-      <BaseButton v-if="imageUrl" variant="quiet" class="remove" @click="confirming = true">
+      <BaseButton v-if="imageUrl" variant="quiet" class="remove" :busy="removing" @click="askRemove">
         <Trash2 aria-hidden="true" />
         Remove
       </BaseButton>

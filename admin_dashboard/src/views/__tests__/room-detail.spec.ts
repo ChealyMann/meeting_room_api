@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { answerConfirm, confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -70,6 +71,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 async function mountPanel() {
+  mountConfirmHost()
   const wrapper = mount(RoomDetailPanel, {
     props: { roomId: 12 },
     global: { stubs: { teleport: true } },
@@ -121,11 +123,11 @@ describe('RoomDetailPanel', () => {
     const wrapper = await mountPanel()
 
     await button(wrapper, 'Turn off')!.trigger('click')
-    expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
-    expect(wrapper.get('.confirm').text()).toContain('Turn off Mekong Room?')
-
-    await button(wrapper, 'Turn off', '.confirm')!.trigger('click')
     await flushPromises()
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
+    expect(confirmDialog()?.textContent).toContain('Turn off Mekong Room?')
+
+    await answerConfirm('Turn off')
 
     expect(calls.find((c) => c.method === 'PATCH')?.body).toBe('{"is_active":false}')
     expect(wrapper.emitted('changed')?.[0]?.[0]).toMatchObject({ is_active: false })

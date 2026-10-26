@@ -1,4 +1,5 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { answerConfirm, confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -52,6 +53,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 async function mountPhotos(photos: PhotoOut[]) {
+  mountConfirmHost()
   const wrapper = mount(RoomPhotos, { props: { roomId: 12, photos }, attachTo: document.body })
   await flushPromises()
   return wrapper
@@ -153,11 +155,11 @@ describe('RoomPhotos', () => {
     const wrapper = await mountPhotos([photo(31, 1), photo(32, 2)])
 
     await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Delete photo"]').trigger('click')
-    expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
-    expect(wrapper.text()).toContain('Delete photo 2?')
-
-    await wrapper.findAll('.confirm button').find((b) => b.text() === 'Delete photo')!.trigger('click')
     await flushPromises()
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
+    expect(confirmDialog()?.textContent).toContain('Delete photo 2?')
+
+    await answerConfirm('Delete photo')
 
     expect(calls.find((c) => c.method === 'DELETE')?.path).toBe('/api/v1/rooms/12/photos/32')
     expect(ids(wrapper)).toEqual([31])
@@ -165,25 +167,15 @@ describe('RoomPhotos', () => {
 })
 
 describe('RoomPhotos delete confirm', () => {
-  it('asks under the grid, full width, naming which photo', async () => {
+  it('keeps the photo when the dialog is cancelled', async () => {
     const wrapper = await mountPhotos([photo(31, 1), photo(32, 2)])
 
-    await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Delete photo"]').trigger('click')
-
-    expect(wrapper.find('li.photo .confirm').exists()).toBe(false)
-    expect(wrapper.get('.photos > .confirm').text()).toContain('Delete photo 2?')
-  })
-})
-
-describe('RoomPhotos delete confirm visibility', () => {
-  it('scrolls the confirm into view when it opens', async () => {
-    const scroll = vi.fn<(arg?: ScrollIntoViewOptions | boolean) => void>()
-    Element.prototype.scrollIntoView = scroll
-    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2), photo(33, 3)])
-
-    await wrapper.findAll('li.photo')[2]!.get('button[aria-label="Delete photo"]').trigger('click')
+    await wrapper.findAll('li.photo')[0]!.get('button[aria-label="Delete photo"]').trigger('click')
     await flushPromises()
+    expect(confirmDialog()?.textContent).toContain('the next photo becomes the cover')
+    await answerConfirm('Cancel')
 
-    expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' })
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
+    expect(ids(wrapper)).toEqual([31, 32])
   })
 })

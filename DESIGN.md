@@ -439,8 +439,8 @@ Between two engraved hairlines, centred, 40px vertical padding. Behind it, the g
 ### Loading Skeleton
 Rows that match the table's column grid, 14px vertical padding, engraved hairline between. Bars are 10px tall (22px for the name plate column), 4px corner, a skeleton-to-light shimmer over 1.4s. Hidden from assistive tech.
 
-### Inline Confirm
-Turning something off is confirmed on the page, not in a modal: a row with danger-line border, 8px corner, error-field ground, 12px/14px padding. Bold question ("Turn off Building A?") plus the plain consequence, then quiet "Keep on" and danger "Turn off".
+### Confirm Dialog
+Turning something off or deleting it is confirmed in a SweetAlert-style dialog (owner decision, 27 Oct 2026; replaces the inline confirm): a centred 400px sheet card with 14px corners and a deep shadow over a dark crimson veil (rgba(23, 4, 4, 0.45)); a 72px crimson-wash circle with a 2px danger-line ring holding a 32px crimson icon (Power for turn off, Trash for delete or remove, a warning triangle otherwise); the question in 20px 600 ink, centred; one line of consequence in 14px intaglio; then two 42px buttons, secondary "Cancel" and primary (filled crimson) action. It pops in (opacity 180ms, scale 0.94 → 1 over 260ms ease-out-quint), takes focus on Cancel, keeps Tab inside, closes on Escape or a click outside, and gives focus back to the button that opened it. `role="alertdialog"`, `aria-modal="true"`. One dialog serves the whole app.
 
 ### Sign-in Frame
 The pages outside the shell (sign-in, new password, no access) are the one place with a scene (owner decisions, 27 Oct 2026). They fill the whole window in two panels on the paper, with no outer card and no dark side panel. Left (46%, at least 440px): the logo in a 46px rail disc with a gold edge beside "Meeting Rooms / Admin" at the top; the form in the middle (max 380px, title 32px with an intaglio subtitle, 46px inputs and button, the primary button casting a soft crimson shadow); and one footer line under a hairline: "National Bank of Cambodia" and "Authorised NBC personnel only". Right (54%): the Bakong temple as a diamond halftone in rail ink on the paper, 5px cells, fading in along a wavy left edge; the dots ripple under the pointer except with reduced motion. At or below 900px the temple hides and the form centres. "Forgot password?" opens a note (there is no self-service reset). These pages carry no status pills, clocks, version labels or badges.
@@ -470,7 +470,7 @@ Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 
 - **Do** show Khmer over English for every bilingual record.
 - **Do** carry state by shape and word: solid dot Active, outlined ring Inactive, lock line Private, calendar-x Not bookable.
 - **Do** keep tables as open sheets on the paper, ruled by 1px hairlines.
-- **Do** confirm turning something off inline, on the page, with a danger button.
+- **Do** confirm turning something off or deleting it in the confirm dialog (SweetAlert style), focus starting on Cancel.
 - **Do** show the API's own error text under the field it belongs to, plus a count summary at the top of the panel.
 - **Do** confirm a save with the toast and a fading row tint, nothing more.
 - **Do** keep the user in the rail foot and the clock in the top bar.

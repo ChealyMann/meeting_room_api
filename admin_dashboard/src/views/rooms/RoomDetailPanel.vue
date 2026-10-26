@@ -11,6 +11,7 @@ import type { RoomDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import StateMarks from '../../components/list/StateMarks.vue'
+import { useConfirm } from '../../composables/useConfirm'
 import { serial } from '../../utils/serial'
 import { formatPhnomPenh } from '../../utils/time'
 import RoomEquipment from './RoomEquipment.vue'
@@ -33,7 +34,6 @@ watch(
 const doorCode = ref<string | null | undefined>(undefined)
 const doorBusy = ref(false)
 
-const confirming = ref(false)
 const switching = ref(false)
 const actionError = ref('')
 
@@ -42,7 +42,6 @@ const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : 'So
 async function load() {
   loadError.value = ''
   doorCode.value = undefined
-  confirming.value = false
   actionError.value = ''
   try {
     room.value = await getRoom(api, props.roomId)
@@ -71,13 +70,25 @@ async function setActive(active: boolean) {
   actionError.value = ''
   try {
     room.value = await updateRoom(api, room.value.id, { is_active: active })
-    confirming.value = false
     emit('changed', room.value)
   } catch (err) {
     actionError.value = messageOf(err)
   } finally {
     switching.value = false
   }
+}
+
+const { confirm } = useConfirm()
+
+async function askTurnOff() {
+  if (!room.value) return
+  const ok = await confirm({
+    title: `Turn off ${room.value.name_en}?`,
+    text: 'People can no longer book it. You can turn it on again.',
+    confirmLabel: 'Turn off',
+    icon: 'power',
+  })
+  if (ok) await setActive(false)
 }
 
 const place = computed(() =>
@@ -194,21 +205,11 @@ defineExpose({ update, tab })
         <b>{{ actionError }}</b>
       </div>
 
-      <div v-if="confirming" class="confirm">
-        <p>
-          <b>Turn off {{ room.name_en }}?</b>
-          People can no longer book it. You can turn it on again.
-        </p>
-        <div class="actions">
-          <BaseButton variant="quiet" @click="confirming = false">Keep on</BaseButton>
-          <BaseButton variant="danger" :busy="switching" @click="setActive(false)">Turn off</BaseButton>
-        </div>
-      </div>
     </template>
 
     <template v-if="room" #foot>
       <BaseButton @click="emit('edit')">Edit</BaseButton>
-      <BaseButton v-if="room.is_active" variant="danger" :disabled="confirming" @click="confirming = true">
+      <BaseButton v-if="room.is_active" variant="danger" :busy="switching" @click="askTurnOff">
         <Power aria-hidden="true" />
         Turn off
       </BaseButton>
@@ -295,8 +296,7 @@ defineExpose({ update, tab })
   padding: 0 10px;
   font-size: 12.5px;
 }
-.action-error,
-.confirm {
+.action-error {
   margin-top: 16px;
 }
 </style>

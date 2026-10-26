@@ -7,6 +7,7 @@ import { ApiError } from '../api/errors'
 import { deleteMyAvatar, uploadMyAvatar } from '../api/me'
 import type { UserDetail } from '../api/types'
 import { usePrivateImage } from '../composables/usePrivateImage'
+import { useConfirm } from '../composables/useConfirm'
 import BaseButton from './base/BaseButton.vue'
 
 // `version` changes when the photo is replaced (its address stays the same): use updated_at.
@@ -21,7 +22,6 @@ const { imageUrl, loading, error: loadError } = usePrivateImage(
 )
 const uploading = ref(false)
 const removing = ref(false)
-const confirming = ref(false)
 const error = ref('')
 
 function messageOf(err: unknown): string {
@@ -33,7 +33,6 @@ async function onFile(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   error.value = ''
-  confirming.value = false
   uploading.value = true
   try {
     emit('uploaded', await uploadMyAvatar(api, file))
@@ -46,13 +45,24 @@ async function onFile(event: Event) {
   }
 }
 
+const { confirm } = useConfirm()
+
+async function askRemove() {
+  const ok = await confirm({
+    title: 'Remove your photo?',
+    text: 'Your initials show instead.',
+    confirmLabel: 'Remove photo',
+    icon: 'trash',
+  })
+  if (ok) await remove()
+}
+
 async function remove() {
   error.value = ''
   removing.value = true
   try {
     await deleteMyAvatar(api)
-    confirming.value = false
-    emit('removed')
+      emit('removed')
   } catch (err) {
     error.value = messageOf(err)
   } finally {
@@ -71,20 +81,7 @@ async function remove() {
       <div class="side">
         <p class="hint">A clear photo of your face. It is cropped to a square. JPEG, PNG or WebP.</p>
 
-        <div v-if="confirming" class="confirm">
-          <p>
-            <b>Remove your photo?</b>
-            Your initials show instead.
-          </p>
-          <div class="actions">
-            <BaseButton variant="quiet" @click="confirming = false">Keep it</BaseButton>
-            <BaseButton variant="danger" class="confirm-remove" :busy="removing" @click="remove">
-              {{ removing ? 'Removing' : 'Remove photo' }}
-            </BaseButton>
-          </div>
-        </div>
-
-        <div v-else class="actions">
+        <div class="actions">
           <input
             id="avatar"
             type="file"
@@ -99,7 +96,7 @@ async function remove() {
             <Upload v-else aria-hidden="true" />
             {{ uploading ? 'Uploading' : imageUrl ? 'Replace photo' : 'Upload photo' }}
           </label>
-          <BaseButton v-if="imageUrl" variant="quiet" class="remove" @click="confirming = true">
+          <BaseButton v-if="imageUrl" variant="quiet" class="remove" :busy="removing" @click="askRemove">
             <Trash2 aria-hidden="true" />
             Remove
           </BaseButton>
