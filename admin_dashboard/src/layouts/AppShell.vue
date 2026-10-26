@@ -45,6 +45,8 @@ watch(
   height: 100vh;
   height: 100dvh;
   min-height: 640px;
+  /* The rail slides when it folds or opens. */
+  transition: grid-template-columns 240ms var(--ease-drawer);
 }
 .work {
   display: flex;

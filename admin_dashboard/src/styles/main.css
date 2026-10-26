@@ -43,6 +43,8 @@
   --shadow-halo: 0 0 0 3px rgba(153, 27, 27, 0.12);
 
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Panels that slide in or fold (the sidebar). */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Night: warm brown-black paper, light warm ink. The rail keeps its crimson ground.

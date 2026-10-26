@@ -134,6 +134,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden; /* clips text while the rail narrows */
   background: var(--color-rail);
   color: var(--color-rail-ink);
   border-right: 1px solid var(--color-rail-line);
@@ -142,7 +143,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 20px 16px;
+  padding: 20px 14px 16px; /* logo at 14px: centred in the 64px folded rail too */
 }
 .brand img {
   width: 36px;
@@ -165,28 +166,32 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 .nav {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 8px 12px 16px;
+  padding: 8px 8px 16px; /* same in both states, so icons never move */
   scrollbar-color: var(--color-rail-line) transparent;
 }
 .nav h2 {
-  margin: 16px 8px 4px;
+  margin: 16px 8px 4px 16px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-rail-muted);
+  white-space: nowrap;
 }
 .nav a {
   position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
+  padding: 7px 10px 7px 16px; /* icon at 8 + 16 = 24px: centred in the 64px rail */
+  overflow: hidden;
   border-radius: 6px;
   color: var(--color-rail-ink);
   font-size: 13.5px;
   text-decoration: none;
+  white-space: nowrap;
   transition: background-color 120ms ease;
 }
 .nav a svg.lucide {
@@ -227,7 +232,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 12px 12px 12px 14px;
+  padding: 12px 12px 12px 10px; /* initials at 10 + 6 = 16px: centred in the 64px rail */
   border-top: 1px solid var(--color-rail-line);
 }
 .me {
@@ -296,31 +301,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* Folded rail (toggle, or always on tablets): icons only; links keep their names for screen readers. */
-.compact .brand {
-  padding: 16px 14px;
+/* Text that fades when the rail folds. Opening: fade in after the rail has made room. */
+.brand-text,
+.nav h2,
+.nav .label {
+  white-space: nowrap;
+  transition: opacity 160ms var(--ease-out-quint) 80ms;
 }
+
+/* Folded rail (toggle, or always on tablets): icons only. Icons keep their place; text
+   fades out fast (no delay) and stays in the accessibility tree, so links keep their names. */
 .compact .brand-text,
 .compact .nav h2,
-.compact .me-text {
-  display: none;
-}
 .compact .nav .label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 100ms var(--ease-out-quint);
 }
-.compact .nav {
-  padding: 8px 8px 16px;
-}
-.compact .nav a {
-  justify-content: center;
-  padding: 9px;
-}
-/* Initials over the sign-out button: the 64px rail still lets the user sign out. */
+/* Initials over the sign-out button: the 64px rail still lets the user sign out.
+   This switch is instant by design. */
 .compact .who {
   flex-direction: column;
   justify-content: center;
@@ -329,6 +327,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .compact .me {
   flex: none;
   padding: 0;
+}
+.compact .me-text {
+  display: none;
 }
 
 /* Phone: the rail is a drawer. */
