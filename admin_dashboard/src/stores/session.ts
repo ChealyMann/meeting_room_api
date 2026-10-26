@@ -8,6 +8,7 @@ import { login, refreshTokens } from '../api/auth'
 import { ApiError } from '../api/errors'
 import * as me from '../api/me'
 import type { Tokens, UserDetail } from '../api/types'
+import { useDraftsStore } from './drafts'
 
 export const REFRESH_KEY = 'nbc.admin.refresh'
 
@@ -86,6 +87,8 @@ export const useSessionStore = defineStore('session', () => {
       // Signing out locally still works when the API call fails.
     }
     clear()
+    // Unsaved edits belong to this user; expire() keeps them, sign-out does not.
+    useDraftsStore().clearAll()
   }
 
   /** The API refused our tokens: forget them. The router sends the user to sign-in. */

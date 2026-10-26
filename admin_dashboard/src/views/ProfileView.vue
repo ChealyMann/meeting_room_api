@@ -24,7 +24,8 @@ interface ProfileForm {
   email_notifications: boolean
 }
 
-const DRAFT_KEY = 'profile'
+/** One draft per user, so an unsaved edit never shows up in someone else's profile. */
+const draftKey = (user: UserDetail) => `profile:${user.id}`
 const LABELS: Record<string, string> = {
   secondary_email: 'Second email',
   phone: 'Phone',
@@ -68,6 +69,25 @@ const changes = computed(() =>
   form.value && profile.value ? changesOf(form.value, profile.value) : {},
 )
 const dirty = computed(() => Object.keys(changes.value).length > 0)
+
+/** Rows that name a record: English over Khmer, always both. */
+const namedRows = computed(() => {
+  const user = profile.value
+  if (!user) return []
+  const roles = user.roles.length
+    ? {
+        name_en: user.roles.map((role) => role.name_en).join(', '),
+        name_kh: user.roles.map((role) => role.name_kh).join(', '),
+      }
+    : null
+  return [
+    { label: 'Position', name: user.position },
+    { label: 'Division', name: user.division },
+    { label: 'Department', name: user.department },
+    { label: 'Province', name: user.province },
+    { label: 'Roles', name: roles },
+  ]
+})
 const summary = computed(() =>
   Object.keys(errors.value)
     .filter((key) => key in LABELS)
@@ -77,9 +97,9 @@ const summary = computed(() =>
 watch(
   form,
   () => {
-    if (!form.value) return
-    if (dirty.value) drafts.set(DRAFT_KEY, form.value)
-    else drafts.clear(DRAFT_KEY)
+    if (!form.value || !profile.value) return
+    if (dirty.value) drafts.set(draftKey(profile.value), form.value)
+    else drafts.clear(draftKey(profile.value))
   },
   { deep: true },
 )
@@ -94,7 +114,7 @@ async function load() {
   try {
     const user = await getMe(api)
     show(user)
-    const draft = drafts.get<ProfileForm>(DRAFT_KEY)
+    const draft = drafts.get<ProfileForm>(draftKey(user))
     form.value = draft ? { ...draft } : formOf(user)
   } catch (err) {
     loadError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
@@ -109,7 +129,7 @@ async function save() {
     const user = await updateMe(api, changes.value)
     show(user)
     form.value = formOf(user)
-    drafts.clear(DRAFT_KEY)
+    drafts.clear(draftKey(user))
     toast.show('Profile saved', user.staff_id)
   } catch (err) {
     apply(err)
@@ -176,25 +196,13 @@ onMounted(load)
           <dt>Email</dt>
           <dd class="wrap">{{ profile.email }}</dd>
         </div>
-        <div>
-          <dt>Position</dt>
-          <dd>{{ profile.position.name_en }}</dd>
-        </div>
-        <div>
-          <dt>Division</dt>
-          <dd :class="{ off: !profile.division }">{{ profile.division?.name_en ?? 'None' }}</dd>
-        </div>
-        <div>
-          <dt>Department</dt>
-          <dd :class="{ off: !profile.department }">{{ profile.department?.name_en ?? 'None' }}</dd>
-        </div>
-        <div>
-          <dt>Province</dt>
-          <dd :class="{ off: !profile.province }">{{ profile.province?.name_en ?? 'None' }}</dd>
-        </div>
-        <div>
-          <dt>Roles</dt>
-          <dd>{{ profile.roles.map((role) => role.name_en).join(', ') }}</dd>
+        <div v-for="row in namedRows" :key="row.label">
+          <dt>{{ row.label }}</dt>
+          <dd v-if="row.name">
+            <span class="name-en">{{ row.name.name_en }}</span>
+            <span class="kh name-kh">{{ row.name.name_kh }}</span>
+          </dd>
+          <dd v-else class="off">None</dd>
         </div>
         <div>
           <dt>Last sign-in</dt>

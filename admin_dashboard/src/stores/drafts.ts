@@ -19,5 +19,10 @@ export const useDraftsStore = defineStore('drafts', () => {
     delete drafts.value[key]
   }
 
-  return { get, set, clear }
+  /** Forget every draft: on sign-out, so the next person sees none of them. */
+  function clearAll(): void {
+    drafts.value = {}
+  }
+
+  return { get, set, clear, clearAll }
 })

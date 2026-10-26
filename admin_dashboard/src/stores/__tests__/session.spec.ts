@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useDraftsStore } from '../drafts'
 import { REFRESH_KEY, useSessionStore } from '../session'
 
 const ADMIN_ROLE = { code: 'ADMIN', name_en: 'Admin', name_kh: 'អ្នកគ្រប់គ្រង' }
@@ -211,5 +212,36 @@ describe('useSessionStore', () => {
     expect(session.signedIn).toBe(false)
     expect(session.user).toBeNull()
     expect(sessionStorage.getItem(REFRESH_KEY)).toBeNull()
+  })
+})
+
+describe('useSessionStore and drafts', () => {
+  async function signedIn() {
+    stubApi({
+      'POST /api/v1/auth/login': () => json(200, tokens(1)),
+      'GET /api/v1/me': () => json(200, me()),
+      'POST /api/v1/auth/logout': () => new Response(null, { status: 204 }),
+    })
+    const session = useSessionStore()
+    await session.signIn('admin@company.com', 'pw')
+    const drafts = useDraftsStore()
+    drafts.set('profile:1', { phone: '099' })
+    return { session, drafts }
+  }
+
+  it('signOut forgets unsaved drafts', async () => {
+    const { session, drafts } = await signedIn()
+
+    await session.signOut()
+
+    expect(drafts.get('profile:1')).toBeUndefined()
+  })
+
+  it('expire keeps unsaved drafts for after the next sign-in (DSH-A06)', async () => {
+    const { session, drafts } = await signedIn()
+
+    session.expire()
+
+    expect(drafts.get('profile:1')).toEqual({ phone: '099' })
   })
 })

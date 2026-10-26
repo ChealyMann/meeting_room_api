@@ -178,11 +178,11 @@ describe('ProfileView', () => {
     const drafts = useDraftsStore()
 
     await wrapper.get('#phone').setValue('099 000 111')
-    expect(drafts.get('profile')).toBeDefined()
+    expect(drafts.get('profile:1')).toBeDefined()
     await save(wrapper)
 
     expect(useToast().toasts.value.map((t) => t.title)).toContain('Profile saved')
-    expect(drafts.get('profile')).toBeUndefined()
+    expect(drafts.get('profile:1')).toBeUndefined()
     expect(session.user?.phone).toBe('099 000 111')
   })
 
@@ -198,7 +198,7 @@ describe('ProfileView', () => {
 
   it('brings back a draft kept from before a forced sign-in', async () => {
     stubApi({ 'GET /api/v1/me': () => json(200, ME) })
-    useDraftsStore().set('profile', {
+    useDraftsStore().set('profile:1', {
       secondary_email: 'dara.home@example.com',
       phone: '012 999 888',
       avatar_url: '',
@@ -209,5 +209,30 @@ describe('ProfileView', () => {
 
     expect((wrapper.get('#phone').element as HTMLInputElement).value).toBe('012 999 888')
     expect(wrapper.get('#email_notifications').attributes('aria-checked')).toBe('false')
+  })
+})
+
+describe('ProfileView drafts and names', () => {
+  it("never shows one user's unsaved draft to another user", async () => {
+    let me: Record<string, unknown> = ME
+    stubApi({ 'GET /api/v1/me': () => json(200, me) })
+    const first = await mountProfile()
+    await first.wrapper.get('#phone').setValue('099 111 222')
+    first.wrapper.unmount()
+
+    me = { ...ME, id: 2, staff_id: 'EMP-00003', email: 'other@company.com', phone: '011 000 000' }
+    const second = await mountProfile()
+
+    expect((second.wrapper.get('#phone').element as HTMLInputElement).value).toBe('011 000 000')
+  })
+
+  it('shows Khmer names under English ones', async () => {
+    stubApi({ 'GET /api/v1/me': () => json(200, ME) })
+
+    const { wrapper } = await mountProfile()
+
+    for (const khmer of ['ប្រធានព័ត៌មានវិទ្យា', 'គ្រប់គ្រងកម្មវិធី', 'នាយកដ្ឋានព័ត៌មានវិទ្យា', 'អ្នកគ្រប់គ្រង']) {
+      expect(wrapper.text()).toContain(khmer)
+    }
   })
 })

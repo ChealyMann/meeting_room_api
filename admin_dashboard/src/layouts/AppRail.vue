@@ -287,8 +287,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   }
   .brand-text,
   .nav h2,
-  .me-text,
-  .sign-out {
+  .me-text {
     display: none;
   }
   .nav .label {
@@ -306,7 +305,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     justify-content: center;
     padding: 9px;
   }
+  /* Initials over the sign-out button: the 64px rail still lets the user sign out. */
   .who {
+    flex-direction: column;
     justify-content: center;
     padding: 12px 8px;
   }

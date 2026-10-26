@@ -345,7 +345,7 @@ The side panel is 440px, anchored to the right edge under the top bar, over a fa
 The real app is a full-height shell (100vh, min 640px). The 960px max-height on the direction page exists only so the "States and parts" section can follow it; it is not a system rule.
 
 **Responsive:**
-- **At or below 1100px:** the rail collapses to 64px icons only (brand text, group labels, nav labels, counts and the user's name/sign-out hide); the Type and Owner columns hide.
+- **At or below 1100px:** the rail collapses to 64px icons only (brand text, group labels, nav labels, counts and the user's name hide; the sign-out icon stays, under the initials); the Type and Owner columns hide.
 - **At or below 760px:** the rail hides; page and top bar padding drop to 16px; the side panel goes full width; the Serial and Hours columns hide; three-up field rows stack.
 
 ### Named Rules
