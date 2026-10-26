@@ -36,3 +36,11 @@ export interface ItemList<T> {
   items: T[]
   total: number
 }
+export type LocationCreate = Schemas['LocationCreate']
+export type LocationUpdate = Schemas['LocationUpdate']
+export type BuildingDetail = Schemas['BuildingDetail']
+export type BuildingCreate = Schemas['BuildingCreate']
+export type BuildingUpdate = Schemas['BuildingUpdate']
+export type FloorDetail = Schemas['FloorDetail']
+export type FloorCreate = Schemas['FloorCreate']
+export type FloorUpdate = Schemas['FloorUpdate']
