@@ -2,7 +2,7 @@
 // A room's photos (DSH-R06): upload (JPEG, PNG or WebP, up to 5 MB, at most 20), reorder by
 // drag or with buttons, delete with a confirm. The first photo is the cover.
 import { ArrowLeft, ArrowRight, CircleAlert, ImagePlus, Trash2 } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { api, apiBaseUrl } from '../../api'
 import { ApiError } from '../../api/errors'
@@ -27,6 +27,16 @@ const problems = ref<string[]>([])
 const confirmingId = ref<number | null>(null)
 const deleting = ref(false)
 const full = computed(() => list.value.length >= LIMIT)
+const confirmingIndex = computed(() => list.value.findIndex((p) => p.id === confirmingId.value))
+
+// The confirm sits under the grid; bring it into view so it is never hidden behind the panel foot.
+const confirmBox = ref<HTMLElement | null>(null)
+watch(confirmingId, async (id) => {
+  if (id === null) return
+  await nextTick()
+  const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  confirmBox.value?.scrollIntoView?.({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' })
+})
 
 const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : 'Something went wrong.')
 
@@ -139,7 +149,7 @@ async function remove(photo: PhotoOut) {
         v-for="(p, i) in list"
         :key="p.id"
         class="photo"
-        :class="{ dragging: dragging === i }"
+        :class="{ dragging: dragging === i, confirming: confirmingId === p.id }"
         :data-id="p.id"
         draggable="true"
         @dragstart="dragging = i"
@@ -160,15 +170,20 @@ async function remove(photo: PhotoOut) {
             <Trash2 aria-hidden="true" />
           </button>
         </div>
-        <div v-if="confirmingId === p.id" class="confirm">
-          <p><b>Delete this photo?</b></p>
-          <div class="actions">
-            <BaseButton variant="quiet" @click="confirmingId = null">Keep it</BaseButton>
-            <BaseButton variant="danger" :busy="deleting" @click="remove(p)">Delete photo</BaseButton>
-          </div>
-        </div>
       </li>
     </ol>
+
+    <!-- Under the grid, full width: a confirm squeezed into one photo cell does not fit. -->
+    <div v-if="confirmingIndex >= 0" ref="confirmBox" class="confirm">
+      <p>
+        <b>Delete photo {{ confirmingIndex + 1 }}?</b>
+        It is removed from the room{{ confirmingIndex === 0 ? ', and the next photo becomes the cover' : '' }}.
+      </p>
+      <div class="actions">
+        <BaseButton variant="quiet" @click="confirmingId = null">Keep it</BaseButton>
+        <BaseButton variant="danger" :busy="deleting" @click="remove(list[confirmingIndex]!)">Delete photo</BaseButton>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -215,10 +230,18 @@ async function remove(photo: PhotoOut) {
   padding: 0;
   list-style: none;
 }
+/* min-width 0 and a minmax column let the cell shrink to its grid column; without them the
+   image's natural width pushes the cell wider and it spills over its neighbour. */
 .photo {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
+  min-width: 0;
   cursor: grab;
+}
+.photo.confirming img {
+  outline: 2px solid var(--color-crimson);
+  outline-offset: 2px;
 }
 .photo.dragging {
   opacity: 0.5;
@@ -253,8 +276,5 @@ async function remove(photo: PhotoOut) {
 .bar .icon-btn[disabled] {
   opacity: 0.35;
   cursor: not-allowed;
-}
-.confirm {
-  grid-column: 1 / -1;
 }
 </style>

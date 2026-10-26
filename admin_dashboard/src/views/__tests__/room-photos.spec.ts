@@ -154,12 +154,36 @@ describe('RoomPhotos', () => {
 
     await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Delete photo"]').trigger('click')
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
-    expect(wrapper.text()).toContain('Delete this photo?')
+    expect(wrapper.text()).toContain('Delete photo 2?')
 
     await wrapper.findAll('.confirm button').find((b) => b.text() === 'Delete photo')!.trigger('click')
     await flushPromises()
 
     expect(calls.find((c) => c.method === 'DELETE')?.path).toBe('/api/v1/rooms/12/photos/32')
     expect(ids(wrapper)).toEqual([31])
+  })
+})
+
+describe('RoomPhotos delete confirm', () => {
+  it('asks under the grid, full width, naming which photo', async () => {
+    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2)])
+
+    await wrapper.findAll('li.photo')[1]!.get('button[aria-label="Delete photo"]').trigger('click')
+
+    expect(wrapper.find('li.photo .confirm').exists()).toBe(false)
+    expect(wrapper.get('.photos > .confirm').text()).toContain('Delete photo 2?')
+  })
+})
+
+describe('RoomPhotos delete confirm visibility', () => {
+  it('scrolls the confirm into view when it opens', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2), photo(33, 3)])
+
+    await wrapper.findAll('li.photo')[2]!.get('button[aria-label="Delete photo"]').trigger('click')
+    await flushPromises()
+
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'smooth' })
   })
 })
