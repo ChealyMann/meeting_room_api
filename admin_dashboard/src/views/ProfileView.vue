@@ -155,85 +155,71 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="loadError" class="profile">
+  <div class="head">
     <h1>My profile</h1>
-    <div class="summary load-error" role="alert">
-      <CircleAlert aria-hidden="true" />
-      <div>
-        <b>{{ loadError }}</b>
-        <BaseButton variant="quiet" @click="load">Try again</BaseButton>
-      </div>
+    <span v-if="profile" class="mono serial">{{ profile.staff_id }}</span>
+  </div>
+
+  <div v-if="loadError" class="summary load-error" role="alert">
+    <CircleAlert aria-hidden="true" />
+    <div>
+      <b>{{ loadError }}</b>
+      <BaseButton variant="quiet" @click="load">Try again</BaseButton>
     </div>
   </div>
 
-  <div v-else-if="!profile || !form" data-skeleton class="profile">
+  <div v-else-if="!profile || !form" data-skeleton class="layout">
     <p class="sr-only" role="status">Loading your profile</p>
-    <div class="identity" aria-hidden="true">
-      <div class="skeleton-identity">
-        <div class="skeleton-disc" />
-        <div class="skeleton-lines">
-          <div class="skeleton-bar" style="width: 220px; height: 18px" />
-          <div class="skeleton-bar" style="width: 140px" />
-          <div class="skeleton-bar" style="width: 260px" />
-        </div>
+    <section v-for="n in 2" :key="n" class="block" aria-hidden="true">
+      <div class="skeleton-bar" style="width: 30%" />
+      <div v-for="row in 5" :key="row" class="skeleton-row">
+        <div class="skeleton-bar" style="width: 28%" />
+        <div class="skeleton-bar" :style="{ width: `${40 + ((row * 13) % 35)}%` }" />
       </div>
-    </div>
-    <div class="columns" aria-hidden="true">
-      <section v-for="n in 3" :key="n" class="block">
-        <div class="skeleton-bar" style="width: 30%" />
-        <div v-for="row in 4" :key="row" class="skeleton-row">
-          <div class="skeleton-bar" style="width: 60%" />
-          <div class="skeleton-bar" :style="{ width: `${45 + ((row * 13 + n * 7) % 40)}%` }" />
-        </div>
-      </section>
-    </div>
+    </section>
   </div>
 
-  <div v-else class="profile">
-    <header class="identity">
-      <AvatarField
-        :avatar-url="profile.avatar_url"
-        :version="profile.updated_at"
-        @uploaded="show"
-        @removed="onAvatarRemoved"
-      >
-        <div class="who">
-          <h1>{{ profile.name_en }}</h1>
-          <p class="kh">{{ profile.name_kh }}</p>
-          <p class="mono meta">
-            <span>{{ profile.staff_id }}</span>
-            <span aria-hidden="true">·</span>
-            <span class="email">{{ profile.email }}</span>
-          </p>
+  <div v-else class="layout">
+    <section class="block" aria-labelledby="details-title">
+      <h2 id="details-title">Details</h2>
+      <dl class="details">
+        <div>
+          <dt>Name</dt>
+          <dd>
+            <span class="name-en">{{ profile.name_en }}</span>
+            <span class="kh name-kh">{{ profile.name_kh }}</span>
+          </dd>
         </div>
-      </AvatarField>
+        <div>
+          <dt>Staff ID</dt>
+          <dd class="mono">{{ profile.staff_id }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd class="wrap">{{ profile.email }}</dd>
+        </div>
+        <div v-for="row in namedRows" :key="row.label">
+          <dt>{{ row.label }}</dt>
+          <dd v-if="row.name">
+            <span class="name-en">{{ row.name.name_en }}</span>
+            <span class="kh name-kh">{{ row.name.name_kh }}</span>
+          </dd>
+          <dd v-else class="off">None</dd>
+        </div>
+        <div>
+          <dt>Last sign-in</dt>
+          <dd class="mono" :class="{ off: !profile.last_login_at }">
+            {{ profile.last_login_at ? formatPhnomPenh(profile.last_login_at) : 'Never' }}
+          </dd>
+        </div>
+      </dl>
       <RouterLink :to="{ name: 'change-password' }" class="btn change-password">
         <KeyRound aria-hidden="true" />
         Change password
       </RouterLink>
-    </header>
+    </section>
 
-    <div class="columns">
-      <section class="block" aria-labelledby="details-title">
-        <h2 id="details-title">Details</h2>
-        <dl class="details">
-          <div v-for="row in namedRows" :key="row.label">
-            <dt>{{ row.label }}</dt>
-            <dd v-if="row.name">
-              <span class="name-en">{{ row.name.name_en }}</span>
-              <span class="kh name-kh">{{ row.name.name_kh }}</span>
-            </dd>
-            <dd v-else class="off">None</dd>
-          </div>
-          <div>
-            <dt>Last sign-in</dt>
-            <dd class="mono" :class="{ off: !profile.last_login_at }">
-              {{ profile.last_login_at ? formatPhnomPenh(profile.last_login_at) : 'Never' }}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
+    <div class="side">
       <section class="block" aria-labelledby="contact-title">
         <h2 id="contact-title">Contact</h2>
         <form class="form" novalidate @submit.prevent="save">
@@ -243,34 +229,36 @@ onMounted(load)
             <b>{{ formMessage }}</b>
           </div>
 
-          <BaseField id="secondary_email" label="Second email" hint="optional" :error="errors.secondary_email">
-            <template #default="{ describedBy, invalid }">
-              <input
-                id="secondary_email"
-                v-model="form.secondary_email"
-                class="input"
-                type="email"
-                inputmode="email"
-                autocomplete="email"
-                spellcheck="false"
-                :aria-describedby="describedBy"
-                :aria-invalid="invalid || undefined"
-              />
-            </template>
-          </BaseField>
-          <BaseField id="phone" label="Phone" hint="optional" :error="errors.phone">
-            <template #default="{ describedBy, invalid }">
-              <input
-                id="phone"
-                v-model="form.phone"
-                class="input mono"
-                type="tel"
-                autocomplete="tel"
-                :aria-describedby="describedBy"
-                :aria-invalid="invalid || undefined"
-              />
-            </template>
-          </BaseField>
+          <div class="row2">
+            <BaseField id="secondary_email" label="Second email" hint="optional" :error="errors.secondary_email">
+              <template #default="{ describedBy, invalid }">
+                <input
+                  id="secondary_email"
+                  v-model="form.secondary_email"
+                  class="input"
+                  type="email"
+                  inputmode="email"
+                  autocomplete="email"
+                  spellcheck="false"
+                  :aria-describedby="describedBy"
+                  :aria-invalid="invalid || undefined"
+                />
+              </template>
+            </BaseField>
+            <BaseField id="phone" label="Phone" hint="optional" :error="errors.phone">
+              <template #default="{ describedBy, invalid }">
+                <input
+                  id="phone"
+                  v-model="form.phone"
+                  class="input mono"
+                  type="tel"
+                  autocomplete="tel"
+                  :aria-describedby="describedBy"
+                  :aria-invalid="invalid || undefined"
+                />
+              </template>
+            </BaseField>
+          </div>
 
           <div class="switch-row">
             <div>
@@ -289,29 +277,46 @@ onMounted(load)
         </form>
       </section>
 
-      <section class="block" aria-labelledby="signature-title">
-        <h2 id="signature-title">Signature</h2>
-        <SignatureField :signature-url="profile.signature_url" @change="onSignature" />
-      </section>
+      <!-- Photo and signature share one row: each takes half the width. -->
+      <div class="media">
+        <section class="block photo" aria-labelledby="photo-title">
+          <h2 id="photo-title">Photo</h2>
+          <AvatarField
+            :avatar-url="profile.avatar_url"
+            :version="profile.updated_at"
+            @uploaded="show"
+            @removed="onAvatarRemoved"
+          />
+        </section>
+
+        <section class="block" aria-labelledby="signature-title">
+          <h2 id="signature-title">Signature</h2>
+          <SignatureField :signature-url="profile.signature_url" @change="onSignature" />
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.profile {
-  display: grid;
-  gap: 24px;
-  align-content: start;
-  max-width: 1200px;
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
+.serial {
+  font-size: 12px;
+  color: var(--color-intaglio);
+}
 .load-error {
+  margin-top: 20px;
   align-items: center;
 }
 .load-error > div {
@@ -321,63 +326,45 @@ h1 {
   gap: 4px 12px;
 }
 
-/* Who you are: photo, names, serial; one hairline closes it. */
-.identity {
-  display: flex;
-  flex-wrap: wrap;
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 40px;
+  margin-top: 20px;
+  max-width: 1120px;
+}
+.media {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+/* In half the width the photo stacks: picture, then hint and buttons. The circle is as
+   tall as the signature sheet, so both hints and both button rows line up. */
+.photo :deep(.row) {
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-rule-strong);
+  gap: 8px;
 }
-.who {
-  display: grid;
-  gap: 2px;
+.photo :deep(.disc) {
+  width: 128px;
+  height: 128px;
 }
-.who p {
-  margin: 0;
-}
-.who .kh {
+.media :deep(.actions .btn) {
+  height: 32px;
+  padding: 0 12px;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-intaglio);
 }
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 8px;
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--color-intaglio);
-}
-.meta .email {
-  overflow-wrap: anywhere;
-}
-.change-password {
-  flex: none;
-  text-decoration: none;
-}
-
-/* Three ledger columns, ruled apart by hairlines. */
-.columns {
+.side {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  align-content: start;
 }
 .block {
   display: grid;
   gap: 12px;
   align-content: start;
-  min-width: 0;
-  padding: 0 28px;
-  border-left: 1px solid var(--color-rule);
-}
-.block:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-.block:last-child {
-  padding-right: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-rule-strong);
 }
 h2 {
   margin: 0;
@@ -390,13 +377,10 @@ h2 {
 }
 .details > div {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr);
   gap: 12px;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--color-rule);
-}
-.details > div:first-child {
-  padding-top: 0;
 }
 .details dt {
   font-size: 12.5px;
@@ -405,6 +389,9 @@ h2 {
 .details dd {
   margin: 0;
   font-size: 13.5px;
+}
+.details .wrap {
+  overflow-wrap: anywhere;
 }
 .details .off {
   color: var(--color-ink-off);
@@ -419,9 +406,19 @@ h2 {
   line-height: 1.5;
   color: var(--color-intaglio);
 }
+.change-password {
+  justify-self: start;
+  margin-top: 8px;
+  text-decoration: none;
+}
 
 .form {
   display: grid;
+  gap: 12px;
+}
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 .switch-row {
@@ -448,57 +445,29 @@ h2 {
   border-top: 1px solid var(--color-rule);
 }
 
-.skeleton-identity {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.skeleton-disc {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: var(--color-skeleton);
-}
-.skeleton-lines {
-  display: grid;
-  gap: 10px;
-}
 .skeleton-row {
   display: grid;
-  gap: 8px;
-  padding: 10px 0;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--color-rule);
 }
 
-/* Narrow (900px): details and contact side by side, the signature under them. */
-@media (max-width: 900px) {
-  .columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 28px;
-  }
-  .block:nth-child(2) {
-    padding-right: 0;
-  }
-  .block:nth-child(3) {
-    grid-column: 1 / -1;
-    padding: 24px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--color-rule);
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    max-width: 720px;
   }
 }
-@media (max-width: 700px) {
-  .columns {
+@media (max-width: 560px) {
+  .row2,
+  .media {
     grid-template-columns: minmax(0, 1fr);
   }
-  .block,
-  .block:nth-child(3) {
-    padding: 24px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--color-rule);
-  }
-  .block:first-child {
-    padding-top: 0;
-    border-top: 0;
+  .details > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 }
 </style>

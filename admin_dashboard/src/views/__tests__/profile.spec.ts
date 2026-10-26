@@ -243,8 +243,7 @@ describe('ProfileView photo', () => {
     const { wrapper } = await mountProfile()
 
     expect(wrapper.find('#avatar_url').exists()).toBe(false)
-    expect(wrapper.find('#avatar').exists()).toBe(true)
-    expect(wrapper.get('h1').text()).toBe('Sok Dara')
+    expect(wrapper.find('#photo-title').text()).toBe('Photo')
     expect(wrapper.text()).toContain('Upload photo')
   })
 })
