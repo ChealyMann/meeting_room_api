@@ -51,6 +51,12 @@ const router = createRouter({
           meta: { title: 'Offices' },
         },
         {
+          path: 'buildings',
+          name: 'buildings',
+          component: () => import('../views/BuildingsView.vue'),
+          meta: { title: 'Buildings' },
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../views/ProfileView.vue'),

@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import type { LocationOut } from '../../api/types'
-import { emptyOfficeForm, officeChanges, officeCreateBody, officeFormOf, officeProblems } from '../placeForms'
+import type { BuildingDetail, LocationOut } from '../../api/types'
+import {
+  buildingChanges,
+  buildingCreateBody,
+  buildingFormOf,
+  buildingProblems,
+  emptyBuildingForm,
+  emptyOfficeForm,
+  officeChanges,
+  officeCreateBody,
+  officeFormOf,
+  officeProblems,
+} from '../placeForms'
 
 const OFFICE = {
   id: 3,
@@ -52,5 +63,58 @@ describe('office form', () => {
     expect(officeChanges(officeFormOf(OFFICE), OFFICE)).toEqual({})
     expect(officeChanges({ ...officeFormOf(OFFICE), address: '' }, OFFICE)).toEqual({ address: null })
     expect(officeChanges({ ...officeFormOf(OFFICE), province: 'SIEM_REAP' }, OFFICE)).toEqual({ province: 'SIEM_REAP' })
+  })
+})
+
+const BUILDING = {
+  id: 5,
+  location_id: 3,
+  name_en: 'Tower A',
+  name_kh: 'អគារ ក',
+  short_name: 'A',
+  sort_order: 1,
+  is_active: true,
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-01T00:00:00Z',
+  location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
+  province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
+} as unknown as BuildingDetail
+
+describe('building form', () => {
+  it('needs an office and both names', () => {
+    expect(buildingProblems(emptyBuildingForm())).toEqual({
+      location_id: 'Choose an office.',
+      name_kh: 'Enter the Khmer name.',
+      name_en: 'Enter the English name.',
+    })
+  })
+
+  it('starts with the given office', () => {
+    expect(emptyBuildingForm(3).location_id).toBe(3)
+  })
+
+  it('checks the short name and the order', () => {
+    const form = { ...buildingFormOf(BUILDING), short_name: 'x'.repeat(21), sort_order: '-1' }
+    expect(buildingProblems(form)).toEqual({
+      short_name: 'Max 20 characters.',
+      sort_order: 'Order must be a whole number from 0.',
+    })
+    expect(buildingProblems({ ...buildingFormOf(BUILDING), sort_order: '1.5' })).toEqual({
+      sort_order: 'Order must be a whole number from 0.',
+    })
+  })
+
+  it('sends order 0 and leaves out an empty short name on create', () => {
+    const body = buildingCreateBody({ ...emptyBuildingForm(3), name_kh: ' អគារ ខ ', name_en: ' Tower B ' })
+    expect(body).toEqual({ location_id: 3, name_kh: 'អគារ ខ', name_en: 'Tower B', sort_order: 0 })
+  })
+
+  it('moves to another office, and clears the short name with null', () => {
+    expect(buildingChanges(buildingFormOf(BUILDING), BUILDING)).toEqual({})
+    expect(buildingChanges({ ...buildingFormOf(BUILDING), location_id: 4 }, BUILDING)).toEqual({ location_id: 4 })
+    expect(buildingChanges({ ...buildingFormOf(BUILDING), short_name: '', sort_order: '2' }, BUILDING)).toEqual({
+      short_name: null,
+      sort_order: 2,
+    })
   })
 })

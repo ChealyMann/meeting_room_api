@@ -1,0 +1,57 @@
+/* The layout the Offices, Buildings and Floors pages share (used as <style scoped src>). */
+.places-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.count {
+  padding-bottom: 3px;
+  font-size: 12px;
+  color: var(--color-intaglio);
+}
+.new {
+  margin-left: auto;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0 16px;
+}
+.filters select.input {
+  width: auto;
+  min-width: 136px;
+}
+.panel-loading {
+  display: grid;
+  gap: 14px;
+}
+.load-error {
+  margin: 16px 0;
+  align-items: center;
+}
+.load-error > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+@media (max-width: 760px) {
+  .col-serial {
+    display: none;
+  }
+}

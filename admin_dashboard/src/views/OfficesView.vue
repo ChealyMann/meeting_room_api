@@ -217,44 +217,9 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.6fr', '96px', '32px']
   </div>
 </template>
 
+<style scoped src="./places/placePage.css"></style>
+
 <style scoped>
-.places-page {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-}
-h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-.count {
-  padding-bottom: 3px;
-  font-size: 12px;
-  color: var(--color-intaglio);
-}
-.new {
-  margin-left: auto;
-}
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 20px 0 16px;
-}
-.filters select.input {
-  width: auto;
-  min-width: 136px;
-}
 .col-address {
   max-width: 0;
   width: 34%;
@@ -268,22 +233,7 @@ h1 {
 .none {
   color: var(--color-ink-off);
 }
-.panel-loading {
-  display: grid;
-  gap: 14px;
-}
-.load-error {
-  margin: 16px 0;
-  align-items: center;
-}
-.load-error > div {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-}
 @media (max-width: 760px) {
-  .col-serial,
   .col-address {
     display: none;
   }
