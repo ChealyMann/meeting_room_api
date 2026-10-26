@@ -213,6 +213,7 @@ async function turn(active: boolean) {
         kind="office"
         :rooms="{ location_id: office.id }"
         :turn="turn"
+        :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
       />
       <BaseButton variant="quiet" @click="close">Cancel</BaseButton>
       <BaseButton variant="primary" type="submit" form="office-form" :busy="saving" :disabled="!!office && !dirty">

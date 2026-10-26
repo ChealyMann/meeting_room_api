@@ -6,7 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
-import { mountConfirmHost } from '../../test-utils/confirm'
+import { confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
 import OfficesView from '../OfficesView.vue'
 
 enableAutoUnmount(afterEach)
@@ -190,6 +190,34 @@ describe('OfficesView', () => {
     await wrapper.get('.open-error').findAll('button').find((b) => b.text() === 'Close')!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({})
+  })
+
+  it('closes only the turn-off question on Escape, keeping the panel and the typing', async () => {
+    await mountAt('/offices?id=3')
+    const turnOff = () => [...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!
+    turnOff().click()
+    await flushPromises()
+    expect(confirmDialog()).not.toBeNull()
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+
+    expect(confirmDialog()).toBeNull()
+    expect(panel()).not.toBeNull()
+  })
+
+  it('will not turn off while the form has unsaved changes, and says why', async () => {
+    await mountAt('/offices?id=3')
+    setValue('#name_en', 'Head Office 2')
+    await flushPromises()
+
+    ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!.click()
+    await flushPromises()
+
+    expect(confirmDialog()).toBeNull()
+    expect(writes).toEqual([])
+    expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('Save or cancel your changes first.')
+    expect(inPanel<HTMLInputElement>('#name_en')?.value).toBe('Head Office 2')
   })
 
   it('is a real page in the sidebar', () => {

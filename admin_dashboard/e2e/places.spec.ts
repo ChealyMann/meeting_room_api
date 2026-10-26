@@ -56,8 +56,8 @@ test('add an office, a building and a floor, then turn the office off and on', a
   await expect(page.locator('tbody tr')).toHaveCount(1)
   await page.locator('tbody tr').first().click()
   await panel.getByRole('button', { name: 'Turn off' }).click()
-  await expect(page.locator('.confirm')).toContainText('No rooms are affected.')
-  await page.locator('.confirm').getByRole('button', { name: 'Turn off' }).click()
+  await expect(page.getByRole('alertdialog')).toContainText('No rooms are affected.')
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click()
   await expect(page.locator('tbody tr').first()).toContainText('Inactive')
 
   await page.locator('tbody tr').first().click()

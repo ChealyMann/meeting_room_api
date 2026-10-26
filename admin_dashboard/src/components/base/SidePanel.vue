@@ -4,6 +4,7 @@
 import { X } from 'lucide-vue-next'
 import { nextTick, onBeforeUnmount, onUnmounted, ref, useId, watch } from 'vue'
 
+import { useConfirm } from '../../composables/useConfirm'
 import { noteLeaving, panelIn, panelOut, scrimIn, scrimOut, slideOutRemoved } from './panelMotion'
 
 const props = defineProps<{ open: boolean; title: string; subtitle?: string; serial?: string }>()
@@ -27,8 +28,11 @@ function focusFirst() {
   target?.focus()
 }
 
+const { current: openQuestion } = useConfirm()
+
+// Escape while a confirm question is open answers that question only (ConfirmHost), not the panel.
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('close')
+  if (event.key === 'Escape' && !openQuestion.value && !event.defaultPrevented) emit('close')
 }
 
 watch(

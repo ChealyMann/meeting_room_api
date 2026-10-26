@@ -46,6 +46,6 @@ test('create a room in steps, find it, turn it off', async ({ page }) => {
   await expect(page.locator('tbody tr')).toHaveCount(1)
   await page.locator('tbody tr').first().click()
   await page.getByRole('dialog').getByRole('button', { name: 'Turn off' }).click()
-  await page.locator('.confirm').getByRole('button', { name: 'Turn off' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click()
   await expect(page.getByRole('dialog')).toContainText('Inactive')
 })

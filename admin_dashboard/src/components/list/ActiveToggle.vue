@@ -17,6 +17,8 @@ const props = defineProps<{
   rooms: { location_id?: number; building_id?: number; floor_id?: number }
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
   turn: (active: boolean) => Promise<void>
+  /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
+  blocked?: string
 }>()
 
 const { confirm } = useConfirm()
@@ -31,6 +33,7 @@ function warning(count: number | null): string {
 }
 
 async function run(active: boolean) {
+  if (refuse()) return
   busy.value = true
   error.value = ''
   try {
@@ -42,7 +45,13 @@ async function run(active: boolean) {
   }
 }
 
+function refuse(): boolean {
+  error.value = props.blocked ?? ''
+  return !!props.blocked
+}
+
 async function turnOff() {
+  if (refuse()) return
   busy.value = true
   let count: number | null = null
   try {

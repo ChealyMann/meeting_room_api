@@ -233,6 +233,7 @@ async function turn(active: boolean) {
         kind="floor"
         :rooms="{ floor_id: floor.id }"
         :turn="turn"
+        :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
       />
       <BaseButton variant="quiet" @click="close">Cancel</BaseButton>
       <BaseButton variant="primary" type="submit" form="floor-form" :busy="saving" :disabled="!!floor && !dirty">
