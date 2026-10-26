@@ -1,0 +1,90 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
+
+import type { UserDetail } from '../../api/types'
+import { useSessionStore } from '../../stores/session'
+import AppShell from '../AppShell.vue'
+
+const Page = defineComponent({ render: () => h('p', 'page') })
+const Root = defineComponent({ render: () => h(RouterView) })
+
+function makeRouter() {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/sign-in', name: 'sign-in', component: Page },
+      {
+        path: '/',
+        component: AppShell,
+        children: [
+          { path: '', name: 'home', component: Page, meta: { title: 'Rooms' } },
+          { path: 'profile', name: 'profile', component: Page, meta: { title: 'My profile' } },
+        ],
+      },
+    ],
+  })
+}
+
+async function mountShell(path = '/') {
+  const router = makeRouter()
+  await router.push(path)
+  const session = useSessionStore()
+  session.accessToken = 'A1'
+  session.user = {
+    id: 1,
+    name_en: 'Sok Dara',
+    email: 'dara@company.com',
+    roles: [{ code: 'ADMIN', name_en: 'Admin', name_kh: '' }],
+    must_change_password: false,
+  } as unknown as UserDetail
+  const wrapper = mount(Root, { global: { plugins: [router] }, attachTo: document.body })
+  await flushPromises()
+  return { wrapper, router, session }
+}
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+  document.body.innerHTML = ''
+})
+
+describe('AppShell', () => {
+  it('marks Rooms as the current page on home', async () => {
+    const { wrapper } = await mountShell('/')
+
+    const rooms = wrapper.get('a[aria-current="page"]')
+    expect(rooms.text()).toContain('Rooms')
+  })
+
+  it('renders not-yet-built pages as disabled links', async () => {
+    const { wrapper } = await mountShell('/')
+
+    const offices = wrapper.findAll('nav a').find((a) => a.text().includes('Offices'))
+    expect(offices?.attributes('aria-disabled')).toBe('true')
+    expect(offices?.attributes('title')).toBe('Coming soon')
+    expect(offices?.attributes('href')).toBeUndefined()
+  })
+
+  it('shows the signed-in user and the page title', async () => {
+    const { wrapper } = await mountShell('/profile')
+
+    expect(wrapper.text()).toContain('Sok Dara')
+    expect(wrapper.text()).toContain('dara@company.com')
+    expect(wrapper.text()).toContain('SD')
+    expect(wrapper.get('header').text()).toContain('My profile')
+    expect(wrapper.get('header').text()).toMatch(/Phnom Penh \d\d:\d\d/)
+  })
+
+  it('signs out and goes to sign-in', async () => {
+    const { wrapper, router, session } = await mountShell('/')
+    const signOut = vi.spyOn(session, 'signOut').mockResolvedValue()
+
+    await wrapper.get('button[aria-label="Sign out"]').trigger('click')
+    await flushPromises()
+
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+})
