@@ -150,18 +150,22 @@ onBeforeUnmount(() => setImage(null))
 .signature {
   gap: 8px;
 }
+/* Flex, not grid: a grid row grows to the image, so max-height had nothing to fit into. */
 .sheet {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 128px;
   padding: 12px;
+  overflow: hidden;
   border: 1px solid var(--color-rule-strong);
   border-radius: 8px;
   background: var(--color-sheet);
 }
 .sheet img {
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 .sheet .skeleton-bar {
