@@ -97,13 +97,13 @@ defineExpose({ focusFirst })
 <style scoped>
 .scrim {
   position: fixed;
-  inset: 56px 0 0 0;
+  inset: 0;
   z-index: 35;
   background: var(--color-scrim);
 }
 .panel {
   position: fixed;
-  top: 56px;
+  top: 0;
   right: 0;
   bottom: 0;
   z-index: 36;
