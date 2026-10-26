@@ -349,6 +349,88 @@
   }
 }
 
+@layer components {
+  /* Loading skeleton: bars that shimmer from skeleton to light. */
+  .skeleton-bar {
+    height: 10px;
+    border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      var(--color-skeleton) 0%,
+      var(--color-skeleton-light) 50%,
+      var(--color-skeleton) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+
+  /* Inline confirm: asked on the page, not in a modal. */
+  .confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--color-danger-line);
+    border-radius: 8px;
+    background: var(--color-error-field);
+  }
+  .confirm p {
+    flex: 1 1 220px;
+    margin: 0;
+    font-size: 13px;
+  }
+  .confirm b {
+    display: block;
+    font-weight: 500;
+  }
+  .confirm .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Switch */
+  .switch {
+    position: relative;
+    flex: none;
+    width: 36px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-rule-strong);
+    cursor: pointer;
+    transition: background-color 180ms ease;
+  }
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(42, 28, 19, 0.25);
+    transition: transform 180ms var(--ease-out-quint);
+  }
+  .switch[aria-checked='true'] {
+    background: var(--color-crimson);
+  }
+  .switch[aria-checked='true']::after {
+    transform: translateX(16px);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
