@@ -264,7 +264,8 @@ h3 {
 }
 .row2 {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
   gap: 12px;
 }
 /* Turn off sits apart, at the start of the foot. */

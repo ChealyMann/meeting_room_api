@@ -157,8 +157,8 @@ async function turn(active: boolean) {
         <b>{{ formMessage }}</b>
       </div>
 
-      <section class="group" aria-labelledby="g-office">
-        <h3 id="g-office">Office</h3>
+      <section class="group" aria-labelledby="g-where">
+        <h3 id="g-where">Where</h3>
         <BaseField
           id="location_id"
           label="Office"
@@ -187,9 +187,9 @@ async function turn(active: boolean) {
           </template>
         </BaseField>
         <div class="row2">
-          <BaseField id="short_name" label="Short name" :hint="`${count(form.short_name)}/20 · optional, e.g. A`" :error="errors.short_name">
+          <BaseField id="short_name" label="Short name" :hint="`${count(form.short_name)}/20`" :error="errors.short_name">
             <template #default="{ describedBy, invalid }">
-              <input id="short_name" v-model="form.short_name" class="input mono" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
+              <input id="short_name" v-model="form.short_name" class="input mono" placeholder="optional, e.g. A" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
             </template>
           </BaseField>
           <BaseField id="sort_order" label="Order" hint="Lower comes first" :error="errors.sort_order">
@@ -242,6 +242,7 @@ h3 {
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: start;
   gap: 12px;
 }
 /* Turn off sits apart, at the start of the foot. */
