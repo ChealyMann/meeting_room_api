@@ -45,9 +45,11 @@ const visible = ref(false)
 .input {
   padding-right: 40px;
 }
+/* Centred, so it fits any input height. */
 .icon-btn {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
 }
 </style>

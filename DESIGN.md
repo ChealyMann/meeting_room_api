@@ -442,6 +442,9 @@ Rows that match the table's column grid, 14px vertical padding, engraved hairlin
 ### Inline Confirm
 Turning something off is confirmed on the page, not in a modal: a row with danger-line border, 8px corner, error-field ground, 12px/14px padding. Bold question ("Turn off Building A?") plus the plain consequence, then quiet "Keep on" and danger "Turn off".
 
+### Sign-in Frame
+The pages outside the shell (sign-in, new password, no access) are the one place with a scene (owner decision, 27 Oct 2026). The rail's dark ground fills the window, with a faint gold dot grid (15%) and two soft glows. On it sits one card: an 8px glass bezel (paper at 12%, 14px blur, gold border at 28%, deep shadow) around a cream card, 1000px wide, 650px tall, corners 22px and 15px. Left 5/12: the logo in a 48px rail disc with a gold edge, "Meeting Rooms / Admin", then the form (26px title, 44px inputs and button, max 320px), and "National Bank of Cambodia" under a hairline at the foot. Right 7/12: the Bakong temple as a diamond halftone in rail ink on the paper, 5px cells, fading in along a wavy left edge; the dots ripple under the pointer except with reduced motion. At or below 760px the card stacks and the temple shows as a 260px band under the form. Gold, glass and the halftone stay on these pages only.
+
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 280ms, toast 260ms, switch thumb 180ms); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
 

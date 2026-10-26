@@ -1,125 +1,191 @@
 <script setup lang="ts">
-// Pages outside the shell (sign-in, new password, no access): the crimson rail
-// carries the name, the work happens on the paper beside it.
+// Pages outside the shell (sign-in, new password, no access): a cream card on the
+// rail's dark ground, the form on the left and the Bakong temple in halftone on the right.
+import TempleHalftone from '../components/TempleHalftone.vue'
+
 defineProps<{ title: string }>()
 
 const LOGO = '/nbc-logo.png'
 </script>
 
 <template>
-  <div class="frame">
-    <aside class="band">
-      <div class="brand">
-        <img :src="LOGO" alt="" width="64" height="64" />
-        <b>Meeting Rooms</b>
-        <span>Admin</span>
+  <div class="backdrop">
+    <div class="dots" aria-hidden="true" />
+    <div class="bezel">
+      <div class="card">
+        <div class="left">
+          <div class="brand">
+            <span class="seal"><img :src="LOGO" alt="" width="36" height="36" /></span>
+            <div>
+              <b>Meeting Rooms</b>
+              <span>Admin</span>
+            </div>
+          </div>
+
+          <main class="main">
+            <h1>{{ title }}</h1>
+            <slot />
+          </main>
+
+          <p class="foot">National Bank of Cambodia</p>
+        </div>
+
+        <div class="art">
+          <TempleHalftone />
+        </div>
       </div>
-      <p class="bank">National Bank of Cambodia</p>
-    </aside>
-    <main class="paper">
-      <div class="column">
-        <h1>{{ title }}</h1>
-        <slot />
-      </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.frame {
+.backdrop {
+  position: relative;
   display: grid;
-  grid-template-columns: clamp(300px, 28vw, 420px) minmax(0, 1fr);
+  place-items: center;
   min-height: 100vh;
   min-height: 100dvh;
+  padding: 40px 24px;
+  overflow-x: hidden;
+  background-color: var(--color-rail);
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(153, 27, 27, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 85% 80%, rgba(226, 179, 60, 0.08) 0%, transparent 55%),
+    linear-gradient(135deg, #2e0b09 0%, var(--color-rail) 55%, #170404 100%);
 }
-.band {
+.dots {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.15;
+  background-image: radial-gradient(var(--color-thread) 0.75px, transparent 0.75px);
+  background-size: 28px 28px;
+}
+.bezel {
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  padding: 8px;
+  border-radius: 22px;
+  border: 1px solid rgba(226, 179, 60, 0.28);
+  background: rgba(249, 247, 245, 0.12);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 35px 70px -15px rgba(0, 0, 0, 0.65),
+    0 0 1px 1px rgba(226, 179, 60, 0.12);
+}
+.card {
   display: grid;
-  grid-template-rows: 1fr auto;
-  padding: 32px;
-  background: var(--color-rail);
-  color: var(--color-rail-ink);
-  border-right: 1px solid var(--color-rail-line);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  min-height: 650px;
+  overflow: hidden;
+  border-radius: 15px;
+  background: var(--color-paper);
 }
-/* Centred, so the name sits level with the form beside it. */
+
+.left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 36px 24px 36px 56px;
+}
 .brand {
-  align-self: center;
-  display: grid;
-  justify-items: start;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
-.brand img {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 20px;
+.seal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(226, 179, 60, 0.5);
+  background: var(--color-rail);
+  box-shadow: 0 4px 10px rgba(38, 7, 7, 0.25);
+}
+.seal img {
+  width: 36px;
+  height: 36px;
 }
 .brand b {
-  font-size: 24px;
+  display: block;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
 .brand span {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--color-rail-muted);
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-intaglio);
 }
-.bank {
-  margin: 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-rail-line);
-  font-size: 12px;
-  color: var(--color-rail-muted);
-}
-.paper {
-  display: grid;
-  place-items: center;
-  padding: 40px 24px;
-}
-.column {
+.main {
   width: 100%;
-  max-width: 360px;
+  max-width: 320px;
 }
 h1 {
   margin: 0 0 24px;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
+.foot {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-rule);
+  font-size: 12px;
+  color: var(--color-intaglio);
+}
+
+/* Roomier controls on these single-task pages. */
+.main :deep(.input),
+.main :deep(.btn) {
+  height: 44px;
+}
+.main :deep(.field) {
+  gap: 8px;
+}
+.main :deep(.field > label) {
+  font-size: 13px;
+}
+
+.art {
+  position: relative;
+  min-height: 100%;
+}
+.art :deep(.halftone) {
+  position: absolute;
+  inset: 0;
+}
+
+@media (max-width: 900px) {
+  .left {
+    padding: 32px 24px 32px 40px;
+  }
+}
 @media (max-width: 760px) {
-  .frame {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-  }
-  .band {
-    grid-template-rows: auto;
-    padding: 16px;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-rail-line);
-  }
-  .brand {
-    grid-template-columns: auto 1fr;
-    column-gap: 12px;
-    align-items: center;
-  }
-  .brand img {
-    grid-row: span 2;
-    width: 36px;
-    height: 36px;
-    margin-bottom: 0;
-  }
-  .brand b {
-    font-size: 15px;
-  }
-  .brand span {
-    margin-top: 0;
-    font-size: 12px;
-  }
-  .bank {
-    display: none;
-  }
-  .paper {
+  .backdrop {
     place-items: start center;
-    padding: 32px 16px;
+    padding: 16px;
+  }
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .left {
+    gap: 32px;
+    padding: 28px 24px;
+  }
+  .main {
+    max-width: none;
+  }
+  .art {
+    height: 260px;
   }
 }
 </style>
