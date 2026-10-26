@@ -451,6 +451,9 @@ A sun/moon button at the right of the top bar switches day and night. The app al
 ### Folding the Sidebar
 On screens wider than 1100px, a menu button (three lines, the same icon as the phone Menu button) at the left of the top bar folds the rail to the 64px icons-only rail and opens it again; the choice is kept in that browser. From 761px to 1100px the rail is always folded and the button is hidden; at or below 760px the rail is the drawer opened by the Menu button.
 
+### Room Panel
+A room opens in the side panel: Khmer name over English in the head with its serial, then three tabs (Details, Photos n/20, Equipment n) underlined in crimson when selected. Details is a two-column list (label in intaglio, value in ink). The door code row says "Hidden" with a small "Show door code" button; the code shows in mono only after the click. Photos are a two-column grid of 4:3 thumbnails with a small caption ("Cover" in crimson for the first) and icon buttons to move earlier/later and delete; dragging also reorders. Equipment is a two-column checklist; an item that is off shows "(off)" in off ink. After creating a room, a quiet step line on paper ("Step 2 of 3 · Photos" → "Step 3 of 3 · Equipment") leads with "Next: equipment" and "Done".
+
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 280ms, toast 260ms, switch thumb 180ms); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
 
