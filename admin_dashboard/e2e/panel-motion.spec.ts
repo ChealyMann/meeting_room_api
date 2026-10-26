@@ -95,6 +95,20 @@ for (const path of ['/offices', '/buildings', '/floors']) {
   }
 }
 
+test('a record slides in as smoothly as a new one: no long frame while it moves', async ({ page }) => {
+  await listPage(page, '/offices', 60)
+
+  const recording = frames(page, 1200)
+  await page.locator('tbody tr').first().click()
+  const seen = await recording
+  const firstMove = seen.findIndex((f) => f.x.length && f.x[0]! < 1366 - 1)
+  const moving = seen.slice(firstMove).filter((f) => f.x.length && f.x[0]! > 1366 - 440 + 1)
+
+  // A "New office" panel has no frame over ~20ms here; the form must not be built mid-slide.
+  const gaps = moving.slice(1).map((f, i) => f.t - moving[i]!.t)
+  expect(Math.max(...gaps)).toBeLessThan(45)
+})
+
 test('the panel slides out when it closes', async ({ page }) => {
   await listPage(page, '/offices', 60)
   await page.locator('tbody tr').first().click()

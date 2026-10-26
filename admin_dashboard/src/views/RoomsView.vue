@@ -85,6 +85,7 @@ function open(id: number | 'new') {
   void router.push({ query: panelQuery({ room: String(id) }) })
 }
 function closePanel() {
+  savedRoom.value = null
   void router.push({ query: panelQuery({}) })
 }
 function startEdit() {
@@ -111,8 +112,12 @@ async function loadEdit() {
 }
 watch([roomId, editing], loadEdit, { immediate: true })
 
+// The room a form just saved: its detail panel opens with it at once instead of loading first.
+const savedRoom = ref<RoomDetail | null>(null)
+
 // A new room continues with its photos, then its equipment (DSH-R08).
 async function onCreated(room: RoomDetail) {
+  savedRoom.value = room
   void router.push({ query: panelQuery({ room: String(room.id), step: 'photos' }) })
   await refresh(room.id)
 }
@@ -125,6 +130,7 @@ async function finishSteps() {
   await refresh(id ?? undefined)
 }
 async function onEdited(room: RoomDetail) {
+  savedRoom.value = room
   void router.push({ query: panelQuery({ room: String(room.id) }) })
   await refresh(room.id)
 }
@@ -189,28 +195,27 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
       @close="closePanel"
     />
     <SidePanel
-      v-else-if="editing"
+      v-else-if="editing && editError"
       :open="true"
       title="Edit room"
       :serial="`RM·${String(roomId).padStart(4, '0')}`"
       @close="closePanel"
     >
-      <div v-if="editError" class="summary" role="alert">
+      <div class="summary" role="alert">
         <CircleAlert aria-hidden="true" />
         <div>
           <b>{{ editError }}</b>
           <BaseButton variant="quiet" @click="loadEdit">Try again</BaseButton>
         </div>
       </div>
-      <div v-else class="panel-loading" aria-hidden="true">
-        <div v-for="n in 6" :key="n" class="skeleton-bar" :style="{ width: `${40 + n * 8}%` }" />
-      </div>
     </SidePanel>
+    <!-- Also while the edit form loads: the details stay put, then the form takes their place. -->
     <RoomDetailPanel
       v-else-if="roomId !== null"
       :key="`room-${roomId}`"
       :room-id="roomId"
       :step="step"
+      :initial="savedRoom ?? undefined"
       @edit="startEdit"
       @changed="refresh($event.id)"
       @close="closePanel"
@@ -276,10 +281,6 @@ h1 {
 }
 .steps .btn {
   margin-left: auto;
-}
-.panel-loading {
-  display: grid;
-  gap: 14px;
 }
 .load-error {
   margin: 16px 0;

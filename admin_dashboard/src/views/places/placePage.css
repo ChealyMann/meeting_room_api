@@ -37,9 +37,36 @@ h1 {
   width: auto;
   min-width: 136px;
 }
-.panel-loading {
-  display: grid;
-  gap: 14px;
+/* A record that could not be opened: said above the list, since no panel opens. */
+.open-error {
+  margin: 0 0 12px;
+  align-items: center;
+}
+.open-error > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+/* The clicked row while its record loads: a spinner after a short wait, so a quick answer shows nothing. */
+tr[aria-busy='true'] {
+  cursor: progress;
+}
+.spin {
+  opacity: 0;
+  animation:
+    spin-show 0s linear 150ms forwards,
+    spin 0.8s linear infinite;
+}
+@keyframes spin-show {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .load-error {
   margin: 16px 0;

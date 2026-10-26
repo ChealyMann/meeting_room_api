@@ -168,3 +168,32 @@ describe('RoomDetailPanel tabs', () => {
     expect(wrapper.get('#tabpanel-photos').text()).toContain('0/20')
   })
 })
+
+describe('RoomDetailPanel opening', () => {
+  it('opens only when the room has loaded, so it slides in once', async () => {
+    let release: () => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(() => new Promise<Response>((resolve) => (release = () => resolve(json(room()))))),
+    )
+    const wrapper = mount(RoomDetailPanel, { props: { roomId: 12 }, global: { stubs: { teleport: true } } })
+    await flushPromises()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+
+    release()
+    await flushPromises()
+    expect(wrapper.get('[role="dialog"]').text()).toContain('បន្ទប់មេគង្គ')
+  })
+
+  it('opens at once with a room it is given, and still refreshes it', async () => {
+    const wrapper = mount(RoomDetailPanel, {
+      props: { roomId: 12, initial: room({ name_en: 'Given Room' }) as never },
+      global: { stubs: { teleport: true } },
+    })
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Given Room')
+
+    await flushPromises()
+    expect(calls.some((c) => c.path === '/api/v1/rooms/12')).toBe(true)
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Mekong Room')
+  })
+})

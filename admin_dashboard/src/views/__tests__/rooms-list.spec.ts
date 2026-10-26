@@ -238,6 +238,26 @@ describe('RoomsView panels', () => {
     expect(query(router)).toEqual({})
   })
 
+  it('keeps the room details on screen while the edit form loads', async () => {
+    let release: () => void = () => {}
+    let asked = 0
+    override = (url) => {
+      if (url.pathname !== '/api/v1/rooms/12') return undefined
+      if (++asked === 1) return json(detail(12, 'Mekong Room'))
+      return new Promise<Response>((resolve) => (release = () => resolve(json(detail(12, 'Mekong Room')))))
+    }
+    const { router } = await mountAt('/?room=12')
+
+    await router.push('/?room=12&edit=1')
+    await flushPromises()
+    expect(document.body.querySelector('[role="dialog"] [role="tablist"]')).not.toBeNull()
+    expect(document.body.querySelector('[role="dialog"] .skeleton-bar')).toBeNull()
+
+    release()
+    await flushPromises()
+    expect((document.body.querySelector('#name_en') as HTMLInputElement).value).toBe('Mekong Room')
+  })
+
   it('opens the create form for room=new', async () => {
     await mountAt('/?room=new')
 

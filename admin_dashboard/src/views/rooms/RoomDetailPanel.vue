@@ -19,10 +19,11 @@ import RoomPhotos from './RoomPhotos.vue'
 
 export type RoomStep = 'details' | 'photos' | 'equipment'
 
-const props = defineProps<{ roomId: number; step?: RoomStep }>()
+/** `initial`: the room the page already has (just saved), so the panel opens at once. */
+const props = defineProps<{ roomId: number; step?: RoomStep; initial?: RoomDetail }>()
 const emit = defineEmits<{ edit: []; changed: [room: RoomDetail]; close: [] }>()
 
-const room = ref<RoomDetail | null>(null)
+const room = ref<RoomDetail | null>(props.initial?.id === props.roomId ? props.initial : null)
 const loadError = ref('')
 const tab = ref<RoomStep>(props.step ?? 'details')
 watch(
@@ -115,8 +116,9 @@ defineExpose({ update, tab })
 </script>
 
 <template>
+  <!-- Opens once the room is here, so it slides in once with its content (no skeleton swap). -->
   <SidePanel
-    :open="true"
+    :open="!!room || !!loadError"
     :title="room?.name_kh ?? 'Room'"
     :subtitle="room?.name_en"
     :serial="serial('RM', roomId)"

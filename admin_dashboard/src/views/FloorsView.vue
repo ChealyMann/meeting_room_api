@@ -1,16 +1,14 @@
 <script setup lang="ts">
 // Floors (DSH-P04, P05): a filtered, paged list. The open floor lives in the address
 // (?id=7, ?id=new), so a reload keeps the panel open.
-import { CircleAlert, Ellipsis, Plus } from 'lucide-vue-next'
+import { CircleAlert, Ellipsis, LoaderCircle, Plus } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '../api'
-import { ApiError } from '../api/errors'
 import { getFloor, listFloorPage, type FloorFilters } from '../api/places'
 import { listBuildings, listOffices } from '../api/references'
 import type { BuildingOut, FloorDetail, FloorOut, LocationOut } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
-import SidePanel from '../components/base/SidePanel.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
@@ -18,6 +16,7 @@ import StateMarks from '../components/list/StateMarks.vue'
 import StatusFilter from '../components/list/StatusFilter.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
+import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
 import { selectOptions } from '../utils/selectOptions'
 import { serial } from '../utils/serial'
@@ -83,25 +82,10 @@ const words = computed(() =>
   ].filter((part): part is string => !!part),
 )
 
-// The edit form needs the floor; load it here so a reload on ?id=7 works too.
-// Only the answer for the floor in the address counts; a failure is shown with "Try again".
-const editFloor = ref<FloorDetail | null>(null)
-const editError = ref('')
-let editRequest = 0
-async function loadEdit() {
-  const request = ++editRequest
-  editFloor.value = null
-  editError.value = ''
-  const id = panel.id.value
-  if (id === null) return
-  try {
-    const floor = await getFloor(api, id)
-    if (request === editRequest) editFloor.value = floor
-  } catch (err) {
-    if (request === editRequest) editError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
-  }
-}
-watch(panel.id, loadEdit, { immediate: true })
+// The floor is loaded before its panel opens (see usePanelRecord), so a reload on ?id=… works too.
+const { record: editFloor, error: openError, openingId, load: loadEdit } = usePanelRecord(panel.id, (id) =>
+  getFloor(api, id),
+)
 
 async function onSaved(floor: FloorDetail) {
   panel.close()
@@ -152,6 +136,15 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
       <StatusFilter v-model="list.status.value" />
     </div>
 
+    <div v-if="openError" class="summary open-error" role="alert">
+      <CircleAlert aria-hidden="true" />
+      <div>
+        <b>{{ serial('FL', panel.id.value) }}: {{ openError }}</b>
+        <BaseButton variant="quiet" @click="loadEdit">Try again</BaseButton>
+        <BaseButton variant="quiet" @click="panel.close">Close</BaseButton>
+      </div>
+    </div>
+
     <div class="sheet">
       <div v-if="error" class="summary load-error" role="alert">
         <CircleAlert aria-hidden="true" />
@@ -189,6 +182,7 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
               v-for="floor in result.items"
               :key="floor.id"
               :class="{ 'is-off': !floor.is_active, 'just-saved': floor.id === savedId }"
+              :aria-busy="floor.id === openingId || undefined"
               tabindex="0"
               @click="panel.open(floor.id)"
               @keydown.enter="panel.open(floor.id)"
@@ -208,7 +202,8 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
                   :aria-label="`Open ${floor.floor_label}`"
                   @click.stop="panel.open(floor.id)"
                 >
-                  <Ellipsis aria-hidden="true" />
+                  <LoaderCircle v-if="floor.id === openingId" class="spin" aria-hidden="true" />
+                  <Ellipsis v-else aria-hidden="true" />
                 </button>
               </td>
             </tr>
@@ -232,24 +227,6 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
       @saved="onSaved"
       @close="panel.close"
     />
-    <SidePanel
-      v-else-if="panel.id.value !== null"
-      :open="true"
-      title="Floor"
-      :serial="serial('FL', panel.id.value)"
-      @close="panel.close"
-    >
-      <div v-if="editError" class="summary" role="alert">
-        <CircleAlert aria-hidden="true" />
-        <div>
-          <b>{{ editError }}</b>
-          <BaseButton variant="quiet" @click="loadEdit">Try again</BaseButton>
-        </div>
-      </div>
-      <div v-else class="panel-loading" aria-hidden="true">
-        <div v-for="n in 4" :key="n" class="skeleton-bar" :style="{ width: `${40 + n * 8}%` }" />
-      </div>
-    </SidePanel>
 
     <PagingFoot
       v-if="result && total > 0"

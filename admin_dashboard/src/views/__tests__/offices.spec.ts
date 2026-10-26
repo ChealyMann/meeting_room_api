@@ -32,6 +32,7 @@ const office = (id: number, changes: Record<string, unknown> = {}) => ({
 const listCalls: string[] = []
 const writes: Array<{ method: string; path: string; body: string }> = []
 let saveAnswer: () => Response
+let officeAnswer: () => Response | Promise<Response>
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -44,6 +45,7 @@ beforeEach(() => {
   listCalls.length = 0
   writes.length = 0
   saveAnswer = () => json(office(9, { name_en: 'Siem Reap Branch' }), 201)
+  officeAnswer = () => json(office(3))
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input, init) => {
@@ -54,7 +56,7 @@ beforeEach(() => {
         return saveAnswer()
       }
       if (url.pathname === '/api/v1/provinces') return json({ items: PROVINCES, total: 2 })
-      if (url.pathname === '/api/v1/locations/3') return json(office(3))
+      if (/^\/api\/v1\/locations\/\d+$/.test(url.pathname)) return officeAnswer()
       if (url.pathname === '/api/v1/locations') {
         listCalls.push(url.search)
         return json({ items: [office(3), office(4, { name_en: 'Old Branch', name_kh: 'សាខាចាស់', is_active: false, address: null })], page: 1, size: 20, total: 2 })
@@ -151,6 +153,43 @@ describe('OfficesView', () => {
     const save = [...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!
     expect(save.disabled).toBe(true)
     expect(panel()?.textContent).toContain('Turn off')
+  })
+
+  it('opens the panel only when the office has loaded, marking the row busy meanwhile', async () => {
+    let release: () => void = () => {}
+    officeAnswer = () => new Promise<Response>((resolve) => (release = () => resolve(json(office(3)))))
+    const { wrapper, router } = await mountAt('/offices')
+
+    await wrapper.findAll('tbody tr')[0]!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ id: '3' })
+    expect(panel()).toBeNull()
+    expect(wrapper.findAll('tbody tr')[0]!.attributes('aria-busy')).toBe('true')
+
+    release()
+    await flushPromises()
+    expect(inPanel<HTMLInputElement>('#name_en')?.value).toBe('Head Office')
+    expect(wrapper.findAll('tbody tr')[0]!.attributes('aria-busy')).toBeUndefined()
+  })
+
+  it('says above the list when an office cannot open, with Try again and Close', async () => {
+    officeAnswer = () => json({ error: { code: 'NOT_FOUND', message: 'Office not found.' } }, 404)
+    const { wrapper, router } = await mountAt('/offices?id=3')
+
+    expect(panel()).toBeNull()
+    const alert = wrapper.get('.open-error')
+    expect(alert.text()).toContain('Office not found.')
+    officeAnswer = () => json(office(3))
+    await alert.findAll('button').find((b) => b.text() === 'Try again')!.trigger('click')
+    await flushPromises()
+    expect(inPanel<HTMLInputElement>('#name_en')?.value).toBe('Head Office')
+
+    officeAnswer = () => json({ error: { code: 'NOT_FOUND', message: 'Office not found.' } }, 404)
+    await router.push('/offices?id=4')
+    await flushPromises()
+    await wrapper.get('.open-error').findAll('button').find((b) => b.text() === 'Close')!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({})
   })
 
   it('is a real page in the sidebar', () => {
