@@ -69,7 +69,8 @@ async function remove() {
         <span v-else-if="!loading" class="empty">No photo yet</span>
       </div>
       <div class="side">
-        <p class="hint">A clear photo of your face. It is cropped to a square. JPEG, PNG or WebP.</p>
+        <!-- What sits beside the photo, e.g. the name; the photo buttons go under it. -->
+        <slot />
 
         <div v-if="confirming" class="confirm">
           <p>
@@ -94,7 +95,12 @@ async function remove() {
             :aria-describedby="error || loadError ? 'avatar-error' : undefined"
             @change="onFile"
           />
-          <label for="avatar" class="btn" :class="{ busy: uploading }">
+          <label
+            for="avatar"
+            class="btn"
+            :class="{ busy: uploading }"
+            title="A clear photo of your face, JPEG, PNG or WebP. It is cropped to a square."
+          >
             <span v-if="uploading" class="spin" aria-hidden="true" />
             <Upload v-else aria-hidden="true" />
             {{ uploading ? 'Uploading' : imageUrl ? 'Replace photo' : 'Upload photo' }}
@@ -124,8 +130,8 @@ async function remove() {
   flex: none;
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 88px;
+  height: 88px;
   overflow: hidden;
   border: 1px solid var(--color-rule-strong);
   border-radius: 50%;
@@ -146,18 +152,19 @@ async function remove() {
 }
 .side {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-}
-.hint {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-intaglio);
 }
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 8px;
+}
+/* Small buttons: they serve the photo, not the page. */
+.actions .btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 .file:focus-visible + label {
   outline: 2px solid var(--color-crimson);
