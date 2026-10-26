@@ -10,6 +10,7 @@ import BaseButton from '../components/base/BaseButton.vue'
 import BaseField from '../components/base/BaseField.vue'
 import BaseSwitch from '../components/base/BaseSwitch.vue'
 import FormErrorSummary from '../components/base/FormErrorSummary.vue'
+import AvatarField from '../components/AvatarField.vue'
 import SignatureField from '../components/SignatureField.vue'
 import { useFieldErrors } from '../composables/useFieldErrors'
 import { useToast } from '../composables/useToast'
@@ -20,7 +21,6 @@ import { formatPhnomPenh } from '../utils/time'
 interface ProfileForm {
   secondary_email: string
   phone: string
-  avatar_url: string
   email_notifications: boolean
 }
 
@@ -29,7 +29,6 @@ const draftKey = (user: UserDetail) => `profile:${user.id}`
 const LABELS: Record<string, string> = {
   secondary_email: 'Second email',
   phone: 'Phone',
-  avatar_url: 'Photo link',
   email_notifications: 'Email notifications',
 }
 
@@ -47,7 +46,6 @@ function formOf(user: UserDetail): ProfileForm {
   return {
     secondary_email: user.secondary_email ?? '',
     phone: user.phone ?? '',
-    avatar_url: user.avatar_url ?? '',
     email_notifications: user.email_notifications,
   }
 }
@@ -55,7 +53,7 @@ function formOf(user: UserDetail): ProfileForm {
 /** Only what changed; empty text clears the field (null). */
 function changesOf(values: ProfileForm, user: UserDetail): MeUpdate {
   const changes: MeUpdate = {}
-  for (const key of ['secondary_email', 'phone', 'avatar_url'] as const) {
+  for (const key of ['secondary_email', 'phone'] as const) {
     const value = values[key].trim() || null
     if (value !== user[key]) changes[key] = value
   }
@@ -147,6 +145,10 @@ function undo() {
 
 function onSignature(signatureUrl: string | null) {
   if (profile.value) show({ ...profile.value, signature_url: signatureUrl })
+}
+
+function onAvatarRemoved() {
+  if (profile.value) show({ ...profile.value, avatar_url: null })
 }
 
 onMounted(load)
@@ -258,22 +260,6 @@ onMounted(load)
             </BaseField>
           </div>
 
-          <BaseField id="avatar_url" label="Photo link" hint="optional" :error="errors.avatar_url">
-            <template #default="{ describedBy, invalid }">
-              <input
-                id="avatar_url"
-                v-model="form.avatar_url"
-                class="input"
-                type="url"
-                inputmode="url"
-                placeholder="https://"
-                spellcheck="false"
-                :aria-describedby="describedBy"
-                :aria-invalid="invalid || undefined"
-              />
-            </template>
-          </BaseField>
-
           <div class="switch-row">
             <div>
               <label for="email_notifications">Email notifications</label>
@@ -289,6 +275,16 @@ onMounted(load)
             </BaseButton>
           </div>
         </form>
+      </section>
+
+      <section class="block" aria-labelledby="photo-title">
+        <h2 id="photo-title">Photo</h2>
+        <AvatarField
+          :avatar-url="profile.avatar_url"
+          :version="profile.updated_at"
+          @uploaded="show"
+          @removed="onAvatarRemoved"
+        />
       </section>
 
       <section class="block" aria-labelledby="signature-title">

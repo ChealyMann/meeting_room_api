@@ -201,7 +201,6 @@ describe('ProfileView', () => {
     useDraftsStore().set('profile:1', {
       secondary_email: 'dara.home@example.com',
       phone: '012 999 888',
-      avatar_url: '',
       email_notifications: false,
     })
 
@@ -234,5 +233,17 @@ describe('ProfileView drafts and names', () => {
     for (const khmer of ['ប្រធានព័ត៌មានវិទ្យា', 'គ្រប់គ្រងកម្មវិធី', 'នាយកដ្ឋានព័ត៌មានវិទ្យា', 'អ្នកគ្រប់គ្រង']) {
       expect(wrapper.text()).toContain(khmer)
     }
+  })
+})
+
+describe('ProfileView photo', () => {
+  it('has a Photo upload instead of a photo link', async () => {
+    stubApi({ 'GET /api/v1/me': () => json(200, ME) })
+
+    const { wrapper } = await mountProfile()
+
+    expect(wrapper.find('#avatar_url').exists()).toBe(false)
+    expect(wrapper.find('#photo-title').text()).toBe('Photo')
+    expect(wrapper.text()).toContain('Upload photo')
   })
 })

@@ -4,11 +4,13 @@ import { login, refreshTokens } from '../auth'
 import { createApiClient } from '../client'
 import {
   changePassword,
+  deleteMyAvatar,
   deleteMySignature,
   getMe,
-  getSignatureBlob,
+  getImageBlob,
   logout,
   updateMe,
+  uploadMyAvatar,
   uploadMySignature,
 } from '../me'
 
@@ -181,10 +183,30 @@ describe('me', () => {
     expect(sent(fetchMock)).toMatchObject({ method: 'DELETE', url: `${BASE}/api/v1/me/signature` })
   })
 
-  it('getSignatureBlob downloads the signature_url path', async () => {
+  it('uploadMyAvatar puts the file in a form field named file', async () => {
+    const fetchMock = fetchReturning(() => json(200, { id: 1 }))
+    const file = new File(['jpg'], 'me.jpg', { type: 'image/jpeg' })
+
+    await uploadMyAvatar(clientWith(fetchMock), file)
+
+    const { method, url, body } = sent(fetchMock)
+    expect(method).toBe('PUT')
+    expect(url).toBe(`${BASE}/api/v1/me/avatar`)
+    expect((body as FormData).get('file')).toBe(file)
+  })
+
+  it('deleteMyAvatar sends DELETE', async () => {
+    const fetchMock = fetchReturning(() => new Response(null, { status: 204 }))
+
+    await expect(deleteMyAvatar(clientWith(fetchMock))).resolves.toBeUndefined()
+
+    expect(sent(fetchMock)).toMatchObject({ method: 'DELETE', url: `${BASE}/api/v1/me/avatar` })
+  })
+
+  it('getImageBlob downloads a private image path', async () => {
     const fetchMock = fetchReturning(() => new Response('png', { status: 200 }))
 
-    const blob = await getSignatureBlob(clientWith(fetchMock), '/api/v1/users/1/signature')
+    const blob = await getImageBlob(clientWith(fetchMock), '/api/v1/users/1/signature')
 
     expect(await blob.text()).toBe('png')
     expect(sent(fetchMock)).toMatchObject({ method: 'GET', url: `${BASE}/api/v1/users/1/signature` })

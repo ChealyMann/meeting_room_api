@@ -28,7 +28,7 @@ function makeRouter() {
   })
 }
 
-async function mountShell(path = '/') {
+async function mountShell(path = '/', avatarUrl: string | null = null) {
   const router = makeRouter()
   await router.push(path)
   const session = useSessionStore()
@@ -39,6 +39,8 @@ async function mountShell(path = '/') {
     email: 'dara@company.com',
     roles: [{ code: 'ADMIN', name_en: 'Admin', name_kh: '' }],
     must_change_password: false,
+    avatar_url: avatarUrl,
+    updated_at: 't1',
   } as unknown as UserDetail
   const wrapper = mount(Root, { global: { plugins: [router] }, attachTo: document.body })
   await flushPromises()
@@ -86,5 +88,22 @@ describe('AppShell', () => {
 
     expect(signOut).toHaveBeenCalledTimes(1)
     expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+})
+
+describe('AppShell photo', () => {
+  it('shows the user photo in the rail instead of initials', async () => {
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:photo')
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async () => new Response('jpg')),
+    )
+
+    const { wrapper } = await mountShell('/', '/api/v1/users/1/avatar')
+
+    expect(wrapper.get('.who img').attributes('src')).toBe('blob:photo')
+    expect(wrapper.find('.who .initials').text()).toBe('')
+    vi.unstubAllGlobals()
   })
 })

@@ -4,7 +4,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { api } from '../api'
 import { ApiError } from '../api/errors'
-import { deleteMySignature, getSignatureBlob, uploadMySignature } from '../api/me'
+import { deleteMySignature, getImageBlob, uploadMySignature } from '../api/me'
 import BaseButton from './base/BaseButton.vue'
 
 const props = defineProps<{ signatureUrl: string | null }>()
@@ -37,7 +37,7 @@ async function load() {
   }
   loading.value = true
   try {
-    setImage(URL.createObjectURL(await getSignatureBlob(api, current.value)))
+    setImage(URL.createObjectURL(await getImageBlob(api, current.value)))
   } catch (err) {
     error.value = messageOf(err)
   } finally {

@@ -107,7 +107,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change my second email, phone, photo link or email notifications */
+        /** Change my second email, phone or email notifications */
         patch: operations["update_me_api_v1_me_patch"];
         trace?: never;
     };
@@ -127,6 +127,27 @@ export interface paths {
         post?: never;
         /** Remove my signature */
         delete: operations["remove_my_signature_api_v1_me_signature_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload my photo (JPEG, PNG or WebP)
+         * @description Saved as a square JPEG (at most 512 x 512); replaces any earlier photo.
+         */
+        put: operations["set_my_avatar_api_v1_me_avatar_put"];
+        post?: never;
+        /** Remove my photo */
+        delete: operations["remove_my_avatar_api_v1_me_avatar_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -612,6 +633,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{user_id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See a user's photo (JPEG)
+         * @description Any signed-in user. 404 when the user has no photo.
+         */
+        get: operations["get_avatar_api_v1_users__user_id__avatar_get"];
+        /**
+         * Upload a user's photo (JPEG, PNG or WebP)
+         * @description Saved as a square JPEG (at most 512 x 512); replaces any earlier photo.
+         */
+        put: operations["set_avatar_api_v1_users__user_id__avatar_put"];
+        post?: never;
+        /** Remove a user's photo */
+        delete: operations["remove_avatar_api_v1_users__user_id__avatar_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms": {
         parameters: {
             query?: never;
@@ -755,6 +801,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_set_avatar_api_v1_users__user_id__avatar_put */
+        Body_set_avatar_api_v1_users__user_id__avatar_put: {
+            /** File */
+            file: string;
+        };
+        /** Body_set_my_avatar_api_v1_me_avatar_put */
+        Body_set_my_avatar_api_v1_me_avatar_put: {
+            /** File */
+            file: string;
+        };
         /** Body_set_my_signature_api_v1_me_signature_put */
         Body_set_my_signature_api_v1_me_signature_put: {
             /** File */
@@ -1249,15 +1305,14 @@ export interface components {
         };
         /**
          * MeUpdate
-         * @description PATCH /me: only these four fields. Name, email and roles are changed by the Admin.
+         * @description PATCH /me: only these three fields. The photo is uploaded with PUT /me/avatar;
+         *     name, email and roles are changed by the Admin.
          */
         MeUpdate: {
             /** Secondary Email */
             secondary_email?: string | null;
             /** Phone */
             phone?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
             /** Email Notifications */
             email_notifications?: boolean;
         };
@@ -1757,8 +1812,6 @@ export interface components {
             secondary_email?: string | null;
             /** Phone */
             phone?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
             /** Division Id */
             division_id?: number | null;
             /** Position Id */
@@ -1860,8 +1913,6 @@ export interface components {
             secondary_email?: string | null;
             /** Phone */
             phone?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
             /** Division Id */
             division_id?: number | null;
             /** Position Id */
@@ -2172,6 +2223,69 @@ export interface operations {
         };
     };
     remove_my_signature_api_v1_me_signature_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    set_my_avatar_api_v1_me_avatar_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_set_my_avatar_api_v1_me_avatar_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDetail"];
+                };
+            };
+            /** @description FILE_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNSUPPORTED_FILE_TYPE */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description INVALID_IMAGE or VALIDATION_ERROR */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_my_avatar_api_v1_me_avatar_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3627,6 +3741,120 @@ export interface operations {
         };
     };
     remove_signature_api_v1_users__user_id__signature_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_avatar_api_v1_users__user_id__avatar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_avatar_api_v1_users__user_id__avatar_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_set_avatar_api_v1_users__user_id__avatar_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDetail"];
+                };
+            };
+            /** @description FILE_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNSUPPORTED_FILE_TYPE */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description INVALID_IMAGE or VALIDATION_ERROR */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_avatar_api_v1_users__user_id__avatar_delete: {
         parameters: {
             query?: never;
             header?: never;

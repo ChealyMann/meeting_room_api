@@ -36,7 +36,20 @@ export function deleteMySignature(client: ApiClient): Promise<void> {
   return client.request<void>('DELETE', '/api/v1/me/signature')
 }
 
-/** `signatureUrl` is the `signature_url` path from UserDetail; the image needs the bearer token. */
-export function getSignatureBlob(client: ApiClient, signatureUrl: string): Promise<Blob> {
-  return client.requestBlob(signatureUrl)
+export function uploadMyAvatar(client: ApiClient, file: File): Promise<UserDetail> {
+  const form = new FormData()
+  form.append('file', file)
+  return client.request<UserDetail>('PUT', '/api/v1/me/avatar', { form })
+}
+
+export function deleteMyAvatar(client: ApiClient): Promise<void> {
+  return client.request<void>('DELETE', '/api/v1/me/avatar')
+}
+
+/**
+ * A private image (`signature_url` or `avatar_url` from UserDetail). It needs the bearer
+ * token, so an <img> cannot load it directly.
+ */
+export function getImageBlob(client: ApiClient, path: string): Promise<Blob> {
+  return client.requestBlob(path)
 }

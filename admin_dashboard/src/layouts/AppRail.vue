@@ -18,6 +18,7 @@ import { computed, onBeforeUnmount, onMounted, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
+import { usePrivateImage } from '../composables/usePrivateImage'
 import { NAV_GROUPS } from './nav'
 
 defineProps<{ open: boolean }>()
@@ -42,6 +43,12 @@ const LOGO = '/nbc-logo.png'
 
 const session = useSessionStore()
 const router = useRouter()
+
+// The user's photo, when they have one; otherwise the initials show.
+const { imageUrl: photo } = usePrivateImage(
+  () => session.user?.avatar_url ?? null,
+  () => session.user?.updated_at,
+)
 
 const initials = computed(() =>
   (session.user?.name_en ?? '')
@@ -105,7 +112,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
     <div class="who">
       <RouterLink :to="{ name: 'profile' }" class="me" title="My profile">
-        <span class="initials" aria-hidden="true">{{ initials }}</span>
+        <span class="initials" aria-hidden="true">
+          <img v-if="photo" :src="photo" alt="" />
+          <template v-else>{{ initials }}</template>
+        </span>
         <span class="me-text">
           <b>{{ session.user?.name_en }}</b>
           <span>{{ session.user?.email }}</span>
@@ -241,10 +251,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   width: 32px;
   height: 32px;
   border-radius: 50%;
+  overflow: hidden;
   background: var(--color-rail-raised);
   color: var(--color-thread);
   font-size: 12px;
   font-weight: 600;
+}
+.initials img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .me-text {
   min-width: 0;
