@@ -56,6 +56,14 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - The door code is never loaded with a room; "Show door code" asks the API for it.
 - The real-API test for rooms (`e2e/rooms.spec.ts`) needs at least one active office with a building, a floor, a room type and an equipment item.
 
+## Places
+
+- Offices (`/offices`), Buildings (`/buildings`) and Floors (`/floors`) work like Rooms: filters, page and status live in the address, and the open record is `?id=3` (edit) or `?id=new` (create).
+- An office is a "location" in the API. Buildings and floors only carry their parent's id, so the lists look up the office and building names; a parent the list cannot find shows as `#id`.
+- Changing a building's office moves the building with its floors and rooms; changing a floor's building moves the floor with its rooms.
+- "Turn off" first counts the active rooms inside and says how many stop being bookable; "Turn on" does not ask. The API refuses to turn on a building or floor whose parent is off, and the panel shows why.
+- The real-API test for places (`e2e/places.spec.ts`) adds an office, a building and a floor with unique names each run, and leaves them on.
+
 ## How sign-in works
 
 - **Access token:** in memory only. It lasts 15 minutes.

@@ -72,6 +72,12 @@ describe('StateMarks', () => {
     expect(text).toContain('Not bookable')
     expect(text).toContain('Private')
   })
+
+  it('shows only the state for a record with no bookable mark (offices, buildings, floors)', () => {
+    const text = mount(StateMarks, { props: { active: true } }).text()
+
+    expect(text).toBe('Active')
+  })
 })
 
 describe('EmptyState and TableSkeleton', () => {

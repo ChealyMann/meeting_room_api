@@ -330,7 +330,7 @@ A warm, low-saturation paper-and-ink palette under one deep crimson; gold exists
 - **Serial** (JetBrains Mono 400, 12px, 0.04em, tabular): record serials, pager numbers. Hours use mono at 12.5px; counts, seats, character counters and the clock use mono at inherited size.
 
 ### Named Rules
-**The Serial Rule.** Ids, times, counts, page numbers and character counters are set in JetBrains Mono with tabular numerals. A record id is always a serial: resource prefix in crimson, a middle dot, four zero-padded digits (RM·0012).
+**The Serial Rule.** Ids, times, counts, page numbers and character counters are set in JetBrains Mono with tabular numerals. A record id is always a serial: resource prefix in crimson, a middle dot, four zero-padded digits (RM·0012). Prefixes: RM room, OF office, BL building, FL floor.
 
 **The Two Names Rule.** A record with both names shows Khmer (Kantumruy Pro 500, ink) directly over English (12.5px, intaglio) (owner decision, 27 Oct 2026). Never one without the other.
 
@@ -453,6 +453,9 @@ On screens wider than 1100px, a menu button (three lines, the same icon as the p
 
 ### Room Panel
 A room opens in the side panel: Khmer name over English in the head with its serial, then three tabs (Details, Photos n/20, Equipment n) underlined in crimson when selected. Details is a two-column list (label in intaglio, value in ink). The door code row says "Hidden" with a small "Show door code" button; the code shows in mono only after the click. Photos are a two-column grid of 4:3 thumbnails with a small caption ("Cover" in crimson for the first) and icon buttons to move earlier/later and delete; dragging also reorders. Equipment is a two-column checklist; an item that is off shows "(off)" in off ink. After creating a room, a quiet step line on paper ("Step 2 of 3 · Photos" → "Step 3 of 3 · Equipment") leads with "Next: equipment" and "Done".
+
+### Place Panels
+Offices, buildings and floors open in the same side panel as a room's form, with no tabs: Khmer name over English in the head (a floor shows its label, with "building · office" below), the serial beside it, then grouped fields ("Names", "Where" or "Office", "Floor", "About"). Moving a building or floor is just choosing another parent; the field's hint says "Change to move the building" (or floor). The foot holds "Turn off" (or "Turn on") at the start, apart from "Cancel" and the primary button at the end. Turning off asks in the Confirm Dialog and names what it costs: "12 rooms in this office stop being bookable. You can turn it on again." ("1 room … stops", "No rooms are affected." when there are none, and "Its rooms stop being bookable." when the count cannot be read). A refusal (for example "Turn on its office first.") shows as an error summary just above the button.
 
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 280ms, toast 260ms, switch thumb 180ms); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.

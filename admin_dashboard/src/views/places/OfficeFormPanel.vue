@@ -186,14 +186,10 @@ async function turn(active: boolean) {
             <input id="address" v-model="form.address" class="input" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
           </template>
         </BaseField>
-        <BaseField
-          id="map_query"
-          label="Map text"
-          :hint="`${count(form.map_query)}/500 · What to search on a map, e.g. National Bank of Cambodia, Phnom Penh`"
-          :error="errors.map_query"
-        >
+        <BaseField id="map_query" label="Map text" :hint="`${count(form.map_query)}/500`" :error="errors.map_query">
           <template #default="{ describedBy, invalid }">
-            <input id="map_query" v-model="form.map_query" class="input" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
+            <input id="map_query" v-model="form.map_query" class="input" :aria-describedby="`map-help ${describedBy ?? ''}`.trim()" :aria-invalid="invalid || undefined" />
+            <p id="map-help" class="help">What to search on a map, e.g. National Bank of Cambodia, Phnom Penh</p>
           </template>
         </BaseField>
       </section>
@@ -248,6 +244,11 @@ h3 {
 }
 textarea.input {
   min-height: 72px;
+}
+.help {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-intaglio);
 }
 /* Turn off sits apart, at the start of the foot. */
 .toggle {

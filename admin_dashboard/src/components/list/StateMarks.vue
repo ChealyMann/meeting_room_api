@@ -2,7 +2,8 @@
 import { CalendarX, Lock } from 'lucide-vue-next'
 
 // State by shape and word, never colour alone (DESIGN.md "State cell").
-defineProps<{ active: boolean; bookable?: boolean; private?: boolean }>()
+// A missing `bookable` means "no such mark" (places), not "not bookable": Vue would make it false.
+withDefaults(defineProps<{ active: boolean; bookable?: boolean; private?: boolean }>(), { bookable: undefined })
 </script>
 
 <template>

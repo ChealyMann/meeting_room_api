@@ -19,6 +19,7 @@ h1 {
 }
 .count {
   padding-bottom: 3px;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--color-intaglio);
 }
