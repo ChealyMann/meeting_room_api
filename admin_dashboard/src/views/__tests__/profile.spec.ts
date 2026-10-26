@@ -247,3 +247,14 @@ describe('ProfileView photo', () => {
     expect(wrapper.text()).toContain('Upload photo')
   })
 })
+
+describe('ProfileView name order', () => {
+  it('shows the Khmer name first, then English', async () => {
+    stubApi({ 'GET /api/v1/me': () => json(200, ME) })
+
+    const { wrapper } = await mountProfile()
+
+    const name = wrapper.get('.details dd')
+    expect(name.findAll('span').map((s) => s.text())).toEqual(['សុខ ដារា', 'Sok Dara'])
+  })
+})

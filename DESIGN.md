@@ -76,8 +76,8 @@ typography:
     letterSpacing: "0.08em"
   khmer:
     fontFamily: "Kantumruy Pro, Poppins, sans-serif"
-    fontSize: "12.5px"
-    fontWeight: 400
+    fontSize: "14px"
+    fontWeight: 500
     lineHeight: 1.5
   serial:
     fontFamily: "JetBrains Mono, ui-monospace, Consolas, monospace"
@@ -262,7 +262,7 @@ The system refuses the default admin kit of floating white cards and coloured pi
 - Single hairline rules (1px) as the only structure; no card boxes around lists.
 - Intaglio brown for every secondary line of text.
 - Mono serials for ids, times, counts, pager numbers and character counters.
-- English name over Khmer name, always both.
+- Khmer name over English name, always both.
 - State by shape: solid dot, outlined ring, lock line, calendar-x line.
 - Soft shadow only on things that float over the sheet (side panel, toast).
 
@@ -326,13 +326,13 @@ A warm, low-saturation paper-and-ink palette under one deep crimson; gold exists
 - **Label** (500, 12.5px): field labels; the right-hand hint inside the label is 400 intaglio.
 - **Caption** (400, 12px): hints, field errors, place sub-lines, toast detail, private/not-bookable marks.
 - **Label Caps** (500, 11px, 0.08em, uppercase): table column headers and nav group labels only.
-- **Khmer** (Kantumruy Pro 400, 12.5px, 1.5): the Khmer line of a name plate, in intaglio.
+- **Khmer** (Kantumruy Pro 500, 14px, 1.5): the first line of a name plate, in ink; the English line under it is 12.5px intaglio.
 - **Serial** (JetBrains Mono 400, 12px, 0.04em, tabular): record serials, pager numbers. Hours use mono at 12.5px; counts, seats, character counters and the clock use mono at inherited size.
 
 ### Named Rules
 **The Serial Rule.** Ids, times, counts, page numbers and character counters are set in JetBrains Mono with tabular numerals. A record id is always a serial: resource prefix in crimson, a middle dot, four zero-padded digits (RM·0012).
 
-**The Two Names Rule.** A record with both names shows English (500, ink) directly over Khmer (Kantumruy Pro, intaglio). Never one without the other.
+**The Two Names Rule.** A record with both names shows Khmer (Kantumruy Pro 500, ink) directly over English (12.5px, intaglio) (owner decision, 27 Oct 2026). Never one without the other.
 
 ## Layout
 
@@ -410,7 +410,7 @@ Crimson, quiet, one point of gold.
 - **Header:** sticky, paper ground, label-caps intaglio, 10px/12px padding, strong-hairline underline. Sortable headers are bare buttons with a 12px arrow.
 - **Rows:** 13.5px, 9px/12px padding, engraved hairline between rows, vertical middle. Hover: row-hover tint (120ms).
 - **Serial column:** serial typography, intaglio, crimson resource prefix.
-- **Name plate:** English 500 ink over Khmer 12.5px intaglio.
+- **Name plate:** Khmer (Kantumruy Pro 500, ink) over English 12.5px intaglio.
 - **Place:** office 400 over the "Building · Floor" line in 12px intaglio.
 - **Numbers** right-aligned in mono; **hours** in mono 12.5px as "08:00–17:00".
 - **No owner:** the words "No owner", in the off tone.
@@ -458,7 +458,7 @@ Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 
 
 ### Do:
 - **Do** set every record id as a serial: crimson prefix, middle dot, four zero-padded mono digits (RM·0012).
-- **Do** show English over Khmer for every bilingual record.
+- **Do** show Khmer over English for every bilingual record.
 - **Do** carry state by shape and word: solid dot Active, outlined ring Inactive, lock line Private, calendar-x Not bookable.
 - **Do** keep tables as open sheets on the paper, ruled by 1px hairlines.
 - **Do** confirm turning something off inline, on the page, with a danger button.

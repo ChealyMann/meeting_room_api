@@ -186,8 +186,8 @@ onMounted(load)
         <div>
           <dt>Name</dt>
           <dd>
-            <span class="name-en">{{ profile.name_en }}</span>
             <span class="kh name-kh">{{ profile.name_kh }}</span>
+            <span class="name-en">{{ profile.name_en }}</span>
           </dd>
         </div>
         <div>
@@ -201,8 +201,8 @@ onMounted(load)
         <div v-for="row in namedRows" :key="row.label">
           <dt>{{ row.label }}</dt>
           <dd v-if="row.name">
-            <span class="name-en">{{ row.name.name_en }}</span>
             <span class="kh name-kh">{{ row.name.name_kh }}</span>
+            <span class="name-en">{{ row.name.name_en }}</span>
           </dd>
           <dd v-else class="off">None</dd>
         </div>
@@ -396,14 +396,16 @@ h2 {
 .details .off {
   color: var(--color-ink-off);
 }
-.name-en {
-  display: block;
-  font-weight: 500;
-}
+/* Khmer first (500, ink), English under it (intaglio). */
 .name-kh {
   display: block;
-  font-size: 12.5px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.5;
+}
+.name-en {
+  display: block;
+  font-size: 12.5px;
   color: var(--color-intaglio);
 }
 .change-password {
