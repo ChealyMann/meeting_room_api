@@ -22,6 +22,7 @@ function makeRouter() {
         children: [
           { path: '', name: 'home', component: Page, meta: { title: 'Rooms' } },
           { path: 'profile', name: 'profile', component: Page, meta: { title: 'My profile' } },
+          { path: 'offices', name: 'offices', component: Page, meta: { title: 'Offices' } },
         ],
       },
     ],
@@ -63,10 +64,18 @@ describe('AppShell', () => {
   it('renders not-yet-built pages as disabled links', async () => {
     const { wrapper } = await mountShell('/')
 
-    const offices = wrapper.findAll('nav a').find((a) => a.text().includes('Offices'))
-    expect(offices?.attributes('aria-disabled')).toBe('true')
-    expect(offices?.attributes('title')).toBe('Coming soon')
-    expect(offices?.attributes('href')).toBeUndefined()
+    const roomTypes = wrapper.findAll('nav a').find((a) => a.text().includes('Room types'))
+    expect(roomTypes?.attributes('aria-disabled')).toBe('true')
+    expect(roomTypes?.attributes('title')).toBe('Coming soon')
+    expect(roomTypes?.attributes('href')).toBeUndefined()
+  })
+
+  it('links Offices and marks it on its page', async () => {
+    const { wrapper } = await mountShell('/offices')
+
+    const current = wrapper.get('a[aria-current="page"]')
+    expect(current.text()).toContain('Offices')
+    expect(current.attributes('href')).toBe('/offices')
   })
 
   it('shows the signed-in user and the page title', async () => {

@@ -83,10 +83,11 @@ async function turnOff() {
 .toggle {
   position: relative;
 }
-/* Shown above the button, so a refusal is read right where it happened. */
+/* Shown above the button, so a refusal is read right where it happened. The button sits at
+   the start of the panel foot, so the message grows to the right. */
 .summary {
   position: absolute;
-  right: 0;
+  left: 0;
   bottom: calc(100% + 12px);
   width: max-content;
   max-width: min(360px, 80vw);

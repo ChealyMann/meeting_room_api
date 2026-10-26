@@ -16,7 +16,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Places',
     items: [
-      { label: 'Offices', icon: 'landmark' },
+      { label: 'Offices', icon: 'landmark', route: 'offices' },
       { label: 'Buildings', icon: 'building-2' },
       { label: 'Floors', icon: 'layers' },
     ],
