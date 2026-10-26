@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// The side panel's motion, frame by frame, without the real API. The record answers after
-// 60ms, so the loading panel is swapped for the form while it is still sliding in.
+// The side panel's motion, frame by frame, without the real API. Opening a record shows a
+// loading panel first, then swaps it for the form: the slide must carry on, not start again.
+// The CPU is slowed down 6x, because on a slow or busy computer that swap takes longer.
 const ME = {
   id: 1,
   name_en: 'Sok Dara',
@@ -11,37 +12,45 @@ const ME = {
   avatar_url: null,
   updated_at: '2026-10-01T00:00:00Z',
 }
-const OFFICE = {
-  id: 3,
-  name_en: 'Head Office',
-  name_kh: 'ការិយាល័យកណ្តាល',
-  description: null,
-  address: 'Norodom Blvd',
-  province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
-  map_query: null,
-  is_active: true,
-  created_at: '2026-10-01T00:00:00Z',
-  updated_at: '2026-10-01T00:00:00Z',
+const PP = { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' }
+const stamps = { is_active: true, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' }
+const OFFICE = { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល', description: null, address: 'Norodom Blvd', province: PP, map_query: null, ...stamps }
+const BUILDING = { id: 5, location_id: 3, name_en: 'Tower A', name_kh: 'អគារ ក', short_name: 'A', sort_order: 1, ...stamps }
+const FLOOR = { id: 7, building_id: 5, floor_label: '3rd floor', sort_order: 3, ...stamps }
+const NAMED = { location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' }, province: PP }
+
+const RECORDS: Record<string, unknown> = {
+  '/api/v1/locations/3': OFFICE,
+  '/api/v1/buildings/5': { ...BUILDING, ...NAMED },
+  '/api/v1/floors/7': { ...FLOOR, building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' }, ...NAMED },
+}
+const LISTS: Record<string, unknown[]> = {
+  '/api/v1/locations': [OFFICE],
+  '/api/v1/buildings': [BUILDING],
+  '/api/v1/floors': [FLOOR],
 }
 
-async function officesPage(page: Page) {
+async function listPage(page: Page, path: string, recordMs: number) {
   await page.addInitScript(() => sessionStorage.setItem('nbc.admin.refresh', 'R0'))
   await page.route('**/api/v1/**', async (route) => {
-    const path = new URL(route.request().url()).pathname
-    if (path === '/api/v1/auth/refresh') {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/api/v1/auth/refresh') {
       return route.fulfill({ json: { access_token: 'A1', refresh_token: 'R1', token_type: 'bearer' } })
     }
-    if (path === '/api/v1/me') return route.fulfill({ json: ME })
-    if (path === '/api/v1/locations/3') {
-      await new Promise((ok) => setTimeout(ok, 60))
-      return route.fulfill({ json: OFFICE })
+    if (url.pathname === '/api/v1/me') return route.fulfill({ json: ME })
+    if (url.pathname === '/api/v1/provinces') return route.fulfill({ json: { items: [PP], total: 1 } })
+    if (RECORDS[url.pathname]) {
+      await new Promise((ok) => setTimeout(ok, recordMs))
+      return route.fulfill({ json: RECORDS[url.pathname] })
     }
-    if (path === '/api/v1/locations') return route.fulfill({ json: { items: [OFFICE], page: 1, size: 20, total: 1 } })
-    return route.fulfill({ json: { items: [], page: 1, size: 20, total: 0 } })
+    const items = LISTS[url.pathname] ?? []
+    return route.fulfill({ json: { items, page: 1, size: 20, total: items.length } })
   })
   await page.setViewportSize({ width: 1366, height: 800 })
-  await page.goto('/offices')
+  await page.goto(path)
   await expect(page.locator('tbody tr')).toHaveCount(1)
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 })
 }
 
 /** Every frame for `ms`: the left edge of each panel on screen and the scrim's opacity. */
@@ -66,28 +75,33 @@ function frames(page: Page, ms: number) {
   )
 }
 
-test('the panel slides in once, without jumping back or blinking', async ({ page }) => {
-  await officesPage(page)
+for (const path of ['/offices', '/buildings', '/floors']) {
+  for (const recordMs of [60, 800]) {
+    test(`${path}: a record (answer after ${recordMs}ms) slides in once`, async ({ page }) => {
+      await listPage(page, path, recordMs)
 
-  const recording = frames(page, 700)
-  await page.locator('tbody tr').first().click()
-  const seen = (await recording).filter((f) => f.x.length)
+      const recording = frames(page, recordMs + 1200)
+      await page.locator('tbody tr').first().click()
+      const seen = (await recording).filter((f) => f.x.length)
 
-  // The front panel only ever moves left, and the scrim only ever gets darker.
-  for (let i = 1; i < seen.length; i++) {
-    expect(Math.min(...seen[i]!.x)).toBeLessThanOrEqual(Math.min(...seen[i - 1]!.x) + 1)
-    expect(Math.max(...seen[i]!.scrim, 0)).toBeGreaterThanOrEqual(Math.max(...seen[i - 1]!.scrim, 0) - 0.01)
+      // One panel at a time; it only ever moves left, and the scrim only ever gets darker.
+      for (let i = 1; i < seen.length; i++) {
+        expect(seen[i]!.x).toHaveLength(1)
+        expect(seen[i]!.x[0]!).toBeLessThanOrEqual(seen[i - 1]!.x[0]! + 1)
+        expect(Math.max(...seen[i]!.scrim, 0)).toBeGreaterThanOrEqual(Math.max(...seen[i - 1]!.scrim, 0) - 0.01)
+      }
+      expect(Math.round(seen[seen.length - 1]!.x[0]!)).toBe(1366 - 440)
+    })
   }
-  expect(Math.round(Math.min(...seen[seen.length - 1]!.x))).toBe(1366 - 440)
-})
+}
 
 test('the panel slides out when it closes', async ({ page }) => {
-  await officesPage(page)
+  await listPage(page, '/offices', 60)
   await page.locator('tbody tr').first().click()
   await expect(page.getByRole('dialog')).toContainText('Head Office')
   await expect.poll(async () => Math.round((await page.getByRole('dialog').boundingBox())!.x)).toBe(1366 - 440)
 
-  const recording = frames(page, 500)
+  const recording = frames(page, 900)
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
   const seen = await recording
 
