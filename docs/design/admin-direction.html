@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rooms · NBC Meeting Rooms Admin</title>
+<link rel="icon" href="assets/nbc-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  /* Note-crimson rail, cream paper, engraved hairlines, intaglio brown. */
+  --rail: #260707;
+  --rail-raised: #3A0D0D;
+  --rail-line: #4A1414;
+  --rail-ink: #F3E3DC;
+  --rail-muted: #C9A9A0;
+  --thread: #E2B33C;
+  --paper: #F9F7F5;
+  --sheet: #FFFFFF;
+  --rule: #E9E3DD;
+  --rule-strong: #D8CFC7;
+  --ink: #2A1C13;
+  --intaglio: #6B5243;
+  --crimson: #991B1B;
+  --crimson-deep: #7F1D1D;
+  --crimson-wash: #F7ECEA;
+  --ok: #2F6B3F;
+  --warn: #9A4A06;
+  --scrim: rgba(38, 7, 7, 0.045);
+  --shadow-panel: -18px 0 40px rgba(42, 28, 19, 0.12), -2px 0 6px rgba(42, 28, 19, 0.06);
+  --font: "Poppins", "Kantumruy Pro", system-ui, sans-serif;
+  --font-kh: "Kantumruy Pro", "Poppins", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --m: 8px; /* the one module everything snaps to */
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper);
+  caret-color: var(--crimson);
+}
+::selection { background: var(--crimson); color: #FFF7F2; }
+:focus-visible { outline: 2px solid var(--crimson); outline-offset: 2px; border-radius: 4px; }
+* { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.kh { font-family: var(--font-kh); }
+svg.lucide { width: 16px; height: 16px; stroke-width: 1.75; flex: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Shell ---------- */
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; min-height: 640px; max-height: 960px; }
+.rail {
+  background: var(--rail); color: var(--rail-ink);
+  display: flex; flex-direction: column; min-height: 0;
+  border-right: 1px solid var(--rail-line);
+}
+.brand { display: flex; align-items: center; gap: 12px; padding: 20px 20px 16px; }
+.brand img { width: 36px; height: 36px; }
+.brand b { display: block; font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
+.brand span { display: block; font-size: 12px; color: var(--rail-muted); }
+.nav { flex: 1; overflow-y: auto; padding: 8px 12px 16px; }
+.nav h2 { margin: 16px 8px 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rail-muted); }
+.nav a {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 6px; color: var(--rail-ink); text-decoration: none;
+  font-size: 13.5px;
+}
+.nav a svg.lucide { color: var(--rail-muted); }
+.nav a:hover { background: rgba(255, 255, 255, 0.05); }
+.nav a[aria-current="page"] { background: var(--rail-raised); }
+.nav a[aria-current="page"] svg.lucide { color: var(--thread); }
+/* Security thread: a windowed 1px gold line, like the thread woven through a note. */
+.nav a[aria-current="page"]::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--thread) 0 5px, transparent 5px 8px);
+}
+.nav .count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--rail-muted); }
+.who { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--rail-line); }
+.who .initials { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--rail-raised); font-size: 12px; font-weight: 600; color: var(--thread); }
+.who > div { min-width: 0; }
+.who b, .who span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who b { font-size: 13px; font-weight: 500; }
+.who span { font-size: 12px; color: var(--rail-muted); }
+.who button { margin-left: auto; background: none; border: 0; color: var(--rail-muted); padding: 6px; border-radius: 6px; cursor: pointer; }
+.who button:hover { color: var(--rail-ink); background: rgba(255,255,255,0.06); }
+
+.work { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.topbar {
+  display: flex; align-items: center; gap: 16px; padding: 0 24px; height: 56px;
+  border-bottom: 1px solid var(--rule); background: var(--paper);
+}
+.path { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--intaglio); }
+.path b { color: var(--ink); font-weight: 500; }
+.clock { margin-left: auto; font-size: 12px; color: var(--intaglio); display: flex; align-items: center; gap: 6px; }
+
+.page { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 24px 24px 0; }
+.page-head { display: flex; align-items: flex-end; gap: 16px; }
+.page-head h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+.page-head .serial-count { font-size: 12px; color: var(--intaglio); padding-bottom: 3px; }
+.page-head .actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* ---------- Controls ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--rule-strong);
+  background: var(--sheet); color: var(--ink); font-size: 13.5px; font-weight: 500; cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 120ms ease;
+}
+.btn:hover { border-color: var(--intaglio); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--crimson); border-color: var(--crimson); color: #FFFFFF; }
+.btn.primary svg.lucide { color: #FFFFFF; }
+.btn.primary:hover { background: var(--crimson-deep); border-color: var(--crimson-deep); }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--intaglio); }
+.btn.quiet:hover { background: var(--crimson-wash); color: var(--crimson); }
+.btn.danger { color: var(--crimson); border-color: #E3C2BE; }
+.btn.danger:hover { background: var(--crimson-wash); border-color: var(--crimson); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn.busy { pointer-events: none; }
+.btn.busy .spin { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.4); border-top-color: #FFF; animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.icon-btn { width: 32px; height: 32px; padding: 0; border-radius: 6px; border: 0; background: transparent; color: var(--intaglio); display: inline-grid; place-items: center; cursor: pointer; }
+.icon-btn:hover { background: var(--crimson-wash); color: var(--crimson); }
+
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.field label, .field .label { font-size: 12.5px; font-weight: 500; color: var(--ink); display: flex; justify-content: space-between; gap: 8px; }
+.field label .hint { font-weight: 400; color: var(--intaglio); }
+.input {
+  height: 36px; width: 100%; padding: 0 10px; border: 1px solid var(--rule-strong); border-radius: 8px;
+  background: var(--sheet); transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+textarea.input { height: auto; min-height: 72px; padding: 8px 10px; resize: vertical; }
+.input::placeholder { color: #75604F; }
+.input:hover { border-color: var(--intaglio); }
+.input:focus { outline: none; border-color: var(--crimson); box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.12); }
+.input[disabled] { background: #F3EFEA; color: #8A7466; border-color: var(--rule); }
+select.input { appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B5243' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.with-icon { position: relative; }
+.with-icon > svg.lucide { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--intaglio); pointer-events: none; }
+.with-icon > .input { padding-left: 34px; }
+.with-unit { position: relative; }
+.with-unit > .input { padding-right: 40px; }
+.with-unit > span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--intaglio); }
+.field.has-error .input { border-color: var(--crimson); background: #FFFBFA; }
+.field .error { display: flex; gap: 6px; align-items: flex-start; margin: 0; font-size: 12px; color: var(--crimson); }
+.field .error svg.lucide { width: 14px; height: 14px; margin-top: 2px; }
+
+.segmented { display: inline-flex; padding: 3px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--sheet); height: 36px; }
+.segmented button { border: 0; background: transparent; padding: 0 12px; border-radius: 6px; font-size: 13px; color: var(--intaglio); cursor: pointer; }
+.segmented button[aria-pressed="true"] { background: var(--crimson-wash); color: var(--crimson); font-weight: 500; }
+
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.switch input { appearance: none; width: 36px; height: 20px; border-radius: 20px; background: var(--rule-strong); position: relative; cursor: pointer; flex: none; transition: background-color 160ms ease; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #FFF; box-shadow: 0 1px 2px rgba(42,28,19,0.25); transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1); }
+.switch input:checked { background: var(--crimson); }
+.switch input:checked::after { transform: translateX(16px); }
+
+/* ---------- Filters + table ---------- */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 20px 0 16px; }
+.filters .search { flex: 1 1 240px; max-width: 320px; }
+.filters select.input { width: auto; min-width: 136px; }
+.filters .spacer { flex: 1; }
+
+.sheet { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--rule-strong); }
+.table-scroll { flex: 1; min-height: 0; overflow: auto; }
+table.rooms { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rooms thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--paper);
+  text-align: left; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--intaglio); padding: 10px 12px; border-bottom: 1px solid var(--rule-strong); white-space: nowrap;
+}
+.rooms thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.rooms thead th button:focus-visible { outline: 2px solid var(--crimson); outline-offset: 2px; }
+.rooms thead th svg.lucide { width: 12px; height: 12px; }
+.rooms td { padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.rooms tbody tr { transition: background-color 120ms ease; }
+.rooms tbody tr:hover { background: #FBF7F3; }
+.rooms tbody tr.is-off td:not(.state-cell):not(.row-actions) { color: #8A7466; }
+.rooms .num { text-align: right; }
+.serial { font-family: var(--mono); font-size: 12px; color: var(--intaglio); letter-spacing: 0.04em; white-space: nowrap; }
+.serial .prefix { color: var(--crimson); }
+.plate b { display: block; font-weight: 500; }
+.plate .kh { display: block; font-size: 12.5px; color: var(--intaglio); line-height: 1.5; }
+.place b { display: block; font-weight: 400; }
+.place span { font-size: 12px; color: var(--intaglio); }
+.hours { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.owner.none { color: #8A7466; }
+
+/* State by shape, not only colour. */
+.state { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; white-space: nowrap; }
+.state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.state.active::before { background: var(--ok); }
+.state.off { color: #7A6355; }
+.state.off::before { border: 1.5px solid #9C877A; width: 7px; height: 7px; }
+.state-cell { display: flex; flex-direction: column; gap: 3px; }
+.private { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--warn); }
+.private svg.lucide { width: 13px; height: 13px; }
+.unbookable { font-size: 12px; color: #7A6355; display: inline-flex; align-items: center; gap: 5px; }
+.unbookable svg.lucide { width: 13px; height: 13px; }
+.row-actions { text-align: right; width: 48px; }
+
+tr.just-saved { animation: saved-tint 2.4s ease-out forwards; }
+@keyframes saved-tint { from { background: #FBF1E6; } to { background: transparent; } }
+.toast-icon { color: var(--ok); display: inline-grid; place-items: center; padding-left: 4px; }
+.toast-icon svg.lucide { width: 20px; height: 20px; }
+
+.foot { display: flex; align-items: center; gap: 16px; padding: 12px 0 16px; border-top: 1px solid var(--rule-strong); font-size: 13px; color: var(--intaglio); flex-wrap: wrap; }
+.pager { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+.pager button { min-width: 32px; height: 32px; border: 1px solid transparent; background: transparent; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--ink); display: inline-grid; place-items: center; }
+.pager button:hover { border-color: var(--rule-strong); }
+.pager button[aria-current="page"] { border-color: var(--crimson); color: var(--crimson); background: var(--sheet); }
+.pager button[disabled] { color: #B9A99D; cursor: not-allowed; border-color: transparent; }
+
+/* ---------- Side panel ---------- */
+.scrim { position: absolute; inset: 56px 0 0 0; background: var(--scrim); opacity: 1; transition: opacity 200ms ease; }
+.panel {
+  position: absolute; top: 56px; right: 0; bottom: 0; width: 440px; max-width: 100%;
+  background: var(--sheet); box-shadow: var(--shadow-panel); border-left: 1px solid var(--rule);
+  display: flex; flex-direction: column; z-index: 5;
+  transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.panel[hidden], .scrim[hidden] { display: none; }
+.panel-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--rule); }
+.panel-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.panel-head .serial { margin-left: 2px; }
+.panel-head .icon-btn { margin-left: auto; }
+.panel-body { flex: 1; overflow-y: auto; padding: 16px 20px 24px; display: grid; gap: 20px; align-content: start; }
+.summary { display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--crimson-wash); color: var(--crimson); font-size: 13px; }
+.summary p { margin: 0; color: var(--ink); }
+.summary b { color: var(--crimson); font-weight: 500; }
+.group { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.group:first-of-type { border-top: 0; padding-top: 0; }
+.group h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.panel-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid var(--rule); background: var(--paper); }
+
+/* ---------- Toast + seal ---------- */
+.toast {
+  position: absolute; right: 24px; bottom: 24px; z-index: 6;
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px;
+  background: var(--sheet); border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(42, 28, 19, 0.13), 0 1px 3px rgba(42, 28, 19, 0.10);
+  transition: opacity 200ms ease, transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.toast[hidden] { display: none; }
+.toast b { display: block; font-weight: 500; font-size: 13.5px; }
+.toast span { font-size: 12px; color: var(--intaglio); }
+.seal { width: 44px; height: 44px; flex: none; color: var(--crimson); }
+.seal path { fill: none; stroke: currentColor; stroke-width: 0.55; }
+.seal .ring { stroke-width: 1; }
+.seal.drawing path { animation: draw 620ms cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* ---------- States and parts (below the screen) ---------- */
+.parts { padding: 56px 32px 72px; max-width: 1280px; margin: 0 auto; }
+.parts > h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.parts > p { margin: 0 0 32px; color: var(--intaglio); max-width: 65ch; }
+.specimens { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule-strong); }
+.spec { padding: 24px 24px 28px 0; border-bottom: 1px solid var(--rule); min-width: 0; }
+.spec + .spec { padding-left: 24px; border-left: 1px solid var(--rule); }
+.spec h3 { margin: 0 0 16px; font-size: 14px; font-weight: 600; }
+.span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; } .span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; } .span-4 { grid-column: span 4; } .span-8 { grid-column: span 8; }
+.spec.newline { border-left: 0; padding-left: 0; }
+.stack { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.vstack { display: grid; gap: 14px; }
+
+.empty { position: relative; overflow: hidden; display: grid; place-items: center; text-align: center; padding: 40px 16px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.empty .watermark { position: absolute; width: 240px; height: 240px; color: var(--crimson); opacity: 0.07; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.empty .watermark path { fill: none; stroke: currentColor; stroke-width: 0.5; }
+.empty h4 { position: relative; margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.empty p { position: relative; margin: 0 0 16px; color: var(--intaglio); font-size: 13px; max-width: 40ch; }
+.empty .stack { position: relative; justify-content: center; }
+
+.skeleton-row { display: grid; grid-template-columns: 72px 1.6fr 1fr 1.2fr 48px 96px; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.skeleton-row i { display: block; height: 10px; border-radius: 4px; background: linear-gradient(90deg, #EFE8E1 0%, #F7F2EC 40%, #EFE8E1 80%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; }
+.skeleton-row i.tall { height: 22px; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #E3C2BE; border-radius: 8px; background: #FFFBFA; }
+.confirm p { margin: 0; flex: 1 1 260px; font-size: 13px; }
+.confirm b { font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+@media (max-width: 1100px) {
+  .shell { grid-template-columns: 64px minmax(0, 1fr); }
+  .brand { padding: 16px 14px; } .brand div, .nav h2, .nav a span, .nav .count, .who div, .who button { display: none; }
+  .nav a { justify-content: center; padding: 9px; }
+  .who { justify-content: center; padding: 14px 8px; }
+  .rooms .col-owner, .rooms .col-type { display: none; }
+}
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .rail { display: none; }
+  .page, .topbar { padding-left: 16px; padding-right: 16px; }
+  .panel { width: 100%; }
+  .rooms .col-serial, .rooms .col-hours { display: none; }
+  .specimens .spec { grid-column: span 12; border-left: 0; padding-left: 0; }
+  .row3 { grid-template-columns: 1fr; }
+  .parts { padding: 40px 16px 56px; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail" aria-label="Main">
+    <div class="brand">
+      <img src="assets/nbc-logo.png" alt="National Bank of Cambodia">
+      <div><b>Meeting Rooms</b><span>Admin</span></div>
+    </div>
+    <nav class="nav">
+      <a href="#" aria-current="page"><i data-lucide="door-open"></i><span>Rooms</span><span class="count">57</span></a>
+      <h2>Places</h2>
+      <a href="#"><i data-lucide="landmark"></i><span>Offices</span><span class="count">20</span></a>
+      <a href="#"><i data-lucide="building-2"></i><span>Buildings</span><span class="count">24</span></a>
+      <a href="#"><i data-lucide="layers"></i><span>Floors</span><span class="count">61</span></a>
+      <h2>Catalog</h2>
+      <a href="#"><i data-lucide="tags"></i><span>Room types</span></a>
+      <a href="#"><i data-lucide="projector"></i><span>Equipment</span></a>
+      <h2>Organisation</h2>
+      <a href="#"><i data-lucide="network"></i><span>Departments</span></a>
+      <a href="#"><i data-lucide="git-fork"></i><span>Divisions</span></a>
+      <a href="#"><i data-lucide="briefcase"></i><span>Positions</span></a>
+      <h2>People</h2>
+      <a href="#"><i data-lucide="users"></i><span>Users</span></a>
+      <a href="#"><i data-lucide="shield-check"></i><span>Roles</span></a>
+    </nav>
+    <div class="who">
+      <span class="initials">SA</span>
+      <div><b>System Administrator</b><span>admin@company.com</span></div>
+      <button type="button" aria-label="Sign out"><i data-lucide="log-out"></i></button>
+    </div>
+  </aside>
+
+  <section class="work">
+    <header class="topbar">
+      <div class="path"><span>Meeting Rooms</span><i data-lucide="chevron-right"></i><b>Rooms</b></div>
+      <div class="clock mono"><i data-lucide="clock"></i><span id="clock">Phnom Penh 14:32</span></div>
+    </header>
+
+    <main class="page">
+      <div class="page-head">
+        <h1>Rooms</h1>
+        <span class="serial-count mono" id="serial-count">057 rooms</span>
+        <div class="actions">
+          <button class="btn primary" type="button" id="open-panel"><i data-lucide="plus"></i>New room</button>
+        </div>
+      </div>
+
+      <div class="filters" role="search">
+        <label class="with-icon search">
+          <span class="sr-only">Search rooms</span>
+          <i data-lucide="search"></i>
+          <input class="input" type="search" placeholder="Search name or description" id="search">
+        </label>
+        <label><span class="sr-only">Office</span>
+          <select class="input"><option>All offices</option><option>Head Office</option><option>Siem Reap Branch</option><option>Battambang Branch</option></select>
+        </label>
+        <label><span class="sr-only">Building</span>
+          <select class="input"><option>All buildings</option><option>Building A</option><option>Building B</option></select>
+        </label>
+        <label><span class="sr-only">Floor</span>
+          <select class="input"><option>All floors</option><option>Ground floor</option><option>1st floor</option><option>3rd floor</option></select>
+        </label>
+        <label><span class="sr-only">Room type</span>
+          <select class="input"><option>All types</option><option>Meeting room</option><option>Training room</option><option>Board room</option></select>
+        </label>
+        <div class="segmented" role="group" aria-label="Status">
+          <button type="button" aria-pressed="true">Active</button>
+          <button type="button" aria-pressed="false">Inactive</button>
+          <button type="button" aria-pressed="false">All</button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn quiet" type="button"><i data-lucide="sliders-horizontal"></i>More filters</button>
+      </div>
+
+      <div class="sheet">
+        <div class="table-scroll">
+          <table class="rooms">
+            <caption class="sr-only">Rooms</caption>
+            <thead>
+              <tr>
+                <th class="col-serial" scope="col">Serial</th>
+                <th scope="col"><button type="button">Room <i data-lucide="arrow-up"></i></button></th>
+                <th class="col-type" scope="col">Type</th>
+                <th scope="col">Place</th>
+                <th class="num" scope="col">Seats</th>
+                <th class="col-hours" scope="col">Hours</th>
+                <th class="col-owner" scope="col">Owner</th>
+                <th scope="col">State</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="foot">
+          <span class="mono" id="range">1–20 of 57</span>
+          <label style="display:flex;gap:8px;align-items:center">Rows
+            <select class="input" style="width:auto;height:32px"><option>20</option><option>50</option><option>100</option></select>
+          </label>
+          <nav class="pager" aria-label="Pages">
+            <button type="button" disabled aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+            <button type="button" aria-current="page">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+          </nav>
+        </div>
+      </div>
+    </main>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="panel" id="panel" aria-labelledby="panel-title">
+      <div class="panel-head">
+        <h2 id="panel-title">New room</h2>
+        <span class="serial mono">RM·<span class="prefix">new</span></span>
+        <button class="icon-btn" type="button" id="close-panel" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form class="panel-body" id="room-form" novalidate>
+        <div class="summary" id="summary" role="alert">
+          <i data-lucide="circle-alert"></i>
+          <p><b>2 fields need attention.</b> Fix them and save again.</p>
+        </div>
+
+        <section class="group">
+          <h3>Name</h3>
+          <div class="field">
+            <label for="name-en">English name <span class="hint mono">16/100</span></label>
+            <input class="input" id="name-en" value="Tonle Sap Room" maxlength="100">
+          </div>
+          <div class="field has-error" id="f-name-kh">
+            <label for="name-kh">Khmer name <span class="hint mono">0/100</span></label>
+            <input class="input kh" id="name-kh" placeholder="ឧ. បន្ទប់ទន្លេសាប" maxlength="100" aria-describedby="err-kh">
+            <p class="error" id="err-kh"><i data-lucide="circle-alert"></i>Khmer name: This field is required.</p>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3>Place</h3>
+          <div class="field">
+            <label for="office">Office</label>
+            <select class="input" id="office"><option>Head Office · Phnom Penh</option><option>Siem Reap Branch · Siem Reap</option></select>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="building">Building</label>
+              <select class="input" id="building"><option>Building A</option><option>Building B</option><option disabled>Old Annex (off)</option></select></div>
+            <div class="field"><label for="floor">Floor</label>
+              <select class="input" id="floor"><option>3rd floor</option><option>2nd floor</option><option>1st floor</option><option>Ground floor</option></select></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3>Type, size and hours</h3>
+          <div class="field"><label for="type">Room type</label>
+            <select class="input" id="type"><option>Meeting room</option><option>Training room</option><option>Board room</option></select></div>
+          <div class="row2">
+            <div class="field"><label for="capacity">Seats <span class="hint">1 to 10000</span></label>
+              <input class="input mono" id="capacity" type="number" value="12" min="1" max="10000"></div>
+            <div class="field"><label for="size">Size <span class="hint">optional</span></label>
+              <div class="with-unit"><input class="input mono" id="size" type="number" value="40" min="1"><span>m²</span></div></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="opens">Opens</label>
+              <input class="input mono" id="opens" type="time" value="08:00"></div>
+            <div class="field has-error" id="f-closes"><label for="closes">Closes</label>
+              <input class="input mono" id="closes" type="time" value="07:30" aria-describedby="err-closes">
+              <p class="error" id="err-closes"><i data-lucide="circle-alert"></i>Opening time must be before closing time.</p></div>
+          </div>
+          <p class="hint" style="margin:0;font-size:12px;color:var(--intaglio)">Cambodia time, the same every day.</p>
+        </section>
+
+        <section class="group">
+          <h3>Owner and access</h3>
+          <div class="field"><label for="owner">Room owner <span class="hint">optional</span></label>
+            <select class="input" id="owner"><option>No owner</option><option selected>Sok Dara · Room owner</option><option>Chea Lina · Room owner</option></select></div>
+          <div class="field"><label for="door">Door code <span class="hint">shown only on request</span></label>
+            <input class="input mono" id="door" type="password" value="4821#" autocomplete="off"></div>
+          <label class="switch"><span><b style="font-weight:500">Private room</b><br><span style="font-size:12px;color:var(--intaglio)">A label only. Everyone can still book it.</span></span>
+            <input type="checkbox" role="switch" id="private"></label>
+        </section>
+
+        <section class="group">
+          <h3>Description</h3>
+          <div class="field"><label for="short">Short description <span class="hint">optional</span></label>
+            <input class="input" id="short" value="Bright room with a river view" maxlength="200"></div>
+          <div class="field"><label for="desc">Description <span class="hint">optional</span></label>
+            <textarea class="input" id="desc" maxlength="1000">Has a 75-inch screen and a whiteboard. Seats 12 around one table.</textarea></div>
+        </section>
+      </form>
+      <div class="panel-foot">
+        <button class="btn quiet" type="button" id="cancel">Cancel</button>
+        <button class="btn primary" type="submit" form="room-form" id="save"><i data-lucide="check"></i>Create room</button>
+      </div>
+    </aside>
+
+    <div class="toast" id="toast" role="status" hidden>
+      <span class="toast-icon"><i data-lucide="circle-check"></i></span>
+      <div><b id="toast-title">Tonle Sap Room saved</b><span class="mono" id="toast-serial">RM·0058 · Head Office › Building A › 3rd floor</span></div>
+    </div>
+  </section>
+</div>
+
+<section class="parts" aria-labelledby="parts-title">
+  <h2 id="parts-title">States and parts</h2>
+  <p>Every screen in the dashboard is built from these. Ornament lives in two places only: the security thread on the active page and the watermark when a list is empty. Saving stays quiet: a short message and a soft tint on the new row.</p>
+
+  <div class="specimens">
+    <div class="spec span-7">
+      <h3>Empty list</h3>
+      <div class="empty">
+        <svg class="watermark" id="watermark" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+        <h4>No rooms match these filters</h4>
+        <p>Siem Reap Branch has no training rooms on the 1st floor yet.</p>
+        <div class="stack"><button class="btn" type="button"><i data-lucide="filter-x"></i>Clear filters</button><button class="btn primary" type="button"><i data-lucide="plus"></i>New room</button></div>
+      </div>
+    </div>
+    <div class="spec span-5">
+      <h3>Loading</h3>
+      <div aria-hidden="true">
+        <div class="skeleton-row"><i></i><i class="tall"></i><i></i><i></i><i></i><i></i></div>
+        <div class="skeleton-row"><i></i><i class="tall"></i><i></i><i></i><i></i><i></i></div>
+        <div class="skeleton-row"><i></i><i class="tall"></i><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <div class="spec span-6 newline">
+      <h3>Buttons</h3>
+      <div class="stack">
+        <button class="btn primary" type="button"><i data-lucide="plus"></i>New room</button>
+        <button class="btn" type="button">Edit</button>
+        <button class="btn quiet" type="button">Cancel</button>
+        <button class="btn danger" type="button"><i data-lucide="power"></i>Turn off</button>
+        <button class="btn" type="button" disabled>Disabled</button>
+        <button class="btn primary busy" type="button"><span class="spin"></span>Saving</button>
+      </div>
+    </div>
+    <div class="spec span-6">
+      <h3>State, by shape</h3>
+      <div class="stack" style="gap:20px">
+        <span class="state active">Active</span>
+        <span class="state off">Inactive</span>
+        <span class="private"><i data-lucide="lock"></i>Private</span>
+        <span class="unbookable"><i data-lucide="calendar-x-2"></i>Not bookable</span>
+      </div>
+    </div>
+
+    <div class="spec span-8 newline">
+      <h3>Fields</h3>
+      <div class="row3" style="display:grid;gap:16px">
+        <div class="field"><label for="s1">Default</label><input class="input" id="s1" placeholder="e.g. Mekong Room"></div>
+        <div class="field has-error"><label for="s2">With an API error</label><input class="input" id="s2" value="Mekong Room"><p class="error"><i data-lucide="circle-alert"></i>This name already exists.</p></div>
+        <div class="field"><label for="s3">Disabled</label><input class="input" id="s3" value="Old Annex" disabled></div>
+      </div>
+    </div>
+    <div class="spec span-4">
+      <h3>Saved</h3>
+      <div class="vstack">
+        <div class="toast" style="position:static;box-shadow:none;border:1px solid var(--rule)">
+          <span class="toast-icon"><i data-lucide="circle-check"></i></span>
+          <div><b>Mekong Room saved</b><span class="mono">RM·0012</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec span-12 newline">
+      <h3>Turning something off</h3>
+      <div class="confirm">
+        <p><b>Turn off Building A?</b> Its 14 rooms stay as they are, but they can't be booked until it is on again.</p>
+        <button class="btn quiet" type="button">Keep on</button>
+        <button class="btn danger" type="button"><i data-lucide="power"></i>Turn off</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+// ---- Demo data: realistic, from the seeded places (not real bookings) ----
+const ROOMS = [
+  { id: 12, en: "Mekong Room", kh: "បន្ទប់មេគង្គ", type: "Meeting room", office: "Head Office", where: "Building A · 3rd floor", seats: 12, hours: "08:00–17:00", owner: "Sok Dara", state: "active" },
+  { id: 13, en: "Bassac Room", kh: "បន្ទប់បាសាក់", type: "Meeting room", office: "Head Office", where: "Building A · 3rd floor", seats: 8, hours: "08:00–17:00", owner: null, state: "active" },
+  { id: 14, en: "Angkor Hall", kh: "សាលអង្គរ", type: "Conference hall", office: "Head Office", where: "Building A · Ground floor", seats: 180, hours: "07:30–18:00", owner: null, state: "active" },
+  { id: 15, en: "Governor's Board Room", kh: "បន្ទប់ក្រុមប្រឹក្សាភិបាល", type: "Board room", office: "Head Office", where: "Building A · 2nd floor", seats: 24, hours: "08:00–17:00", owner: "Chea Lina", state: "active", private: true },
+  { id: 21, en: "Kirirom Room", kh: "បន្ទប់គិរីរម្យ", type: "Training room", office: "Head Office", where: "Building B · 1st floor", seats: 30, hours: "08:00–16:30", owner: null, state: "active" },
+  { id: 22, en: "Bokor Room", kh: "បន្ទប់បូកគោ", type: "Interview room", office: "Head Office", where: "Building B · Ground floor", seats: 4, hours: "08:30–17:00", owner: null, state: "off" },
+  { id: 31, en: "Old Annex Store", kh: "បន្ទប់អគារចាស់", type: "Meeting room", office: "Head Office", where: "Old Annex · Ground floor", seats: 6, hours: "08:00–12:00", owner: null, state: "active", unbookable: true },
+  { id: 41, en: "Siem Reap Training Room", kh: "បន្ទប់បណ្ដុះបណ្ដាលសៀមរាប", type: "Training room", office: "Siem Reap Branch", where: "Main Building · 1st floor", seats: 40, hours: "08:00–17:00", owner: null, state: "active" },
+  { id: 42, en: "Tonle Room", kh: "បន្ទប់ទន្លេ", type: "Video conference room", office: "Siem Reap Branch", where: "Main Building · Ground floor", seats: 10, hours: "08:00–17:00", owner: "Sok Dara", state: "active" },
+  { id: 51, en: "Battambang Meeting Room", kh: "បន្ទប់ប្រជុំបាត់ដំបង", type: "Meeting room", office: "Battambang Branch", where: "Main Building · Ground floor", seats: 14, hours: "08:00–17:00", owner: null, state: "active" },
+];
+
+const serial = (id) => String(id).padStart(4, "0");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function rowHtml(r, extraClass = "") {
+  const state = r.state === "active"
+    ? '<span class="state active">Active</span>'
+    : '<span class="state off">Inactive</span>';
+  const marks = [
+    r.private ? '<span class="private"><i data-lucide="lock"></i>Private</span>' : "",
+    r.unbookable ? '<span class="unbookable"><i data-lucide="calendar-x-2"></i>Not bookable</span>' : "",
+  ].join("");
+  return `<tr class="${r.state === "off" ? "is-off" : ""} ${extraClass}">
+    <td class="col-serial"><span class="serial"><span class="prefix">RM</span>·${serial(r.id)}</span></td>
+    <td><div class="plate"><b>${esc(r.en)}</b><span class="kh">${esc(r.kh)}</span></div></td>
+    <td class="col-type">${esc(r.type)}</td>
+    <td><div class="place"><b>${esc(r.office)}</b><span>${esc(r.where)}</span></div></td>
+    <td class="num mono">${r.seats}</td>
+    <td class="hours col-hours">${r.hours}</td>
+    <td class="col-owner owner ${r.owner ? "" : "none"}">${r.owner ? esc(r.owner) : "No owner"}</td>
+    <td><div class="state-cell">${state}${marks}</div></td>
+    <td class="row-actions"><button class="icon-btn" type="button" aria-label="Actions for ${esc(r.en)}"><i data-lucide="ellipsis"></i></button></td>
+  </tr>`;
+}
+
+const rowsEl = document.getElementById("rows");
+rowsEl.innerHTML = ROOMS.map((r) => rowHtml(r)).join("");
+
+// ---- Guilloche rosette: layered hypotrochoids, strokes only (the banknote seal) ----
+function rosettePaths(radius, rings) {
+  const out = [];
+  rings.forEach(({ R, r, d, turns, phase }) => {
+    const pts = [];
+    const steps = 720 * turns;
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * Math.PI * 2 * turns + phase;
+      const x = (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t);
+      const y = (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t);
+      pts.push([x * radius, y * radius]);
+    }
+    out.push("M" + pts.map((p) => p[0].toFixed(2) + " " + p[1].toFixed(2)).join("L"));
+  });
+  return out;
+}
+function drawSeal(svg, scale, { animate = false, ring = true } = {}) {
+  const paths = rosettePaths(scale, [
+    { R: 1, r: 0.36, d: 0.52, turns: 9, phase: 0 },
+    { R: 1, r: 0.24, d: 0.3, turns: 6, phase: 0.2 },
+  ]);
+  svg.innerHTML = (ring ? `<path class="ring" d="M0 -46 A46 46 0 1 1 -0.01 -46"/>` : "") + paths.map((d) => `<path d="${d}"/>`).join("");
+  if (animate) {
+    svg.classList.remove("drawing");
+    svg.querySelectorAll("path").forEach((p) => {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+    });
+    void svg.getBoundingClientRect();
+    svg.classList.add("drawing");
+  }
+}
+drawSeal(document.getElementById("watermark"), 46, { ring: false });
+
+// ---- Cambodia clock (API sends UTC; people read Phnom Penh time) ----
+function tick() {
+  const t = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Phnom_Penh", hour: "2-digit", minute: "2-digit" }).format(new Date());
+  document.getElementById("clock").textContent = "Phnom Penh " + t;
+}
+tick(); setInterval(tick, 30000);
+
+// ---- Panel: open, close, validate like the API, save with the seal ----
+const panel = document.getElementById("panel"), scrim = document.getElementById("scrim");
+const openPanel = () => { panel.hidden = false; scrim.hidden = false; document.getElementById("name-kh").focus(); };
+const closePanel = () => { panel.hidden = true; scrim.hidden = true; };
+document.getElementById("open-panel").addEventListener("click", openPanel);
+document.getElementById("close-panel").addEventListener("click", closePanel);
+document.getElementById("cancel").addEventListener("click", closePanel);
+scrim.addEventListener("click", closePanel);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closePanel(); });
+
+function setError(fieldId, message) {
+  const f = document.getElementById(fieldId);
+  f.classList.toggle("has-error", !!message);
+  const p = f.querySelector(".error");
+  if (p) p.hidden = !message;
+}
+function validate() {
+  const kh = document.getElementById("name-kh").value.trim();
+  const opens = document.getElementById("opens").value, closes = document.getElementById("closes").value;
+  const problems = [];
+  setError("f-name-kh", kh ? "" : "x"); if (!kh) problems.push("kh");
+  const timeBad = !opens || !closes || opens >= closes;
+  setError("f-closes", timeBad ? "x" : ""); if (timeBad) problems.push("time");
+  const summary = document.getElementById("summary");
+  summary.hidden = problems.length === 0;
+  summary.querySelector("b").textContent = problems.length === 1 ? "1 field needs attention." : `${problems.length} fields need attention.`;
+  document.querySelector('label[for="name-kh"] .hint').textContent = `${kh.length}/100`;
+  return problems.length === 0;
+}
+["name-kh", "opens", "closes"].forEach((id) => document.getElementById(id).addEventListener("input", validate));
+
+let nextId = 58;
+document.getElementById("room-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!validate()) { document.querySelector(".has-error .input")?.focus(); return; }
+  const save = document.getElementById("save");
+  save.classList.add("busy"); save.innerHTML = '<span class="spin"></span>Creating';
+  setTimeout(() => {
+    const room = {
+      id: nextId++, en: document.getElementById("name-en").value.trim() || "New room",
+      kh: document.getElementById("name-kh").value.trim(), type: document.getElementById("type").value,
+      office: "Head Office", where: `${document.getElementById("building").value} · ${document.getElementById("floor").value}`,
+      seats: Number(document.getElementById("capacity").value) || 1,
+      hours: `${document.getElementById("opens").value}–${document.getElementById("closes").value}`,
+      owner: document.getElementById("owner").value.startsWith("No") ? null : document.getElementById("owner").value.split(" · ")[0],
+      state: "active", private: document.getElementById("private").checked,
+    };
+    rowsEl.insertAdjacentHTML("afterbegin", rowHtml(room, "just-saved"));
+    lucide.createIcons();
+    save.classList.remove("busy"); save.innerHTML = '<i data-lucide="check"></i>Create room'; lucide.createIcons();
+    closePanel();
+    document.getElementById("serial-count").textContent = `${String(57 + (nextId - 58)).padStart(3, "0")} rooms`;
+    const toast = document.getElementById("toast");
+    document.getElementById("toast-title").textContent = `${room.en} saved`;
+    document.getElementById("toast-serial").textContent = `RM·${serial(room.id)} · ${room.office} › ${room.where.replace(" · ", " › ")}`;
+    toast.hidden = false;
+    clearTimeout(window.__toast); window.__toast = setTimeout(() => (toast.hidden = true), 4200);
+  }, 650);
+});
+
+lucide.createIcons();
+</script>
+</body>
+</html>

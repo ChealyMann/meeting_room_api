@@ -8,3 +8,9 @@ htmlcov/
 .env
 uploads/
 signatures/
+
+# Design tool session files (screenshots, choice-page logs)
+.impeccable/review/
+.impeccable/questions/
+.impeccable/mocks/
+.superpowers/

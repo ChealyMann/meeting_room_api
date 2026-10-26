@@ -1,0 +1,753 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T01:47:46.922Z",
+  "title": "Design System: NBC Meeting Rooms Admin",
+  "extensions": {
+    "colorMeta": {
+      "rail": {
+        "role": "neutral",
+        "displayName": "Note Crimson Rail",
+        "canonical": "oklch(18.6% 0.053 23.8)",
+        "tonalRamp": [
+          "#1D0202",
+          "#3A1917",
+          "#593432",
+          "#79524F",
+          "#9B716E",
+          "#BD928F",
+          "#E5B7B4",
+          "#FFE8E6"
+        ]
+      },
+      "rail-raised": {
+        "role": "neutral",
+        "displayName": "Rail Raised",
+        "canonical": "oklch(23.9% 0.071 24.3)",
+        "tonalRamp": [
+          "#210000",
+          "#401312",
+          "#602F2D",
+          "#814D4A",
+          "#A46D68",
+          "#C78D89",
+          "#EFB3AE",
+          "#FFE6E3"
+        ]
+      },
+      "rail-line": {
+        "role": "neutral",
+        "displayName": "Rail Line",
+        "canonical": "oklch(28.2% 0.082 24.1)",
+        "tonalRamp": [
+          "#240000",
+          "#440E0F",
+          "#642C2A",
+          "#864A47",
+          "#A96965",
+          "#CD8A85",
+          "#F5B0AA",
+          "#FFE5E1"
+        ]
+      },
+      "rail-ink": {
+        "role": "neutral",
+        "displayName": "Rail Ink",
+        "canonical": "oklch(92.7% 0.020 45.3)",
+        "tonalRamp": [
+          "#120805",
+          "#2C211C",
+          "#493D37",
+          "#685A54",
+          "#887A74",
+          "#AA9B94",
+          "#D0C0BA",
+          "#F5EDE9"
+        ]
+      },
+      "rail-muted": {
+        "role": "neutral",
+        "displayName": "Rail Muted",
+        "canonical": "oklch(76.1% 0.040 36.2)",
+        "tonalRamp": [
+          "#190502",
+          "#351D16",
+          "#533831",
+          "#72564E",
+          "#93756D",
+          "#B6968D",
+          "#DCBCB3",
+          "#FBEAE5"
+        ]
+      },
+      "thread": {
+        "role": "secondary",
+        "displayName": "Security Thread Gold",
+        "canonical": "oklch(78.9% 0.141 86.3)",
+        "tonalRamp": [
+          "#220000",
+          "#401700",
+          "#603500",
+          "#805500",
+          "#A27500",
+          "#C5970B",
+          "#ECBD48",
+          "#FFECB9"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Cream Paper",
+        "canonical": "oklch(97.7% 0.003 67.8)",
+        "tonalRamp": [
+          "#0C0B0A",
+          "#252422",
+          "#413F3E",
+          "#5F5D5C",
+          "#7F7D7B",
+          "#A09E9C",
+          "#C5C4C2",
+          "#EFEEED"
+        ]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet White",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242424",
+          "#404040",
+          "#5D5D5D",
+          "#7D7D7D",
+          "#9E9E9E",
+          "#C4C4C4",
+          "#EEEEEE"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Engraved Hairline",
+        "canonical": "oklch(91.9% 0.010 67.7)",
+        "tonalRamp": [
+          "#0E0A07",
+          "#27231F",
+          "#443F3A",
+          "#625D57",
+          "#827C77",
+          "#A39D98",
+          "#C9C3BD",
+          "#F1EEEB"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "oklch(86.0% 0.015 64.3)",
+        "tonalRamp": [
+          "#100A05",
+          "#29231D",
+          "#453E38",
+          "#645C55",
+          "#847C74",
+          "#A59D95",
+          "#CBC2BA",
+          "#F2EDE9"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(24.1% 0.028 53.7)",
+        "tonalRamp": [
+          "#140802",
+          "#2F2017",
+          "#4C3C32",
+          "#6B5A4F",
+          "#8B796E",
+          "#AD9A8F",
+          "#D3C0B4",
+          "#F6ECE6"
+        ]
+      },
+      "intaglio": {
+        "role": "neutral",
+        "displayName": "Intaglio Brown",
+        "canonical": "oklch(46.0% 0.041 52.4)",
+        "tonalRamp": [
+          "#180600",
+          "#341E10",
+          "#513A2B",
+          "#715748",
+          "#927767",
+          "#B49887",
+          "#DBBDAC",
+          "#FAEBE2"
+        ]
+      },
+      "ink-off": {
+        "role": "neutral",
+        "displayName": "Off Ink",
+        "canonical": "oklch(51.8% 0.037 53.0)",
+        "tonalRamp": [
+          "#170600",
+          "#321F13",
+          "#503A2D",
+          "#6F584A",
+          "#8F7869",
+          "#B2998A",
+          "#D8BEAF",
+          "#F9EBE3"
+        ]
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "Placeholder",
+        "canonical": "oklch(50.5% 0.038 60.8)",
+        "tonalRamp": [
+          "#160700",
+          "#312010",
+          "#4F3B2B",
+          "#6E5948",
+          "#8E7967",
+          "#B09A87",
+          "#D7BFAC",
+          "#F8ECE2"
+        ]
+      },
+      "ink-disabled": {
+        "role": "neutral",
+        "displayName": "Disabled Ink",
+        "canonical": "oklch(57.6% 0.035 54.3)",
+        "tonalRamp": [
+          "#160701",
+          "#311F13",
+          "#4F3B2E",
+          "#6E594B",
+          "#8E786A",
+          "#B0998A",
+          "#D7BFAF",
+          "#F8ECE4"
+        ]
+      },
+      "field-disabled": {
+        "role": "neutral",
+        "displayName": "Disabled Field",
+        "canonical": "oklch(95.4% 0.008 73.7)",
+        "tonalRamp": [
+          "#0D0B08",
+          "#262320",
+          "#423F3B",
+          "#605D59",
+          "#807D78",
+          "#A19E99",
+          "#C7C3BF",
+          "#F0EEEC"
+        ]
+      },
+      "off-ring": {
+        "role": "neutral",
+        "displayName": "Off Ring",
+        "canonical": "oklch(63.9% 0.032 53.7)",
+        "tonalRamp": [
+          "#150701",
+          "#302015",
+          "#4D3B30",
+          "#6C594D",
+          "#8D796C",
+          "#AF9A8C",
+          "#D6BFB1",
+          "#F8ECE5"
+        ]
+      },
+      "crimson": {
+        "role": "primary",
+        "displayName": "Note Crimson",
+        "canonical": "oklch(44.4% 0.161 26.9)",
+        "tonalRamp": [
+          "#370000",
+          "#5B0000",
+          "#800001",
+          "#A52926",
+          "#CB4E46",
+          "#F27166",
+          "#FF978A",
+          "#FFDBD2"
+        ]
+      },
+      "crimson-deep": {
+        "role": "primary",
+        "displayName": "Deep Note Crimson",
+        "canonical": "oklch(39.6% 0.133 25.7)",
+        "tonalRamp": [
+          "#300000",
+          "#530000",
+          "#771316",
+          "#9B3834",
+          "#C05953",
+          "#E57B73",
+          "#FFA197",
+          "#FFDED8"
+        ]
+      },
+      "crimson-wash": {
+        "role": "primary",
+        "displayName": "Crimson Wash",
+        "canonical": "oklch(95.1% 0.012 29.9)",
+        "tonalRamp": [
+          "#100908",
+          "#2A2221",
+          "#463D3C",
+          "#645B5A",
+          "#847B79",
+          "#A69C9A",
+          "#CCC1BF",
+          "#F2EDEC"
+        ]
+      },
+      "danger-line": {
+        "role": "primary",
+        "displayName": "Danger Line",
+        "canonical": "oklch(84.1% 0.038 26.1)",
+        "tonalRamp": [
+          "#180504",
+          "#341D1A",
+          "#523835",
+          "#725652",
+          "#937571",
+          "#B59692",
+          "#DCBBB7",
+          "#FBEAE8"
+        ]
+      },
+      "error-field": {
+        "role": "primary",
+        "displayName": "Error Field",
+        "canonical": "oklch(99.1% 0.004 34.3)",
+        "tonalRamp": [
+          "#0D0A0A",
+          "#262323",
+          "#423F3E",
+          "#605D5C",
+          "#807C7B",
+          "#A19D9C",
+          "#C7C3C2",
+          "#F0EEED"
+        ]
+      },
+      "ok": {
+        "role": "tertiary",
+        "displayName": "Ledger Green",
+        "canonical": "oklch(47.6% 0.094 150.1)",
+        "tonalRamp": [
+          "#001400",
+          "#002F06",
+          "#0B4D23",
+          "#306C40",
+          "#518D5F",
+          "#72AF7F",
+          "#97D6A4",
+          "#D9F8DE"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Lock Amber",
+        "canonical": "oklch(50.1% 0.127 51.7)",
+        "tonalRamp": [
+          "#2D0000",
+          "#4E0000",
+          "#702300",
+          "#934400",
+          "#B7642C",
+          "#DC864F",
+          "#FFAC75",
+          "#FFE3C8"
+        ]
+      },
+      "row-hover": {
+        "role": "neutral",
+        "displayName": "Row Hover",
+        "canonical": "oklch(97.8% 0.007 67.7)",
+        "tonalRamp": [
+          "#0D0B08",
+          "#262321",
+          "#423F3C",
+          "#605D5A",
+          "#807C79",
+          "#A19E9A",
+          "#C7C3BF",
+          "#F0EEEC"
+        ]
+      },
+      "saved-tint": {
+        "role": "neutral",
+        "displayName": "Saved Tint",
+        "canonical": "oklch(96.3% 0.018 70.2)",
+        "tonalRamp": [
+          "#100A04",
+          "#2A231A",
+          "#463E35",
+          "#645C53",
+          "#847C72",
+          "#A69D93",
+          "#CCC2B8",
+          "#F2EEE8"
+        ]
+      },
+      "skeleton": {
+        "role": "neutral",
+        "displayName": "Skeleton",
+        "canonical": "oklch(93.5% 0.012 67.7)",
+        "tonalRamp": [
+          "#0F0A06",
+          "#28231E",
+          "#443F39",
+          "#625C56",
+          "#827C76",
+          "#A49D97",
+          "#CAC3BC",
+          "#F1EEEA"
+        ]
+      },
+      "skeleton-light": {
+        "role": "neutral",
+        "displayName": "Skeleton Light",
+        "canonical": "oklch(96.3% 0.010 72.7)",
+        "tonalRamp": [
+          "#0E0B07",
+          "#27231F",
+          "#433F3A",
+          "#615D58",
+          "#817C77",
+          "#A29E98",
+          "#C8C3BD",
+          "#F0EEEB"
+        ]
+      },
+      "scrim": {
+        "role": "neutral",
+        "displayName": "Scrim",
+        "canonical": "rgba(38, 7, 7, 0.045)",
+        "tonalRamp": []
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title, beside its mono serial count."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Side panel heading."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "Form group headings in the panel."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text and input values."
+      },
+      "body-dense": {
+        "displayName": "Body Dense",
+        "purpose": "Table cells, nav items, buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, field errors, place sub-lines, toast detail, marks."
+      },
+      "label-caps": {
+        "displayName": "Label Caps",
+        "purpose": "Table column headers and nav group labels only (uppercase)."
+      },
+      "khmer": {
+        "displayName": "Khmer",
+        "purpose": "Khmer line of a name plate, intaglio."
+      },
+      "serial": {
+        "displayName": "Serial",
+        "purpose": "Record serials and pager numbers; crimson resource prefix."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Hours, counts, seats, character counters, clock."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "-18px 0 40px rgba(42, 28, 19, 0.12), -2px 0 6px rgba(42, 28, 19, 0.06)",
+        "purpose": "Right side panel cast over the table."
+      },
+      {
+        "name": "toast",
+        "value": "0 8px 20px rgba(42, 28, 19, 0.13), 0 1px 3px rgba(42, 28, 19, 0.10)",
+        "purpose": "Floating saved toast; inline toasts drop it for a hairline border."
+      },
+      {
+        "name": "switch-thumb",
+        "value": "0 1px 2px rgba(42, 28, 19, 0.25)",
+        "purpose": "Switch knob only."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px rgba(153, 27, 27, 0.12)",
+        "purpose": "Focused input, with crimson border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Anything that travels: panel, toast, switch thumb."
+      },
+      {
+        "name": "ease",
+        "value": "ease",
+        "purpose": "Colour and border changes."
+      },
+      {
+        "name": "duration-press",
+        "value": "120ms",
+        "purpose": "Button press nudge, row hover."
+      },
+      {
+        "name": "duration-control",
+        "value": "140ms",
+        "purpose": "Button and input colour/border."
+      },
+      {
+        "name": "duration-switch-track",
+        "value": "160ms",
+        "purpose": "Switch track colour."
+      },
+      {
+        "name": "duration-switch-thumb",
+        "value": "180ms",
+        "purpose": "Switch thumb travel (ease-out-quint)."
+      },
+      {
+        "name": "duration-fade",
+        "value": "200ms",
+        "purpose": "Scrim and toast opacity."
+      },
+      {
+        "name": "duration-toast",
+        "value": "260ms",
+        "purpose": "Toast travel."
+      },
+      {
+        "name": "duration-panel",
+        "value": "280ms",
+        "purpose": "Side panel travel."
+      },
+      {
+        "name": "spinner",
+        "value": "700ms linear infinite",
+        "purpose": "Busy button spinner."
+      },
+      {
+        "name": "shimmer",
+        "value": "1.4s ease-in-out infinite",
+        "purpose": "Skeleton shimmer."
+      },
+      {
+        "name": "saved-tint",
+        "value": "2.4s ease-out",
+        "purpose": "New-row tint fade after save."
+      },
+      {
+        "name": "toast-dwell",
+        "value": "4200ms",
+        "purpose": "Toast auto-dismiss."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "1ms",
+        "purpose": "All durations under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "rail-collapsed",
+        "value": "1100px",
+        "purpose": "max-width: rail to 64px icons; hide Type and Owner columns."
+      },
+      {
+        "name": "narrow",
+        "value": "760px",
+        "purpose": "max-width: rail hidden; 16px padding; full-width panel; hide Serial and Hours; stack three-up fields."
+      }
+    ],
+    "focus": {
+      "outline": "2px solid #991B1B",
+      "outlineOffset": "2px",
+      "radius": "4px",
+      "inputs": "border #991B1B + focus-halo shadow"
+    },
+    "iconography": {
+      "set": "Lucide",
+      "size": "16px",
+      "strokeWidth": 1.75
+    },
+    "notes": [
+      "The 960px shell max-height on docs/design/admin-direction.html is a direction-page device; the real app is a full-height shell (100vh, min 640px)."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a region: New room, Create room.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg viewBox=\"0 0 24 24\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>New room</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #D8CFC7;background:#FFFFFF;color:#2A1C13;font:500 13.5px/1.45 Poppins,'Kantumruy Pro',system-ui,sans-serif;cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease,transform 120ms ease}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-btn[disabled]{opacity:0.45;cursor:not-allowed;transform:none}.ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-btn-primary{background:#991B1B;border-color:#991B1B;color:#FFFFFF}.ds-btn-primary:hover{background:#7F1D1D;border-color:#7F1D1D}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ordinary actions: Edit, Clear filters.",
+      "html": "<button class=\"ds-btn\">Edit</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #D8CFC7;background:#FFFFFF;color:#2A1C13;font:500 13.5px/1.45 Poppins,'Kantumruy Pro',system-ui,sans-serif;cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease,transform 120ms ease}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-btn[disabled]{opacity:0.45;cursor:not-allowed;transform:none}.ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-btn:hover{border-color:#6B5243}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Cancel, Keep on, More filters.",
+      "html": "<button class=\"ds-btn ds-btn-quiet\">Cancel</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #D8CFC7;background:#FFFFFF;color:#2A1C13;font:500 13.5px/1.45 Poppins,'Kantumruy Pro',system-ui,sans-serif;cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease,transform 120ms ease}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-btn[disabled]{opacity:0.45;cursor:not-allowed;transform:none}.ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-btn-quiet{background:transparent;border-color:transparent;color:#6B5243}.ds-btn-quiet:hover{background:#F7ECEA;color:#991B1B}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Turn off. Never delete.",
+      "html": "<button class=\"ds-btn ds-btn-danger\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 2v10\"/><path d=\"M18.4 6.6a9 9 0 1 1-12.77.04\"/></svg>Turn off</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #D8CFC7;background:#FFFFFF;color:#2A1C13;font:500 13.5px/1.45 Poppins,'Kantumruy Pro',system-ui,sans-serif;cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease,transform 120ms ease}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-btn[disabled]{opacity:0.45;cursor:not-allowed;transform:none}.ds-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-btn-danger{color:#991B1B;border-color:#E3C2BE}.ds-btn-danger:hover{background:#F7ECEA;border-color:#991B1B}"
+    },
+    {
+      "name": "Field with API error",
+      "kind": "input",
+      "refersTo": "input-error",
+      "description": "Label with counter, input, and the API message under it.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-k\">Khmer name <span class=\"ds-hint\">0/100</span></label><input class=\"ds-input\" id=\"ds-k\" placeholder=\"e.g. Mekong Room\"><p class=\"ds-error\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 8v4\"/><path d=\"M12 16h.01\"/></svg>This field is required.</p></div>",
+      "css": ".ds-field{display:grid;gap:6px;font-family:Poppins,'Kantumruy Pro',system-ui,sans-serif;max-width:280px}.ds-label{display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:#2A1C13}.ds-hint{font:400 12.5px 'JetBrains Mono',ui-monospace,monospace;color:#6B5243}.ds-input{height:36px;padding:0 10px;border:1px solid #991B1B;border-radius:8px;background:#FFFBFA;color:#2A1C13;font:14px Poppins,system-ui,sans-serif;transition:border-color 140ms ease,box-shadow 140ms ease}.ds-input::placeholder{color:#75604F}.ds-input:focus{outline:none;border-color:#991B1B;box-shadow:0 0 0 3px rgba(153,27,27,0.12)}.ds-error{display:flex;gap:6px;margin:0;font-size:12px;color:#991B1B}.ds-error svg{width:14px;height:14px;margin-top:2px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75}"
+    },
+    {
+      "name": "Rail navigation with security thread",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Crimson rail; the active item carries the windowed gold thread.",
+      "html": "<nav class=\"ds-rail\"><span class=\"ds-group\">Places</span><a class=\"ds-nav\" aria-current=\"page\" href=\"#\"><svg viewBox=\"0 0 24 24\"><path d=\"M13 4h3a2 2 0 0 1 2 2v14\"/><path d=\"M2 20h3\"/><path d=\"M13 20h9\"/><path d=\"M10 12v.01\"/><path d=\"M13 4.56v16.01a.5.5 0 0 1-.6.49L5 19.5V5.6a2 2 0 0 1 1.5-1.9l4-1A2 2 0 0 1 13 4.56Z\"/></svg><span>Rooms</span><span class=\"ds-count\">57</span></a><a class=\"ds-nav\" href=\"#\"><svg viewBox=\"0 0 24 24\"><rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4\"/></svg><span>Buildings</span><span class=\"ds-count\">24</span></a></nav>",
+      "css": ".ds-rail{background:#260707;padding:8px 12px 16px;width:224px;font-family:Poppins,system-ui,sans-serif}.ds-group{display:block;margin:8px 8px 4px;font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#C9A9A0}.ds-nav{position:relative;display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;color:#F3E3DC;text-decoration:none;font-size:13.5px}.ds-nav svg{width:16px;height:16px;fill:none;stroke:#C9A9A0;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-nav:hover{background:rgba(255,255,255,0.05)}.ds-nav:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-nav[aria-current=page]{background:#3A0D0D}.ds-nav[aria-current=page] svg{stroke:#E2B33C}.ds-nav[aria-current=page]::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:1px;background:repeating-linear-gradient(to bottom,#E2B33C 0 5px,transparent 5px 8px)}.ds-count{margin-left:auto;font:11px 'JetBrains Mono',ui-monospace,monospace;color:#C9A9A0}"
+    },
+    {
+      "name": "State marks",
+      "kind": "custom",
+      "refersTo": "table-cell",
+      "description": "State by shape: solid dot, outlined ring, lock line, calendar-x line. Never pills.",
+      "html": "<div class=\"ds-marks\"><span class=\"ds-state ds-on\">Active</span><span class=\"ds-state ds-off\">Inactive</span><span class=\"ds-mark ds-private\"><svg viewBox=\"0 0 24 24\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/></svg>Private</span><span class=\"ds-mark ds-unbook\"><svg viewBox=\"0 0 24 24\"><path d=\"M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8\"/><path d=\"M3 10h18\"/><path d=\"M16 2v4\"/><path d=\"M8 2v4\"/><path d=\"m17 17 4 4\"/><path d=\"m21 17-4 4\"/></svg>Not bookable</span></div>",
+      "css": ".ds-marks{display:flex;gap:20px;align-items:center;font-family:Poppins,system-ui,sans-serif}.ds-state{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#2A1C13}.ds-state::before{content:'';width:8px;height:8px;border-radius:50%;flex:none}.ds-on::before{background:#2F6B3F}.ds-off{color:#7A6355}.ds-off::before{border:1.5px solid #9C877A;width:7px;height:7px}.ds-mark{display:inline-flex;align-items:center;gap:5px;font-size:12px}.ds-mark svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.ds-private{color:#9A4A06}.ds-unbook{color:#7A6355}"
+    },
+    {
+      "name": "Table row with serial and name plate",
+      "kind": "custom",
+      "refersTo": "table-cell",
+      "description": "Open sheet row: mono serial with crimson prefix, English over Khmer, place over sub-line.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Serial</th><th>Room</th><th>Place</th><th class=\"ds-num\">Seats</th><th>Hours</th></tr></thead><tbody><tr><td><span class=\"ds-serial\"><span class=\"ds-prefix\">RM</span>·0012</span></td><td><b class=\"ds-en\">Mekong Room</b><span class=\"ds-kh\">បន្ទប់មេគង្គ</span></td><td><b class=\"ds-office\">Head Office</b><span class=\"ds-sub\">Building A · 3rd floor</span></td><td class=\"ds-num ds-mono\">12</td><td class=\"ds-mono\">08:00–17:00</td></tr></tbody></table>",
+      "css": ".ds-table{border-collapse:collapse;width:100%;font:13.5px/1.45 Poppins,'Kantumruy Pro',system-ui,sans-serif;color:#2A1C13;background:#F9F7F5;border-top:1px solid #D8CFC7}.ds-table th{text-align:left;font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#6B5243;padding:10px 12px;border-bottom:1px solid #D8CFC7}.ds-table td{padding:9px 12px;border-bottom:1px solid #E9E3DD;vertical-align:middle}.ds-table tbody tr{transition:background-color 120ms ease}.ds-table tbody tr:hover{background:#FBF7F3}.ds-serial{font:12px 'JetBrains Mono',ui-monospace,monospace;letter-spacing:0.04em;color:#6B5243;font-variant-numeric:tabular-nums}.ds-prefix{color:#991B1B}.ds-en,.ds-office{display:block}.ds-en{font-weight:500}.ds-office{font-weight:400}.ds-kh{display:block;font:12.5px/1.5 'Kantumruy Pro',Poppins,sans-serif;color:#6B5243}.ds-sub{font-size:12px;color:#6B5243}.ds-num{text-align:right}.ds-mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:12.5px}"
+    },
+    {
+      "name": "Saved toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "The whole save feedback, with the fading row tint. No seal.",
+      "html": "<div class=\"ds-toast\" role=\"status\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><div><b>Mekong Room saved</b><span>RM·0012 · Head Office › Building A › 3rd floor</span></div></div>",
+      "css": ".ds-toast{display:inline-flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;background:#FFFFFF;border-radius:10px;box-shadow:0 8px 20px rgba(42,28,19,0.13),0 1px 3px rgba(42,28,19,0.10);font-family:Poppins,system-ui,sans-serif;color:#2A1C13}.ds-toast svg{width:20px;height:20px;margin-left:4px;fill:none;stroke:#2F6B3F;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}.ds-toast b{display:block;font-weight:500;font-size:13.5px}.ds-toast span{font:12px 'JetBrains Mono',ui-monospace,monospace;color:#6B5243}"
+    },
+    {
+      "name": "Segmented control",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Status filter: Active / Inactive / All.",
+      "html": "<div class=\"ds-seg\" role=\"group\" aria-label=\"Status\"><button aria-pressed=\"true\">Active</button><button aria-pressed=\"false\">Inactive</button><button aria-pressed=\"false\">All</button></div>",
+      "css": ".ds-seg{display:inline-flex;padding:3px;height:36px;border:1px solid #D8CFC7;border-radius:8px;background:#FFFFFF}.ds-seg button{border:0;background:transparent;padding:0 12px;border-radius:6px;font:13px Poppins,system-ui,sans-serif;color:#6B5243;cursor:pointer}.ds-seg button:focus-visible{outline:2px solid #991B1B;outline-offset:2px}.ds-seg button[aria-pressed=true]{background:#F7ECEA;color:#991B1B;font-weight:500}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Riel Security Print",
+    "overview": "Every record is handled like a numbered riel banknote: precise, engraved, verified. A deep note-crimson rail holds the navigation; the work happens on cream paper where tables are open sheets ruled with engraved hairlines, not white cards floating on grey. Secondary text is printed in intaglio brown rather than grey, and every id, time, count and page number is set as a banknote serial in mono with a crimson prefix (RM·0012).\n\nThe system is dense and quiet because the Admin edits many records every day. Ornament is rationed to exactly two places: a windowed gold security thread on the active navigation item, and one guilloche rosette that appears only as a faint watermark behind an empty list. Everything else earns its place by function. Saving is deliberately unceremonious (owner decision, 26 Oct 2026): a toast with a check icon and a soft tint on the new row that fades out.\n\nThe system refuses the default admin kit of floating white cards and coloured pill badges. State is carried by shape, not by colour chips.",
+    "keyCharacteristics": [
+      "Crimson rail, cream paper, white sheet only where something is filled in or floats.",
+      "Single hairline rules (1px) as the only structure; no card boxes around lists.",
+      "Intaglio brown for every secondary line of text.",
+      "Mono serials for ids, times, counts, pager numbers and character counters.",
+      "English name over Khmer name, always both.",
+      "State by shape: solid dot, outlined ring, lock line, calendar-x line.",
+      "Soft shadow only on things that float over the sheet (side panel, toast)."
+    ],
+    "rules": [
+      {
+        "name": "The One Thread Rule",
+        "body": "Gold appears only inside the rail: the active item's thread and icon, and the user initials. It never reaches the paper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brown, Not Grey Rule",
+        "body": "Secondary text is intaglio brown (#6B5243). No neutral greys anywhere; every neutral leans warm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Crimson Means Act-or-Attend Rule",
+        "body": "Crimson marks what the Admin can act on (primary action, focus, current page) or must attend to (errors). It is never a decorative fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Serial Rule",
+        "body": "Ids, times, counts, page numbers and character counters are set in JetBrains Mono with tabular numerals. A record id is always a serial: resource prefix in crimson, a middle dot, four zero-padded digits (RM·0012).",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Names Rule",
+        "body": "A record with both names shows English (500, ink) directly over Khmer (Kantumruy Pro, intaglio). Never one without the other.",
+        "section": "typography"
+      },
+      {
+        "name": "The Open Sheet Rule",
+        "body": "Lists sit directly on the paper, opened by a strong hairline and ruled by engraved hairlines between rows. No card, no box, no rounded container around a table.",
+        "section": "layout"
+      },
+      {
+        "name": "The Overlay-Only Shadow Rule",
+        "body": "If it does not float over the sheet, it has no shadow. Tables, filters, headers and buttons are flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** set every record id as a serial: crimson prefix, middle dot, four zero-padded mono digits (RM·0012).",
+      "**Do** show English over Khmer for every bilingual record.",
+      "**Do** carry state by shape and word: solid dot Active, outlined ring Inactive, lock line Private, calendar-x Not bookable.",
+      "**Do** keep tables as open sheets on the paper, ruled by 1px hairlines.",
+      "**Do** confirm turning something off inline, on the page, with a danger button.",
+      "**Do** show the API's own error text under the field it belongs to, plus a count summary at the top of the panel.",
+      "**Do** confirm a save with the toast and a fading row tint, nothing more.",
+      "**Do** keep the user in the rail foot and the clock in the top bar."
+    ],
+    "donts": [
+      "**Don't** animate a seal, stamp or rosette on save; the guilloche rosette is only the empty-state watermark (owner decision, 26 Oct 2026).",
+      "**Don't** use badges, pills or coloured chips for state.",
+      "**Don't** put card boxes, rounded containers or shadows around tables, filters or lists.",
+      "**Don't** add ornament anywhere except the security thread on the active nav item and the empty-state watermark.",
+      "**Don't** use gold outside the rail.",
+      "**Don't** use double rules or heavier frames; rules are single 1px hairlines (owner decision, 26 Oct 2026).",
+      "**Don't** use neutral greys for secondary text; use intaglio brown.",
+      "**Don't** use emoji; icons are Lucide strokes."
+    ]
+  }
+}

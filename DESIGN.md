@@ -1,0 +1,474 @@
+---
+name: NBC Meeting Rooms Admin
+description: The National Bank of Cambodia's room-booking admin, where every record is handled like a numbered riel banknote.
+colors:
+  rail: "#260707"
+  rail-raised: "#3A0D0D"
+  rail-line: "#4A1414"
+  rail-ink: "#F3E3DC"
+  rail-muted: "#C9A9A0"
+  thread: "#E2B33C"
+  paper: "#F9F7F5"
+  sheet: "#FFFFFF"
+  rule: "#E9E3DD"
+  rule-strong: "#D8CFC7"
+  ink: "#2A1C13"
+  intaglio: "#6B5243"
+  ink-off: "#7A6355"
+  placeholder: "#75604F"
+  ink-disabled: "#8A7466"
+  field-disabled: "#F3EFEA"
+  off-ring: "#9C877A"
+  crimson: "#991B1B"
+  crimson-deep: "#7F1D1D"
+  crimson-wash: "#F7ECEA"
+  danger-line: "#E3C2BE"
+  error-field: "#FFFBFA"
+  ok: "#2F6B3F"
+  warn: "#9A4A06"
+  row-hover: "#FBF7F3"
+  saved-tint: "#FBF1E6"
+  skeleton: "#EFE8E1"
+  skeleton-light: "#F7F2EC"
+  scrim: "rgba(38, 7, 7, 0.045)"
+typography:
+  headline:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "24px"
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: "-0.01em"
+  title:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.45
+  title-sm:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 600
+    lineHeight: 1.45
+  body:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.45
+  body-dense:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "13.5px"
+    fontWeight: 400
+    lineHeight: 1.45
+  label:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 500
+    lineHeight: 1.45
+  caption:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.45
+  label-caps:
+    fontFamily: "Poppins, Kantumruy Pro, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 500
+    lineHeight: 1.45
+    letterSpacing: "0.08em"
+  khmer:
+    fontFamily: "Kantumruy Pro, Poppins, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 400
+    lineHeight: 1.5
+  serial:
+    fontFamily: "JetBrains Mono, ui-monospace, Consolas, monospace"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: "0.04em"
+    fontFeature: "tnum"
+  mono:
+    fontFamily: "JetBrains Mono, ui-monospace, Consolas, monospace"
+    fontSize: "12.5px"
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: "0.02em"
+    fontFeature: "tnum"
+rounded:
+  xs: "4px"
+  sm: "6px"
+  md: "8px"
+  lg: "10px"
+  full: "9999px"
+spacing:
+  xxs: "4px"
+  xs: "8px"
+  sm: "12px"
+  md: "16px"
+  lg: "20px"
+  xl: "24px"
+  2xl: "32px"
+  3xl: "40px"
+  4xl: "56px"
+components:
+  rail:
+    backgroundColor: "{colors.rail}"
+    textColor: "{colors.rail-ink}"
+    width: "248px"
+  nav-item:
+    textColor: "{colors.rail-ink}"
+    typography: "{typography.body-dense}"
+    rounded: "{rounded.sm}"
+    padding: "7px 10px"
+  nav-item-active:
+    backgroundColor: "{colors.rail-raised}"
+    textColor: "{colors.rail-ink}"
+    rounded: "{rounded.sm}"
+    padding: "7px 10px"
+  topbar:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.intaglio}"
+    height: "56px"
+    padding: "0 24px"
+  button-primary:
+    backgroundColor: "{colors.crimson}"
+    textColor: "{colors.sheet}"
+    typography: "{typography.body-dense}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-primary-hover:
+    backgroundColor: "{colors.crimson-deep}"
+    textColor: "{colors.sheet}"
+  button-secondary:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-dense}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-quiet:
+    textColor: "{colors.intaglio}"
+    typography: "{typography.body-dense}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-quiet-hover:
+    backgroundColor: "{colors.crimson-wash}"
+    textColor: "{colors.crimson}"
+  button-danger:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.crimson}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-danger-hover:
+    backgroundColor: "{colors.crimson-wash}"
+    textColor: "{colors.crimson}"
+  icon-button:
+    textColor: "{colors.intaglio}"
+    rounded: "{rounded.sm}"
+    size: "32px"
+  input:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.md}"
+    padding: "0 10px"
+    height: "36px"
+  input-error:
+    backgroundColor: "{colors.error-field}"
+    textColor: "{colors.ink}"
+  input-disabled:
+    backgroundColor: "{colors.field-disabled}"
+    textColor: "{colors.ink-disabled}"
+  segmented:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.intaglio}"
+    rounded: "{rounded.md}"
+    padding: "3px"
+    height: "36px"
+  segmented-active:
+    backgroundColor: "{colors.crimson-wash}"
+    textColor: "{colors.crimson}"
+    rounded: "{rounded.sm}"
+    padding: "0 12px"
+  switch:
+    backgroundColor: "{colors.rule-strong}"
+    rounded: "{rounded.full}"
+    width: "36px"
+    height: "20px"
+  switch-on:
+    backgroundColor: "{colors.crimson}"
+  table-header:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.intaglio}"
+    typography: "{typography.label-caps}"
+    padding: "10px 12px"
+  table-cell:
+    textColor: "{colors.ink}"
+    typography: "{typography.body-dense}"
+    padding: "9px 12px"
+  table-row-hover:
+    backgroundColor: "{colors.row-hover}"
+  serial:
+    textColor: "{colors.intaglio}"
+    typography: "{typography.serial}"
+  pager-item:
+    textColor: "{colors.ink}"
+    typography: "{typography.serial}"
+    rounded: "{rounded.sm}"
+    size: "32px"
+  pager-item-current:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.crimson}"
+  side-panel:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.ink}"
+    width: "440px"
+  panel-foot:
+    backgroundColor: "{colors.paper}"
+    padding: "12px 20px"
+  error-summary:
+    backgroundColor: "{colors.crimson-wash}"
+    textColor: "{colors.crimson}"
+    rounded: "{rounded.md}"
+    padding: "10px 12px"
+  toast:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "10px 16px 10px 10px"
+  inline-confirm:
+    backgroundColor: "{colors.error-field}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "12px 14px"
+---
+
+# Design System: NBC Meeting Rooms Admin
+
+## Overview
+
+**Creative North Star: "The Riel Security Print"**
+
+Every record is handled like a numbered riel banknote: precise, engraved, verified. A deep note-crimson rail holds the navigation; the work happens on cream paper where tables are open sheets ruled with engraved hairlines, not white cards floating on grey. Secondary text is printed in intaglio brown rather than grey, and every id, time, count and page number is set as a banknote serial in mono with a crimson prefix (RM·0012).
+
+The system is dense and quiet because the Admin edits many records every day. Ornament is rationed to exactly two places: a windowed gold security thread on the active navigation item, and one guilloche rosette that appears only as a faint watermark behind an empty list. Everything else earns its place by function. Saving is deliberately unceremonious (owner decision, 26 Oct 2026): a toast with a check icon and a soft tint on the new row that fades out.
+
+The system refuses the default admin kit of floating white cards and coloured pill badges. State is carried by shape, not by colour chips.
+
+**Key Characteristics:**
+- Crimson rail, cream paper, white sheet only where something is filled in or floats.
+- Single hairline rules (1px) as the only structure; no card boxes around lists.
+- Intaglio brown for every secondary line of text.
+- Mono serials for ids, times, counts, pager numbers and character counters.
+- English name over Khmer name, always both.
+- State by shape: solid dot, outlined ring, lock line, calendar-x line.
+- Soft shadow only on things that float over the sheet (side panel, toast).
+
+## Colors
+
+A warm, low-saturation paper-and-ink palette under one deep crimson; gold exists only inside the rail.
+
+### Primary
+- **Note Crimson** (#991B1B): primary buttons, focus ring and focused field border, serial prefixes, field errors and the error summary, the selected segment, the current pager page, quiet-button hover, the switch when on, text selection, and the empty-state watermark (at 7% opacity).
+- **Deep Note Crimson** (#7F1D1D): primary button hover and press.
+- **Crimson Wash** (#F7ECEA): tinted ground for the error summary, selected segment, and quiet/icon/danger button hover.
+- **Danger Line** (#E3C2BE): border of the danger button and of the inline turn-off confirm.
+- **Error Field** (#FFFBFA): ground of a field carrying an API error and of the inline confirm.
+
+### Secondary
+- **Security Thread Gold** (#E2B33C): the dashed thread on the active nav item, the active item's icon, and the user initials in the rail foot. Never on the paper.
+
+### Tertiary
+- **Ledger Green** (#2F6B3F): the solid "active" state dot and the toast's check icon.
+- **Lock Amber** (#9A4A06): the "Private" lock mark.
+
+### Neutral
+- **Note Crimson Rail** (#260707): rail background.
+- **Rail Raised** (#3A0D0D): active nav item ground and the initials disc.
+- **Rail Line** (#4A1414): rail right edge and the hairline above the user foot.
+- **Rail Ink** (#F3E3DC) / **Rail Muted** (#C9A9A0): rail labels / nav group labels, counts, inactive icons, the email line.
+- **Cream Paper** (#F9F7F5): the canvas, top bar, sticky table header, panel footer.
+- **Sheet White** (#FFFFFF): inputs, buttons, side panel, toast, current pager page.
+- **Engraved Hairline** (#E9E3DD): row rules, top bar rule, panel section rules.
+- **Strong Hairline** (#D8CFC7): the sheet's top rule, header underline, paging foot rule, control borders, switch track off, scrollbar thumb.
+- **Ink** (#2A1C13): primary text.
+- **Intaglio Brown** (#6B5243): all secondary text: place lines, Khmer names, serials, hints, table headers, the page path.
+- **Off Ink** (#7A6355): the "Inactive" state label and the "Not bookable" mark; the text tone for anything turned off.
+- **Placeholder** (#75604F): input placeholders.
+- **Disabled Ink** (#8A7466) on **Disabled Field** (#F3EFEA): disabled inputs only.
+- **Off Ring** (#9C877A): the outlined ring of the "Inactive" mark.
+- **Row Hover** (#FBF7F3), **Saved Tint** (#FBF1E6), **Skeleton** (#EFE8E1 to #F7F2EC): row hover, the fading new-row tint, the loading shimmer.
+- **Scrim** (crimson at 4.5%): the barely-there veil behind the side panel.
+
+### Named Rules
+**The One Thread Rule.** Gold appears only inside the rail: the active item's thread and icon, and the user initials. It never reaches the paper.
+
+**The Brown, Not Grey Rule.** Secondary text is intaglio brown (#6B5243). No neutral greys anywhere; every neutral leans warm.
+
+**The Crimson Means Act-or-Attend Rule.** Crimson marks what the Admin can act on (primary action, focus, current page) or must attend to (errors). It is never a decorative fill.
+
+## Typography
+
+**Display/Body Font:** Poppins (with Kantumruy Pro for Khmer glyphs, then system-ui)
+**Khmer Font:** Kantumruy Pro (with Poppins)
+**Label/Mono Font:** JetBrains Mono (with ui-monospace, Consolas), tabular numerals
+
+**Character:** A plain geometric sans for reading and acting, Kantumruy Pro matched to it for Khmer, and a mono that turns every number into a printed serial.
+
+### Hierarchy
+- **Headline** (600, 24px, 1.2, -0.01em): the page title ("Rooms"). Sits on the baseline beside its mono serial count ("057 rooms", zero-padded).
+- **Title** (600, 17px): side panel heading. Empty-state heading uses 600 at 15px.
+- **Title Small** (600, 13px): form group headings inside the panel.
+- **Body** (400, 14px, 1.45): base text and input values.
+- **Body Dense** (400, 13.5px): table cells, nav items, buttons, toast title (500).
+- **Label** (500, 12.5px): field labels; the right-hand hint inside the label is 400 intaglio.
+- **Caption** (400, 12px): hints, field errors, place sub-lines, toast detail, private/not-bookable marks.
+- **Label Caps** (500, 11px, 0.08em, uppercase): table column headers and nav group labels only.
+- **Khmer** (Kantumruy Pro 400, 12.5px, 1.5): the Khmer line of a name plate, in intaglio.
+- **Serial** (JetBrains Mono 400, 12px, 0.04em, tabular): record serials, pager numbers. Hours use mono at 12.5px; counts, seats, character counters and the clock use mono at inherited size.
+
+### Named Rules
+**The Serial Rule.** Ids, times, counts, page numbers and character counters are set in JetBrains Mono with tabular numerals. A record id is always a serial: resource prefix in crimson, a middle dot, four zero-padded digits (RM·0012).
+
+**The Two Names Rule.** A record with both names shows English (500, ink) directly over Khmer (Kantumruy Pro, intaglio). Never one without the other.
+
+## Layout
+
+The shell is a two-column grid: a 248px rail and a fluid work column. The work column stacks a 56px top bar (page path on the left, Phnom Penh clock on the right), then the page with 24px side padding: headline row, one filter row (20px above, 16px below), and the sheet, which fills the remaining height and scrolls internally while its header stays sticky and the paging foot stays pinned.
+
+Spacing snaps to an 8px module with a 4px half-step (4, 8, 12, 16, 20, 24, 32, 40, 56). Control internals tighten off-module for density (nav item 7px/10px, cell 9px/12px, button 14px side padding); those are component values, not new steps.
+
+The side panel is 440px, anchored to the right edge under the top bar, over a faint scrim; the table stays visible beside it. Panel body: 16px/20px padding, groups 20px apart, fields 12px apart, two- and three-up field rows on a 12px gap.
+
+The real app is a full-height shell (100vh, min 640px). The 960px max-height on the direction page exists only so the "States and parts" section can follow it; it is not a system rule.
+
+**Responsive:**
+- **At or below 1100px:** the rail collapses to 64px icons only (brand text, group labels, nav labels, counts and the user's name/sign-out hide); the Type and Owner columns hide.
+- **At or below 760px:** the rail hides; page and top bar padding drop to 16px; the side panel goes full width; the Serial and Hours columns hide; three-up field rows stack.
+
+### Named Rules
+**The Open Sheet Rule.** Lists sit directly on the paper, opened by a strong hairline and ruled by engraved hairlines between rows. No card, no box, no rounded container around a table.
+
+## Elevation & Depth
+
+Flat by default; depth comes from hairlines and the paper/sheet tone step. Shadows appear only on surfaces that float above the sheet. The owner kept the soft panel shadow and single hairline rules (26 Oct 2026).
+
+### Shadow Vocabulary
+- **Panel** (`box-shadow: -18px 0 40px rgba(42, 28, 19, 0.12), -2px 0 6px rgba(42, 28, 19, 0.06)`): the right side panel, cast leftward over the table.
+- **Toast** (`box-shadow: 0 8px 20px rgba(42, 28, 19, 0.13), 0 1px 3px rgba(42, 28, 19, 0.10)`): the floating saved toast. An inline toast (inside a layout) drops the shadow and takes a hairline border.
+- **Switch thumb** (`box-shadow: 0 1px 2px rgba(42, 28, 19, 0.25)`): the switch knob only.
+- **Focus halo** (`box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.12)`): focused inputs.
+
+### Named Rules
+**The Overlay-Only Shadow Rule.** If it does not float over the sheet, it has no shadow. Tables, filters, headers and buttons are flat.
+
+## Shapes
+
+Gently softened, never pill-shaped except where the form is a switch or avatar. Buttons, inputs, the segmented control, the error summary and the inline confirm share an 8px corner; nav items, icon buttons, pager buttons and segment chips use 6px; the toast 10px; skeleton bars and the focus ring 4px; the switch track and initials disc are full rounds. All borders are 1px; the only thicker strokes are the 2px focus outline and the 1.5px inactive ring. Icons are Lucide strokes at 16px, stroke 1.75 (12px in table headers, 13px in marks, 14px in field errors, 20px in the toast).
+
+## Components
+
+### Rail and Navigation
+Crimson, quiet, one point of gold.
+- **Rail:** #260707 ground, 1px rail-line right edge. Brand block (36px logo, "Meeting Rooms" 600 14px over "Admin" 12px muted) at 20px padding. User foot at the bottom: 32px initials disc (rail-raised, gold initials), name 500 13px, email 12px muted, sign-out icon button; separated by a rail-line hairline.
+- **Group labels:** label-caps in rail-muted, 16px above, 4px below.
+- **Nav item:** 13.5px rail-ink, muted 16px icon, optional mono count right-aligned in muted. Hover: white at 5%. 
+- **Active item:** rail-raised ground, gold icon, and the **security thread**: a 1px vertical line at the item's left edge, inset 6px top and bottom, drawn as gold dashes (5px gold, 3px gap). Mark with `aria-current="page"`.
+- **Collapsed (1100px):** 64px, icons centred at 9px padding.
+
+### Top Bar
+56px, paper ground, engraved hairline beneath, 24px side padding. Left: page path in 13px intaglio with a chevron, current page in ink 500. Right: mono clock "Phnom Penh 14:32" in 12px intaglio with a clock icon (API time is UTC; people read Cambodia time). The user lives in the rail foot, not the top bar.
+
+### Buttons
+- **Shape:** 36px tall, 8px corner, 14px side padding, 8px icon gap, 13.5px 500.
+- **Primary:** crimson ground and border, white text and icon; hover deep crimson. One per view region (page head, panel foot).
+- **Secondary:** sheet ground, strong-hairline border, ink text; hover darkens the border to intaglio.
+- **Quiet:** transparent, intaglio text; hover crimson wash with crimson text. Used for Cancel, Keep on, More filters.
+- **Danger:** sheet ground, danger-line border, crimson text, power icon; hover crimson wash with crimson border. Used for Turn off, never for delete.
+- **Disabled:** 45% opacity, not-allowed cursor, no press motion.
+- **Busy:** pointer events off, label changes to the verb in progress ("Saving", "Creating") with a 14px spinner (1.5px ring, white on the primary).
+- **Press:** 1px downward nudge (120ms).
+- **Icon button:** 32px square, 6px corner, intaglio icon; hover crimson wash and crimson icon.
+
+### Inputs / Fields
+- **Field:** label (12.5px 500) over control, 6px gap; optional hint right-aligned inside the label row (counter in mono "16/100", or "optional", "shown only on request").
+- **Input / select / textarea:** 36px tall (textarea min 72px, 8px/10px padding, vertical resize), sheet ground, strong-hairline border, 8px corner, 10px padding. Select uses a drawn Lucide chevron at 10px from the right. Leading icon variant pads to 34px; unit suffix variant (m²) pads right to 40px.
+- **Hover:** border to intaglio. **Focus:** crimson border plus 3px crimson halo at 12%.
+- **Error:** crimson border, error-field ground, and below it a 12px crimson message with a 14px alert icon, wired by `aria-describedby`. Messages are the API's own words.
+- **Disabled:** disabled-field ground, disabled ink, engraved-hairline border.
+- **Numbers, times, codes** in fields use mono. Door codes are a password field.
+
+### Segmented Control
+36px, sheet ground, strong-hairline border, 8px corner, 3px inset. Segments are 13px intaglio buttons with `aria-pressed`; the pressed segment takes crimson wash, crimson text, 500 weight, 6px corner.
+
+### Switch
+36 x 20px track (strong hairline off, crimson on), 16px white thumb with the thumb shadow, travels 16px. Label sits left with an optional 12px intaglio explanation beneath; `role="switch"`.
+
+### Table
+- **Header:** sticky, paper ground, label-caps intaglio, 10px/12px padding, strong-hairline underline. Sortable headers are bare buttons with a 12px arrow.
+- **Rows:** 13.5px, 9px/12px padding, engraved hairline between rows, vertical middle. Hover: row-hover tint (120ms).
+- **Serial column:** serial typography, intaglio, crimson resource prefix.
+- **Name plate:** English 500 ink over Khmer 12.5px intaglio.
+- **Place:** office 400 over the "Building · Floor" line in 12px intaglio.
+- **Numbers** right-aligned in mono; **hours** in mono 12.5px as "08:00–17:00".
+- **No owner:** the words "No owner", in the off tone.
+- **State cell:** a column of marks, 3px apart. Active: 8px solid ledger-green dot plus "Active". Inactive: 7px ring, 1.5px off-ring stroke, plus "Inactive" in off ink. Private: 13px lock line plus "Private" in lock amber. Not bookable: 13px calendar-x line plus "Not bookable" in off ink.
+- **Inactive row:** all cells except state and actions drop to the off tone.
+- **Row actions:** a 48px column holding one ellipsis icon button.
+
+### Paging Foot
+Strong hairline above, 12px/16px padding, 13px intaglio. Left: mono range "1–20 of 57" and a "Rows" select (32px tall). Right: pager of 32px mono buttons, 6px corner, transparent until hover (strong hairline). Current page: crimson border and text on sheet. Disabled arrows fade and keep a not-allowed cursor.
+
+### Side Panel
+440px, sheet ground, panel shadow, engraved hairline on its left edge, over the scrim. Head: 17px title, mono serial ("RM·new" for a new record), close icon button; hairline below. Body scrolls; groups are titled (13px 600) and separated by engraved hairlines. Foot: paper ground, hairline above, actions right-aligned (quiet Cancel, primary verb). Escape and the scrim close it. Opening moves focus to the first field that needs attention.
+
+### Error Summary
+At the top of the panel body, `role="alert"`: crimson wash, 8px corner, 10px/12px padding, alert icon, crimson bold count ("2 fields need attention.") followed by ink instruction ("Fix them and save again.").
+
+### Toast
+`role="status"`, bottom-right 24px, sheet ground, 10px corner, toast shadow, 12px gap. A 20px ledger-green circle-check icon, then the title (13.5px 500, "Mekong Room saved") over a mono intaglio detail line with the serial and place path ("RM·0058 · Head Office › Building A › 3rd floor"). Dismisses after about 4 seconds.
+
+### Saved Row
+The newly saved row enters at the top of the table with the saved tint, which fades to transparent over 2.4s ease-out. This and the toast are the entire save feedback.
+
+### Empty State
+Between two engraved hairlines, centred, 40px vertical padding. Behind it, the guilloche rosette watermark: 240px, two layered hypotrochoid strokes (0.5 stroke), no ring, crimson at 7% opacity. Heading 15px 600, a 13px intaglio sentence that names the actual filters (max 40ch), then actions: secondary "Clear filters" and primary create.
+
+### Loading Skeleton
+Rows that match the table's column grid, 14px vertical padding, engraved hairline between. Bars are 10px tall (22px for the name plate column), 4px corner, a skeleton-to-light shimmer over 1.4s. Hidden from assistive tech.
+
+### Inline Confirm
+Turning something off is confirmed on the page, not in a modal: a row with danger-line border, 8px corner, error-field ground, 12px/14px padding. Bold question ("Turn off Building A?") plus the plain consequence, then quiet "Keep on" and danger "Turn off".
+
+### Motion
+Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (panel 280ms, toast 260ms, switch thumb 180ms); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
+
+### Accessibility
+- Global focus: 2px crimson outline, 2px offset, 4px corner. Inputs replace it with the crimson border and halo.
+- Contrast on paper and sheet: ink 15.4:1, intaglio 6.8:1, crimson 8.3:1, off ink 5.6:1, lock amber 6.3:1, ledger green 6.4:1. In the rail: rail-ink 13.5:1 and gold 8.6:1 on the active ground, rail-muted 8.7:1.
+- State never relies on colour alone: each mark has a distinct shape and a word.
+- Field errors are tied to inputs with `aria-describedby`; the summary is an alert; the toast is a status.
+
+## Do's and Don'ts
+
+### Do:
+- **Do** set every record id as a serial: crimson prefix, middle dot, four zero-padded mono digits (RM·0012).
+- **Do** show English over Khmer for every bilingual record.
+- **Do** carry state by shape and word: solid dot Active, outlined ring Inactive, lock line Private, calendar-x Not bookable.
+- **Do** keep tables as open sheets on the paper, ruled by 1px hairlines.
+- **Do** confirm turning something off inline, on the page, with a danger button.
+- **Do** show the API's own error text under the field it belongs to, plus a count summary at the top of the panel.
+- **Do** confirm a save with the toast and a fading row tint, nothing more.
+- **Do** keep the user in the rail foot and the clock in the top bar.
+
+### Don't:
+- **Don't** animate a seal, stamp or rosette on save; the guilloche rosette is only the empty-state watermark (owner decision, 26 Oct 2026).
+- **Don't** use badges, pills or coloured chips for state.
+- **Don't** put card boxes, rounded containers or shadows around tables, filters or lists.
+- **Don't** add ornament anywhere except the security thread on the active nav item and the empty-state watermark.
+- **Don't** use gold outside the rail.
+- **Don't** use double rules or heavier frames; rules are single 1px hairlines (owner decision, 26 Oct 2026).
+- **Don't** use neutral greys for secondary text; use intaglio brown.
+- **Don't** use emoji; icons are Lucide strokes.
