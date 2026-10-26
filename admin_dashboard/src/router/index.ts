@@ -41,7 +41,7 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: () => import('../views/HomeView.vue'),
+          component: () => import('../views/RoomsView.vue'),
           meta: { title: 'Rooms' },
         },
         {
