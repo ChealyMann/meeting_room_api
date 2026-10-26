@@ -157,17 +157,25 @@ h2 {
   background: var(--color-paper);
 }
 
-.panel-enter-active,
+/* The same drawer curve as the sidebar fold: it opens with a soft glide and closes a little
+   faster, so it gets out of the way. The scrim keeps pace with it. */
+.panel-enter-active {
+  transition: transform 340ms var(--ease-drawer);
+  will-change: transform;
+}
 .panel-leave-active {
-  transition: transform 280ms var(--ease-out-quint);
+  transition: transform 240ms var(--ease-drawer);
+  will-change: transform;
 }
 .panel-enter-from,
 .panel-leave-to {
   transform: translateX(100%);
 }
-.scrim-enter-active,
+.scrim-enter-active {
+  transition: opacity 340ms var(--ease-drawer);
+}
 .scrim-leave-active {
-  transition: opacity 200ms ease;
+  transition: opacity 240ms var(--ease-drawer);
 }
 .scrim-enter-from,
 .scrim-leave-to {
