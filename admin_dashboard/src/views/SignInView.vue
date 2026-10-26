@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleAlert } from 'lucide-vue-next'
+import { ArrowRight, CircleAlert } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -19,6 +19,8 @@ const { errors, formMessage, apply, clear } = useFieldErrors()
 
 const email = ref('')
 const password = ref('')
+// There is no self-service reset: an Admin sets a new temporary password.
+const forgotOpen = ref(false)
 const busy = ref(false)
 
 function waitMessage(seconds: number): string {
@@ -52,7 +54,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFrame title="Sign in">
+  <AuthFrame title="Sign in" subtitle="Continue to the meeting rooms dashboard">
     <form class="form" novalidate @submit.prevent="submit">
       <div v-if="formMessage" class="summary" role="alert">
         <CircleAlert aria-hidden="true" />
@@ -68,6 +70,7 @@ async function submit() {
             type="email"
             autocomplete="username"
             inputmode="email"
+            placeholder="name@nbc.gov.kh"
             spellcheck="false"
             :aria-describedby="describedBy"
             :aria-invalid="invalid || undefined"
@@ -75,20 +78,37 @@ async function submit() {
         </template>
       </BaseField>
 
-      <BaseField id="password" label="Password" :error="errors.password">
-        <template #default="{ describedBy, invalid }">
-          <PasswordInput
-            id="password"
-            v-model="password"
-            autocomplete="current-password"
-            :described-by="describedBy"
-            :invalid="invalid"
-          />
-        </template>
-      </BaseField>
+      <div class="password-field">
+        <BaseField id="password" label="Password" :error="errors.password">
+          <template #default="{ describedBy, invalid }">
+            <PasswordInput
+              id="password"
+              v-model="password"
+              autocomplete="current-password"
+              placeholder="Enter your password"
+              :described-by="describedBy"
+              :invalid="invalid"
+            />
+          </template>
+        </BaseField>
+        <button
+          type="button"
+          class="forgot"
+          aria-controls="forgot-note"
+          :aria-expanded="forgotOpen"
+          @click="forgotOpen = !forgotOpen"
+        >
+          Forgot password?
+        </button>
+        <p v-if="forgotOpen" id="forgot-note" class="forgot-note">
+          Ask an administrator to reset your password. You will get a temporary one and choose
+          your own when you sign in.
+        </p>
+      </div>
 
       <BaseButton variant="primary" type="submit" :busy="busy" class="submit">
         {{ busy ? 'Signing in' : 'Sign in' }}
+        <ArrowRight v-if="!busy" aria-hidden="true" />
       </BaseButton>
     </form>
   </AuthFrame>
@@ -99,8 +119,36 @@ async function submit() {
   display: grid;
   gap: 16px;
 }
+.password-field {
+  position: relative;
+}
+/* Sits on the label row, at the right. */
+.forgot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12.5px;
+  color: var(--color-intaglio);
+  cursor: pointer;
+}
+.forgot:hover {
+  color: var(--color-crimson);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.forgot-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-crimson-wash);
+  font-size: 12.5px;
+  color: var(--color-ink);
+}
 .submit {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 </style>

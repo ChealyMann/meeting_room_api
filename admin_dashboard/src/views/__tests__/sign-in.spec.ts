@@ -160,6 +160,21 @@ describe('SignInView', () => {
   })
 })
 
+describe('SignInView forgot password', () => {
+  it('says who resets a password, without calling the API', async () => {
+    const { wrapper, session } = await mountSignIn()
+    const signIn = vi.spyOn(session, 'signIn')
+    const link = wrapper.get('button.forgot')
+    expect(link.attributes('aria-expanded')).toBe('false')
+
+    await link.trigger('click')
+
+    expect(link.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('#forgot-note').text()).toContain('Ask an administrator to reset your password.')
+    expect(signIn).not.toHaveBeenCalled()
+  })
+})
+
 describe('NoAccessView', () => {
   it('says the user has no access and signs out', async () => {
     const router = makeRouter()

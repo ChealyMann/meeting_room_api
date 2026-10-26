@@ -5,6 +5,7 @@ import { ref } from 'vue'
 defineProps<{
   id: string
   autocomplete: 'current-password' | 'new-password'
+  placeholder?: string
   describedBy?: string
   invalid?: boolean
 }>()
@@ -21,6 +22,7 @@ const visible = ref(false)
       class="input"
       :type="visible ? 'text' : 'password'"
       :autocomplete="autocomplete"
+      :placeholder="placeholder"
       spellcheck="false"
       :aria-describedby="describedBy"
       :aria-invalid="invalid || undefined"
