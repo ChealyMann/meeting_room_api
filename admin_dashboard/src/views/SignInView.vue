@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { CircleAlert, Eye, EyeOff } from 'lucide-vue-next'
+import { CircleAlert } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '../api/errors'
 import BaseButton from '../components/base/BaseButton.vue'
 import BaseField from '../components/base/BaseField.vue'
+import PasswordInput from '../components/base/PasswordInput.vue'
 import { useFieldErrors } from '../composables/useFieldErrors'
 import AuthFrame from '../layouts/AuthFrame.vue'
 import { useSessionStore } from '../stores/session'
@@ -18,7 +19,6 @@ const { errors, formMessage, apply, clear } = useFieldErrors()
 
 const email = ref('')
 const password = ref('')
-const showPassword = ref(false)
 const busy = ref(false)
 
 function waitMessage(seconds: number): string {
@@ -77,27 +77,13 @@ async function submit() {
 
       <BaseField id="password" label="Password" :error="errors.password">
         <template #default="{ describedBy, invalid }">
-          <div class="with-toggle">
-            <input
-              id="password"
-              v-model="password"
-              class="input"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              :aria-describedby="describedBy"
-              :aria-invalid="invalid || undefined"
-            />
-            <button
-              type="button"
-              class="icon-btn toggle"
-              aria-label="Show password"
-              :aria-pressed="showPassword"
-              @click="showPassword = !showPassword"
-            >
-              <EyeOff v-if="showPassword" aria-hidden="true" />
-              <Eye v-else aria-hidden="true" />
-            </button>
-          </div>
+          <PasswordInput
+            id="password"
+            v-model="password"
+            autocomplete="current-password"
+            :described-by="describedBy"
+            :invalid="invalid"
+          />
         </template>
       </BaseField>
 
@@ -112,17 +98,6 @@ async function submit() {
 .form {
   display: grid;
   gap: 16px;
-}
-.with-toggle {
-  position: relative;
-}
-.with-toggle .input {
-  padding-right: 40px;
-}
-.toggle {
-  position: absolute;
-  top: 2px;
-  right: 2px;
 }
 .submit {
   width: 100%;
