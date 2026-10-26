@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -53,6 +53,8 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
+enableAutoUnmount(afterEach)
+
 beforeEach(() => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
@@ -75,6 +77,8 @@ beforeEach(() => {
           return json(page(FLOORS[q.get('building_id') ?? ''] ?? []))
         case '/api/v1/categories':
           return json(page(TYPES))
+        case '/api/v1/rooms/12':
+          return json({ ...room(12), description: null, photos: [], equipment: [], created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' })
         default:
           return json(page([]))
       }
@@ -208,5 +212,30 @@ describe('RoomsView list', () => {
     await flushPromises()
 
     expect(query(router)).toEqual({ search: 'mek' })
+  })
+})
+
+describe('RoomsView panels', () => {
+  it('opens a room from the address, edits it and closes it', async () => {
+    const { router } = await mountAt('/?room=12')
+    const panel = () => document.body.querySelector('[role="dialog"]')
+
+    expect(panel()?.textContent).toContain('បន្ទប់មេគង្គ')
+    ;[...document.body.querySelectorAll('[role="dialog"] button')]
+      .find((b) => b.textContent?.trim() === 'Edit')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPromises()
+    expect(query(router)).toMatchObject({ room: '12', edit: '1' })
+    expect(document.body.querySelector('#name_en')).not.toBeNull()
+
+    ;(document.body.querySelector('[role="dialog"] button[aria-label="Close"]') as HTMLElement).click()
+    await flushPromises()
+    expect(query(router)).toEqual({})
+  })
+
+  it('opens the create form for room=new', async () => {
+    await mountAt('/?room=new')
+
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('New room')
   })
 })

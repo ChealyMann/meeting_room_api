@@ -7,14 +7,16 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../api'
 import { ApiError } from '../api/errors'
-import { listRooms, type RoomFilters as RoomFilterParams } from '../api/rooms'
-import type { Page, RoomListItem } from '../api/types'
+import { getRoom, listRooms, type RoomFilters as RoomFilterParams } from '../api/rooms'
+import type { Page, RoomDetail, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { useListQuery } from '../composables/useListQuery'
+import RoomDetailPanel, { type RoomStep } from './rooms/RoomDetailPanel.vue'
 import RoomFilters from './rooms/RoomFilters.vue'
+import RoomFormPanel from './rooms/RoomFormPanel.vue'
 import { ROOM_FILTERS } from './rooms/roomFilters'
 import RoomsTable from './rooms/RoomsTable.vue'
 
@@ -49,8 +51,56 @@ const total = computed(() => result.value?.total ?? 0)
 const count = computed(() => `${String(total.value).padStart(3, '0')} ${total.value === 1 ? 'room' : 'rooms'}`)
 const filtered = computed(() => Object.keys(list.filters.value).length > 0 || list.status.value !== 'active')
 
+// ---- Panels: the open room lives in the address (?room=12, ?room=12&edit=1, ?room=new) ----
+const PANEL_KEYS = ['room', 'edit', 'step']
+const one = (value: unknown) => (Array.isArray(value) ? value[0] : value) as string | undefined
+const roomParam = computed(() => one(route.query.room))
+const roomId = computed(() => (/^\d+$/.test(roomParam.value ?? '') ? Number(roomParam.value) : null))
+const editing = computed(() => roomId.value !== null && one(route.query.edit) === '1')
+const step = computed(() => {
+  const value = one(route.query.step)
+  return value === 'photos' || value === 'equipment' ? (value as RoomStep) : undefined
+})
+
+function panelQuery(changes: Record<string, string | undefined>) {
+  const query: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (!PANEL_KEYS.includes(key)) query[key] = value
+  }
+  for (const [key, value] of Object.entries(changes)) {
+    if (value !== undefined) query[key] = value
+  }
+  return query as Record<string, string>
+}
+
 function open(id: number | 'new') {
-  void router.push({ query: { ...route.query, room: String(id) } })
+  void router.push({ query: panelQuery({ room: String(id) }) })
+}
+function closePanel() {
+  void router.push({ query: panelQuery({}) })
+}
+function startEdit() {
+  void router.push({ query: panelQuery({ room: String(roomId.value), edit: '1' }) })
+}
+
+// The edit form needs the full room; load it here so a reload on ?edit=1 works too.
+const editRoom = ref<RoomDetail | null>(null)
+watch(
+  [roomId, editing],
+  async ([id, edit]) => {
+    editRoom.value = null
+    if (id !== null && edit) editRoom.value = await getRoom(api, id)
+  },
+  { immediate: true },
+)
+
+async function onCreated(room: RoomDetail) {
+  void router.push({ query: panelQuery({ room: String(room.id) }) })
+  await refresh(room.id)
+}
+async function onEdited(room: RoomDetail) {
+  void router.push({ query: panelQuery({ room: String(room.id) }) })
+  await refresh(room.id)
 }
 
 /** After a save in a panel: reload the list and tint the saved row. */
@@ -103,6 +153,24 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
         <RoomsTable :rooms="result.items" :saved-id="savedId" @open="open" />
       </div>
     </div>
+
+    <RoomFormPanel v-if="roomParam === 'new'" :room="null" @saved="onCreated" @close="closePanel" />
+    <RoomFormPanel
+      v-else-if="editing && editRoom"
+      :key="`edit-${editRoom.id}`"
+      :room="editRoom"
+      @saved="onEdited"
+      @close="closePanel"
+    />
+    <RoomDetailPanel
+      v-else-if="roomId !== null && !editing"
+      :key="`room-${roomId}`"
+      :room-id="roomId"
+      :step="step"
+      @edit="startEdit"
+      @changed="refresh($event.id)"
+      @close="closePanel"
+    />
 
     <PagingFoot
       v-if="result && total > 0"
