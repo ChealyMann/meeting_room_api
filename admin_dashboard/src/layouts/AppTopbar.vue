@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Clock, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-vue-next'
+import { ChevronRight, Clock, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -40,8 +40,8 @@ onBeforeUnmount(() => clearInterval(timer))
       :aria-pressed="ui.railCollapsed"
       @click="ui.toggleRail()"
     >
-      <PanelLeftOpen v-if="ui.railCollapsed" aria-hidden="true" />
-      <PanelLeftClose v-else aria-hidden="true" />
+      <!-- The same menu icon as the phone button; the label says what a click does. -->
+      <Menu aria-hidden="true" />
     </button>
     <nav class="path" aria-label="Breadcrumb">
       <span>Meeting Rooms</span>
