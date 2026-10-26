@@ -463,6 +463,115 @@
   }
 }
 
+@layer components {
+  /* Lists are open sheets on the paper: a strong rule opens them, hairlines rule the rows
+     (DESIGN.md "Open Sheet Rule", "Table"). No card, no box. */
+  .sheet {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    border-top: 1px solid var(--color-rule-strong);
+  }
+  .table-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  table.list {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  table.list thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-rule-strong);
+    background: var(--color-paper);
+    color: var(--color-intaglio);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  table.list td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--color-rule);
+    vertical-align: middle;
+  }
+  table.list tbody tr {
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+  table.list tbody tr:hover {
+    background: var(--color-row-hover);
+  }
+  table.list tbody tr.is-off td:not(.state-col):not(.row-actions) {
+    color: var(--color-ink-off);
+  }
+  /* The newly saved row: a soft tint that fades out (DESIGN.md "Saved Row"). */
+  table.list tbody tr.just-saved {
+    animation: saved-tint 2.4s ease-out forwards;
+  }
+  table.list .num {
+    text-align: right;
+  }
+  table.list .row-actions {
+    width: 48px;
+    text-align: right;
+  }
+  .serial {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--color-intaglio);
+    white-space: nowrap;
+  }
+  .serial .prefix {
+    color: var(--color-crimson);
+  }
+  /* Khmer over English (owner decision, DESIGN.md "Two Names Rule"). */
+  .name-plate .kh {
+    display: block;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .name-plate .en {
+    display: block;
+    font-size: 12.5px;
+    color: var(--color-intaglio);
+  }
+  .place .office {
+    display: block;
+  }
+  .place .where {
+    font-size: 12px;
+    color: var(--color-intaglio);
+  }
+  .hours {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .none {
+    color: var(--color-ink-off);
+  }
+}
+
+@keyframes saved-tint {
+  from {
+    background: var(--color-saved-tint);
+  }
+  to {
+    background: transparent;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: 100% 0;
