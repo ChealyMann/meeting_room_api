@@ -70,12 +70,12 @@ defineExpose({ focusFirst })
       >
         <header class="panel-head">
           <div class="titles">
+            <span v-if="serial" class="serial tag">
+              <span class="prefix">{{ serial.split('·')[0] }}</span>·{{ serial.split('·')[1] }}
+            </span>
             <h2 :id="titleId">{{ title }}</h2>
             <span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
           </div>
-          <span v-if="serial" class="serial">
-            <span class="prefix">{{ serial.split('·')[0] }}</span>·{{ serial.split('·')[1] }}
-          </span>
           <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')">
             <X aria-hidden="true" />
           </button>
@@ -114,13 +114,23 @@ defineExpose({ focusFirst })
 }
 .panel-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 14px 12px 14px 20px;
+  padding: 16px 12px 16px 20px;
   border-bottom: 1px solid var(--color-rule);
 }
 .titles {
   min-width: 0;
+}
+/* The serial as a small printed tag above the name, like the number on a note. */
+.tag {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.6;
 }
 h2 {
   margin: 0;
