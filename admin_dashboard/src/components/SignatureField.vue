@@ -99,7 +99,7 @@ onBeforeUnmount(() => setImage(null))
   <div class="field signature" :class="{ 'has-error': error }">
     <div class="sheet" :aria-busy="loading || undefined">
       <div v-if="loading" class="skeleton-bar" aria-hidden="true" />
-      <img v-else-if="imageUrl" :src="imageUrl" alt="Your signature" />
+      <img v-else-if="imageUrl" :key="imageUrl" :src="imageUrl" alt="Your signature" />
       <p v-else class="empty">No signature yet</p>
     </div>
 
@@ -167,6 +167,13 @@ onBeforeUnmount(() => setImage(null))
   width: 100%;
   height: 100%;
   object-fit: contain;
+  /* Fades in on load and on every replace (a new key = a new element). */
+  opacity: 1;
+  transition: opacity 200ms var(--ease-out-quint);
+
+  @starting-style {
+    opacity: 0;
+  }
 }
 .sheet .skeleton-bar {
   width: 60%;

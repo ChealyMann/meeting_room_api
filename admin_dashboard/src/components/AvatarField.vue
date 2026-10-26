@@ -65,7 +65,7 @@ async function remove() {
   <div class="field avatar" :class="{ 'has-error': error || loadError }">
     <div class="row">
       <div class="disc" :aria-busy="loading || undefined">
-        <img v-if="imageUrl" :src="imageUrl" alt="Your photo" />
+        <img v-if="imageUrl" :key="imageUrl" :src="imageUrl" alt="Your photo" />
         <span v-else-if="!loading" class="empty">No photo yet</span>
       </div>
       <div class="side">
@@ -136,6 +136,13 @@ async function remove() {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Fades in on load and on every replace (a new key = a new element). */
+  opacity: 1;
+  transition: opacity 200ms var(--ease-out-quint);
+
+  @starting-style {
+    opacity: 0;
+  }
 }
 .empty {
   padding: 0 12px;
