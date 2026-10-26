@@ -23,12 +23,17 @@ const reducedMotion =
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Where the photo sits: almost full height from the top, the tower just right of centre. */
+/**
+ * Where the photo sits: the tower just right of centre, near the top, and the base running
+ * past the bottom edge. The photo's last 5% (a ragged, light cut-out edge) falls below the
+ * panel, so the stone reaches the bottom with no white strip.
+ */
 function placePhoto(ctx: CanvasRenderingContext2D, image: HTMLImageElement) {
-  const drawH = height * 0.98
+  const drawH = height * 1.04
   const drawW = drawH * (image.width / image.height)
   const x = width * 0.52 - drawW * 0.51 // the tower is at 51% of the photo's width
-  ctx.drawImage(image, x, 0, drawW, drawH)
+  const y = height - drawH * 0.95
+  ctx.drawImage(image, x, y, drawW, drawH)
 }
 
 function sample() {
