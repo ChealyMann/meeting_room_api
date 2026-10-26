@@ -9,11 +9,12 @@ const LOGO = '/nbc-logo.png'
 <template>
   <div class="frame">
     <aside class="band">
-      <img :src="LOGO" alt="National Bank of Cambodia" width="48" height="48" />
-      <div>
+      <div class="brand">
+        <img :src="LOGO" alt="" width="64" height="64" />
         <b>Meeting Rooms</b>
-        <span>Admin · National Bank of Cambodia</span>
+        <span>Admin</span>
       </div>
+      <p class="bank">National Bank of Cambodia</p>
     </aside>
     <main class="paper">
       <div class="column">
@@ -27,34 +28,45 @@ const LOGO = '/nbc-logo.png'
 <style scoped>
 .frame {
   display: grid;
-  grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+  grid-template-columns: clamp(300px, 28vw, 420px) minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
 }
 .band {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: grid;
+  grid-template-rows: 1fr auto;
   padding: 32px;
   background: var(--color-rail);
   color: var(--color-rail-ink);
   border-right: 1px solid var(--color-rail-line);
 }
-.band img {
-  width: 48px;
-  height: 48px;
+/* Centred, so the name sits level with the form beside it. */
+.brand {
+  align-self: center;
+  display: grid;
+  justify-items: start;
 }
-.band b {
-  display: block;
+.brand img {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+}
+.brand b {
   font-size: 24px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
-.band span {
-  display: block;
+.brand span {
   margin-top: 4px;
   font-size: 13px;
+  color: var(--color-rail-muted);
+}
+.bank {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-rail-line);
+  font-size: 12px;
   color: var(--color-rail-muted);
 }
 .paper {
@@ -79,24 +91,31 @@ h1 {
     grid-template-rows: auto 1fr;
   }
   .band {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
+    grid-template-rows: auto;
     padding: 16px;
     border-right: 0;
     border-bottom: 1px solid var(--color-rail-line);
   }
-  .band img {
+  .brand {
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    align-items: center;
+  }
+  .brand img {
+    grid-row: span 2;
     width: 36px;
     height: 36px;
+    margin-bottom: 0;
   }
-  .band b {
+  .brand b {
     font-size: 15px;
   }
-  .band span {
+  .brand span {
     margin-top: 0;
     font-size: 12px;
+  }
+  .bank {
+    display: none;
   }
   .paper {
     place-items: start center;
