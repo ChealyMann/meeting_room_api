@@ -2,13 +2,16 @@
 // Create, edit and detail open here, over the list (DSH-G03, DESIGN.md "Side Panel").
 // The list stays visible beside it; Escape and the scrim close it.
 import { X } from 'lucide-vue-next'
-import { nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onUnmounted, ref, useId, watch } from 'vue'
+
+import { noteLeaving, panelIn, panelOut, scrimIn, scrimOut, slideOutRemoved } from './panelMotion'
 
 const props = defineProps<{ open: boolean; title: string; subtitle?: string; serial?: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const titleId = useId()
 const panel = ref<HTMLElement | null>(null)
+const scrim = ref<HTMLElement | null>(null)
 let opener: HTMLElement | null = null
 
 const FIELDS = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
@@ -45,10 +48,19 @@ watch(
   { immediate: true },
 )
 
-// The app removes panels with v-if instead of setting open=false: give focus back then too.
+// The app removes panels with v-if instead of setting open=false: give focus back then too,
+// and slide out (or hand over to the panel that replaces this one, see panelMotion.ts).
+let leaving: { panel: HTMLElement | null; scrim: HTMLElement | null } | null = null
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKey)
   if (props.open && opener?.isConnected) opener.focus()
+  if (props.open) {
+    leaving = { panel: panel.value, scrim: scrim.value }
+    noteLeaving(panel.value, scrim.value)
+  }
+})
+onUnmounted(() => {
+  if (leaving) slideOutRemoved(leaving.panel, leaving.scrim)
 })
 
 defineExpose({ focusFirst })
@@ -56,10 +68,10 @@ defineExpose({ focusFirst })
 
 <template>
   <Teleport to="body">
-    <Transition name="scrim" appear>
-      <div v-if="open" class="scrim" aria-hidden="true" @click="emit('close')" />
+    <Transition appear :css="false" @enter="scrimIn" @leave="scrimOut">
+      <div v-if="open" ref="scrim" class="scrim" aria-hidden="true" @click="emit('close')" />
     </Transition>
-    <Transition name="panel" appear>
+    <Transition appear :css="false" @enter="panelIn" @leave="panelOut">
       <aside
         v-if="open"
         ref="panel"
@@ -155,31 +167,6 @@ h2 {
   padding: 12px 20px;
   border-top: 1px solid var(--color-rule);
   background: var(--color-paper);
-}
-
-/* The same drawer curve as the sidebar fold: it opens with a soft glide and closes a little
-   faster, so it gets out of the way. The scrim keeps pace with it. */
-.panel-enter-active {
-  transition: transform 340ms var(--ease-drawer);
-  will-change: transform;
-}
-.panel-leave-active {
-  transition: transform 240ms var(--ease-drawer);
-  will-change: transform;
-}
-.panel-enter-from,
-.panel-leave-to {
-  transform: translateX(100%);
-}
-.scrim-enter-active {
-  transition: opacity 340ms var(--ease-drawer);
-}
-.scrim-leave-active {
-  transition: opacity 240ms var(--ease-drawer);
-}
-.scrim-enter-from,
-.scrim-leave-to {
-  opacity: 0;
 }
 
 @media (max-width: 760px) {
