@@ -177,7 +177,7 @@ describe('RoomPhotos delete confirm', () => {
 
 describe('RoomPhotos delete confirm visibility', () => {
   it('scrolls the confirm into view when it opens', async () => {
-    const scroll = vi.fn()
+    const scroll = vi.fn<(arg?: ScrollIntoViewOptions | boolean) => void>()
     Element.prototype.scrollIntoView = scroll
     const wrapper = await mountPhotos([photo(31, 1), photo(32, 2), photo(33, 3)])
 
