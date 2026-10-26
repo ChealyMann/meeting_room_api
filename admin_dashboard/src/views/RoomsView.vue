@@ -94,9 +94,18 @@ watch(
   { immediate: true },
 )
 
+// A new room continues with its photos, then its equipment (DSH-R08).
 async function onCreated(room: RoomDetail) {
-  void router.push({ query: panelQuery({ room: String(room.id) }) })
+  void router.push({ query: panelQuery({ room: String(room.id), step: 'photos' }) })
   await refresh(room.id)
+}
+function stepTo(next: RoomStep) {
+  void router.push({ query: panelQuery({ room: String(roomId.value), step: next }) })
+}
+async function finishSteps() {
+  const id = roomId.value
+  closePanel()
+  await refresh(id ?? undefined)
 }
 async function onEdited(room: RoomDetail) {
   void router.push({ query: panelQuery({ room: String(room.id) }) })
@@ -170,7 +179,16 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
       @edit="startEdit"
       @changed="refresh($event.id)"
       @close="closePanel"
-    />
+    >
+      <template v-if="step" #step>
+        <div class="steps">
+          <span v-if="step === 'photos'">Step 2 of 3 · Photos</span>
+          <span v-else>Step 3 of 3 · Equipment</span>
+          <BaseButton v-if="step === 'photos'" variant="quiet" @click="stepTo('equipment')">Next: equipment</BaseButton>
+          <BaseButton v-else variant="primary" @click="finishSteps">Done</BaseButton>
+        </div>
+      </template>
+    </RoomDetailPanel>
 
     <PagingFoot
       v-if="result && total > 0"
@@ -208,6 +226,20 @@ h1 {
   color: var(--color-intaglio);
 }
 .new {
+  margin-left: auto;
+}
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-paper);
+  font-size: 13px;
+  color: var(--color-intaglio);
+}
+.steps .btn {
   margin-left: auto;
 }
 .load-error {
