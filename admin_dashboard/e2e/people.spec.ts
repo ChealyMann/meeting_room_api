@@ -38,7 +38,7 @@ test('add a user, give them Staff, set a temporary password; you cannot make you
   await expect(page.getByRole('status')).toContainText('Roles saved')
   await page.getByPlaceholder('Search name, staff ID or email').fill(name)
   await expect(page.locator('tbody tr')).toHaveCount(1)
-  await expect(page.locator('tbody tr .chip')).toHaveText(['Staff'])
+  await expect(page.locator('tbody tr .roles .role')).toHaveText(['Staff'])
 
   await panel.getByRole('tab', { name: 'Password' }).click()
   await panel.getByRole('button', { name: 'Generate' }).click()

@@ -175,6 +175,7 @@ describe('UsersView', () => {
 
     await clickInPanel('Generate')
     expect((document.getElementById('temporary_password') as HTMLInputElement).value).toHaveLength(14)
+    expect((document.getElementById('temporary_password') as HTMLInputElement).type).toBe('text')
 
     await fillNew()
     await clickInPanel('Create user')

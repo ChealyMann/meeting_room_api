@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Eye, EyeOff } from 'lucide-vue-next'
-import { ref } from 'vue'
 
 defineProps<{
   id: string
@@ -11,7 +10,8 @@ defineProps<{
 }>()
 
 const model = defineModel<string>({ required: true })
-const visible = ref(false)
+/** Shown as text; a page sets it after generating one, so the Admin sees what they set. */
+const visible = defineModel<boolean>('visible', { default: false })
 </script>
 
 <template>

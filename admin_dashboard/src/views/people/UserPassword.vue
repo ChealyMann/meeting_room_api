@@ -21,12 +21,14 @@ const toast = useToast()
 const { confirm } = useConfirm()
 
 const password = ref('')
+const shown = ref(false)
 const problem = ref('')
 const error = ref('')
 const saving = ref(false)
 
 function generate() {
   password.value = generatePassword()
+  shown.value = true
   problem.value = ''
 }
 async function copy() {
@@ -74,7 +76,7 @@ async function save() {
     <p class="lead">They are signed out everywhere and must choose a new password when they next sign in.</p>
     <BaseField id="reset_password" label="Temporary password" hint="8 to 128 characters" :error="problem">
       <template #default="{ describedBy, invalid }">
-        <PasswordInput id="reset_password" v-model="password" autocomplete="new-password" :described-by="describedBy" :invalid="invalid" />
+        <PasswordInput id="reset_password" v-model="password" v-model:visible="shown" autocomplete="new-password" :described-by="describedBy" :invalid="invalid" />
       </template>
     </BaseField>
     <div class="tools">

@@ -2,7 +2,7 @@
 // A user's details (DSH-U02, U03): name, contact, work and — when creating — the first password.
 // It edits the form object it is given; the panel around it saves.
 import { Copy, KeyRound } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { DepartmentOut, DivisionOut, PositionOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -25,6 +25,8 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
+// A generated password shows as text, so the Admin sees what they hand over.
+const shown = ref(false)
 const count = (text: string) => [...text].length
 
 const titleItems: PickerItem[] = TITLES.map((t) => ({ value: t, label: t }))
@@ -47,6 +49,7 @@ const positionItems = computed<PickerItem[]>(() =>
 function generate() {
   // eslint-disable-next-line vue/no-mutating-props -- the form object is this component's to edit
   props.form.temporary_password = generatePassword()
+  shown.value = true
 }
 async function copy() {
   try {
@@ -159,7 +162,7 @@ async function copy() {
     <h3 id="g-password">First password</h3>
     <BaseField id="temporary_password" label="Temporary password" hint="They must change it when they first sign in." :error="errors.temporary_password">
       <template #default="{ describedBy, invalid }">
-        <PasswordInput id="temporary_password" v-model="form.temporary_password" autocomplete="new-password" :described-by="describedBy" :invalid="invalid" />
+        <PasswordInput id="temporary_password" v-model="form.temporary_password" v-model:visible="shown" autocomplete="new-password" :described-by="describedBy" :invalid="invalid" />
       </template>
     </BaseField>
     <div class="password-tools">

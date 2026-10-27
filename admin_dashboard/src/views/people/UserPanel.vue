@@ -236,6 +236,7 @@ async function turn(active: boolean) {
         :upload="(file: File) => uploadUserSignature(api, user.id, file)"
         :remove="() => deleteUserSignature(api, user.id)"
         :owner-name="user.name_en"
+        @change="emit('saved', { ...user, signature_url: $event })"
       />
     </section>
 

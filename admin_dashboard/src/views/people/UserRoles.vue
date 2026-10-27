@@ -23,8 +23,10 @@ const warningId = useId()
 
 const codesOf = (user: UserDetail) => new Set(user.roles.map((r) => r.code))
 const checked = ref(codesOf(props.user))
+// Other saves in the panel (details, the Active switch) answer with a new user object: keep the
+// Admin's unsaved ticks unless the saved roles themselves changed.
 watch(
-  () => props.user.roles,
+  () => ORDER.filter((code) => codesOf(props.user).has(code)).join(','),
   () => (checked.value = codesOf(props.user)),
 )
 const saving = ref(false)

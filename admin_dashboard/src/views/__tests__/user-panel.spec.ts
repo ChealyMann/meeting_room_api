@@ -197,6 +197,45 @@ describe('UserPanel', () => {
     expect((document.getElementById('reset_password') as HTMLInputElement).value).toBe('')
   })
 
+  it('shows a generated password, so the Admin can see what they set', async () => {
+    await mountAt('/users?id=7&tab=password')
+
+    await click(button('Generate'))
+
+    const input = document.getElementById('reset_password') as HTMLInputElement
+    expect(input.value).toHaveLength(14)
+    expect(input.type).toBe('text')
+  })
+
+  it('keeps unsaved role ticks while a division is saved on Details', async () => {
+    await mountAt('/users?id=7&tab=roles')
+    await click(box('IT Lead'))
+    expect(button('Save roles')!.disabled).toBe(true)
+
+    await click(panel().querySelector<HTMLElement>('#tab-details')!)
+    const phone = document.getElementById('phone') as HTMLInputElement
+    phone.value = '012 345 678'
+    phone.dispatchEvent(new Event('input'))
+    await click(button('Save changes'))
+    await click(panel().querySelector<HTMLElement>('#tab-roles')!)
+
+    expect(box('IT Lead').checked).toBe(true)
+    expect(box('Room owner').checked).toBe(true)
+  })
+
+  it('keeps a new signature after switching tabs', async () => {
+    await mountAt('/users?id=7&tab=signature')
+    const input = panel().querySelector('input[type="file"]') as HTMLInputElement
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'sign.png', { type: 'image/png' })], configurable: true })
+    input.dispatchEvent(new Event('change'))
+    await flushPromises()
+
+    await click(panel().querySelector<HTMLElement>('#tab-details')!)
+    await click(panel().querySelector<HTMLElement>('#tab-signature')!)
+
+    expect(panel().querySelector('#tabpanel-signature img')?.getAttribute('src')).toBe('blob:1')
+  })
+
   it("uploads the user's signature on the Signature tab", async () => {
     await mountAt('/users?id=7&tab=signature')
 
