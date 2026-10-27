@@ -170,12 +170,20 @@ async function turn(active: boolean) {
           :error="errors.department_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select id="department_id" class="input" :value="form.department_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseDepartment">
+            <select
+              id="department_id"
+              class="input"
+              :value="form.department_id ?? ''"
+              :aria-describedby="division ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
+              :aria-invalid="invalid || undefined"
+              @change="chooseDepartment"
+            >
               <option value="">Choose a department</option>
               <optgroup v-for="g in groups" :key="g.label" :label="g.label || 'Not found'">
                 <option v-for="d in g.options" :key="d.value" :value="d.value">{{ d.label }}</option>
               </optgroup>
             </select>
+            <p v-if="division" id="move-help" class="help">Its users' province follows the new department's office.</p>
           </template>
         </BaseField>
       </section>
@@ -245,6 +253,11 @@ h3 {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+}
+.help {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-intaglio);
 }
 .row2 {
   display: grid;

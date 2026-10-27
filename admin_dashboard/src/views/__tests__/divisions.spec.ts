@@ -128,6 +128,8 @@ describe('DivisionsView', () => {
     await mountAt('/divisions?id=12')
 
     const select = inPanel<HTMLSelectElement>('#department_id')!
+    expect(select.closest('.field')?.textContent).toContain("Its users' province follows the new department's office.")
+    expect(select.getAttribute('aria-describedby')).toContain('move-help')
     expect(select.value).toBe('5')
     expect(select.selectedOptions[0]!.textContent).toBe('Old Department (off)')
 

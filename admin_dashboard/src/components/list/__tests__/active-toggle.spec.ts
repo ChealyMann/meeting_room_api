@@ -87,9 +87,13 @@ describe('ActiveToggle', () => {
 
   it('counts users for departments, divisions and positions', async () => {
     expect(await warningFor('department', counted(12))).toContain(
-      '12 users work in this department and stay. No new division can be added to it.',
+      '12 users work in this department and stay in it. Its divisions stay on, but no new division can be added to it.',
     )
-    expect(await warningFor('department', counted(0))).toContain('No users work in it.')
+    expect(await warningFor('department', counted(1))).toContain('1 user works in this department and stays in it.')
+    expect(await warningFor('department', counted(0))).toContain('No users work in it. Its divisions stay on')
+    expect(await warningFor('department', failing())).toContain(
+      'Its users and divisions stay as they are, but no new division can be added to it.',
+    )
     expect(await warningFor('division', counted(1))).toContain(
       '1 user works in this division and stays in it. No new user can join it.',
     )

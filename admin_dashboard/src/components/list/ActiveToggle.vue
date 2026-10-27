@@ -34,9 +34,11 @@ function warning(count: number | null): string {
   const rooms = one ? '1 room' : `${count} rooms`
   const users = one ? '1 user' : `${count} users`
   if (props.kind === 'department') {
-    if (count === null) return `Its users stay where they are, but no new division can be added to it. ${AGAIN}`
-    if (count === 0) return `No users work in it. ${AGAIN}`
-    return `${users} ${one ? 'works' : 'work'} in this department and ${one ? 'stays' : 'stay'}. No new division can be added to it. ${AGAIN}`
+    // Its divisions stay on and still take new users (the API checks only the division).
+    const divisions = 'Its divisions stay on, but no new division can be added to it.'
+    if (count === null) return `Its users and divisions stay as they are, but no new division can be added to it. ${AGAIN}`
+    if (count === 0) return `No users work in it. ${divisions} ${AGAIN}`
+    return `${users} ${one ? 'works' : 'work'} in this department and ${one ? 'stays' : 'stay'} in it. ${divisions} ${AGAIN}`
   }
   if (props.kind === 'division') {
     if (count === null) return `Its users stay in it, but no new user can join it. ${AGAIN}`
