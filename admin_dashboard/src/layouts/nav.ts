@@ -25,7 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Catalog',
     items: [
       { label: 'Room types', icon: 'tags', route: 'room-types' },
-      { label: 'Equipment', icon: 'projector' },
+      { label: 'Equipment', icon: 'projector', route: 'equipment' },
     ],
   },
   {
