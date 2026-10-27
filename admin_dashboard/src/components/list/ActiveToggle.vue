@@ -2,7 +2,7 @@
 // Turn off / turn on for a place, a catalog record or an organisation record (DSH-G07, P05, C01,
 // C02, O01–O03). Turning off asks in the confirm dialog and says what happens to the active rooms
 // or users it touches (the page passes the count); turning on does not ask.
-import { CircleAlert, Power } from 'lucide-vue-next'
+import { CircleAlert, Lock, Power } from 'lucide-vue-next'
 import { ref, useId } from 'vue'
 
 import { ApiError } from '../../api/errors'
@@ -19,7 +19,7 @@ const props = defineProps<{
   turn: (active: boolean) => Promise<void>
   /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
   blocked?: string
-  /** Why it can never turn here (e.g. your own user): the button is disabled and this shows beside it. */
+  /** Why it can never turn here (e.g. your own user): the button looks off, names the reason on hover, and a click says it. */
   locked?: string
 }>()
 
@@ -88,8 +88,8 @@ async function run(active: boolean) {
 }
 
 function refuse(): boolean {
-  error.value = props.blocked ?? ''
-  return !!props.blocked
+  error.value = props.locked ?? props.blocked ?? ''
+  return !!error.value
 }
 
 async function turnOff() {
@@ -119,22 +119,35 @@ async function turnOff() {
       <CircleAlert aria-hidden="true" />
       <b>{{ error }}</b>
     </div>
+    <!-- A locked button stays focusable (aria-disabled), so its reason can be read and clicked for. -->
     <BaseButton
       v-if="active"
       variant="danger"
+      :class="{ locked: !!locked }"
       :busy="busy"
-      :disabled="!!locked"
+      :title="locked"
+      :aria-disabled="locked ? 'true' : undefined"
       :aria-describedby="locked ? lockId : undefined"
       @click="turnOff"
     >
-      <Power v-if="!busy" aria-hidden="true" />
+      <Lock v-if="locked" aria-hidden="true" />
+      <Power v-else-if="!busy" aria-hidden="true" />
       Turn off
     </BaseButton>
-    <BaseButton v-else :busy="busy" :disabled="!!locked" :aria-describedby="locked ? lockId : undefined" @click="run(true)">
-      <Power v-if="!busy" aria-hidden="true" />
+    <BaseButton
+      v-else
+      :class="{ locked: !!locked }"
+      :busy="busy"
+      :title="locked"
+      :aria-disabled="locked ? 'true' : undefined"
+      :aria-describedby="locked ? lockId : undefined"
+      @click="run(true)"
+    >
+      <Lock v-if="locked" aria-hidden="true" />
+      <Power v-else-if="!busy" aria-hidden="true" />
       Turn on
     </BaseButton>
-    <span v-if="locked" :id="lockId" class="locked">{{ locked }}</span>
+    <span v-if="locked" :id="lockId" class="sr-only">{{ locked }}</span>
   </div>
 </template>
 
@@ -146,8 +159,8 @@ async function turnOff() {
   gap: 10px;
 }
 .locked {
-  font-size: 12px;
-  color: var(--color-intaglio);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 /* Shown above the button, so a refusal is read right where it happened. The button sits at
    the start of the panel foot, so the message grows to the right. */

@@ -159,8 +159,14 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
                 <span class="position">{{ user.position.name_en }}<template v-if="user.province"> · {{ user.province.name_en }}</template></span>
               </td>
               <td>
-                <span v-if="user.role_codes.length" class="chips">
-                  <span v-for="code in user.role_codes" :key="code" class="chip">{{ roleName(code) }}</span>
+                <span v-if="user.role_codes.length" class="roles">
+                  <span v-for="(code, i) in user.role_codes.slice(0, 2)" :key="code" class="role">
+                    {{ roleName(code) }}<span
+                      v-if="i === 1 && user.role_codes.length > 2"
+                      class="more mono"
+                      :title="user.role_codes.slice(2).map(roleName).join(', ')"
+                    > +{{ user.role_codes.length - 2 }}</span>
+                  </span>
                 </span>
                 <span v-else class="none">No roles</span>
               </td>
@@ -209,24 +215,22 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
 .email {
   overflow-wrap: anywhere;
 }
-.work span {
+td.work .division,
+td.work .position {
   display: block;
 }
-.work .position {
+td.work .position {
   font-size: 12.5px;
   color: var(--color-intaglio);
 }
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.chip {
-  padding: 1px 8px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 999px;
-  font-size: 12px;
+/* At most two roles, one per line like the Work column, then "+2" (the rest show on hover). */
+.roles .role {
+  display: block;
   white-space: nowrap;
+}
+.roles .more {
+  font-size: 12px;
+  color: var(--color-intaglio);
 }
 .none {
   color: var(--color-ink-off);

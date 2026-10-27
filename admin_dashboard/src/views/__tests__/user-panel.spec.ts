@@ -166,7 +166,7 @@ describe('UserPanel', () => {
 
     expect(box('Admin').disabled).toBe(true)
     expect(panel().textContent).toContain('You cannot remove your own Admin role.')
-    expect(button('Turn off')!.disabled).toBe(true)
+    expect(button('Turn off')!.getAttribute('aria-disabled')).toBe('true')
     expect(panel().textContent).toContain('You cannot turn yourself off.')
   })
 

@@ -77,7 +77,7 @@ beforeEach(() => {
       switch (url.pathname) {
         case '/api/v1/users':
           listCalls.push(url.search)
-          return json({ items: [user(7), user(8, { title: null, role_codes: [], last_login_at: '2026-10-20T02:30:00Z' })], page: 1, size: 20, total: 2 })
+          return json({ items: [user(7), user(8, { title: null, role_codes: [], last_login_at: '2026-10-20T02:30:00Z' }), user(9, { role_codes: ['ADMIN', 'ROOM_OWNER', 'STAFF', 'IT_LEAD'] })], page: 1, size: 20, total: 3 })
         case '/api/v1/users/9':
           return json(detail(9))
         case '/api/v1/roles':
@@ -144,18 +144,21 @@ describe('UsersView', () => {
     expect(listCalls[listCalls.length - 1]).toBe('?department_id=4&role=PITIKA&is_active=true&page=1&size=20')
   })
 
-  it('shows serial, names with title, staff ID, role chips and last sign-in', async () => {
+  it('shows serial, names with title, staff ID, roles and last sign-in', async () => {
     const { wrapper } = await mountAt('/users')
 
-    const [first, second] = wrapper.findAll('tbody tr')
+    const [first, second, third] = wrapper.findAll('tbody tr')
     expect(first!.text()).toContain('US·0007')
     expect(first!.get('.name-plate .kh').text()).toBe('សុខ ដារា')
     expect(first!.get('.name-plate .en').text()).toBe('Ms. Sok Dara')
     expect(first!.text()).toContain('EMP-007')
-    expect(first!.findAll('.chip').map((c) => c.text())).toEqual(['Staff', 'Pitika'])
+    expect(first!.findAll('.role').map((c) => c.text())).toEqual(['Staff', 'Pitika'])
     expect(first!.get('.last').text()).toBe('Never')
     expect(second!.text()).toContain('No roles')
-    expect(wrapper.get('.count').text()).toBe('002 users')
+    // Two roles at most, then a count of the rest that names them on hover.
+    expect(third!.findAll('.role').map((c) => c.text())).toEqual(['Admin', 'Room owner +2'])
+    expect(third!.get('.more').attributes('title')).toBe('Staff, IT Lead')
+    expect(wrapper.get('.count').text()).toBe('003 users')
   })
 
   it('filters by role with the picker', async () => {

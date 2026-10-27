@@ -109,17 +109,26 @@ describe('ActiveToggle', () => {
     expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you turn them on again.')
   })
 
-  it('can be locked with a reason shown beside it', async () => {
+  it('can be locked: the button stays one line, and a click says why instead of turning', async () => {
     mountConfirmHost()
+    const turn = vi.fn<(a: boolean) => Promise<void>>()
     const wrapper = mount(ActiveToggle, {
-      props: { active: true, name: 'Sok Dara', kind: 'user', count: counted(0), turn: vi.fn<(a: boolean) => Promise<void>>(), locked: 'You cannot turn yourself off.' },
+      props: { active: true, name: 'Sok Dara', kind: 'user', count: counted(0), turn, locked: 'You cannot turn yourself off.' },
       attachTo: document.body,
     })
     const button = wrapper.findAll('button').find((b) => b.text() === 'Turn off')!
 
-    expect(button.attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('You cannot turn yourself off.')
+    expect(button.attributes('aria-disabled')).toBe('true')
+    expect(button.attributes('title')).toBe('You cannot turn yourself off.')
     expect(document.getElementById(button.attributes('aria-describedby')!)?.textContent).toContain('You cannot turn yourself off.')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(confirmDialog()).toBeNull()
+    expect(turn).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('You cannot turn yourself off.')
   })
 
   it('turns on without asking, and shows a refusal', async () => {
