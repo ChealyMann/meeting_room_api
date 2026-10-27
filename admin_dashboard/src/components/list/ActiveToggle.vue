@@ -4,7 +4,7 @@
 // to the active rooms or users it touches (the page passes the count); making it active does not
 // ask. The switch moves only when the page's record changes, never before the API answers
 // (owner decision, 27 Oct 2026: a switch labelled Active/Inactive, not a Turn off button).
-import { CircleAlert, Lock } from 'lucide-vue-next'
+import { CircleAlert } from 'lucide-vue-next'
 import { ref, useId } from 'vue'
 
 import { ApiError } from '../../api/errors'
@@ -141,10 +141,7 @@ async function turnOff() {
       :class="{ locked: !!locked, busy }"
       @click="flip"
     />
-    <span class="state" :class="{ off: !active }" aria-hidden="true">
-      <Lock v-if="locked" />
-      {{ active ? 'Active' : 'Inactive' }}
-    </span>
+    <span class="state" :class="{ off: !active }" aria-hidden="true">{{ active ? 'Active' : 'Inactive' }}</span>
     <span v-if="locked" :id="lockId" class="sr-only">{{ locked }}</span>
   </div>
 </template>
@@ -162,20 +159,12 @@ async function turnOff() {
   cursor: not-allowed;
 }
 .state {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
   font-size: 13px;
   font-weight: 500;
   color: var(--color-ink);
   white-space: nowrap;
 }
 .state.off {
-  color: var(--color-intaglio);
-}
-.state svg {
-  width: 13px;
-  height: 13px;
   color: var(--color-intaglio);
 }
 /* Shown above the button, so a refusal is read right where it happened. The button sits at
