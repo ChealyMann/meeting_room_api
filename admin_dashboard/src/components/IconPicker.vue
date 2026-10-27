@@ -23,14 +23,15 @@ const unknown = computed(() => !!model.value && !iconFor(model.value))
 // One tab stop for the grid: the chosen icon when shown, else the first one.
 const tabStop = computed(() => (shown.value.some((i) => i.name === model.value) ? model.value : shown.value[0]?.name))
 
-const buttons = ref<HTMLButtonElement[]>([])
+// Buttons are found by position when needed: a v-for ref array loses the list's order after a search.
+const grid = ref<HTMLElement | null>(null)
 async function move(from: number, step: number) {
   const list = shown.value
   if (!list.length) return
   const next = step === Infinity ? list.length - 1 : step === -Infinity ? 0 : (from + step + list.length) % list.length
   model.value = list[next]!.name
   await nextTick()
-  buttons.value[next]?.focus()
+  grid.value?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
 }
 function onKey(event: KeyboardEvent, index: number) {
   const steps: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1, Home: -Infinity, End: Infinity }
@@ -38,6 +39,16 @@ function onKey(event: KeyboardEvent, index: number) {
   if (step === undefined) return
   event.preventDefault()
   void move(index, step)
+}
+
+// In the search box, Enter must not send the panel's form, and Escape first clears the search
+// (an empty search lets Escape through, so the panel still closes).
+function onSearchKey(event: KeyboardEvent) {
+  if (event.key === 'Enter') event.preventDefault()
+  if (event.key === 'Escape' && query.value) {
+    event.preventDefault()
+    query.value = ''
+  }
 }
 </script>
 
@@ -67,15 +78,15 @@ function onKey(event: KeyboardEvent, index: number) {
         placeholder="Search icons"
         aria-label="Search icons"
         :aria-controls="`${id}-grid`"
+        @keydown="onSearchKey"
       />
       <button type="button" class="none-btn" :aria-pressed="model === null" @click="model = null">No icon</button>
     </div>
 
-    <div v-if="shown.length" :id="`${id}-grid`" class="grid" role="radiogroup" aria-label="Icons">
+    <div v-if="shown.length" :id="`${id}-grid`" ref="grid" class="grid" role="radiogroup" aria-label="Icons">
       <button
         v-for="(item, index) in shown"
         :key="item.name"
-        ref="buttons"
         type="button"
         role="radio"
         :aria-checked="item.name === model"

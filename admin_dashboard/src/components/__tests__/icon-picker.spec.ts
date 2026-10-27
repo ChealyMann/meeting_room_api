@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import IconPicker from '../IconPicker.vue'
@@ -46,6 +46,48 @@ describe('IconPicker', () => {
 
     expect(wrapper.get('.preview').text()).toContain('Unknown icon')
     expect(wrapper.get('.preview').text()).toContain('old-icon')
+  })
+
+  it('moves focus and choice together after a search is cleared', async () => {
+    const wrapper = mount(IconPicker, {
+      props: { id: 'icon', modelValue: 'projector', 'onUpdate:modelValue': (v: string | null) => wrapper.setProps({ modelValue: v }) },
+      attachTo: document.body,
+    })
+    const search = wrapper.get('input[type="search"]')
+    await search.setValue('mic')
+    await search.setValue('')
+
+    await radio(wrapper, 'Projector').trigger('keydown', { key: 'ArrowRight' })
+    await flushPromises()
+
+    expect(wrapper.props('modelValue')).toBe('presentation')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Presentation board')
+    wrapper.unmount()
+  })
+
+  it('does not send the form on Enter in the search', async () => {
+    const wrapper = mountPicker('projector')
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true, bubbles: true })
+
+    wrapper.get('input[type="search"]').element.dispatchEvent(enter)
+
+    expect(enter.defaultPrevented).toBe(true)
+  })
+
+  it('clears the search on Escape instead of closing the panel, and lets Escape through when empty', async () => {
+    const wrapper = mountPicker('projector')
+    const search = wrapper.get('input[type="search"]')
+    await search.setValue('mic')
+
+    const first = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true, bubbles: true })
+    search.element.dispatchEvent(first)
+    await flushPromises()
+    expect(first.defaultPrevented).toBe(true)
+    expect((search.element as HTMLInputElement).value).toBe('')
+
+    const second = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true, bubbles: true })
+    search.element.dispatchEvent(second)
+    expect(second.defaultPrevented).toBe(false)
   })
 
   it('moves with the arrow keys', async () => {
