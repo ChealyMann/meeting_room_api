@@ -11,25 +11,8 @@ import type {
   LocationOut,
   LocationUpdate,
 } from '../api/types'
-import { orderProblem, orderValue as order } from './sortOrder'
-
-const length = (text: string) => [...text].length // characters, like the API
-const optional = (text: string) => text.trim() || null
-
-function nameProblems(form: { name_kh: string; name_en: string }, problems: Record<string, string>) {
-  for (const [key, missing] of [
-    ['name_kh', 'Enter the Khmer name.'],
-    ['name_en', 'Enter the English name.'],
-  ] as const) {
-    const text = form[key].trim()
-    if (!text) problems[key] = missing
-    else if (length(text) > 100) problems[key] = 'Max 100 characters.'
-  }
-}
-
-function tooLong(text: string, max: number, key: string, problems: Record<string, string>) {
-  if (length(text.trim()) > max) problems[key] = `Max ${max} characters.`
-}
+import { checkOrder, length, nameProblems, optional, tooLong } from './formChecks'
+import { orderValue as order } from './sortOrder'
 
 export interface OfficeForm {
   name_kh: string
@@ -109,11 +92,6 @@ export function buildingFormOf(building: BuildingDetail): BuildingForm {
     short_name: building.short_name ?? '',
     sort_order: String(building.sort_order),
   }
-}
-
-function checkOrder(text: string, problems: Record<string, string>) {
-  const problem = orderProblem(text)
-  if (problem) problems.sort_order = problem
 }
 
 export function buildingProblems(form: BuildingForm): Record<string, string> {

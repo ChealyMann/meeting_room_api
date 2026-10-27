@@ -63,6 +63,12 @@ const router = createRouter({
           meta: { title: 'Floors' },
         },
         {
+          path: 'room-types',
+          name: 'room-types',
+          component: () => import('../views/RoomTypesView.vue'),
+          meta: { title: 'Room types' },
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../views/ProfileView.vue'),
