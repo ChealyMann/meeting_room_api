@@ -135,7 +135,8 @@ function position() {
   const below = window.innerHeight - rect.bottom - 12
   const above = rect.top - 12
   const up = below < 260 && above > below
-  const width = Math.min(Math.max(rect.width, 300), window.innerWidth - 32)
+  // A long list with a search box gets room to read; a short one stays close to its button.
+  const width = Math.min(Math.max(rect.width, hasSearch.value ? 300 : 160), window.innerWidth - 32)
   place.value = {
     left: Math.max(16, Math.min(rect.left, window.innerWidth - width - 16)),
     top: up ? 'auto' : `${rect.bottom + 6}px`,

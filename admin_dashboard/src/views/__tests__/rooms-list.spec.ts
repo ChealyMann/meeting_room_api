@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { useSessionStore } from '../../stores/session'
+import { choosePicker, pickerOptions } from '../../test-utils/picker'
 import RoomsView from '../RoomsView.vue'
 
 const page = <T>(items: T[], total = items.length) => ({ items, page: 1, size: 100, total })
@@ -131,8 +132,7 @@ describe('RoomsView list', () => {
   it('clears building and floor when the office changes', async () => {
     const { wrapper, router } = await mountAt('/?location_id=3')
 
-    await wrapper.get('select#filter-building').setValue('5')
-    await flushPromises()
+    await choosePicker('filter-building', 'Building A')
     expect(query(router)).toMatchObject({ location_id: '3', building_id: '5' })
 
     await wrapper.get('button#filter-office').trigger('click')
@@ -147,6 +147,19 @@ describe('RoomsView list', () => {
 
     expect(roomCalls[roomCalls.length - 1]).toContain('location_id=999')
     expect(wrapper.get('button#filter-office').text()).toBe('Unknown office')
+  })
+
+  it('filters by room type, owner, bookable and private with the pickers', async () => {
+    const { wrapper, router } = await mountAt('/')
+
+    await choosePicker('filter-type', 'Meeting room')
+    await wrapper.findAll('button').find((b) => b.text() === 'More filters')!.trigger('click')
+    await flushPromises()
+    await choosePicker('filter-owner', 'No owner')
+    await choosePicker('filter-bookable', 'Not bookable')
+    await choosePicker('filter-private', 'Private')
+
+    expect(query(router)).toEqual({ category_id: '1', has_owner: 'false', is_bookable: 'false', is_private: 'true' })
   })
 
   it('opens a room from its row', async () => {
@@ -313,15 +326,14 @@ describe('RoomsView review fixes', () => {
       url.pathname === '/api/v1/buildings' && url.searchParams.get('location_id') === '3'
         ? new Promise<Response>((resolve) => (release3 = () => resolve(json(page(BUILDINGS['3']!)))))
         : undefined
-    const { wrapper, router } = await mountAt('/?location_id=3')
+    const { router } = await mountAt('/?location_id=3')
 
     await router.push('/?location_id=4')
     await flushPromises()
     release3()
     await flushPromises()
 
-    const options = wrapper.findAll('select#filter-building option').map((o) => o.text())
-    expect(options).toEqual(['All buildings', 'Main Building'])
+    expect(await pickerOptions('filter-building')).toEqual(['All buildings', 'Main Building'])
   })
 
   it('goes to the last page when the page in the address is past the end', async () => {

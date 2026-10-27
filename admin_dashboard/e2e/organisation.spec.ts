@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { pick } from './picker'
+
 // Needs the API running (run.bat), an Admin whose password is already changed, and at least one active office.
 const email = process.env.E2E_ADMIN_EMAIL
 const password = process.env.E2E_ADMIN_PASSWORD
@@ -22,8 +24,7 @@ test('add a department, a division and a position, then turn the position off', 
 
   await page.getByRole('link', { name: 'Departments' }).click()
   await page.getByRole('button', { name: 'New department' }).first().click()
-  await expect(panel.locator('#location_id option')).not.toHaveCount(1)
-  await panel.locator('#location_id').selectOption({ index: 1 })
+  await pick(page, 'location_id', { first: true })
   await panel.locator('#name_kh').fill(`នាយកដ្ឋាន ${stamp}`)
   await panel.locator('#name_en').fill(department)
   await panel.getByRole('button', { name: 'Create department' }).click()
@@ -31,8 +32,7 @@ test('add a department, a division and a position, then turn the position off', 
 
   await page.getByRole('link', { name: 'Divisions' }).click()
   await page.getByRole('button', { name: 'New division' }).first().click()
-  await expect(panel.locator('#department_id')).toContainText(department)
-  await panel.locator('#department_id').selectOption({ label: department })
+  await pick(page, 'department_id', department)
   await panel.locator('#name_kh').fill(`ការិយាល័យ ${stamp}`)
   await panel.locator('#name_en').fill(division)
   await panel.getByRole('button', { name: 'Create division' }).click()

@@ -24,8 +24,10 @@ import type {
 } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import OfficePicker from '../../components/list/OfficePicker.vue'
+import SearchPicker, { type PickerItem } from '../../components/list/SearchPicker.vue'
 import StatusFilter from '../../components/list/StatusFilter.vue'
 import { useListQuery } from '../../composables/useListQuery'
+import { FILTER_WORDS } from '../../utils/pickerWords'
 import { selectOptions } from '../../utils/selectOptions'
 import { MORE_FILTERS, ROOM_FILTERS } from './roomFilters'
 
@@ -91,17 +93,13 @@ const typeOptions = computed(() =>
   selectOptions(roomTypes.value, num('category_id'), (t) => t.name_en, 'Unknown room type'),
 )
 
-const toId = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  return value ? Number(value) : null
-}
 
 // Choosing a parent clears its children: a floor from another office is never sent.
 function chooseOffice(id: number | null) {
   list.set({ location_id: id, building_id: null, floor_id: null })
 }
-function chooseBuilding(event: Event) {
-  list.set({ building_id: toId(event), floor_id: null })
+function chooseBuilding(id: number | null) {
+  list.set({ building_id: id, floor_id: null })
 }
 
 // Search waits until typing stops (300ms), so the list is not reloaded per key.
@@ -139,20 +137,24 @@ function toggleEquipment(id: number, on: boolean) {
   list.set({ equipment_ids: [...ids].sort((a, b) => a - b) })
 }
 
-const ownerValue = computed(() =>
-  f.value.has_owner === false ? 'none' : num('owner_id') !== null ? String(num('owner_id')) : '',
-)
-function chooseOwner(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
+// "No owner" is its own choice ('none' → has_owner=false); a person is their id.
+const ownerItems = computed<PickerItem[]>(() => [
+  { value: 'none', label: 'No owner' },
+  ...owners.value.map((o) => ({ value: o.id, label: o.name_en, keywords: o.name_kh })),
+])
+const ownerValue = computed(() => (f.value.has_owner === false ? 'none' : num('owner_id')))
+function chooseOwner(value: number | string | null) {
   list.set({
-    owner_id: value && value !== 'none' ? Number(value) : null,
+    owner_id: typeof value === 'number' ? value : null,
     has_owner: value === 'none' ? false : null,
   })
 }
+const provinceItems = computed<PickerItem[]>(() =>
+  provinces.value.map((p) => ({ value: p.code, label: p.name_en, keywords: p.name_kh })),
+)
 
-const triState = (key: string) => (f.value[key] === true ? 'yes' : f.value[key] === false ? 'no' : '')
-function chooseTriState(key: string, event: Event) {
-  const value = (event.target as HTMLSelectElement).value
+const triState = (key: string) => (f.value[key] === true ? 'yes' : f.value[key] === false ? 'no' : null)
+function chooseTriState(key: string, value: number | string | null) {
   list.set({ [key]: value === 'yes' ? true : value === 'no' ? false : null })
 }
 
@@ -185,44 +187,32 @@ watchEffect(() => {
       <input v-model="searchText" class="input" type="search" placeholder="Search name or description" />
     </label>
     <OfficePicker id="filter-office" :offices="offices" :model-value="num('location_id')" @update:model-value="chooseOffice" />
-    <label>
-      <span class="sr-only">Building</span>
-      <select
-        id="filter-building"
-        class="input"
-        :value="num('building_id') ?? ''"
-        :disabled="num('location_id') === null"
-        @change="chooseBuilding"
-      >
-        <option value="">All buildings</option>
-        <option v-for="b in buildingOptions" :key="b.value" :value="b.value">{{ b.label }}</option>
-      </select>
-    </label>
-    <label>
-      <span class="sr-only">Floor</span>
-      <select
-        id="filter-floor"
-        class="input"
-        :value="num('floor_id') ?? ''"
-        :disabled="num('building_id') === null"
-        @change="list.set({ floor_id: toId($event) })"
-      >
-        <option value="">All floors</option>
-        <option v-for="fl in floorOptions" :key="fl.value" :value="fl.value">{{ fl.label }}</option>
-      </select>
-    </label>
-    <label>
-      <span class="sr-only">Room type</span>
-      <select
-        id="filter-type"
-        class="input"
-        :value="num('category_id') ?? ''"
-        @change="list.set({ category_id: toId($event) })"
-      >
-        <option value="">All types</option>
-        <option v-for="t in typeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
-      </select>
-    </label>
+    <SearchPicker
+      id="filter-building"
+      class="narrow"
+      :items="buildingOptions"
+      :words="FILTER_WORDS.building"
+      :model-value="num('building_id')"
+      :disabled="num('location_id') === null"
+      @update:model-value="chooseBuilding($event as number | null)"
+    />
+    <SearchPicker
+      id="filter-floor"
+      class="narrow"
+      :items="floorOptions"
+      :words="FILTER_WORDS.floor"
+      :model-value="num('floor_id')"
+      :disabled="num('building_id') === null"
+      @update:model-value="list.set({ floor_id: $event })"
+    />
+    <SearchPicker
+      id="filter-type"
+      class="narrow"
+      :items="typeOptions"
+      :words="FILTER_WORDS.roomType"
+      :model-value="num('category_id')"
+      @update:model-value="list.set({ category_id: $event })"
+    />
     <StatusFilter v-model="list.status.value" />
     <span class="spacer" />
     <BaseButton variant="quiet" :aria-expanded="moreOpen" aria-controls="more-filters" @click="moreOpen = !moreOpen">
@@ -232,13 +222,13 @@ watchEffect(() => {
   </div>
 
   <div v-if="moreOpen" id="more-filters" class="filters more">
-    <label>
-      <span class="sr-only">Province</span>
-      <select id="filter-province" class="input" :value="f.province ?? ''" @change="list.set({ province: ($event.target as HTMLSelectElement).value })">
-        <option value="">All provinces</option>
-        <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name_en }}</option>
-      </select>
-    </label>
+    <SearchPicker
+      id="filter-province"
+      :items="provinceItems"
+      :words="FILTER_WORDS.province"
+      :model-value="(f.province as string | undefined) ?? null"
+      @update:model-value="list.set({ province: $event })"
+    />
     <label class="seats">
       <span class="sr-only">Minimum seats</span>
       <input
@@ -268,34 +258,35 @@ watchEffect(() => {
         <p v-if="!equipment.length" class="hint">No equipment yet.</p>
       </div>
     </details>
-    <label>
-      <span class="sr-only">Owner</span>
-      <select id="filter-owner" class="input" :value="ownerValue" @change="chooseOwner">
-        <option value="">Any owner</option>
-        <option value="none">No owner</option>
-        <option v-for="o in owners" :key="o.id" :value="String(o.id)">{{ o.name_en }}</option>
-      </select>
-    </label>
-    <label>
-      <span class="sr-only">Bookable</span>
-      <select id="filter-bookable" class="input" :value="triState('is_bookable')" @change="chooseTriState('is_bookable', $event)">
-        <option value="">Bookable or not</option>
-        <option value="yes">Bookable</option>
-        <option value="no">Not bookable</option>
-      </select>
-    </label>
-    <label>
-      <span class="sr-only">Private</span>
-      <select id="filter-private" class="input" :value="triState('is_private')" @change="chooseTriState('is_private', $event)">
-        <option value="">Private or public</option>
-        <option value="yes">Private</option>
-        <option value="no">Public</option>
-      </select>
-    </label>
+    <SearchPicker
+      id="filter-owner"
+      :items="ownerItems"
+      :words="FILTER_WORDS.owner"
+      :model-value="ownerValue"
+      @update:model-value="chooseOwner"
+    />
+    <SearchPicker
+      id="filter-bookable"
+      :items="[{ value: 'yes', label: 'Bookable' }, { value: 'no', label: 'Not bookable' }]"
+      :words="FILTER_WORDS.bookable"
+      :model-value="triState('is_bookable')"
+      @update:model-value="chooseTriState('is_bookable', $event)"
+    />
+    <SearchPicker
+      id="filter-private"
+      :items="[{ value: 'yes', label: 'Private' }, { value: 'no', label: 'Public' }]"
+      :words="FILTER_WORDS.private"
+      :model-value="triState('is_private')"
+      @update:model-value="chooseTriState('is_private', $event)"
+    />
   </div>
 </template>
 
 <style scoped>
+/* Building, floor and type stay as narrow as the old lists, so the first row fits at 1366px. */
+.filters > .narrow {
+  width: 136px;
+}
 .filters {
   display: flex;
   flex-wrap: wrap;

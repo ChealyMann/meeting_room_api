@@ -1,7 +1,8 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import EmptyState from '../EmptyState.vue'
+import { choosePicker } from '../../../test-utils/picker'
 import PagingFoot from '../PagingFoot.vue'
 import StateMarks from '../StateMarks.vue'
 import StatusFilter from '../StatusFilter.vue'
@@ -10,9 +11,11 @@ import TableSkeleton from '../TableSkeleton.vue'
 const pagerLabels = (wrapper: ReturnType<typeof mount>) =>
   wrapper.findAll('nav[aria-label="Pages"] > *').map((el) => el.text() || el.attributes('aria-label'))
 
+enableAutoUnmount(afterEach)
+
 describe('PagingFoot', () => {
   it('shows the range and moves between pages', async () => {
-    const wrapper = mount(PagingFoot, { props: { page: 3, size: 20, total: 57 } })
+    const wrapper = mount(PagingFoot, { props: { page: 3, size: 20, total: 57 }, attachTo: document.body })
 
     expect(wrapper.get('.range').text()).toBe('41–57 of 57')
     expect(wrapper.get('button[aria-label="Next page"]').attributes('disabled')).toBeDefined()
@@ -22,7 +25,7 @@ describe('PagingFoot', () => {
     await wrapper.findAll('nav button').find((b) => b.text() === '2')!.trigger('click')
     expect(wrapper.emitted('update:page')?.[0]).toEqual([2])
 
-    await wrapper.get('select').setValue('50')
+    await choosePicker('rows-per-page', '50')
     expect(wrapper.emitted('update:size')?.[0]).toEqual([50])
   })
 

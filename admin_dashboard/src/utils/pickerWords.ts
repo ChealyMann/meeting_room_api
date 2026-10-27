@@ -21,4 +21,6 @@ export const FILTER_WORDS = {
   owner: { all: 'Any owner', search: 'Search people', unknown: 'Unknown owner', none: 'No one matches', clear: 'Show any owner' },
   province: { all: 'All provinces', search: 'Search provinces', unknown: 'Unknown province', none: 'No province matches', clear: 'Show all provinces' },
   department: { all: 'All departments', search: 'Search departments', unknown: 'Unknown department', none: 'No department matches', clear: 'Show all departments' },
+  bookable: { all: 'Bookable or not', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show bookable or not' },
+  private: { all: 'Private or public', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show private or public' },
 } satisfies Record<string, PickerWords>

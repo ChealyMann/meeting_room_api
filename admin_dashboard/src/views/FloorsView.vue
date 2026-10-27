@@ -11,6 +11,7 @@ import type { BuildingOut, FloorDetail, FloorOut, LocationOut } from '../api/typ
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import OfficePicker from '../components/list/OfficePicker.vue'
+import SearchPicker from '../components/list/SearchPicker.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import StateMarks from '../components/list/StateMarks.vue'
@@ -19,6 +20,7 @@ import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
+import { FILTER_WORDS } from '../utils/pickerWords'
 import { selectOptions } from '../utils/selectOptions'
 import { serial } from '../utils/serial'
 import FloorFormPanel from './places/FloorFormPanel.vue'
@@ -60,10 +62,6 @@ watch(
 const buildingOptions = computed(() =>
   selectOptions(officeBuildings.value, buildingId.value, (b) => b.name_en, 'Unknown building'),
 )
-const idOf = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  return value ? Number(value) : null
-}
 // Choosing an office clears the building: a building from another office is never sent.
 function chooseOffice(id: number | null) {
   list.set({ location_id: id, building_id: null })
@@ -112,19 +110,14 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
         @search="list.set({ search: $event })"
       />
       <OfficePicker id="filter-office" :offices="offices" :model-value="officeId" @update:model-value="chooseOffice" />
-      <label>
-        <span class="sr-only">Building</span>
-        <select
-          id="filter-building"
-          class="input"
-          :value="buildingId ?? ''"
-          :disabled="officeId === null"
-          @change="list.set({ building_id: idOf($event) })"
-        >
-          <option value="">All buildings</option>
-          <option v-for="b in buildingOptions" :key="b.value" :value="b.value">{{ b.label }}</option>
-        </select>
-      </label>
+      <SearchPicker
+        id="filter-building"
+        :items="buildingOptions"
+        :words="FILTER_WORDS.building"
+        :model-value="buildingId"
+        :disabled="officeId === null"
+        @update:model-value="list.set({ building_id: $event })"
+      />
       <StatusFilter v-model="list.status.value" />
     </div>
 

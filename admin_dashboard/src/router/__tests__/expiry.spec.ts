@@ -45,6 +45,9 @@ afterEach(() => {
 
 describe('session lost mid-edit (DSH-A05, DSH-A06)', () => {
   it('goes to sign-in, then back to the same page with the typed values', async () => {
+    // The pages load on demand; with every test file running at once that can take over the
+    // 1s default of vi.waitFor, so these waits allow 5s.
+    const slow = { timeout: 5000 }
     // A fresh router module: its one-time restore and expire hook belong to this test's Pinia.
     vi.resetModules()
     const { default: router } = await import('../index')
@@ -74,24 +77,25 @@ describe('session lost mid-edit (DSH-A05, DSH-A06)', () => {
     const Root = defineComponent({ render: () => h(RouterView) })
     const wrapper = mount(Root, { global: { plugins: [pinia, router] }, attachTo: document.body })
     await router.push('/profile')
-    await vi.waitFor(() => expect(wrapper.find('#phone').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('#phone').exists()).toBe(true), slow)
 
     await wrapper.get('#phone').setValue('099 111 222')
     refused = true
     await wrapper.get('form').trigger('submit')
 
-    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('sign-in'))
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('sign-in'), slow)
     expect(router.currentRoute.value.query).toEqual({ redirect: '/profile' })
 
-    await vi.waitFor(() => expect(wrapper.find('#email').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.find('#email').exists()).toBe(true), slow)
     await wrapper.get('#email').setValue('dara@company.com')
     await wrapper.get('#password').setValue('pw')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/profile'))
-    await vi.waitFor(() =>
-      expect((wrapper.get('#phone').element as HTMLInputElement).value).toBe('099 111 222'),
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/profile'), slow)
+    await vi.waitFor(
+      () => expect((wrapper.get('#phone').element as HTMLInputElement).value).toBe('099 111 222'),
+      slow,
     )
     wrapper.unmount()
   })

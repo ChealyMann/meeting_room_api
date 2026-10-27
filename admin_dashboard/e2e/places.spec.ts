@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { pick } from './picker'
+
 // Needs the API running (run.bat) and an Admin whose password is already changed.
 const email = process.env.E2E_ADMIN_EMAIL
 const password = process.env.E2E_ADMIN_PASSWORD
@@ -24,8 +26,7 @@ test('add an office, a building and a floor, then turn the office off and on', a
   await page.getByRole('button', { name: 'New office' }).first().click()
   await panel.locator('#name_kh').fill(`ការិយាល័យ ${stamp}`)
   await panel.locator('#name_en').fill(office)
-  await expect(panel.locator('#province option')).not.toHaveCount(1)
-  await panel.locator('#province').selectOption({ index: 1 })
+  await pick(page, 'province', { first: true })
   await panel.getByRole('button', { name: 'Create office' }).click()
   await expect(page.getByRole('status')).toContainText(`${office} saved`)
   await page.getByPlaceholder('Search name or address').fill(office)
@@ -33,8 +34,7 @@ test('add an office, a building and a floor, then turn the office off and on', a
 
   await page.getByRole('link', { name: 'Buildings' }).click()
   await page.getByRole('button', { name: 'New building' }).first().click()
-  await expect(panel.locator('#location_id')).toContainText(office)
-  await panel.locator('#location_id').selectOption({ label: office })
+  await pick(page, 'location_id', office)
   await panel.locator('#name_kh').fill(`អគារ ${stamp}`)
   await panel.locator('#name_en').fill(building)
   await panel.getByRole('button', { name: 'Create building' }).click()
@@ -42,10 +42,8 @@ test('add an office, a building and a floor, then turn the office off and on', a
 
   await page.getByRole('link', { name: 'Floors' }).click()
   await page.getByRole('button', { name: 'New floor' }).first().click()
-  await expect(panel.locator('#location_id')).toContainText(office)
-  await panel.locator('#location_id').selectOption({ label: office })
-  await expect(panel.locator('#building_id')).toContainText(building)
-  await panel.locator('#building_id').selectOption({ label: building })
+  await pick(page, 'location_id', office)
+  await pick(page, 'building_id', building)
   await panel.locator('#floor_label').fill(floor)
   await panel.getByRole('button', { name: 'Create floor' }).click()
   await expect(page.getByRole('status')).toContainText(`${floor} saved`)

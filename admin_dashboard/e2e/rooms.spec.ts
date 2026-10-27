@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { pick } from './picker'
+
 // Needs the API running (run.bat), an Admin whose password is already changed, and at least
 // one active office with a building, a floor, a room type and an equipment item.
 const email = process.env.E2E_ADMIN_EMAIL
@@ -22,12 +24,10 @@ test('create a room in steps, find it, turn it off', async ({ page }) => {
   const panel = page.getByRole('dialog')
   await panel.locator('#name_kh').fill(`បន្ទប់ ${stamp}`)
   await panel.locator('#name_en').fill(nameEn)
-  await panel.locator('#location_id').selectOption({ index: 1 })
-  await expect(panel.locator('#building_id option')).not.toHaveCount(1)
-  await panel.locator('#building_id').selectOption({ index: 1 })
-  await expect(panel.locator('#floor_id option')).not.toHaveCount(1)
-  await panel.locator('#floor_id').selectOption({ index: 1 })
-  await panel.locator('#category_id').selectOption({ index: 1 })
+  await pick(page, 'location_id', { first: true })
+  await pick(page, 'building_id', { first: true })
+  await pick(page, 'floor_id', { first: true })
+  await pick(page, 'category_id', { first: true })
   await panel.locator('#capacity').fill('8')
   await page.getByRole('button', { name: 'Create room' }).click()
 

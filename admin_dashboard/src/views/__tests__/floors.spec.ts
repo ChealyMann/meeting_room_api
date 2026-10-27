@@ -117,11 +117,9 @@ describe('FloorsView', () => {
   })
 
   it('shows "Unknown building" for a building the office does not have', async () => {
-    const { wrapper } = await mountAt('/floors?location_id=3&building_id=99')
 
-    const select = wrapper.get<HTMLSelectElement>('#filter-building')
-    expect(select.element.value).toBe('99')
-    expect(select.find('option:checked').text()).toBe('Unknown building')
+    await mountAt('/floors?location_id=3&building_id=99')
+    expect(pickerLabel('filter-building')).toBe('Unknown building')
   })
 
   it('clears the building when another office is chosen', async () => {

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { PAGE_SIZES } from '../../composables/useListQuery'
+import SearchPicker from './SearchPicker.vue'
 
 const props = defineProps<{ page: number; size: number; total: number }>()
 const emit = defineEmits<{ 'update:page': [page: number]; 'update:size': [size: number] }>()
@@ -36,20 +37,26 @@ function go(page: number) {
   if (page >= 1 && page <= pages.value && page !== props.page) emit('update:page', page)
 }
 
-function onSize(event: Event) {
-  emit('update:size', Number((event.target as HTMLSelectElement).value))
-}
+const SIZE_ITEMS = PAGE_SIZES.map((n) => ({ value: n, label: String(n) }))
+const SIZE_WORDS = { all: '20', search: 'Rows', unknown: 'Rows', none: 'No match' }
 </script>
 
 <template>
   <div class="foot">
     <span class="mono range">{{ range }}</span>
-    <label class="rows">
-      Rows
-      <select class="input" :value="size" @change="onSize">
-        <option v-for="option in PAGE_SIZES" :key="option" :value="option">{{ option }}</option>
-      </select>
-    </label>
+    <div class="rows">
+      <span id="rows-label">Rows</span>
+      <SearchPicker
+        id="rows-per-page"
+        class="size"
+        mode="field"
+        :items="SIZE_ITEMS"
+        :words="SIZE_WORDS"
+        :model-value="size"
+        described-by="rows-label"
+        @update:model-value="emit('update:size', Number($event))"
+      />
+    </div>
     <nav class="pager" aria-label="Pages">
       <button type="button" aria-label="Previous page" :disabled="page <= 1" @click="go(page - 1)">
         <ChevronLeft aria-hidden="true" />
@@ -90,6 +97,10 @@ function onSize(event: Event) {
 }
 .range {
   font-size: 12px;
+}
+/* The rows-per-page picker stays narrow (the picker is full width in form mode). */
+.foot .rows > .size {
+  width: 84px;
 }
 .rows {
   display: flex;
