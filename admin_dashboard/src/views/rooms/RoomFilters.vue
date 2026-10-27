@@ -23,6 +23,7 @@ import type {
   UserListItem,
 } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import OfficePicker from '../../components/list/OfficePicker.vue'
 import StatusFilter from '../../components/list/StatusFilter.vue'
 import { useListQuery } from '../../composables/useListQuery'
 import { selectOptions } from '../../utils/selectOptions'
@@ -80,9 +81,6 @@ watch(
   { immediate: true },
 )
 
-const officeOptions = computed(() =>
-  selectOptions(offices.value, num('location_id'), (o) => o.name_en, 'Unknown office'),
-)
 const buildingOptions = computed(() =>
   selectOptions(buildings.value, num('building_id'), (b) => b.name_en, 'Unknown building'),
 )
@@ -99,8 +97,8 @@ const toId = (event: Event) => {
 }
 
 // Choosing a parent clears its children: a floor from another office is never sent.
-function chooseOffice(event: Event) {
-  list.set({ location_id: toId(event), building_id: null, floor_id: null })
+function chooseOffice(id: number | null) {
+  list.set({ location_id: id, building_id: null, floor_id: null })
 }
 function chooseBuilding(event: Event) {
   list.set({ building_id: toId(event), floor_id: null })
@@ -186,13 +184,7 @@ watchEffect(() => {
       <Search aria-hidden="true" />
       <input v-model="searchText" class="input" type="search" placeholder="Search name or description" />
     </label>
-    <label>
-      <span class="sr-only">Office</span>
-      <select id="filter-office" class="input" :value="num('location_id') ?? ''" @change="chooseOffice">
-        <option value="">All offices</option>
-        <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-      </select>
-    </label>
+    <OfficePicker id="filter-office" :offices="offices" :model-value="num('location_id')" @update:model-value="chooseOffice" />
     <label>
       <span class="sr-only">Building</span>
       <select

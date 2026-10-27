@@ -460,6 +460,12 @@ Offices, buildings, floors, room types, equipment, departments, divisions and po
 ### Icon Picker
 An equipment item's icon is a Lucide name chosen from a fixed list of 50 meeting-room icons. The picker shows a preview first (a 56px paper square holding the icon at 32px, then its label and the stored name in mono; a dashed empty square for "No icon"; a `CircleHelp` in off ink with "Unknown icon" and the stored text for a name not on the list, which is kept unless changed), then a search box with a "No icon" button, then a grid of 40px icon buttons (hairline border, crimson border and wash when chosen) that scrolls after four rows. The grid is one radio group: one tab stop, arrow keys and Home/End move and choose. No match says "No icons match.". In the list the icon is 20px in its own column after the serial.
 
+### Office Picker
+The Rooms office filter is a 184px button in the filter box style (owner decision, 27 Oct 2026), not a browser list: the name fills it ("All offices" or the chosen office, ending in "…" with the full name on hover) and the arrow, or × to clear once one is chosen, sits 10px from the right edge like the other selects. It opens a 300px sheet card: a search box ("Search offices", matching English name, Khmer name or province, the match set in bold), then one line per office with a crimson tick and crimson name for the chosen one; "All offices" first, main offices next, a hairline, then the branches. Offices that are off are hidden unless chosen ("(off)"); an unknown chosen id reads "Unknown office". Arrow keys, Home/End, Enter and Escape work; a click outside closes it. On a phone it opens from the bottom over the scrim.
+
+### Scrollbars
+Every scroll area uses the theme scrollbar: a slim pill in rule-strong with transparent track and no arrow buttons, intaglio on hover (Chrome, Edge and Safari); Firefox gets its thin scrollbar in the same colour.
+
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (toast 260ms, switch thumb 180ms); the drawer curve (`cubic-bezier(0.32, 0.72, 0, 1)`) for the sidebar fold (240ms) and the side panel (opens in 340ms, closes in 240ms, its scrim fading at the same pace; a panel that replaces another one starts where the old one was, and a panel the page removes still slides out); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
 

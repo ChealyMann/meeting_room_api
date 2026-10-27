@@ -135,7 +135,9 @@ describe('RoomsView list', () => {
     await flushPromises()
     expect(query(router)).toMatchObject({ location_id: '3', building_id: '5' })
 
-    await wrapper.get('select#filter-office').setValue('4')
+    await wrapper.get('button#filter-office').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('[role="option"]').find((o) => o.text() === 'Siem Reap Branch')!.trigger('click')
     await flushPromises()
     expect(query(router)).toEqual({ location_id: '4' })
   })
@@ -144,8 +146,7 @@ describe('RoomsView list', () => {
     const { wrapper } = await mountAt('/?location_id=999')
 
     expect(roomCalls[roomCalls.length - 1]).toContain('location_id=999')
-    const select = wrapper.get('select#filter-office').element as HTMLSelectElement
-    expect(select.selectedOptions[0]!.textContent).toBe('Unknown office')
+    expect(wrapper.get('button#filter-office').text()).toBe('Unknown office')
   })
 
   it('opens a room from its row', async () => {
