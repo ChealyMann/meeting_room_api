@@ -30,6 +30,7 @@ function makeRouter() {
           { path: 'departments', name: 'departments', component: Page, meta: { title: 'Departments' } },
           { path: 'divisions', name: 'divisions', component: Page, meta: { title: 'Divisions' } },
           { path: 'positions', name: 'positions', component: Page, meta: { title: 'Positions' } },
+          { path: 'users', name: 'users', component: Page, meta: { title: 'Users' } },
         ],
       },
     ],
@@ -71,10 +72,10 @@ describe('AppShell', () => {
   it('renders not-yet-built pages as disabled links', async () => {
     const { wrapper } = await mountShell('/')
 
-    const users = wrapper.findAll('nav a').find((a) => a.text().includes('Users'))
-    expect(users?.attributes('aria-disabled')).toBe('true')
-    expect(users?.attributes('title')).toBe('Coming soon')
-    expect(users?.attributes('href')).toBeUndefined()
+    const roles = wrapper.findAll('nav a').find((a) => a.text().includes('Roles'))
+    expect(roles?.attributes('aria-disabled')).toBe('true')
+    expect(roles?.attributes('title')).toBe('Coming soon')
+    expect(roles?.attributes('href')).toBeUndefined()
   })
 
   it('links Offices and marks it on its page', async () => {

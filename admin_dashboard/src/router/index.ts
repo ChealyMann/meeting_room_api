@@ -93,6 +93,12 @@ const router = createRouter({
           meta: { title: 'Positions' },
         },
         {
+          path: 'users',
+          name: 'users',
+          component: () => import('../views/UsersView.vue'),
+          meta: { title: 'Users' },
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../views/ProfileView.vue'),
