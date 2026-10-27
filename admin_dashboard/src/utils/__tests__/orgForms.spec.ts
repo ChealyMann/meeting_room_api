@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { DepartmentOut, DivisionOut } from '../../api/types'
+import type { DepartmentOut, DivisionOut, PositionOut } from '../../api/types'
 import {
   departmentChanges,
   departmentCreateBody,
@@ -12,6 +12,11 @@ import {
   divisionProblems,
   emptyDepartmentForm,
   emptyDivisionForm,
+  emptyPositionForm,
+  positionChanges,
+  positionCreateBody,
+  positionFormOf,
+  positionProblems,
 } from '../orgForms'
 
 const stamps = { is_active: true, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' }
@@ -79,5 +84,22 @@ describe('division form', () => {
     expect(divisionChanges(divisionFormOf(DIVISION), DIVISION)).toEqual({})
     expect(divisionChanges({ ...divisionFormOf(DIVISION), department_id: 8 }, DIVISION)).toEqual({ department_id: 8 })
     expect(divisionChanges({ ...divisionFormOf(DIVISION), short_name: '' }, DIVISION)).toEqual({ short_name: null })
+  })
+})
+
+const POSITION = { id: 4, name_en: 'IT Lead', name_kh: 'ប្រធានព័ត៌មានវិទ្យា', sort_order: 1, ...stamps } as PositionOut
+
+describe('position form', () => {
+  it('needs both names', () => {
+    expect(positionProblems(emptyPositionForm())).toEqual({
+      name_kh: 'Enter the Khmer name.',
+      name_en: 'Enter the English name.',
+    })
+  })
+
+  it('sends order 0 when empty, and only what changed', () => {
+    expect(positionCreateBody({ name_kh: 'ក', name_en: ' Clerk ', sort_order: '' })).toEqual({ name_kh: 'ក', name_en: 'Clerk', sort_order: 0 })
+    expect(positionChanges(positionFormOf(POSITION), POSITION)).toEqual({})
+    expect(positionChanges({ ...positionFormOf(POSITION), sort_order: '3' }, POSITION)).toEqual({ sort_order: 3 })
   })
 })

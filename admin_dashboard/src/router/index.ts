@@ -87,6 +87,12 @@ const router = createRouter({
           meta: { title: 'Divisions' },
         },
         {
+          path: 'positions',
+          name: 'positions',
+          component: () => import('../views/PositionsView.vue'),
+          meta: { title: 'Positions' },
+        },
+        {
           path: 'profile',
           name: 'profile',
           component: () => import('../views/ProfileView.vue'),

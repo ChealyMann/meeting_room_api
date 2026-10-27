@@ -7,6 +7,9 @@ import type {
   DivisionCreate,
   DivisionOut,
   DivisionUpdate,
+  PositionCreate,
+  PositionOut,
+  PositionUpdate,
 } from '../api/types'
 import { checkOrder, nameProblems, optional, tooLong } from './formChecks'
 import { orderValue } from './sortOrder'
@@ -111,5 +114,40 @@ export function divisionChanges(form: DivisionForm, division: DivisionOut): Divi
   if (form.name_en.trim() !== division.name_en) changes.name_en = form.name_en.trim()
   if (optional(form.short_name) !== optional(division.short_name ?? '')) changes.short_name = optional(form.short_name)
   if (orderValue(form.sort_order) !== division.sort_order) changes.sort_order = orderValue(form.sort_order)
+  return changes
+}
+
+export interface PositionForm {
+  name_kh: string
+  name_en: string
+  sort_order: string
+}
+
+export function emptyPositionForm(): PositionForm {
+  return { name_kh: '', name_en: '', sort_order: '' }
+}
+
+export function positionFormOf(position: PositionOut): PositionForm {
+  return { name_kh: position.name_kh, name_en: position.name_en, sort_order: String(position.sort_order) }
+}
+
+export function positionProblems(form: PositionForm): Record<string, string> {
+  const problems: Record<string, string> = {}
+  nameProblems(form, problems)
+  checkOrder(form.sort_order, problems)
+  return problems
+}
+
+/** POST /positions. An empty order is sent as 0, the API's default. */
+export function positionCreateBody(form: PositionForm): PositionCreate {
+  return { name_kh: form.name_kh.trim(), name_en: form.name_en.trim(), sort_order: orderValue(form.sort_order) }
+}
+
+/** PATCH /positions/{id}: only what changed. */
+export function positionChanges(form: PositionForm, position: PositionOut): PositionUpdate {
+  const changes: PositionUpdate = {}
+  if (form.name_kh.trim() !== position.name_kh) changes.name_kh = form.name_kh.trim()
+  if (form.name_en.trim() !== position.name_en) changes.name_en = form.name_en.trim()
+  if (orderValue(form.sort_order) !== position.sort_order) changes.sort_order = orderValue(form.sort_order)
   return changes
 }

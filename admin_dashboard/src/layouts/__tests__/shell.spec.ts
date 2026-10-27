@@ -29,6 +29,7 @@ function makeRouter() {
           { path: 'equipment', name: 'equipment', component: Page, meta: { title: 'Equipment' } },
           { path: 'departments', name: 'departments', component: Page, meta: { title: 'Departments' } },
           { path: 'divisions', name: 'divisions', component: Page, meta: { title: 'Divisions' } },
+          { path: 'positions', name: 'positions', component: Page, meta: { title: 'Positions' } },
         ],
       },
     ],
