@@ -81,9 +81,6 @@ onMounted(async () => {
   await Promise.all([loadBuildings(form.value.location_id), loadFloors(form.value.building_id)])
 })
 
-const officeOptions = computed(() =>
-  selectOptions(offices.value, form.value.location_id, (o) => o.name_en, 'Unknown office'),
-)
 const buildingOptions = computed(() =>
   selectOptions(buildings.value, form.value.building_id, (b) => b.name_en, 'Unknown building'),
 )

@@ -25,7 +25,6 @@ import {
   emptyDepartmentForm,
   type DepartmentForm,
 } from '../../utils/orgForms'
-import { selectOptions } from '../../utils/selectOptions'
 import { serial } from '../../utils/serial'
 
 const props = defineProps<{ department: DepartmentOut | null; defaultOfficeId?: number | null }>()
@@ -65,9 +64,6 @@ const offices = ref<LocationOut[]>([])
 onMounted(async () => {
   offices.value = await listOffices(api)
 })
-const officeOptions = computed(() =>
-  selectOptions(offices.value, form.value.location_id, (o) => o.name_en, 'Unknown office'),
-)
 const officeName = (id: number) => offices.value.find((o) => o.id === id)?.name_en ?? `#${id}`
 
 function close() {

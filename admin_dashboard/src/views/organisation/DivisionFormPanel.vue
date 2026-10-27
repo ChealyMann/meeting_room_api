@@ -17,7 +17,6 @@ import ActiveToggle from '../../components/list/ActiveToggle.vue'
 import { useFieldErrors } from '../../composables/useFieldErrors'
 import { useToast } from '../../composables/useToast'
 import { useDraftsStore } from '../../stores/drafts'
-import { departmentGroups } from '../../utils/departmentOptions'
 import {
   divisionChanges,
   divisionCreateBody,
@@ -69,8 +68,6 @@ onMounted(async () => {
   offices.value = o
   departments.value = d
 })
-// One group per office: the office is how an admin tells the IT departments apart.
-const groups = computed(() => departmentGroups(departments.value, offices.value, form.value.department_id))
 const departmentName = (id: number) => departments.value.find((d) => d.id === id)?.name_en ?? `#${id}`
 
 function close() {

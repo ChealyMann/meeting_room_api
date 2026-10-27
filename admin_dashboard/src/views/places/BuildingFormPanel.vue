@@ -25,7 +25,6 @@ import {
   emptyBuildingForm,
   type BuildingForm,
 } from '../../utils/placeForms'
-import { selectOptions } from '../../utils/selectOptions'
 import { serial } from '../../utils/serial'
 
 const props = defineProps<{ building: BuildingDetail | null; defaultOfficeId?: number | null }>()
@@ -65,9 +64,6 @@ const offices = ref<LocationOut[]>([])
 onMounted(async () => {
   offices.value = await listOffices(api)
 })
-const officeOptions = computed(() =>
-  selectOptions(offices.value, form.value.location_id, (o) => o.name_en, 'Unknown office'),
-)
 
 function close() {
   drafts.clear(draftKey.value)

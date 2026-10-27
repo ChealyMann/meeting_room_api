@@ -1,4 +1,4 @@
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import SearchPicker, { type PickerItem } from '../SearchPicker.vue'
@@ -36,22 +36,25 @@ function mountPicker(items: PickerItem[], modelValue: string | number | null = n
   })
   return wrapper
 }
-const options = (wrapper: ReturnType<typeof mountPicker>) => wrapper.findAll('[role="option"]').map((o) => o.text())
+const options = (wrapper: Pick<VueWrapper, 'findAll'>) => wrapper.findAll('[role="option"]').map((o) => o.text())
 
 const FIELD_WORDS = { all: 'Choose an office', search: 'Search offices', unknown: 'Unknown office', none: 'No office matches' }
 const MANY: PickerItem[] = Array.from({ length: 9 }, (_, i) => ({ value: i + 1, label: `Office ${i + 1}` }))
 
 function mountField(props: Record<string, unknown>) {
+  // The update handler needs the wrapper, so it reads it from here once mounted.
+  const holder: { wrapper?: VueWrapper } = {}
   const wrapper = mount(SearchPicker, {
     props: {
       id: 'location_id',
-      mode: 'field' as const,
+      mode: 'field',
       words: FIELD_WORDS,
-      'onUpdate:modelValue': (value: string | number | null) => wrapper.setProps({ modelValue: value }),
+      'onUpdate:modelValue': (value: string | number | null) => holder.wrapper?.setProps({ modelValue: value }),
       ...props,
-    },
+    } as never,
     attachTo: document.body,
   })
+  holder.wrapper = wrapper
   return wrapper
 }
 
