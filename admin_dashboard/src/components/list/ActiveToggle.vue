@@ -1,20 +1,21 @@
 <script setup lang="ts">
-// Turn off / turn on for an office, building or floor (DSH-G07, P05). Turning off asks in the
-// confirm dialog and says how many active rooms stop being bookable; turning on does not ask.
+// Turn off / turn on for an office, building, floor, room type or item (DSH-G07, P05, C01, C02).
+// Turning off asks in the confirm dialog and says what happens to the active rooms it touches;
+// turning on does not ask.
 import { CircleAlert, Power } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 import { api } from '../../api'
 import { ApiError } from '../../api/errors'
-import { countActiveRooms } from '../../api/places'
+import { countActiveRooms, type RoomCount } from '../../api/places'
 import { useConfirm } from '../../composables/useConfirm'
 import BaseButton from '../base/BaseButton.vue'
 
 const props = defineProps<{
   active: boolean
   name: string
-  kind: 'office' | 'building' | 'floor'
-  rooms: { location_id?: number; building_id?: number; floor_id?: number }
+  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment'
+  rooms: RoomCount
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
   turn: (active: boolean) => Promise<void>
   /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
@@ -25,11 +26,26 @@ const { confirm } = useConfirm()
 const busy = ref(false)
 const error = ref('')
 
+const AGAIN = 'You can turn it on again.'
+
+// A place's rooms stop being bookable; rooms keep a room type or an item, but it cannot be
+// chosen for other rooms (the API changes nothing in the rooms).
 function warning(count: number | null): string {
-  if (count === null) return 'Its rooms stop being bookable. You can turn it on again.'
-  if (count === 0) return 'No rooms are affected. You can turn it on again.'
-  const rooms = count === 1 ? '1 room' : `${count} rooms`
-  return `${rooms} in this ${props.kind} ${count === 1 ? 'stops' : 'stop'} being bookable. You can turn it on again.`
+  const one = count === 1
+  const rooms = one ? '1 room' : `${count} rooms`
+  if (props.kind === 'room type') {
+    if (count === null) return `Rooms that use it keep it, but it cannot be chosen for other rooms. ${AGAIN}`
+    if (count === 0) return `No rooms use it. ${AGAIN}`
+    return `${rooms} ${one ? 'uses' : 'use'} this room type and ${one ? 'keeps' : 'keep'} it. It cannot be chosen for other rooms. ${AGAIN}`
+  }
+  if (props.kind === 'equipment') {
+    if (count === null) return `Rooms that have it keep it, but it cannot be added to other rooms. ${AGAIN}`
+    if (count === 0) return `No rooms have it. ${AGAIN}`
+    return `${rooms} ${one ? 'has' : 'have'} this item and ${one ? 'keeps' : 'keep'} it. It cannot be added to other rooms. ${AGAIN}`
+  }
+  if (count === null) return `Its rooms stop being bookable. ${AGAIN}`
+  if (count === 0) return `No rooms are affected. ${AGAIN}`
+  return `${rooms} in this ${props.kind} ${one ? 'stops' : 'stop'} being bookable. ${AGAIN}`
 }
 
 async function run(active: boolean) {

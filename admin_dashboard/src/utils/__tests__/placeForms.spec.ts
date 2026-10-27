@@ -102,10 +102,13 @@ describe('building form', () => {
     const form = { ...buildingFormOf(BUILDING), short_name: 'x'.repeat(21), sort_order: '-1' }
     expect(buildingProblems(form)).toEqual({
       short_name: 'Max 20 characters.',
-      sort_order: 'Order must be a whole number from 0.',
+      sort_order: 'Order must be a whole number from 0 to 9999.',
     })
     expect(buildingProblems({ ...buildingFormOf(BUILDING), sort_order: '1.5' })).toEqual({
-      sort_order: 'Order must be a whole number from 0.',
+      sort_order: 'Order must be a whole number from 0 to 9999.',
+    })
+    expect(buildingProblems({ ...buildingFormOf(BUILDING), sort_order: '10000' })).toEqual({
+      sort_order: 'Order must be a whole number from 0 to 9999.',
     })
   })
 
@@ -146,7 +149,7 @@ describe('floor form', () => {
     })
     expect(floorProblems({ ...floorFormOf(FLOOR), floor_label: 'x'.repeat(101), sort_order: 'a' })).toEqual({
       floor_label: 'Max 100 characters.',
-      sort_order: 'Order must be a whole number from 0.',
+      sort_order: 'Order must be a whole number from 0 to 9999.',
     })
   })
 

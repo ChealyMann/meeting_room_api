@@ -194,7 +194,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.6fr', '96px', '32px']
   </div>
 </template>
 
-<style scoped src="./places/placePage.css"></style>
+<style scoped src="./listPage.css"></style>
 
 <style scoped>
 .col-address {

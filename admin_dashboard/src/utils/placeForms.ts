@@ -11,6 +11,7 @@ import type {
   LocationOut,
   LocationUpdate,
 } from '../api/types'
+import { orderProblem, orderValue as order } from './sortOrder'
 
 const length = (text: string) => [...text].length // characters, like the API
 const optional = (text: string) => text.trim() || null
@@ -110,18 +111,17 @@ export function buildingFormOf(building: BuildingDetail): BuildingForm {
   }
 }
 
-/** A sort order: empty, or a whole number from 0. */
-function orderProblem(text: string, problems: Record<string, string>) {
-  if (text.trim() && !/^\d+$/.test(text.trim())) problems.sort_order = 'Order must be a whole number from 0.'
+function checkOrder(text: string, problems: Record<string, string>) {
+  const problem = orderProblem(text)
+  if (problem) problems.sort_order = problem
 }
-const order = (text: string) => (text.trim() ? Number(text.trim()) : 0)
 
 export function buildingProblems(form: BuildingForm): Record<string, string> {
   const problems: Record<string, string> = {}
   if (form.location_id === null) problems.location_id = 'Choose an office.'
   nameProblems(form, problems)
   tooLong(form.short_name, 20, 'short_name', problems)
-  orderProblem(form.sort_order, problems)
+  checkOrder(form.sort_order, problems)
   return problems
 }
 
@@ -177,7 +177,7 @@ export function floorProblems(form: FloorForm): Record<string, string> {
   const label = form.floor_label.trim()
   if (!label) problems.floor_label = 'Enter the floor name.'
   else if (length(label) > 100) problems.floor_label = 'Max 100 characters.'
-  orderProblem(form.sort_order, problems)
+  checkOrder(form.sort_order, problems)
   return problems
 }
 

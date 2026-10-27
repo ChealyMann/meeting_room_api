@@ -1,4 +1,4 @@
-/* The layout the Offices, Buildings and Floors pages share (used as <style scoped src>). */
+/* The layout the record list pages share (Offices, Buildings, Floors, Room types, Equipment; used as <style scoped src>). */
 .places-page {
   display: flex;
   flex: 1;

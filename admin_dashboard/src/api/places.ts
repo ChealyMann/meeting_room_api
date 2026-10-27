@@ -80,10 +80,16 @@ export function updateFloor(client: ApiClient, id: number, changes: FloorUpdate)
   return client.request<FloorDetail>('PATCH', `${FLOORS}/${id}`, { json: changes })
 }
 
-/** How many active rooms are in an office, building or floor (for the turn-off warning). */
-export async function countActiveRooms(
-  client: ApiClient,
-  where: { location_id?: number; building_id?: number; floor_id?: number },
-): Promise<number> {
+/** Which rooms a turn-off warning counts: those in a place, of a room type, or with an item. */
+export type RoomCount = {
+  location_id?: number
+  building_id?: number
+  floor_id?: number
+  category_id?: number
+  equipment_ids?: number[]
+}
+
+/** How many active rooms match (for the turn-off warning). */
+export async function countActiveRooms(client: ApiClient, where: RoomCount): Promise<number> {
   return (await listRooms(client, { ...where, is_active: true, page: 1, size: 1 })).total
 }

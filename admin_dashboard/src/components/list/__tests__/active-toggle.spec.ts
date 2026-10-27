@@ -94,6 +94,32 @@ describe('ActiveToggle', () => {
     expect(confirmDialog()?.textContent).toContain('Its rooms stop being bookable.')
   })
 
+  it('says room types and equipment stay in their rooms', async () => {
+    mountConfirmHost()
+    const roomType = mount(ActiveToggle, {
+      props: { active: true, name: 'Meeting room', kind: 'room type', rooms: { category_id: 2 }, turn: vi.fn<(a: boolean) => Promise<void>>() },
+      attachTo: document.body,
+    })
+    await click(roomType, 'Turn off')
+    expect(roomCalls).toContain('/api/v1/rooms?category_id=2&is_active=true&page=1&size=1')
+    expect(confirmDialog()?.textContent).toContain('12 rooms use this room type and keep it. It cannot be chosen for other rooms.')
+    await answerConfirm('Cancel')
+    roomType.unmount()
+
+    roomsAnswer = rooms(1)
+    const item = mount(ActiveToggle, {
+      props: { active: true, name: 'Projector', kind: 'equipment', rooms: { equipment_ids: [4] }, turn: vi.fn<(a: boolean) => Promise<void>>() },
+      attachTo: document.body,
+    })
+    await click(item, 'Turn off')
+    expect(confirmDialog()?.textContent).toContain('1 room has this item and keeps it. It cannot be added to other rooms.')
+    await answerConfirm('Cancel')
+
+    roomsAnswer = () => json({ error: { code: 'X', message: 'Down.' } }, 500)
+    await click(item, 'Turn off')
+    expect(confirmDialog()?.textContent).toContain('Rooms that have it keep it, but it cannot be added to other rooms.')
+  })
+
   it('turns on without asking, and shows a refusal', async () => {
     const turn = vi.fn<(active: boolean) => Promise<void>>(async () => {
       throw new ApiError(409, 'INACTIVE_REFERENCE', 'Turn on its office first.')
