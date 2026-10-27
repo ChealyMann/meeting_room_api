@@ -68,7 +68,7 @@ function draw() {
   const root = getComputedStyle(document.documentElement)
   ctx.fillStyle = root.getPropertyValue('--color-paper').trim() || '#f9f7f5'
   ctx.fillRect(0, 0, width, height)
-  ctx.fillStyle = root.getPropertyValue('--color-ink').trim() || '#2a1c13'
+  ctx.fillStyle = root.getPropertyValue('--color-halftone').trim() || '#2a1c13'
 
   for (let y = CELL / 2; y < height; y += CELL) {
     for (let x = CELL / 2; x < width; x += CELL) {

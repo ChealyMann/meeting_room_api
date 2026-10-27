@@ -33,6 +33,8 @@
   --color-skeleton: #efe8e1;
   --color-skeleton-light: #f7f2ec;
   --color-scrim: rgba(38, 7, 7, 0.045);
+  /* The sign-in temple's dots: ink by day, crimson at night. */
+  --color-halftone: #2a1c13;
 
   --font-sans: "Poppins", "Kantumruy Pro", system-ui, sans-serif;
   --font-kh: "Kantumruy Pro", "Poppins", sans-serif;
@@ -76,6 +78,7 @@
   --color-skeleton: #1e2630;
   --color-skeleton-light: #27313c;
   --color-scrim: rgba(0, 0, 0, 0.45);
+  --color-halftone: #f2766d;
   --color-rail: #230808;
   --color-rail-raised: #3a0f0f;
   --color-rail-line: #331010;
