@@ -5,7 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { ApiError } from '../../api/errors'
-import { createOffice, updateOffice } from '../../api/places'
+import { countActiveRooms, createOffice, updateOffice } from '../../api/places'
 import { listProvinces } from '../../api/references'
 import type { LocationOut, ProvinceRef } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -211,7 +211,7 @@ async function turn(active: boolean) {
         :active="office.is_active"
         :name="office.name_en"
         kind="office"
-        :rooms="{ location_id: office.id }"
+        :count="() => countActiveRooms(api, { location_id: office!.id })"
         :turn="turn"
         :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
       />

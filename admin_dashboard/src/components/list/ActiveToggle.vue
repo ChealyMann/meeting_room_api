@@ -1,21 +1,20 @@
 <script setup lang="ts">
-// Turn off / turn on for an office, building, floor, room type or item (DSH-G07, P05, C01, C02).
-// Turning off asks in the confirm dialog and says what happens to the active rooms it touches;
-// turning on does not ask.
+// Turn off / turn on for a place, a catalog record or an organisation record (DSH-G07, P05, C01,
+// C02, O01–O03). Turning off asks in the confirm dialog and says what happens to the active rooms
+// or users it touches (the page passes the count); turning on does not ask.
 import { CircleAlert, Power } from 'lucide-vue-next'
 import { ref } from 'vue'
 
-import { api } from '../../api'
 import { ApiError } from '../../api/errors'
-import { countActiveRooms, type RoomCount } from '../../api/places'
 import { useConfirm } from '../../composables/useConfirm'
 import BaseButton from '../base/BaseButton.vue'
 
 const props = defineProps<{
   active: boolean
   name: string
-  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment'
-  rooms: RoomCount
+  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position'
+  /** How many active rooms or users it touches (the warning's number). */
+  count: () => Promise<number>
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
   turn: (active: boolean) => Promise<void>
   /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
@@ -28,11 +27,27 @@ const error = ref('')
 
 const AGAIN = 'You can turn it on again.'
 
-// A place's rooms stop being bookable; rooms keep a room type or an item, but it cannot be
-// chosen for other rooms (the API changes nothing in the rooms).
+// A place's rooms stop being bookable; rooms keep a room type or an item, and users keep their
+// department, division or position — it only cannot be chosen again (the API changes nobody).
 function warning(count: number | null): string {
   const one = count === 1
   const rooms = one ? '1 room' : `${count} rooms`
+  const users = one ? '1 user' : `${count} users`
+  if (props.kind === 'department') {
+    if (count === null) return `Its users stay where they are, but no new division can be added to it. ${AGAIN}`
+    if (count === 0) return `No users work in it. ${AGAIN}`
+    return `${users} ${one ? 'works' : 'work'} in this department and ${one ? 'stays' : 'stay'}. No new division can be added to it. ${AGAIN}`
+  }
+  if (props.kind === 'division') {
+    if (count === null) return `Its users stay in it, but no new user can join it. ${AGAIN}`
+    if (count === 0) return `No users work in it. ${AGAIN}`
+    return `${users} ${one ? 'works' : 'work'} in this division and ${one ? 'stays' : 'stay'} in it. No new user can join it. ${AGAIN}`
+  }
+  if (props.kind === 'position') {
+    if (count === null) return `Users with it keep it, but no new user can get it. ${AGAIN}`
+    if (count === 0) return `No users have it. ${AGAIN}`
+    return `${users} ${one ? 'has' : 'have'} this position and ${one ? 'keeps' : 'keep'} it. No new user can get it. ${AGAIN}`
+  }
   if (props.kind === 'room type') {
     if (count === null) return `Rooms that use it keep it, but it cannot be chosen for other rooms. ${AGAIN}`
     if (count === 0) return `No rooms use it. ${AGAIN}`
@@ -71,7 +86,7 @@ async function turnOff() {
   busy.value = true
   let count: number | null = null
   try {
-    count = await countActiveRooms(api, props.rooms)
+    count = await props.count()
   } catch {
     count = null // still ask, with the general warning
   } finally {

@@ -5,6 +5,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { ApiError } from '../../api/errors'
+import { countActiveRooms } from '../../api/places'
 import { createRoomType, updateRoomType } from '../../api/catalog'
 import type { CategoryOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -172,7 +173,7 @@ async function turn(active: boolean) {
         :active="roomType.is_active"
         :name="roomType.name_en"
         kind="room type"
-        :rooms="{ category_id: roomType.id }"
+        :count="() => countActiveRooms(api, { category_id: roomType!.id })"
         :turn="turn"
         :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
       />

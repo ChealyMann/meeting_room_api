@@ -3,44 +3,27 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '../../../api/errors'
-import { useSessionStore } from '../../../stores/session'
 import { answerConfirm, confirmDialog, mountConfirmHost } from '../../../test-utils/confirm'
 import ActiveToggle from '../ActiveToggle.vue'
 
 enableAutoUnmount(afterEach)
 
-let roomsAnswer: () => Response
-const roomCalls: string[] = []
+type Kind = 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position'
+type Count = () => Promise<number>
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
-}
-const rooms = (total: number) => () => json({ items: [], page: 1, size: 1, total })
+const counted = (total: number) => vi.fn<Count>(async () => total)
+const failing = () => vi.fn<Count>(async () => Promise.reject(new ApiError(500, 'X', 'Down.')))
 
-beforeEach(() => {
-  setActivePinia(createPinia())
-  useSessionStore().accessToken = 'A1'
-  roomCalls.length = 0
-  roomsAnswer = rooms(12)
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof fetch>(async (input) => {
-      const url = new URL(String(input))
-      roomCalls.push(url.pathname + url.search)
-      return roomsAnswer()
-    }),
-  )
-})
-afterEach(() => vi.unstubAllGlobals())
+beforeEach(() => setActivePinia(createPinia()))
 
-async function mountToggle(active: boolean, turn = vi.fn<(active: boolean) => Promise<void>>(async () => {})) {
+async function mountToggle(
+  active: boolean,
+  { kind = 'office' as Kind, name = 'Head Office', count = counted(12), turn = vi.fn<(active: boolean) => Promise<void>>(async () => {}) } = {},
+) {
   mountConfirmHost()
-  const wrapper = mount(ActiveToggle, {
-    props: { active, name: 'Head Office', kind: 'office', rooms: { location_id: 3 }, turn },
-    attachTo: document.body,
-  })
+  const wrapper = mount(ActiveToggle, { props: { active, name, kind, count, turn }, attachTo: document.body })
   await flushPromises()
-  return { wrapper, turn }
+  return { wrapper, turn, count }
 }
 
 const click = async (wrapper: Awaited<ReturnType<typeof mountToggle>>['wrapper'], text: string) => {
@@ -48,13 +31,23 @@ const click = async (wrapper: Awaited<ReturnType<typeof mountToggle>>['wrapper']
   await flushPromises()
 }
 
+/** The dialog text for turning off one kind with one count answer. */
+async function warningFor(kind: Kind, count: ReturnType<typeof counted>) {
+  const { wrapper } = await mountToggle(true, { kind, count })
+  await click(wrapper, 'Turn off')
+  const text = confirmDialog()?.textContent ?? ''
+  await answerConfirm('Cancel')
+  wrapper.unmount()
+  return text
+}
+
 describe('ActiveToggle', () => {
-  it('warns how many rooms stop being bookable, then turns off', async () => {
-    const { wrapper, turn } = await mountToggle(true)
+  it('counts first, warns, then turns off', async () => {
+    const { wrapper, turn, count } = await mountToggle(true)
 
     await click(wrapper, 'Turn off')
 
-    expect(roomCalls).toContain('/api/v1/rooms?location_id=3&is_active=true&page=1&size=1')
+    expect(count).toHaveBeenCalledTimes(1)
     expect(confirmDialog()?.textContent).toContain('Turn off Head Office?')
     expect(confirmDialog()?.textContent).toContain('12 rooms in this office stop being bookable.')
     await answerConfirm('Turn off')
@@ -72,59 +65,45 @@ describe('ActiveToggle', () => {
   })
 
   it('says "1 room" and "No rooms are affected."', async () => {
-    roomsAnswer = rooms(1)
-    let { wrapper } = await mountToggle(true)
-    await click(wrapper, 'Turn off')
-    expect(confirmDialog()?.textContent).toContain('1 room in this office stops being bookable.')
-    await answerConfirm('Cancel')
-    wrapper.unmount()
-
-    roomsAnswer = rooms(0)
-    ;({ wrapper } = await mountToggle(true))
-    await click(wrapper, 'Turn off')
-    expect(confirmDialog()?.textContent).toContain('No rooms are affected.')
+    expect(await warningFor('office', counted(1))).toContain('1 room in this office stops being bookable.')
+    expect(await warningFor('office', counted(0))).toContain('No rooms are affected.')
   })
 
-  it('still asks when the rooms cannot be counted', async () => {
-    roomsAnswer = () => json({ error: { code: 'X', message: 'Down.' } }, 500)
-    const { wrapper } = await mountToggle(true)
-
-    await click(wrapper, 'Turn off')
-
-    expect(confirmDialog()?.textContent).toContain('Its rooms stop being bookable.')
+  it('still asks when the count fails', async () => {
+    expect(await warningFor('office', failing())).toContain('Its rooms stop being bookable.')
   })
 
   it('says room types and equipment stay in their rooms', async () => {
-    mountConfirmHost()
-    const roomType = mount(ActiveToggle, {
-      props: { active: true, name: 'Meeting room', kind: 'room type', rooms: { category_id: 2 }, turn: vi.fn<(a: boolean) => Promise<void>>() },
-      attachTo: document.body,
-    })
-    await click(roomType, 'Turn off')
-    expect(roomCalls).toContain('/api/v1/rooms?category_id=2&is_active=true&page=1&size=1')
-    expect(confirmDialog()?.textContent).toContain('12 rooms use this room type and keep it. It cannot be chosen for other rooms.')
-    await answerConfirm('Cancel')
-    roomType.unmount()
+    expect(await warningFor('room type', counted(12))).toContain(
+      '12 rooms use this room type and keep it. It cannot be chosen for other rooms.',
+    )
+    expect(await warningFor('equipment', counted(1))).toContain(
+      '1 room has this item and keeps it. It cannot be added to other rooms.',
+    )
+    expect(await warningFor('equipment', failing())).toContain(
+      'Rooms that have it keep it, but it cannot be added to other rooms.',
+    )
+  })
 
-    roomsAnswer = rooms(1)
-    const item = mount(ActiveToggle, {
-      props: { active: true, name: 'Projector', kind: 'equipment', rooms: { equipment_ids: [4] }, turn: vi.fn<(a: boolean) => Promise<void>>() },
-      attachTo: document.body,
-    })
-    await click(item, 'Turn off')
-    expect(confirmDialog()?.textContent).toContain('1 room has this item and keeps it. It cannot be added to other rooms.')
-    await answerConfirm('Cancel')
-
-    roomsAnswer = () => json({ error: { code: 'X', message: 'Down.' } }, 500)
-    await click(item, 'Turn off')
-    expect(confirmDialog()?.textContent).toContain('Rooms that have it keep it, but it cannot be added to other rooms.')
+  it('counts users for departments, divisions and positions', async () => {
+    expect(await warningFor('department', counted(12))).toContain(
+      '12 users work in this department and stay. No new division can be added to it.',
+    )
+    expect(await warningFor('department', counted(0))).toContain('No users work in it.')
+    expect(await warningFor('division', counted(1))).toContain(
+      '1 user works in this division and stays in it. No new user can join it.',
+    )
+    expect(await warningFor('position', failing())).toContain('Users with it keep it, but no new user can get it.')
+    expect(await warningFor('position', counted(12))).toContain(
+      '12 users have this position and keep it. No new user can get it.',
+    )
   })
 
   it('turns on without asking, and shows a refusal', async () => {
     const turn = vi.fn<(active: boolean) => Promise<void>>(async () => {
       throw new ApiError(409, 'INACTIVE_REFERENCE', 'Turn on its office first.')
     })
-    const { wrapper } = await mountToggle(false, turn)
+    const { wrapper } = await mountToggle(false, { turn })
 
     await click(wrapper, 'Turn on')
 

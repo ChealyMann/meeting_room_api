@@ -5,7 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { ApiError } from '../../api/errors'
-import { createFloor, updateFloor } from '../../api/places'
+import { countActiveRooms, createFloor, updateFloor } from '../../api/places'
 import { listBuildings, listOffices } from '../../api/references'
 import type { BuildingOut, FloorDetail, LocationOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -231,7 +231,7 @@ async function turn(active: boolean) {
         :active="floor.is_active"
         :name="floor.floor_label"
         kind="floor"
-        :rooms="{ floor_id: floor.id }"
+        :count="() => countActiveRooms(api, { floor_id: floor!.id })"
         :turn="turn"
         :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
       />

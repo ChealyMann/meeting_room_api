@@ -5,6 +5,7 @@ import { toQuery, type QueryValue } from './query'
 import type {
   BuildingOut,
   CategoryOut,
+  DepartmentOut,
   EquipmentOut,
   FloorOut,
   ItemList,
@@ -35,6 +36,11 @@ export async function listAll<T>(
 
 export function listOffices(client: ApiClient): Promise<LocationOut[]> {
   return listAll<LocationOut>(client, '/api/v1/locations')
+}
+
+/** Every department, of every status (for the grouped department selects). */
+export function listDepartments(client: ApiClient): Promise<DepartmentOut[]> {
+  return listAll<DepartmentOut>(client, '/api/v1/departments')
 }
 
 export function listBuildings(client: ApiClient, locationId?: number): Promise<BuildingOut[]> {

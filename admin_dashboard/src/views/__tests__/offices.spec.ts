@@ -30,6 +30,7 @@ const office = (id: number, changes: Record<string, unknown> = {}) => ({
 })
 
 const listCalls: string[] = []
+const roomCalls: string[] = []
 const writes: Array<{ method: string; path: string; body: string }> = []
 let saveAnswer: () => Response
 let officeAnswer: () => Response | Promise<Response>
@@ -43,6 +44,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   useToast().toasts.value = []
   listCalls.length = 0
+  roomCalls.length = 0
   writes.length = 0
   saveAnswer = () => json(office(9, { name_en: 'Siem Reap Branch' }), 201)
   officeAnswer = () => json(office(3))
@@ -61,6 +63,7 @@ beforeEach(() => {
         listCalls.push(url.search)
         return json({ items: [office(3), office(4, { name_en: 'Old Branch', name_kh: 'សាខាចាស់', is_active: false, address: null })], page: 1, size: 20, total: 2 })
       }
+      if (url.pathname === '/api/v1/rooms') roomCalls.push(url.search)
       return json({ items: [], page: 1, size: 1, total: 0 })
     }),
   )
@@ -218,6 +221,16 @@ describe('OfficesView', () => {
     expect(writes).toEqual([])
     expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('Save or cancel your changes first.')
     expect(inPanel<HTMLInputElement>('#name_en')?.value).toBe('Head Office 2')
+  })
+
+  it("counts the office's active rooms before asking to turn it off", async () => {
+    await mountAt('/offices?id=3')
+
+    ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!.click()
+    await flushPromises()
+
+    expect(roomCalls).toEqual(['?location_id=3&is_active=true&page=1&size=1'])
+    expect(confirmDialog()?.textContent).toContain('No rooms are affected.')
   })
 
   it('is a real page in the sidebar', () => {
