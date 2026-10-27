@@ -1,10 +1,11 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RoomDetail } from '../../api/types'
 import { useSessionStore } from '../../stores/session'
 import RoomFormPanel from '../rooms/RoomFormPanel.vue'
+import { choosePicker, pickerLabel, pickerOptions } from '../../test-utils/picker'
 
 const page = <T>(items: T[]) => ({ items, page: 1, size: 100, total: items.length })
 const BUILDINGS: Record<string, unknown[]> = {
@@ -91,6 +92,8 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.unstubAllGlobals())
+// Each test's panel leaves the page, so ids such as #location_id are unique to the test.
+enableAutoUnmount(afterEach)
 
 async function mountPanel(room: RoomDetail | null = null) {
   const wrapper = mount(RoomFormPanel, {
@@ -107,12 +110,10 @@ type Wrapper = Awaited<ReturnType<typeof mountPanel>>
 async function fillValid(wrapper: Wrapper) {
   await wrapper.get('#name_kh').setValue('បន្ទប់មេគង្គ')
   await wrapper.get('#name_en').setValue('Mekong Room')
-  await wrapper.get('#location_id').setValue('3')
-  await flushPromises()
-  await wrapper.get('#building_id').setValue('5')
-  await flushPromises()
-  await wrapper.get('#floor_id').setValue('7')
-  await wrapper.get('#category_id').setValue('1')
+  await choosePicker('location_id', 'Head Office')
+  await choosePicker('building_id', 'Building A')
+  await choosePicker('floor_id', '3rd floor')
+  await choosePicker('category_id', 'Meeting room')
   await wrapper.get('#capacity').setValue('12')
 }
 
@@ -175,19 +176,17 @@ describe('RoomFormPanel', () => {
     const wrapper = await mountPanel()
     await fillValid(wrapper)
 
-    await wrapper.get('#location_id').setValue('4')
-    await flushPromises()
+    await choosePicker('location_id', 'Siem Reap Branch')
 
-    expect((wrapper.get('#building_id').element as HTMLSelectElement).value).toBe('')
-    expect((wrapper.get('#floor_id').element as HTMLSelectElement).value).toBe('')
+    expect(pickerLabel('building_id')).toBe('Choose a building')
+    expect(pickerLabel('floor_id')).toBe('Choose a floor')
     expect(fetchCalls).toContain('/api/v1/buildings?location_id=4&page=1&size=100')
   })
 
   it('offers "No owner" and the active room owners', async () => {
-    const wrapper = await mountPanel()
+    await mountPanel()
 
-    const options = wrapper.findAll('#room_owner_id option').map((o) => o.text())
-    expect(options).toEqual(['No owner', 'Sok Dara'])
+    expect(await pickerOptions('room_owner_id')).toEqual(['No owner', 'Sok Dara'])
     expect(fetchCalls).toContain('/api/v1/users?role=ROOM_OWNER&is_active=true&page=1&size=100')
   })
 
@@ -218,23 +217,20 @@ describe('RoomFormPanel review fixes', () => {
       url.pathname === '/api/v1/buildings' && url.searchParams.get('location_id') === '3'
         ? new Promise<Response>((resolve) => (release3 = () => resolve(json(page(BUILDINGS['3']!)))))
         : undefined
-    const wrapper = await mountPanel()
+    await mountPanel()
 
-    await wrapper.get('#location_id').setValue('3')
-    await wrapper.get('#location_id').setValue('4')
-    await flushPromises()
+    await choosePicker('location_id', 'Head Office')
+    await choosePicker('location_id', 'Siem Reap Branch')
     release3()
     await flushPromises()
 
-    expect(wrapper.findAll('#building_id option').map((o) => o.text())).toEqual(['Choose a building', 'Main Building'])
+    expect(await pickerOptions('building_id')).toEqual(['Main Building'])
   })
 
   it("keeps the room's current owner in the list, marked off, when they are no longer a room owner", async () => {
-    const wrapper = await mountPanel(room({ owner: { id: 9, name_en: 'Old Owner', name_kh: '' } }))
+    await mountPanel(room({ owner: { id: 9, name_en: 'Old Owner', name_kh: '' } }))
 
-    const select = wrapper.get('#room_owner_id').element as HTMLSelectElement
-    expect(select.value).toBe('9')
-    expect(select.selectedOptions[0]!.textContent).toBe('Old Owner (off)')
+    expect(pickerLabel('room_owner_id')).toBe('Old Owner (off)')
   })
 
   it('forgets unsaved edits after Cancel', async () => {

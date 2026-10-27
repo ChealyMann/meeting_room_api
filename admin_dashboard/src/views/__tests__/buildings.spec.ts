@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { mountConfirmHost } from '../../test-utils/confirm'
+import { choosePicker, pickerLabel } from '../../test-utils/picker'
 import BuildingsView from '../BuildingsView.vue'
 
 enableAutoUnmount(afterEach)
@@ -95,11 +96,6 @@ async function mountAt(path: string) {
 
 const panel = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null
 const inPanel = <T extends Element>(selector: string) => panel()?.querySelector<T>(selector) ?? null
-function setValue(selector: string, value: string) {
-  const el = inPanel<HTMLInputElement | HTMLSelectElement>(selector)!
-  el.value = value
-  el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? 'change' : 'input'))
-}
 async function clickInPanel(text: string) {
   await flushPromises() // let the panel render the last change first
   ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === text)!.click()
@@ -146,7 +142,7 @@ describe('BuildingsView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.query).toEqual({ location_id: '3', id: 'new' })
-    expect(inPanel<HTMLSelectElement>('#location_id')!.value).toBe('3')
+    expect(pickerLabel('location_id')).toBe('Head Office')
   })
 
   it('shows a duplicate name under the English name when a move is refused', async () => {
@@ -156,7 +152,7 @@ describe('BuildingsView', () => {
     expect(inPanel('label[for="location_id"]')?.closest('.field')?.textContent).toContain('Change to move the building')
     const before = listCalls.length
 
-    setValue('#location_id', '4')
+    await choosePicker('location_id', 'Siem Reap Branch')
     await clickInPanel('Save changes')
 
     expect(writes).toEqual([{ method: 'PATCH', path: '/api/v1/buildings/5', body: JSON.stringify({ location_id: 4 }) }])

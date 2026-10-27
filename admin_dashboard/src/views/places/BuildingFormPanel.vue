@@ -9,6 +9,7 @@ import { countActiveRooms, createBuilding, updateBuilding } from '../../api/plac
 import { listOffices } from '../../api/references'
 import type { BuildingDetail, LocationOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import OfficePicker from '../../components/list/OfficePicker.vue'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -67,10 +68,6 @@ onMounted(async () => {
 const officeOptions = computed(() =>
   selectOptions(offices.value, form.value.location_id, (o) => o.name_en, 'Unknown office'),
 )
-function chooseOffice(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  form.value.location_id = value ? Number(value) : null
-}
 
 function close() {
   drafts.clear(draftKey.value)
@@ -166,10 +163,15 @@ async function turn(active: boolean) {
           :error="errors.location_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select id="location_id" class="input" :value="form.location_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseOffice">
-              <option value="">Choose an office</option>
-              <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+            <OfficePicker
+              id="location_id"
+              mode="field"
+              :offices="offices"
+              :model-value="form.location_id"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="form.location_id = $event"
+            />
           </template>
         </BaseField>
       </section>

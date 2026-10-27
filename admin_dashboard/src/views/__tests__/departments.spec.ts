@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { mountConfirmHost } from '../../test-utils/confirm'
+import { choosePicker, pickerLabel } from '../../test-utils/picker'
 import DepartmentsView from '../DepartmentsView.vue'
 
 enableAutoUnmount(afterEach)
@@ -113,7 +114,7 @@ describe('DepartmentsView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.query).toEqual({ location_id: '3', id: 'new' })
-    expect(inPanel<HTMLSelectElement>('#location_id')!.value).toBe('3')
+    expect(pickerLabel('location_id')).toBe('Head Office')
   })
 
   it('shows a duplicate name under the English name when a move is refused', async () => {
@@ -123,10 +124,7 @@ describe('DepartmentsView', () => {
     expect(inPanel('label[for="location_id"]')?.closest('.field')?.textContent).toContain("Its users' province changes with it.")
     const before = listCalls.length
 
-    const select = inPanel<HTMLSelectElement>('#location_id')!
-    select.value = '4'
-    select.dispatchEvent(new Event('change'))
-    await flushPromises()
+    await choosePicker('location_id', 'Siem Reap Branch')
     ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!.click()
     await flushPromises()
 

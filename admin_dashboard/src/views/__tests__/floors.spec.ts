@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { mountConfirmHost } from '../../test-utils/confirm'
+import { pickerLabel } from '../../test-utils/picker'
 import FloorsView from '../FloorsView.vue'
 
 enableAutoUnmount(afterEach)
@@ -137,8 +138,8 @@ describe('FloorsView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.query).toEqual({ location_id: '3', building_id: '5', id: 'new' })
-    expect(inPanel<HTMLSelectElement>('#location_id')!.value).toBe('3')
-    expect(inPanel<HTMLSelectElement>('#building_id')!.value).toBe('5')
+    expect(pickerLabel('location_id')).toBe('Head Office')
+    expect(pickerLabel('building_id')).toBe('Tower A')
 
     const label = inPanel<HTMLInputElement>('#floor_label')!
     label.value = 'Ground'

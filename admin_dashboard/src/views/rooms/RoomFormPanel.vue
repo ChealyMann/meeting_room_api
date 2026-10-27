@@ -9,6 +9,9 @@ import { listBuildings, listFloors, listOffices, listRoomOwners, listRoomTypes }
 import { createRoom, updateRoom } from '../../api/rooms'
 import type { BuildingOut, CategoryOut, FloorOut, LocationOut, RoomDetail, UserListItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import OfficePicker from '../../components/list/OfficePicker.vue'
+import SearchPicker from '../../components/list/SearchPicker.vue'
+import { FIELD_WORDS } from '../../utils/pickerWords'
 import BaseField from '../../components/base/BaseField.vue'
 import BaseSwitch from '../../components/base/BaseSwitch.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
@@ -91,10 +94,6 @@ const typeOptions = computed(() =>
   selectOptions(roomTypes.value, form.value.category_id, (t) => t.name_en, 'Unknown room type'),
 )
 
-const idOf = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  return value ? Number(value) : null
-}
 
 // Only the answer for the parent chosen last counts: answers can come back out of order.
 async function loadBuildings(id: number | null) {
@@ -107,16 +106,16 @@ async function loadFloors(id: number | null) {
 }
 
 // Choosing a parent clears its children, so a floor from another office is never sent.
-async function chooseOffice(event: Event) {
-  form.value.location_id = idOf(event)
+async function chooseOffice(id: number | null) {
+  form.value.location_id = id
   form.value.building_id = null
   form.value.floor_id = null
   buildings.value = []
   floors.value = []
   await loadBuildings(form.value.location_id)
 }
-async function chooseBuilding(event: Event) {
-  form.value.building_id = idOf(event)
+async function chooseBuilding(id: number | null) {
+  form.value.building_id = id
   form.value.floor_id = null
   floors.value = []
   await loadFloors(form.value.building_id)
@@ -234,27 +233,46 @@ async function save() {
         <h3 id="g-place">Place</h3>
         <BaseField id="location_id" label="Office" :error="errors.location_id">
           <template #default="{ describedBy, invalid }">
-            <select id="location_id" class="input" :value="form.location_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseOffice">
-              <option value="">Choose an office</option>
-              <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+            <OfficePicker
+              id="location_id"
+              mode="field"
+              :offices="offices"
+              :model-value="form.location_id"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="chooseOffice"
+            />
           </template>
         </BaseField>
         <div class="row2">
           <BaseField id="building_id" label="Building" :error="errors.building_id">
             <template #default="{ describedBy, invalid }">
-              <select id="building_id" class="input" :value="form.building_id ?? ''" :disabled="!form.location_id" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseBuilding">
-                <option value="">Choose a building</option>
-                <option v-for="b in buildingOptions" :key="b.value" :value="b.value">{{ b.label }}</option>
-              </select>
+              <SearchPicker
+                id="building_id"
+                mode="field"
+                :items="buildingOptions"
+                :words="FIELD_WORDS.building"
+                :model-value="form.building_id"
+                :disabled="!form.location_id"
+                :invalid="invalid"
+                :described-by="describedBy"
+                @update:model-value="chooseBuilding($event as number | null)"
+              />
             </template>
           </BaseField>
           <BaseField id="floor_id" label="Floor" :error="errors.floor_id">
             <template #default="{ describedBy, invalid }">
-              <select id="floor_id" class="input" :value="form.floor_id ?? ''" :disabled="!form.building_id" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="form.floor_id = idOf($event)">
-                <option value="">Choose a floor</option>
-                <option v-for="f in floorOptions" :key="f.value" :value="f.value">{{ f.label }}</option>
-              </select>
+              <SearchPicker
+                id="floor_id"
+                mode="field"
+                :items="floorOptions"
+                :words="FIELD_WORDS.floor"
+                :model-value="form.floor_id"
+                :disabled="!form.building_id"
+                :invalid="invalid"
+                :described-by="describedBy"
+                @update:model-value="form.floor_id = $event as number | null"
+              />
             </template>
           </BaseField>
         </div>
@@ -264,10 +282,16 @@ async function save() {
         <h3 id="g-room">Room</h3>
         <BaseField id="category_id" label="Room type" :error="errors.category_id">
           <template #default="{ describedBy, invalid }">
-            <select id="category_id" class="input" :value="form.category_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="form.category_id = idOf($event)">
-              <option value="">Choose a room type</option>
-              <option v-for="t in typeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
-            </select>
+            <SearchPicker
+              id="category_id"
+              mode="field"
+              :items="typeOptions"
+              :words="FIELD_WORDS.roomType"
+              :model-value="form.category_id"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="form.category_id = $event as number | null"
+            />
           </template>
         </BaseField>
         <div class="row2">
@@ -322,10 +346,17 @@ async function save() {
         </BaseField>
         <BaseField id="room_owner_id" label="Owner" :error="errors.room_owner_id">
           <template #default="{ describedBy, invalid }">
-            <select id="room_owner_id" class="input" :value="form.room_owner_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="form.room_owner_id = idOf($event)">
-              <option value="">No owner</option>
-              <option v-for="o in ownerOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+            <SearchPicker
+              id="room_owner_id"
+              mode="field"
+              :items="ownerOptions"
+              :words="FIELD_WORDS.owner"
+              :model-value="form.room_owner_id"
+              nullable
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="form.room_owner_id = $event as number | null"
+            />
           </template>
         </BaseField>
         <div class="switch-row">

@@ -7,6 +7,7 @@ import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
+import { choosePicker } from '../../test-utils/picker'
 import OfficesView from '../OfficesView.vue'
 
 enableAutoUnmount(afterEach)
@@ -143,7 +144,7 @@ describe('OfficesView', () => {
 
     setValue('#name_kh', 'សាខាសៀមរាប')
     setValue('#name_en', 'Siem Reap Branch')
-    setValue('#province', 'SIEM_REAP')
+    await choosePicker('province', 'Siem Reap')
     const before = listCalls.length
     await submitPanel()
 
@@ -160,7 +161,7 @@ describe('OfficesView', () => {
 
     setValue('#name_kh', 'ការិយាល័យ')
     setValue('#name_en', 'Head Office')
-    setValue('#province', 'PP')
+    await choosePicker('province', 'Phnom Penh')
     await submitPanel()
 
     expect(inPanel('#name_en-error')?.textContent).toContain('An office already has this name.')

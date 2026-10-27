@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { mountConfirmHost } from '../../test-utils/confirm'
+import { pickerLabel } from '../../test-utils/picker'
 import DivisionsView from '../DivisionsView.vue'
 
 enableAutoUnmount(afterEach)
@@ -130,11 +131,10 @@ describe('DivisionsView', () => {
     detail = division(12, { department_id: 5 })
     await mountAt('/divisions?id=12')
 
-    const select = inPanel<HTMLSelectElement>('#department_id')!
+    const select = document.getElementById('department_id')!
     expect(select.closest('.field')?.textContent).toContain("Its users' province follows the new department's office.")
     expect(select.getAttribute('aria-describedby')).toContain('move-help')
-    expect(select.value).toBe('5')
-    expect(select.selectedOptions[0]!.textContent).toBe('Old Department (off)')
+    expect(pickerLabel('department_id')).toBe('Old Department (off)')
 
     const name = inPanel<HTMLInputElement>('#name_en')!
     name.value = 'Software 2'

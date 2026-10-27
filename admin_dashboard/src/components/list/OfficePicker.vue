@@ -1,22 +1,19 @@
 <script setup lang="ts">
 // The office filter: a SearchPicker over the offices. Main offices first, a thin line, then the
 // branches. G08: offices that are off are offered only when chosen, marked "(off)".
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 
 import type { LocationOut } from '../../api/types'
+import { FIELD_WORDS, FILTER_WORDS } from '../../utils/pickerWords'
 import SearchPicker, { type PickerItem } from './SearchPicker.vue'
 
 /** searchable: as SearchPicker (by default only long lists get a search box). */
 const props = withDefaults(defineProps<{ id: string; offices: LocationOut[]; searchable?: boolean }>(), { searchable: undefined })
 const model = defineModel<number | null>({ required: true })
 
-const WORDS = {
-  all: 'All offices',
-  search: 'Search offices',
-  unknown: 'Unknown office',
-  none: 'No office matches',
-  clear: 'Show all offices',
-}
+// mode="field" (passed through to SearchPicker) makes it a form field: "Choose an …" wording.
+const attrs = useAttrs()
+const WORDS = computed(() => (attrs.mode === 'field' ? FIELD_WORDS.office : FILTER_WORDS.office))
 
 const isBranch = (o: LocationOut) => /\bbranch$/i.test(o.name_en.trim())
 const items = computed<PickerItem[]>(() => {

@@ -9,6 +9,8 @@ import { countActiveRooms, createOffice, updateOffice } from '../../api/places'
 import { listProvinces } from '../../api/references'
 import type { LocationOut, ProvinceRef } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import SearchPicker from '../../components/list/SearchPicker.vue'
+import { FIELD_WORDS } from '../../utils/pickerWords'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -64,15 +66,8 @@ const provinces = ref<ProvinceRef[]>([])
 onMounted(async () => {
   provinces.value = await listProvinces(api)
 })
-// The office's province, even when the list does not have it.
-const provinceOptions = computed(() => {
-  const options = provinces.value.map((p) => ({ value: p.code, label: p.name_en }))
-  const chosen = form.value.province
-  if (chosen && provinces.value.length && !options.some((o) => o.value === chosen)) {
-    options.unshift({ value: chosen, label: 'Unknown province' })
-  }
-  return options
-})
+// A province the list does not have shows as "Unknown province" (the picker's own words).
+const provinceOptions = computed(() => provinces.value.map((p) => ({ value: p.code, label: p.name_en, keywords: p.name_kh })))
 
 function close() {
   drafts.clear(draftKey.value)
@@ -175,10 +170,16 @@ async function turn(active: boolean) {
         <h3 id="g-where">Where</h3>
         <BaseField id="province" label="Province" :error="errors.province">
           <template #default="{ describedBy, invalid }">
-            <select id="province" v-model="form.province" class="input" :aria-describedby="describedBy" :aria-invalid="invalid || undefined">
-              <option value="">Choose a province</option>
-              <option v-for="p in provinceOptions" :key="p.value" :value="p.value">{{ p.label }}</option>
-            </select>
+            <SearchPicker
+              id="province"
+              mode="field"
+              :items="provinceOptions"
+              :words="FIELD_WORDS.province"
+              :model-value="form.province || null"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="form.province = ($event as string | null) ?? ''"
+            />
           </template>
         </BaseField>
         <BaseField id="address" label="Address" :hint="`${count(form.address)}/200`" :error="errors.address">

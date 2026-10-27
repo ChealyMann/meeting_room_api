@@ -9,6 +9,7 @@ import { countActiveUsers, createDivision, updateDivision } from '../../api/orga
 import { listDepartments, listOffices } from '../../api/references'
 import type { DepartmentOut, DivisionOut, LocationOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import DepartmentPicker from '../../components/list/DepartmentPicker.vue'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -71,10 +72,6 @@ onMounted(async () => {
 // One group per office: the office is how an admin tells the IT departments apart.
 const groups = computed(() => departmentGroups(departments.value, offices.value, form.value.department_id))
 const departmentName = (id: number) => departments.value.find((d) => d.id === id)?.name_en ?? `#${id}`
-function chooseDepartment(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  form.value.department_id = value ? Number(value) : null
-}
 
 function close() {
   drafts.clear(draftKey.value)
@@ -170,19 +167,16 @@ async function turn(active: boolean) {
           :error="errors.department_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select
+            <DepartmentPicker
               id="department_id"
-              class="input"
-              :value="form.department_id ?? ''"
-              :aria-describedby="division ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
-              :aria-invalid="invalid || undefined"
-              @change="chooseDepartment"
-            >
-              <option value="">Choose a department</option>
-              <optgroup v-for="g in groups" :key="g.label" :label="g.label || 'Not found'">
-                <option v-for="d in g.options" :key="d.value" :value="d.value">{{ d.label }}</option>
-              </optgroup>
-            </select>
+              mode="field"
+              :departments="departments"
+              :offices="offices"
+              :model-value="form.department_id"
+              :invalid="invalid"
+              :described-by="division ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
+              @update:model-value="form.department_id = $event"
+            />
             <p v-if="division" id="move-help" class="help">Its users' province follows the new department's office.</p>
           </template>
         </BaseField>

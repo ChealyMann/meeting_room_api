@@ -9,6 +9,9 @@ import { countActiveRooms, createFloor, updateFloor } from '../../api/places'
 import { listBuildings, listOffices } from '../../api/references'
 import type { BuildingOut, FloorDetail, LocationOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import OfficePicker from '../../components/list/OfficePicker.vue'
+import SearchPicker from '../../components/list/SearchPicker.vue'
+import { FIELD_WORDS } from '../../utils/pickerWords'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -85,13 +88,9 @@ const officeOptions = computed(() =>
 const buildingOptions = computed(() =>
   selectOptions(buildings.value, form.value.building_id, (b) => b.name_en, 'Unknown building'),
 )
-const idOf = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value
-  return value ? Number(value) : null
-}
 // Choosing an office clears the building, so a building from another office is never sent.
-async function chooseOffice(event: Event) {
-  form.value.location_id = idOf(event)
+async function chooseOffice(id: number | null) {
+  form.value.location_id = id
   form.value.building_id = null
   buildings.value = []
   await loadBuildings(form.value.location_id)
@@ -186,10 +185,15 @@ async function turn(active: boolean) {
         <h3 id="g-where">Where</h3>
         <BaseField id="location_id" label="Office" :error="errors.location_id">
           <template #default="{ describedBy, invalid }">
-            <select id="location_id" class="input" :value="form.location_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseOffice">
-              <option value="">Choose an office</option>
-              <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+            <OfficePicker
+              id="location_id"
+              mode="field"
+              :offices="offices"
+              :model-value="form.location_id"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="chooseOffice"
+            />
           </template>
         </BaseField>
         <BaseField
@@ -199,10 +203,17 @@ async function turn(active: boolean) {
           :error="errors.building_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select id="building_id" class="input" :value="form.building_id ?? ''" :disabled="!form.location_id" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="form.building_id = idOf($event)">
-              <option value="">Choose a building</option>
-              <option v-for="b in buildingOptions" :key="b.value" :value="b.value">{{ b.label }}</option>
-            </select>
+            <SearchPicker
+              id="building_id"
+              mode="field"
+              :items="buildingOptions"
+              :words="FIELD_WORDS.building"
+              :model-value="form.building_id"
+              :disabled="!form.location_id"
+              :invalid="invalid"
+              :described-by="describedBy"
+              @update:model-value="form.building_id = $event as number | null"
+            />
           </template>
         </BaseField>
       </section>

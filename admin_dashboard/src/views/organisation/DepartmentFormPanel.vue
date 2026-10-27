@@ -9,6 +9,7 @@ import { countActiveUsers, createDepartment, updateDepartment } from '../../api/
 import { listOffices } from '../../api/references'
 import type { DepartmentOut, LocationOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import OfficePicker from '../../components/list/OfficePicker.vue'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -68,10 +69,6 @@ const officeOptions = computed(() =>
   selectOptions(offices.value, form.value.location_id, (o) => o.name_en, 'Unknown office'),
 )
 const officeName = (id: number) => offices.value.find((o) => o.id === id)?.name_en ?? `#${id}`
-function chooseOffice(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  form.value.location_id = value ? Number(value) : null
-}
 
 function close() {
   drafts.clear(draftKey.value)
@@ -167,17 +164,15 @@ async function turn(active: boolean) {
           :error="errors.location_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select
+            <OfficePicker
               id="location_id"
-              class="input"
-              :value="form.location_id ?? ''"
-              :aria-describedby="department ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
-              :aria-invalid="invalid || undefined"
-              @change="chooseOffice"
-            >
-              <option value="">Choose an office</option>
-              <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+              mode="field"
+              :offices="offices"
+              :model-value="form.location_id"
+              :invalid="invalid"
+              :described-by="department ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
+              @update:model-value="form.location_id = $event"
+            />
             <p v-if="department" id="move-help" class="help">Its users' province changes with it.</p>
           </template>
         </BaseField>

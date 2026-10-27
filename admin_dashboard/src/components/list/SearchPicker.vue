@@ -229,7 +229,7 @@ function onKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div ref="root" class="picker" :class="{ field: isField }">
+  <div ref="root" class="picker" :class="{ wide: isField }">
     <button
       :id="id"
       ref="button"
@@ -322,7 +322,7 @@ function onKey(event: KeyboardEvent) {
   text-align: left;
   cursor: pointer;
 }
-.picker.field {
+.picker.wide {
   width: 100%;
 }
 .trigger.set {

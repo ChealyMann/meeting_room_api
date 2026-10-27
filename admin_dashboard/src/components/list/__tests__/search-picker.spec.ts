@@ -45,7 +45,7 @@ function mountField(props: Record<string, unknown>) {
   const wrapper = mount(SearchPicker, {
     props: {
       id: 'location_id',
-      mode: 'field',
+      mode: 'field' as const,
       words: FIELD_WORDS,
       'onUpdate:modelValue': (value: string | number | null) => wrapper.setProps({ modelValue: value }),
       ...props,
