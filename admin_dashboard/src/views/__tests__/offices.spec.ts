@@ -94,6 +94,13 @@ async function submitPanel() {
   await flushPromises()
 }
 
+async function pick(wrapper: { get: (s: string) => { trigger: (e: string) => Promise<void> }; findAll: (s: string) => Array<{ text: () => string; trigger: (e: string) => Promise<void> }> }, id: string, text: string) {
+  await wrapper.get(`button#${id}`).trigger('click')
+  await flushPromises()
+  await wrapper.findAll('[role="option"]').find((o) => o.text() === text)!.trigger('click')
+  await flushPromises()
+}
+
 describe('OfficesView', () => {
   it('asks the API with the filters from the address', async () => {
     await mountAt('/offices?province=PP&search=head')
@@ -109,6 +116,15 @@ describe('OfficesView', () => {
     expect(row.get('.name-plate').findAll('span').map((s) => s.text())).toEqual(['ការិយាល័យកណ្តាល', 'Head Office'])
     expect(row.text()).toContain('Phnom Penh')
     expect(wrapper.get('.count').text()).toBe('002 offices')
+  })
+
+  it('filters by province with the search picker', async () => {
+    const { wrapper, router } = await mountAt('/offices')
+
+    await pick(wrapper, 'filter-province', 'Siem Reap')
+
+    expect(router.currentRoute.value.query).toEqual({ province: 'SIEM_REAP' })
+    expect(wrapper.get('button#filter-province').text()).toBe('Siem Reap')
   })
 
   it('drops a province code the API does not know from the address', async () => {

@@ -95,20 +95,23 @@ describe('DivisionsView', () => {
     expect(listCalls[listCalls.length - 1]).toBe('?department_id=4&is_active=true&page=1&size=20')
   })
 
-  it('groups the department filter by office', async () => {
-    const { wrapper } = await mountAt('/divisions')
+  it('groups the department filter by office, and filters with it', async () => {
+    const { wrapper, router } = await mountAt('/divisions')
 
-    const group = wrapper.get('#filter-department optgroup')
-    expect(group.attributes('label')).toBe('Head Office')
-    expect(group.findAll('option').map((o) => o.text())).toEqual(['IT Department'])
+    await wrapper.get('button#filter-department').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.heading').map((h) => h.text())).toEqual(['Head Office'])
+    expect(wrapper.findAll('[role="option"]').map((o) => o.text())).toEqual(['All departments', 'IT Department'])
+
+    await wrapper.findAll('[role="option"]').find((o) => o.text() === 'IT Department')!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ department_id: '4' })
   })
 
   it('still loads for a department that is gone, and says so', async () => {
     const { wrapper } = await mountAt('/divisions?department_id=99')
 
-    const select = wrapper.get<HTMLSelectElement>('#filter-department')
-    expect(select.element.value).toBe('99')
-    expect(select.find('option:checked').text()).toBe('Unknown department')
+    expect(wrapper.get('button#filter-department').text()).toBe('Unknown department')
   })
 
   it('shows serial, names, department and office', async () => {

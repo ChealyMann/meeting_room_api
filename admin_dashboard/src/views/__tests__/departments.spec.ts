@@ -74,6 +74,13 @@ async function mountAt(path: string) {
 const panel = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null
 const inPanel = <T extends Element>(selector: string) => panel()?.querySelector<T>(selector) ?? null
 
+async function pick(wrapper: { get: (s: string) => { trigger: (e: string) => Promise<void> }; findAll: (s: string) => Array<{ text: () => string; trigger: (e: string) => Promise<void> }> }, id: string, text: string) {
+  await wrapper.get(`button#${id}`).trigger('click')
+  await flushPromises()
+  await wrapper.findAll('[role="option"]').find((o) => o.text() === text)!.trigger('click')
+  await flushPromises()
+}
+
 describe('DepartmentsView', () => {
   it('asks the API with the office from the address', async () => {
     await mountAt('/departments?location_id=3')
@@ -90,6 +97,14 @@ describe('DepartmentsView', () => {
     expect(first!.text()).toContain('Head Office')
     expect(second!.text()).toContain('#99')
     expect(wrapper.get('.count').text()).toBe('002 departments')
+  })
+
+  it('filters by office with the search picker', async () => {
+    const { wrapper, router } = await mountAt('/departments')
+
+    await pick(wrapper, 'filter-office', 'Siem Reap Branch')
+
+    expect(router.currentRoute.value.query).toEqual({ location_id: '4' })
   })
 
   it('pre-sets the filtered office in a new department', async () => {

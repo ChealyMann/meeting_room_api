@@ -10,6 +10,7 @@ import { listProvinces } from '../api/references'
 import type { LocationOut, ProvinceRef } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
+import SearchPicker, { type PickerItem } from '../components/list/SearchPicker.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import StateMarks from '../components/list/StateMarks.vue'
@@ -40,6 +41,17 @@ watch([provinces, province], () => {
     list.set({ province: null })
   }
 })
+
+const provinceItems = computed<PickerItem[]>(() =>
+  provinces.value.map((p) => ({ value: p.code, label: p.name_en, keywords: p.name_kh })),
+)
+const PROVINCE_WORDS = {
+  all: 'All provinces',
+  search: 'Search provinces',
+  unknown: 'Unknown province',
+  none: 'No province matches',
+  clear: 'Show all provinces',
+}
 
 const total = computed(() => result.value?.total ?? 0)
 const count = computed(() => `${String(total.value).padStart(3, '0')} ${total.value === 1 ? 'office' : 'offices'}`)
@@ -82,18 +94,13 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.6fr', '96px', '32px']
         placeholder="Search name or address"
         @search="list.set({ search: $event })"
       />
-      <label>
-        <span class="sr-only">Province</span>
-        <select
-          id="filter-province"
-          class="input"
-          :value="province"
-          @change="list.set({ province: ($event.target as HTMLSelectElement).value })"
-        >
-          <option value="">All provinces</option>
-          <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name_en }}</option>
-        </select>
-      </label>
+      <SearchPicker
+        id="filter-province"
+        :items="provinceItems"
+        :words="PROVINCE_WORDS"
+        :model-value="province || null"
+        @update:model-value="list.set({ province: $event })"
+      />
       <StatusFilter v-model="list.status.value" />
     </div>
 

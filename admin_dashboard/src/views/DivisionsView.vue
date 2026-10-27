@@ -9,6 +9,7 @@ import { getDivision, listDivisionPage, type DivisionFilters } from '../api/orga
 import { listDepartments, listOffices } from '../api/references'
 import type { DepartmentOut, DivisionOut, LocationOut } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
+import DepartmentPicker from '../components/list/DepartmentPicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
@@ -18,7 +19,6 @@ import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
-import { departmentGroups } from '../utils/departmentOptions'
 import { serial } from '../utils/serial'
 import DivisionFormPanel from './organisation/DivisionFormPanel.vue'
 
@@ -42,12 +42,6 @@ onMounted(async () => {
 const departmentOf = (id: number) => departments.value.find((d) => d.id === id)
 const departmentName = (id: number) => departmentOf(id)?.name_en ?? `#${id}`
 const officeName = (id: number) => offices.value.find((o) => o.id === id)?.name_en ?? `#${id}`
-// One group per office: the API filters divisions by department only, so the office helps choose.
-const groups = computed(() => departmentGroups(departments.value, offices.value, departmentId.value))
-function chooseDepartment(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  list.set({ department_id: value ? Number(value) : null })
-}
 
 const total = computed(() => result.value?.total ?? 0)
 const count = computed(() => `${String(total.value).padStart(3, '0')} ${total.value === 1 ? 'division' : 'divisions'}`)
@@ -90,15 +84,13 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1.2fr', '1.2fr', '64px', '96px', '32
         placeholder="Search name or short name"
         @search="list.set({ search: $event })"
       />
-      <label>
-        <span class="sr-only">Department</span>
-        <select id="filter-department" class="input" :value="departmentId ?? ''" @change="chooseDepartment">
-          <option value="">All departments</option>
-          <optgroup v-for="g in groups" :key="g.label" :label="g.label || 'Not found'">
-            <option v-for="d in g.options" :key="d.value" :value="d.value">{{ d.label }}</option>
-          </optgroup>
-        </select>
-      </label>
+      <DepartmentPicker
+        id="filter-department"
+        :departments="departments"
+        :offices="offices"
+        :model-value="departmentId"
+        @update:model-value="list.set({ department_id: $event })"
+      />
       <StatusFilter v-model="list.status.value" />
     </div>
 

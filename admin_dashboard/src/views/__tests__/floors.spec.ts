@@ -89,6 +89,13 @@ async function mountAt(path: string) {
 const panel = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null
 const inPanel = <T extends Element>(selector: string) => panel()?.querySelector<T>(selector) ?? null
 
+async function pick(wrapper: { get: (s: string) => { trigger: (e: string) => Promise<void> }; findAll: (s: string) => Array<{ text: () => string; trigger: (e: string) => Promise<void> }> }, id: string, text: string) {
+  await wrapper.get(`button#${id}`).trigger('click')
+  await flushPromises()
+  await wrapper.findAll('[role="option"]').find((o) => o.text() === text)!.trigger('click')
+  await flushPromises()
+}
+
 describe('FloorsView', () => {
   it('asks the API with the office and building from the address', async () => {
     await mountAt('/floors?location_id=3&building_id=5')
@@ -119,8 +126,7 @@ describe('FloorsView', () => {
   it('clears the building when another office is chosen', async () => {
     const { wrapper, router } = await mountAt('/floors?location_id=3&building_id=5')
 
-    await wrapper.get('#filter-office').setValue('4')
-    await flushPromises()
+    await pick(wrapper, 'filter-office', 'Siem Reap Branch')
 
     expect(router.currentRoute.value.query).toEqual({ location_id: '4' })
   })

@@ -106,6 +106,13 @@ async function clickInPanel(text: string) {
   await flushPromises()
 }
 
+async function pick(wrapper: { get: (s: string) => { trigger: (e: string) => Promise<void> }; findAll: (s: string) => Array<{ text: () => string; trigger: (e: string) => Promise<void> }> }, id: string, text: string) {
+  await wrapper.get(`button#${id}`).trigger('click')
+  await flushPromises()
+  await wrapper.findAll('[role="option"]').find((o) => o.text() === text)!.trigger('click')
+  await flushPromises()
+}
+
 describe('BuildingsView', () => {
   it('asks the API with the office from the address', async () => {
     await mountAt('/buildings?location_id=3')
@@ -123,6 +130,14 @@ describe('BuildingsView', () => {
     expect(first!.text()).toContain('Head Office')
     expect(second!.text()).toContain('#99')
     expect(wrapper.get('.count').text()).toBe('002 buildings')
+  })
+
+  it('filters by office with the search picker', async () => {
+    const { wrapper, router } = await mountAt('/buildings')
+
+    await pick(wrapper, 'filter-office', 'Siem Reap Branch')
+
+    expect(router.currentRoute.value.query).toEqual({ location_id: '4' })
   })
 
   it('pre-sets the filtered office in a new building', async () => {

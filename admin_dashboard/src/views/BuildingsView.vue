@@ -10,6 +10,7 @@ import { listOffices } from '../api/references'
 import type { BuildingDetail, BuildingOut, LocationOut } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
+import OfficePicker from '../components/list/OfficePicker.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import StateMarks from '../components/list/StateMarks.vue'
@@ -18,7 +19,6 @@ import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
-import { selectOptions } from '../utils/selectOptions'
 import { serial } from '../utils/serial'
 import BuildingFormPanel from './places/BuildingFormPanel.vue'
 
@@ -37,12 +37,8 @@ onMounted(async () => {
   offices.value = await listOffices(api)
 })
 const officeName = (id: number) => offices.value.find((o) => o.id === id)?.name_en ?? `#${id}`
-const officeOptions = computed(() =>
-  selectOptions(offices.value, officeId.value, (o) => o.name_en, 'Unknown office'),
-)
-function chooseOffice(event: Event) {
-  const value = (event.target as HTMLSelectElement).value
-  list.set({ location_id: value ? Number(value) : null })
+function chooseOffice(id: number | null) {
+  list.set({ location_id: id })
 }
 
 const total = computed(() => result.value?.total ?? 0)
@@ -86,13 +82,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1.2fr', '64px', '96px', '32px']
         placeholder="Search name or short name"
         @search="list.set({ search: $event })"
       />
-      <label>
-        <span class="sr-only">Office</span>
-        <select id="filter-office" class="input" :value="officeId ?? ''" @change="chooseOffice">
-          <option value="">All offices</option>
-          <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
+      <OfficePicker id="filter-office" :offices="offices" :model-value="officeId" @update:model-value="chooseOffice" />
       <StatusFilter v-model="list.status.value" />
     </div>
 

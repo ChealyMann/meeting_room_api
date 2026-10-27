@@ -10,6 +10,7 @@ import { listBuildings, listOffices } from '../api/references'
 import type { BuildingOut, FloorDetail, FloorOut, LocationOut } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
+import OfficePicker from '../components/list/OfficePicker.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import StateMarks from '../components/list/StateMarks.vue'
@@ -56,9 +57,6 @@ watch(
   { immediate: true },
 )
 
-const officeOptions = computed(() =>
-  selectOptions(offices.value, officeId.value, (o) => o.name_en, 'Unknown office'),
-)
 const buildingOptions = computed(() =>
   selectOptions(officeBuildings.value, buildingId.value, (b) => b.name_en, 'Unknown building'),
 )
@@ -67,8 +65,8 @@ const idOf = (event: Event) => {
   return value ? Number(value) : null
 }
 // Choosing an office clears the building: a building from another office is never sent.
-function chooseOffice(event: Event) {
-  list.set({ location_id: idOf(event), building_id: null })
+function chooseOffice(id: number | null) {
+  list.set({ location_id: id, building_id: null })
 }
 
 const total = computed(() => result.value?.total ?? 0)
@@ -113,13 +111,7 @@ const SKELETON_COLUMNS = ['72px', '1.2fr', '1.2fr', '1.2fr', '64px', '96px', '32
         placeholder="Search floor name"
         @search="list.set({ search: $event })"
       />
-      <label>
-        <span class="sr-only">Office</span>
-        <select id="filter-office" class="input" :value="officeId ?? ''" @change="chooseOffice">
-          <option value="">All offices</option>
-          <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
+      <OfficePicker id="filter-office" :offices="offices" :model-value="officeId" @update:model-value="chooseOffice" />
       <label>
         <span class="sr-only">Building</span>
         <select
