@@ -27,6 +27,7 @@ function makeRouter() {
           { path: 'floors', name: 'floors', component: Page, meta: { title: 'Floors' } },
           { path: 'room-types', name: 'room-types', component: Page, meta: { title: 'Room types' } },
           { path: 'equipment', name: 'equipment', component: Page, meta: { title: 'Equipment' } },
+          { path: 'departments', name: 'departments', component: Page, meta: { title: 'Departments' } },
         ],
       },
     ],
@@ -68,10 +69,10 @@ describe('AppShell', () => {
   it('renders not-yet-built pages as disabled links', async () => {
     const { wrapper } = await mountShell('/')
 
-    const departments = wrapper.findAll('nav a').find((a) => a.text().includes('Departments'))
-    expect(departments?.attributes('aria-disabled')).toBe('true')
-    expect(departments?.attributes('title')).toBe('Coming soon')
-    expect(departments?.attributes('href')).toBeUndefined()
+    const users = wrapper.findAll('nav a').find((a) => a.text().includes('Users'))
+    expect(users?.attributes('aria-disabled')).toBe('true')
+    expect(users?.attributes('title')).toBe('Coming soon')
+    expect(users?.attributes('href')).toBeUndefined()
   })
 
   it('links Offices and marks it on its page', async () => {

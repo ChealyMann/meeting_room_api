@@ -31,7 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Organisation',
     items: [
-      { label: 'Departments', icon: 'network' },
+      { label: 'Departments', icon: 'network', route: 'departments' },
       { label: 'Divisions', icon: 'git-fork' },
       { label: 'Positions', icon: 'briefcase' },
     ],
