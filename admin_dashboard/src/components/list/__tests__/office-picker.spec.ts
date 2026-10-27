@@ -20,6 +20,7 @@ function mountPicker(modelValue: number | null = null) {
     props: {
       id: 'filter-office',
       offices: OFFICES,
+      searchable: true,
       modelValue,
       'onUpdate:modelValue': (value: number | null) => wrapper.setProps({ modelValue: value }),
     },

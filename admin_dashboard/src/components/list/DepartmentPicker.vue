@@ -7,7 +7,8 @@ import type { DepartmentOut, LocationOut } from '../../api/types'
 import { departmentGroups } from '../../utils/departmentOptions'
 import SearchPicker, { type PickerItem } from './SearchPicker.vue'
 
-const props = defineProps<{ id: string; departments: DepartmentOut[]; offices: LocationOut[] }>()
+/** searchable: as SearchPicker (by default only long lists get a search box). */
+const props = withDefaults(defineProps<{ id: string; departments: DepartmentOut[]; offices: LocationOut[]; searchable?: boolean }>(), { searchable: undefined })
 const model = defineModel<number | null>({ required: true })
 
 const WORDS = {
@@ -39,6 +40,7 @@ const items = computed<PickerItem[]>(() =>
     :model-value="model"
     :items="items"
     :words="WORDS"
+    :searchable="searchable"
     @update:model-value="model = $event as number | null"
   />
 </template>
