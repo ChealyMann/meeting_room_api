@@ -40,7 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'People',
     items: [
       { label: 'Users', icon: 'users', route: 'users' },
-      { label: 'Roles', icon: 'shield-check' },
+      { label: 'Roles', icon: 'shield-check', route: 'roles' },
     ],
   },
 ]
