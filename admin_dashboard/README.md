@@ -72,6 +72,14 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - An item's icon is a Lucide name from the picker's list in `src/utils/equipmentIcons.ts`. A name not on that list (set elsewhere) is kept and shown as "Unknown icon"; add it to the list to show it.
 - The real-API test for the catalog (`e2e/catalog.spec.ts`) adds a room type and an item with unique names each run, and turns the item off.
 
+## Organisation
+
+- Departments (`/departments`), Divisions (`/divisions`) and Positions (`/positions`) work like the other record pages: filters in the address, `?id=3` or `?id=new`, and a saved record loads before its panel opens.
+- The API filters departments by office and divisions by department only; the department select is grouped by office so the right one is easy to find.
+- Moving a department to another office moves the province of every user in its divisions (the API does it).
+- Turning a department, division or position off changes nobody; it only stops new divisions or users from using it. The warning counts the active users (`GET /users`, Admin only).
+- The real-API test (`e2e/organisation.spec.ts`) adds a department, a division and a position with unique names each run, and turns the position off.
+
 ## How sign-in works
 
 - **Access token:** in memory only. It lasts 15 minutes.

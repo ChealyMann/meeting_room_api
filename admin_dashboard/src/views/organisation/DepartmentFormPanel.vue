@@ -163,14 +163,22 @@ async function turn(active: boolean) {
         <BaseField
           id="location_id"
           label="Office"
-          :hint="department ? 'Change to move the department. Its users\' province changes with it.' : undefined"
+          :hint="department ? 'Change to move the department' : undefined"
           :error="errors.location_id"
         >
           <template #default="{ describedBy, invalid }">
-            <select id="location_id" class="input" :value="form.location_id ?? ''" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" @change="chooseOffice">
+            <select
+              id="location_id"
+              class="input"
+              :value="form.location_id ?? ''"
+              :aria-describedby="department ? `move-help ${describedBy ?? ''}`.trim() : describedBy"
+              :aria-invalid="invalid || undefined"
+              @change="chooseOffice"
+            >
               <option value="">Choose an office</option>
               <option v-for="o in officeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
+            <p v-if="department" id="move-help" class="help">Its users' province changes with it.</p>
           </template>
         </BaseField>
       </section>
@@ -236,6 +244,11 @@ h3 {
 }
 .order {
   max-width: 160px;
+}
+.help {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-intaglio);
 }
 /* Turn off sits apart, at the start of the foot. */
 .toggle {

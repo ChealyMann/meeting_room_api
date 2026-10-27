@@ -19,9 +19,15 @@ const BUILDING = { id: 5, location_id: 3, name_en: 'Tower A', name_kh: 'អគ�
 const FLOOR = { id: 7, building_id: 5, floor_label: '3rd floor', sort_order: 3, ...stamps }
 const ROOM_TYPE = { id: 2, name_en: 'Meeting room', name_kh: 'បន្ទប់ប្រជុំ', sort_order: 1, ...stamps }
 const ITEM = { id: 4, name: 'Projector', icon: 'projector', sort_order: 1, ...stamps }
+const DEPARTMENT = { id: 3, location_id: 3, name_en: 'IT Department', name_kh: 'ព័ត៌មានវិទ្យា', sort_order: 1, ...stamps }
+const DIVISION = { id: 12, department_id: 3, name_en: 'Software', name_kh: 'កម្មវិធី', short_name: 'SW', sort_order: 1, ...stamps }
+const POSITION = { id: 4, name_en: 'IT Lead', name_kh: 'ប្រធាន', sort_order: 1, ...stamps }
 const NAMED = { location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' }, province: PP }
 
 const RECORDS: Record<string, unknown> = {
+  '/api/v1/departments/3': DEPARTMENT,
+  '/api/v1/divisions/12': DIVISION,
+  '/api/v1/positions/4': POSITION,
   '/api/v1/categories/2': ROOM_TYPE,
   '/api/v1/equipment/4': ITEM,
   '/api/v1/locations/3': OFFICE,
@@ -29,6 +35,9 @@ const RECORDS: Record<string, unknown> = {
   '/api/v1/floors/7': { ...FLOOR, building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' }, ...NAMED },
 }
 const LISTS: Record<string, unknown[]> = {
+  '/api/v1/departments': [DEPARTMENT],
+  '/api/v1/divisions': [DIVISION],
+  '/api/v1/positions': [POSITION],
   '/api/v1/categories': [ROOM_TYPE],
   '/api/v1/equipment': [ITEM],
   '/api/v1/locations': [OFFICE],
@@ -81,7 +90,7 @@ function frames(page: Page, ms: number) {
   )
 }
 
-for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment']) {
+for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment', '/departments', '/divisions', '/positions']) {
   for (const recordMs of [60, 800]) {
     test(`${path}: a record (answer after ${recordMs}ms) slides in once`, async ({ page }) => {
       await listPage(page, path, recordMs)
