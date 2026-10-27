@@ -47,37 +47,38 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Night: warm brown-black paper, light warm ink. The rail keeps its crimson ground.
-   Crimson text is lighter than by day; filled crimson stays dark enough for white text. */
+/* Night: midnight slate (owner decision, 27 Oct 2026): blue-grey paper and sheets, cool light ink.
+   The rail keeps its crimson ground. Crimson text is lighter than by day; filled crimson stays dark
+   enough for white text. */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-paper: #15100e;
-  --color-sheet: #1e1714;
-  --color-rule: #2e2420;
-  --color-rule-strong: #4a3b33;
-  --color-ink: #f2e8e1;
-  --color-intaglio: #b9a397;
-  --color-ink-off: #9a867a;
-  --color-placeholder: #998577;
-  --color-ink-disabled: #6f5f55;
-  --color-field-disabled: #241c18;
-  --color-off-ring: #7c6a5f;
-  --color-crimson: #e0675e;
-  --color-crimson-deep: #a02c25;
-  --color-crimson-fill: #b8352d;
-  --color-crimson-wash: #3a1a17;
-  --color-danger-line: #6b2c27;
-  --color-error-field: #241614;
-  --color-ok: #6fbf85;
+  --color-paper: #0e1217;
+  --color-sheet: #151b22;
+  --color-rule: #222a33;
+  --color-rule-strong: #364250;
+  --color-ink: #e6ebf1;
+  --color-intaglio: #9ba7b5;
+  --color-ink-off: #8693a2;
+  --color-placeholder: #8a96a5;
+  --color-ink-disabled: #5d6876;
+  --color-field-disabled: #1a212a;
+  --color-off-ring: #5f6b7a;
+  --color-crimson: #f2766d;
+  --color-crimson-deep: #9c2b24;
+  --color-crimson-fill: #b3332b;
+  --color-crimson-wash: #2e1b1f;
+  --color-danger-line: #5c2a2c;
+  --color-error-field: #1f1719;
+  --color-ok: #63c28a;
   --color-warn: #e0a060;
-  --color-row-hover: #221a16;
-  --color-saved-tint: #2e2118;
-  --color-skeleton: #2a211c;
-  --color-skeleton-light: #352a24;
-  --color-scrim: rgba(0, 0, 0, 0.35);
-  --color-rail: #1f0606;
-  --color-rail-raised: #331010;
-  --color-rail-line: #3d1513;
+  --color-row-hover: #19212a;
+  --color-saved-tint: #1f2a36;
+  --color-skeleton: #1e2630;
+  --color-skeleton-light: #27313c;
+  --color-scrim: rgba(0, 0, 0, 0.45);
+  --color-rail: #230808;
+  --color-rail-raised: #3a0f0f;
+  --color-rail-line: #331010;
   --shadow-toast: 0 8px 20px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
@@ -333,7 +334,7 @@
     background-position: right 10px center;
   }
   :root[data-theme='dark'] select.input {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B9A397' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239BA7B5' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     /* The disabled style's `background` shorthand would reset these and tile the arrow. */
     background-repeat: no-repeat;
     background-position: right 10px center;
