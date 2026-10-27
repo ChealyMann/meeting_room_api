@@ -12,6 +12,7 @@ import { setRoomEquipment } from '../../api/rooms'
 import type { EquipmentOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import { useToast } from '../../composables/useToast'
+import { iconFor } from '../../utils/equipmentIcons'
 
 const props = defineProps<{ roomId: number; equipment: EquipmentOut[] }>()
 const emit = defineEmits<{ change: [list: EquipmentOut[]] }>()
@@ -84,7 +85,9 @@ async function save() {
     <fieldset v-else>
       <legend class="sr-only">Equipment in this room</legend>
       <label v-for="e in offered" :key="e.id" class="check" :class="{ off: !e.is_active }">
-        <input type="checkbox" :checked="checked.has(e.id)" @change="toggle(e.id, ($event.target as HTMLInputElement).checked)" />{{ e.is_active ? e.name : `${e.name} (off)` }}</label>
+        <input type="checkbox" :checked="checked.has(e.id)" @change="toggle(e.id, ($event.target as HTMLInputElement).checked)" />
+        <!-- The item's icon, as in the equipment list; an empty slot keeps the names in line. -->
+        <span class="icon"><component :is="iconFor(e.icon)" v-if="iconFor(e.icon)" aria-hidden="true" /></span>{{ e.is_active ? e.name : `${e.name} (off)` }}</label>
     </fieldset>
     <div class="foot">
       <BaseButton variant="primary" :busy="saving" :disabled="!dirty" @click="save">
@@ -115,6 +118,16 @@ fieldset {
 }
 .check input {
   accent-color: var(--color-crimson-fill);
+}
+.icon {
+  display: inline-flex;
+  flex: none;
+  width: 18px;
+  color: var(--color-intaglio);
+}
+.icon svg.lucide {
+  width: 18px;
+  height: 18px;
 }
 .check.off {
   color: var(--color-ink-off);

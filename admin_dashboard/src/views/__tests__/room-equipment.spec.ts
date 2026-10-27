@@ -93,6 +93,17 @@ describe('RoomEquipment', () => {
   const saveButton = (wrapper: Awaited<ReturnType<typeof mountList>>) =>
     wrapper.findAll('button').find((b) => b.text() === 'Save equipment')!
 
+  it("shows each item's icon beside its name, as the equipment list does", async () => {
+    ALL[0] = { ...item(1, 'Projector'), icon: 'projector' }
+    const wrapper = await mountList([])
+    ALL[0] = item(1, 'Projector')
+
+    const [projector, whiteboard] = wrapper.findAll('label')
+    expect(projector!.find('svg.lucide-projector').exists()).toBe(true)
+    expect(projector!.find('svg.lucide-projector').attributes('aria-hidden')).toBe('true')
+    expect(whiteboard!.find('svg.lucide').exists()).toBe(false)
+  })
+
   it('offers active equipment and keeps an inactive item the room has, marked off', async () => {
     const wrapper = await mountList([item(3, 'Old TV', false), item(1, 'Projector')])
 
