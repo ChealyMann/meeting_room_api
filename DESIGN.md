@@ -263,7 +263,7 @@ The system refuses the default admin kit of floating white cards and coloured pi
 - Intaglio brown for every secondary line of text.
 - Mono serials for ids, times, counts, pager numbers and character counters.
 - Khmer name over English name, always both.
-- State by shape: solid dot, outlined ring, lock line, calendar-x line.
+- State by shape: circle check, dashed circle, eye-off line, calendar-x line.
 - Soft shadow only on things that float over the sheet (side panel, toast).
 
 ## Colors
@@ -416,7 +416,7 @@ Crimson, quiet, one point of gold.
 - **Place:** office 400 over the "Building · Floor" line in 12px intaglio.
 - **Numbers** right-aligned in mono; **hours** in mono 12.5px as "08:00–17:00".
 - **No owner:** the words "No owner", in the off tone.
-- **State cell:** a column of marks, 3px apart. Active: 8px solid ledger-green dot plus "Active". Inactive: 7px ring, 1.5px off-ring stroke, plus "Inactive" in off ink. Private: 13px eye-off line (owner decision, 27 Oct 2026: not a lock) plus "Private" in lock amber. Not bookable: 13px calendar-x line plus "Not bookable" in off ink.
+- **State cell:** a column of marks, 3px apart. Active: 16px `CircleCheck` line in ledger green plus "Active". Inactive: 16px `CircleDashed` line in off-ring plus "Inactive" in off ink (owner decision, 27 Oct 2026: icons, not a dot and ring). Private: 13px eye-off line (owner decision, 27 Oct 2026: not a lock) plus "Private" in lock amber. Not bookable: 13px calendar-x line plus "Not bookable" in off ink.
 - **Inactive row:** all cells except state and actions drop to the off tone.
 - **Row actions:** a 48px column holding one ellipsis icon button.
 
@@ -492,7 +492,7 @@ Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (toast 
 ### Do:
 - **Do** set every record id as a serial: crimson prefix, middle dot, four zero-padded mono digits (RM·0012).
 - **Do** show Khmer over English for every bilingual record.
-- **Do** carry state by shape and word: solid dot Active, outlined ring Inactive, eye-off line Private, calendar-x Not bookable.
+- **Do** carry state by shape and word: circle check Active, dashed circle Inactive, eye-off line Private, calendar-x Not bookable.
 - **Do** keep tables as open sheets on the paper, ruled by 1px hairlines.
 - **Do** confirm turning something off or deleting it in the confirm dialog (SweetAlert style), focus starting on Cancel.
 - **Do** show the API's own error text under the field it belongs to, plus a count summary at the top of the panel.

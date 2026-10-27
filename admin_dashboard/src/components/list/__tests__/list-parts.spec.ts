@@ -76,6 +76,15 @@ describe('StateMarks', () => {
     expect(text).toContain('Private')
   })
 
+  it('marks Active with a circle check and Inactive with a dashed circle, never a dot', () => {
+    const on = mount(StateMarks, { props: { active: true } })
+    const off = mount(StateMarks, { props: { active: false } })
+
+    expect(on.find('.state svg.lucide-circle-check').exists()).toBe(true)
+    expect(off.find('.state svg.lucide-circle-dashed').exists()).toBe(true)
+    expect(on.find('.state svg').attributes('aria-hidden')).toBe('true')
+  })
+
   it('shows only the state for a record with no bookable mark (offices, buildings, floors)', () => {
     const text = mount(StateMarks, { props: { active: true } }).text()
 

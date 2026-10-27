@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarX, EyeOff } from 'lucide-vue-next'
+import { CalendarX, CircleCheck, CircleDashed, EyeOff } from 'lucide-vue-next'
 
 // State by shape and word, never colour alone (DESIGN.md "State cell").
 // A missing `bookable` means "no such mark" (places), not "not bookable": Vue would make it false.
@@ -8,7 +8,11 @@ withDefaults(defineProps<{ active: boolean; bookable?: boolean; private?: boolea
 
 <template>
   <div class="state-cell">
-    <span class="state" :class="active ? 'active' : 'off'">{{ active ? 'Active' : 'Inactive' }}</span>
+    <span class="state" :class="active ? 'active' : 'off'">
+      <CircleCheck v-if="active" aria-hidden="true" />
+      <CircleDashed v-else aria-hidden="true" />
+      {{ active ? 'Active' : 'Inactive' }}
+    </span>
     <span v-if="active && bookable === false" class="mark unbookable">
       <CalendarX aria-hidden="true" />Not bookable
     </span>
@@ -29,23 +33,20 @@ withDefaults(defineProps<{ active: boolean; bookable?: boolean; private?: boolea
   font-size: 13px;
   white-space: nowrap;
 }
-.state::before {
-  content: '';
+/* A circle check for Active, a dashed circle for Inactive (owner decision, 27 Oct 2026: no dot). */
+.state svg.lucide {
   flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 16px;
+  height: 16px;
 }
-.state.active::before {
-  background: var(--color-ok);
+.state.active svg {
+  color: var(--color-ok);
 }
 .state.off {
   color: var(--color-ink-off);
 }
-.state.off::before {
-  width: 7px;
-  height: 7px;
-  border: 1.5px solid var(--color-off-ring);
+.state.off svg {
+  color: var(--color-off-ring);
 }
 .mark {
   display: inline-flex;
