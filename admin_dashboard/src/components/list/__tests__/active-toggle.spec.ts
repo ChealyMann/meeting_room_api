@@ -8,7 +8,7 @@ import ActiveToggle from '../ActiveToggle.vue'
 
 enableAutoUnmount(afterEach)
 
-type Kind = 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position'
+type Kind = 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
 type Count = () => Promise<number>
 
 const counted = (total: number) => vi.fn<Count>(async () => total)
@@ -101,6 +101,25 @@ describe('ActiveToggle', () => {
     expect(await warningFor('position', counted(12))).toContain(
       '12 users have this position and keep it. No new user can get it.',
     )
+  })
+
+  it('says what turning a user off does to their rooms', async () => {
+    expect(await warningFor('user', counted(3))).toContain('They cannot sign in, and 3 rooms lose their owner. You can turn them on again.')
+    expect(await warningFor('user', counted(1))).toContain('They cannot sign in, and 1 room loses its owner.')
+    expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you turn them on again.')
+  })
+
+  it('can be locked with a reason shown beside it', async () => {
+    mountConfirmHost()
+    const wrapper = mount(ActiveToggle, {
+      props: { active: true, name: 'Sok Dara', kind: 'user', count: counted(0), turn: vi.fn<(a: boolean) => Promise<void>>(), locked: 'You cannot turn yourself off.' },
+      attachTo: document.body,
+    })
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Turn off')!
+
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('You cannot turn yourself off.')
+    expect(document.getElementById(button.attributes('aria-describedby')!)?.textContent).toContain('You cannot turn yourself off.')
   })
 
   it('turns on without asking, and shows a refusal', async () => {

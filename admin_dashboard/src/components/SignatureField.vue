@@ -5,10 +5,20 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api } from '../api'
 import { ApiError } from '../api/errors'
 import { deleteMySignature, getImageBlob, uploadMySignature } from '../api/me'
+import type { UserDetail } from '../api/types'
 import { useConfirm } from '../composables/useConfirm'
 import BaseButton from './base/BaseButton.vue'
 
-const props = defineProps<{ signatureUrl: string | null }>()
+/**
+ * upload/remove: for another user's signature (the Admin's user panel); by default the signed-in
+ * user's own. ownerName names them in the remove question.
+ */
+const props = defineProps<{
+  signatureUrl: string | null
+  upload?: (file: File) => Promise<UserDetail>
+  remove?: () => Promise<void>
+  ownerName?: string
+}>()
 const emit = defineEmits<{ change: [signatureUrl: string | null] }>()
 
 const ACCEPT = 'image/jpeg,image/png,image/webp'
@@ -52,7 +62,7 @@ async function onFile(event: Event) {
   error.value = ''
   uploading.value = true
   try {
-    const user = await uploadMySignature(api, file)
+    const user = props.upload ? await props.upload(file) : await uploadMySignature(api, file)
     current.value = user.signature_url
     await load()
     emit('change', user.signature_url)
@@ -69,19 +79,19 @@ const { confirm } = useConfirm()
 
 async function askRemove() {
   const ok = await confirm({
-    title: 'Remove your signature?',
+    title: props.ownerName ? `Remove ${props.ownerName}'s signature?` : 'Remove your signature?',
     text: 'It will no longer appear on booking approval forms.',
     confirmLabel: 'Remove signature',
     icon: 'trash',
   })
-  if (ok) await remove()
+  if (ok) await removeSignature()
 }
 
-async function remove() {
+async function removeSignature() {
   error.value = ''
   removing.value = true
   try {
-    await deleteMySignature(api)
+    await (props.remove ? props.remove() : deleteMySignature(api))
     current.value = null
     setImage(null)
       emit('change', null)

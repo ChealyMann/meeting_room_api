@@ -6,10 +6,12 @@ import type {
   BuildingOut,
   CategoryOut,
   DepartmentOut,
+  DivisionOut,
   EquipmentOut,
   FloorOut,
   ItemList,
   LocationOut,
+  PositionOut,
   Page,
   ProvinceRef,
   UserListItem,
@@ -41,6 +43,16 @@ export function listOffices(client: ApiClient): Promise<LocationOut[]> {
 /** Every department, of every status (for the grouped department selects). */
 export function listDepartments(client: ApiClient): Promise<DepartmentOut[]> {
   return listAll<DepartmentOut>(client, '/api/v1/departments')
+}
+
+/** Every division, of every status (for the grouped division pickers). */
+export function listDivisions(client: ApiClient): Promise<DivisionOut[]> {
+  return listAll<DivisionOut>(client, '/api/v1/divisions')
+}
+
+/** Every position, of every status. */
+export function listPositions(client: ApiClient): Promise<PositionOut[]> {
+  return listAll<PositionOut>(client, '/api/v1/positions')
 }
 
 export function listBuildings(client: ApiClient, locationId?: number): Promise<BuildingOut[]> {

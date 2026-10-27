@@ -3,7 +3,7 @@
 // C02, O01–O03). Turning off asks in the confirm dialog and says what happens to the active rooms
 // or users it touches (the page passes the count); turning on does not ask.
 import { CircleAlert, Power } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { ref, useId } from 'vue'
 
 import { ApiError } from '../../api/errors'
 import { useConfirm } from '../../composables/useConfirm'
@@ -12,14 +12,18 @@ import BaseButton from '../base/BaseButton.vue'
 const props = defineProps<{
   active: boolean
   name: string
-  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position'
+  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
   /** How many active rooms or users it touches (the warning's number). */
   count: () => Promise<number>
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
   turn: (active: boolean) => Promise<void>
   /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
   blocked?: string
+  /** Why it can never turn here (e.g. your own user): the button is disabled and this shows beside it. */
+  locked?: string
 }>()
+
+const lockId = useId()
 
 const { confirm } = useConfirm()
 const busy = ref(false)
@@ -33,6 +37,11 @@ function warning(count: number | null): string {
   const one = count === 1
   const rooms = one ? '1 room' : `${count} rooms`
   const users = one ? '1 user' : `${count} users`
+  if (props.kind === 'user') {
+    // The count is the rooms they own: turning them off clears the owner (R9).
+    if (!count) return 'They cannot sign in until you turn them on again.'
+    return `They cannot sign in, and ${rooms} ${one ? 'loses its' : 'lose their'} owner. You can turn them on again.`
+  }
   if (props.kind === 'department') {
     // Its divisions stay on and still take new users (the API checks only the division).
     const divisions = 'Its divisions stay on, but no new division can be added to it.'
@@ -110,20 +119,35 @@ async function turnOff() {
       <CircleAlert aria-hidden="true" />
       <b>{{ error }}</b>
     </div>
-    <BaseButton v-if="active" variant="danger" :busy="busy" @click="turnOff">
+    <BaseButton
+      v-if="active"
+      variant="danger"
+      :busy="busy"
+      :disabled="!!locked"
+      :aria-describedby="locked ? lockId : undefined"
+      @click="turnOff"
+    >
       <Power v-if="!busy" aria-hidden="true" />
       Turn off
     </BaseButton>
-    <BaseButton v-else :busy="busy" @click="run(true)">
+    <BaseButton v-else :busy="busy" :disabled="!!locked" :aria-describedby="locked ? lockId : undefined" @click="run(true)">
       <Power v-if="!busy" aria-hidden="true" />
       Turn on
     </BaseButton>
+    <span v-if="locked" :id="lockId" class="locked">{{ locked }}</span>
   </div>
 </template>
 
 <style scoped>
 .toggle {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.locked {
+  font-size: 12px;
+  color: var(--color-intaglio);
 }
 /* Shown above the button, so a refusal is read right where it happened. The button sits at
    the start of the panel foot, so the message grows to the right. */

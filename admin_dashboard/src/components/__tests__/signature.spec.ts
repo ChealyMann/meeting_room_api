@@ -3,6 +3,7 @@ import { answerConfirm, confirmDialog, mountConfirmHost } from '../../test-utils
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { UserDetail } from '../../api/types'
 import { useSessionStore } from '../../stores/session'
 import SignatureField from '../SignatureField.vue'
 
@@ -137,5 +138,25 @@ describe('SignatureField', () => {
     wrapper.unmount()
 
     expect(revoked).toEqual(['blob:1'])
+  })
+
+  it("works for another user's signature with the functions it is given", async () => {
+    stubApi({ 'GET /api/v1/users/7/signature': () => new Response(new Blob(['png'])) })
+    const upload = vi.fn<(file: File) => Promise<UserDetail>>(async () => ({ signature_url: '/api/v1/users/7/signature' }) as UserDetail)
+    const remove = vi.fn<() => Promise<void>>(async () => {})
+    mountConfirmHost()
+    const wrapper = mount(SignatureField, {
+      props: { signatureUrl: '/api/v1/users/7/signature', upload, remove, ownerName: 'Sok Dara' },
+    })
+    await flushPromises()
+
+    await choose(wrapper, new File(['x'], 'sign.png', { type: 'image/png' }))
+    expect(upload).toHaveBeenCalledTimes(1)
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Remove'))!.trigger('click')
+    await flushPromises()
+    expect(confirmDialog()?.textContent).toContain("Remove Sok Dara's signature?")
+    await answerConfirm('Remove signature')
+    expect(remove).toHaveBeenCalledTimes(1)
   })
 })

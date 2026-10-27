@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { passwordProblem } from '../password'
+import { generatePassword, passwordProblem, temporaryPasswordProblem } from '../password'
 
 const EMAIL = 'admin@company.com'
 
@@ -33,5 +33,27 @@ describe('passwordProblem', () => {
 
   it('counts spaces', () => {
     expect(passwordProblem(' abc12345', EMAIL, 'abc12345')).toBeNull()
+  })
+})
+
+describe('generatePassword', () => {
+  it('makes 14 characters with every kind and no look-alikes', () => {
+    for (let i = 0; i < 200; i++) {
+      const password = generatePassword()
+      expect(password).toHaveLength(14)
+      expect(password).toMatch(/[a-z]/)
+      expect(password).toMatch(/[A-Z]/)
+      expect(password).toMatch(/[0-9]/)
+      expect(password).toMatch(/[!@#$%^&*\-_=+?]/)
+      expect(password).not.toMatch(/[0Oo1lI]/)
+    }
+  })
+})
+
+describe('temporaryPasswordProblem', () => {
+  it('checks 8 to 128 characters only, without trimming', () => {
+    expect(temporaryPasswordProblem('1234567')).toBe('Password must be 8 to 128 characters.')
+    expect(temporaryPasswordProblem(' 123456 ')).toBeNull()
+    expect(temporaryPasswordProblem('x'.repeat(129))).toBe('Password must be 8 to 128 characters.')
   })
 })
