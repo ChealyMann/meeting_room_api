@@ -64,6 +64,14 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - "Turn off" first counts the active rooms inside and says how many stop being bookable; "Turn on" does not ask. The API refuses to turn on a building or floor whose parent is off, and the panel shows why.
 - The real-API test for places (`e2e/places.spec.ts`) adds an office, a building and a floor with unique names each run, and leaves them on.
 
+## Catalog
+
+- Room types (`/room-types`) and Equipment (`/equipment`) work like the place pages: search and status in the address, `?id=2` (edit) or `?id=new` (create), and a saved record loads before its panel opens.
+- The API searches room types by English and Khmer name, and equipment by name; there are no other filters.
+- Turning a room type or an item off leaves rooms as they are (still bookable); it only stops it being chosen for other rooms. The warning counts the active rooms that use it.
+- An item's icon is a Lucide name from the picker's list in `src/utils/equipmentIcons.ts`. A name not on that list (set elsewhere) is kept and shown as "Unknown icon"; add it to the list to show it.
+- The real-API test for the catalog (`e2e/catalog.spec.ts`) adds a room type and an item with unique names each run, and turns the item off.
+
 ## How sign-in works
 
 - **Access token:** in memory only. It lasts 15 minutes.

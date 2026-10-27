@@ -17,14 +17,20 @@ const stamps = { is_active: true, created_at: '2026-10-01T00:00:00Z', updated_at
 const OFFICE = { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល', description: null, address: 'Norodom Blvd', province: PP, map_query: null, ...stamps }
 const BUILDING = { id: 5, location_id: 3, name_en: 'Tower A', name_kh: 'អគារ ក', short_name: 'A', sort_order: 1, ...stamps }
 const FLOOR = { id: 7, building_id: 5, floor_label: '3rd floor', sort_order: 3, ...stamps }
+const ROOM_TYPE = { id: 2, name_en: 'Meeting room', name_kh: 'បន្ទប់ប្រជុំ', sort_order: 1, ...stamps }
+const ITEM = { id: 4, name: 'Projector', icon: 'projector', sort_order: 1, ...stamps }
 const NAMED = { location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' }, province: PP }
 
 const RECORDS: Record<string, unknown> = {
+  '/api/v1/categories/2': ROOM_TYPE,
+  '/api/v1/equipment/4': ITEM,
   '/api/v1/locations/3': OFFICE,
   '/api/v1/buildings/5': { ...BUILDING, ...NAMED },
   '/api/v1/floors/7': { ...FLOOR, building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' }, ...NAMED },
 }
 const LISTS: Record<string, unknown[]> = {
+  '/api/v1/categories': [ROOM_TYPE],
+  '/api/v1/equipment': [ITEM],
   '/api/v1/locations': [OFFICE],
   '/api/v1/buildings': [BUILDING],
   '/api/v1/floors': [FLOOR],
@@ -75,7 +81,7 @@ function frames(page: Page, ms: number) {
   )
 }
 
-for (const path of ['/offices', '/buildings', '/floors']) {
+for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment']) {
   for (const recordMs of [60, 800]) {
     test(`${path}: a record (answer after ${recordMs}ms) slides in once`, async ({ page }) => {
       await listPage(page, path, recordMs)
