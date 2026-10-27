@@ -1,22 +1,25 @@
 <script setup lang="ts">
 // Users (DSH-U01, U02): a filtered, paged list. The open user lives in the address (?id=7, with
 // &tab=roles and so on; ?id=new for a new user), so a reload keeps the panel open.
-import { CircleAlert, Ellipsis, Plus } from 'lucide-vue-next'
+import { CircleAlert, Ellipsis, LoaderCircle, Plus } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../api'
 import type { RoleOut, UserDetail, UserListItem } from '../api/types'
-import { listRoles, listUserPage, type UserFilters as UserFilterParams } from '../api/users'
+import { getUser, listRoles, listUserPage, type UserFilters as UserFilterParams } from '../api/users'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import StateMarks from '../components/list/StateMarks.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
+import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
+import { serial } from '../utils/serial'
 import { formatPhnomPenh } from '../utils/time'
 import NewUserPanel from './people/NewUserPanel.vue'
+import UserPanel, { type UserTab } from './people/UserPanel.vue'
 import UserFilters from './people/UserFilters.vue'
 import { USER_FILTERS } from './people/userFilters'
 
@@ -44,6 +47,37 @@ async function onCreated(user: UserDetail) {
   await refresh(user.id)
 }
 
+// The user is loaded before the panel opens (see usePanelRecord), so a reload on ?id=… works too.
+const { record: openUser, error: openError, openingId, load: loadOpen } = usePanelRecord(panel.id, (id) => getUser(api, id))
+const TABS: UserTab[] = ['details', 'roles', 'password', 'signature']
+const tab = computed(() => {
+  const value = route.query.tab
+  return TABS.find((t) => t === value) ?? 'details'
+})
+function setTab(name: UserTab) {
+  void router.replace({ query: { ...route.query, tab: name === 'details' ? undefined : name } })
+}
+/** Another user's panel, or none, starts on Details again. */
+function withoutTab() {
+  const query = { ...route.query }
+  delete query.tab
+  return query
+}
+function show(id: number) {
+  void router.push({ query: { ...withoutTab(), id: String(id) } })
+}
+function closePanel() {
+  const query = withoutTab()
+  delete query.id
+  void router.push({ query })
+}
+
+/** The panel stays open after a save: show the new values and refresh the list. */
+async function onSaved(user: UserDetail) {
+  openUser.value = user
+  await refresh(user.id)
+}
+
 const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96px', '120px', '32px']
 </script>
 
@@ -59,6 +93,15 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
     </div>
 
     <UserFilters :roles="roles" />
+
+    <div v-if="openError" class="summary open-error" role="alert">
+      <CircleAlert aria-hidden="true" />
+      <div>
+        <b>{{ serial('US', panel.id.value) }}: {{ openError }}</b>
+        <BaseButton variant="quiet" @click="loadOpen">Try again</BaseButton>
+        <BaseButton variant="quiet" @click="closePanel">Close</BaseButton>
+      </div>
+    </div>
 
     <div class="sheet">
       <div v-if="error" class="summary load-error" role="alert">
@@ -100,8 +143,9 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
               :key="user.id"
               :class="{ 'is-off': !user.is_active, 'just-saved': user.id === savedId }"
               tabindex="0"
-              @click="panel.open(user.id)"
-              @keydown.enter="panel.open(user.id)"
+              :aria-busy="user.id === openingId || undefined"
+              @click="show(user.id)"
+              @keydown.enter="show(user.id)"
             >
               <td class="col-serial"><span class="serial"><span class="prefix">US</span>·{{ String(user.id).padStart(4, '0') }}</span></td>
               <td class="name-plate">
@@ -125,8 +169,9 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
                 <span class="last mono" :class="{ none: !user.last_login_at }">{{ user.last_login_at ? formatPhnomPenh(user.last_login_at) : 'Never' }}</span>
               </td>
               <td class="row-actions">
-                <button type="button" class="icon-btn" :aria-label="`Open ${user.name_en}`" @click.stop="panel.open(user.id)">
-                  <Ellipsis aria-hidden="true" />
+                <button type="button" class="icon-btn" :aria-label="`Open ${user.name_en}`" @click.stop="show(user.id)">
+                  <LoaderCircle v-if="user.id === openingId" class="spin" aria-hidden="true" />
+                  <Ellipsis v-else aria-hidden="true" />
                 </button>
               </td>
             </tr>
@@ -136,6 +181,16 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
     </div>
 
     <NewUserPanel v-if="panel.isNew.value" @created="onCreated" @close="panel.close" />
+    <UserPanel
+      v-else-if="openUser"
+      :key="`user-${openUser.id}`"
+      :user="openUser"
+      :roles="roles"
+      :tab="tab"
+      @saved="onSaved"
+      @tab="setTab"
+      @close="closePanel"
+    />
 
     <PagingFoot
       v-if="result && total > 0"

@@ -119,7 +119,7 @@ onBeforeUnmount(() => setImage(null))
   <div class="field signature" :class="{ 'has-error': error }">
     <div class="sheet" :aria-busy="loading || undefined">
       <div v-if="loading" class="skeleton-bar" aria-hidden="true" />
-      <img v-else-if="imageUrl" :key="imageUrl" :src="imageUrl" alt="Your signature" />
+      <img v-else-if="imageUrl" :key="imageUrl" :src="imageUrl" :alt="ownerName ? `${ownerName}'s signature` : 'Your signature'" />
       <p v-else class="empty">No signature yet</p>
     </div>
 
