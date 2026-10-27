@@ -124,12 +124,12 @@ describe('PositionsView', () => {
     expect(inPanel('#name_en-error')?.textContent).toContain('A position already has this name.')
   })
 
-  it('keeps "Save changes" off until something changes, and can turn off', async () => {
+  it('keeps "Save changes" off until something changes, and shows the Active switch', async () => {
     await mountAt('/positions?id=4')
 
     const save = [...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!
     expect(save.disabled).toBe(true)
-    expect(panel()?.textContent).toContain('Turn off')
+    expect(panel()?.querySelector('.panel-foot [role="switch"]')?.getAttribute('aria-checked')).toBe('true')
   })
 
   it('is a real page in the sidebar', () => {

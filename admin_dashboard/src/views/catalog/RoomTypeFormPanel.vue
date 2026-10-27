@@ -122,7 +122,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const roomType = await updateRoomType(api, props.roomType!.id, { is_active: active })
-  done(roomType, `${roomType.name_en} turned ${active ? 'on' : 'off'}`)
+  done(roomType, `${roomType.name_en} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -208,7 +208,7 @@ h3 {
 .order {
   max-width: 160px;
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

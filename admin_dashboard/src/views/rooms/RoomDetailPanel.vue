@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One room in the side panel (DSH-R02, R04, R05): details, photos and equipment as tabs,
-// "Turn off / Turn on" with an inline confirm (G07), and the door code only on request.
-import { CircleAlert, Eye, Power } from 'lucide-vue-next'
+// the Active switch in the foot (G07), and the door code only on request.
+import { CircleAlert, Eye } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { api } from '../../api'
@@ -10,8 +10,8 @@ import { getDoorCode, getRoom, updateRoom } from '../../api/rooms'
 import type { RoomDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
+import ActiveToggle from '../../components/list/ActiveToggle.vue'
 import StateMarks from '../../components/list/StateMarks.vue'
-import { useConfirm } from '../../composables/useConfirm'
 import { serial } from '../../utils/serial'
 import { formatPhnomPenh } from '../../utils/time'
 import RoomEquipment from './RoomEquipment.vue'
@@ -35,7 +35,6 @@ watch(
 const doorCode = ref<string | null | undefined>(undefined)
 const doorBusy = ref(false)
 
-const switching = ref(false)
 const actionError = ref('')
 
 const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : 'Something went wrong.')
@@ -65,31 +64,11 @@ async function showDoorCode() {
   }
 }
 
-async function setActive(active: boolean) {
+/** The Active switch's change; a refusal (e.g. "Turn on its floor first.") shows by the switch. */
+async function turn(active: boolean) {
   if (!room.value) return
-  switching.value = true
-  actionError.value = ''
-  try {
-    room.value = await updateRoom(api, room.value.id, { is_active: active })
-    emit('changed', room.value)
-  } catch (err) {
-    actionError.value = messageOf(err)
-  } finally {
-    switching.value = false
-  }
-}
-
-const { confirm } = useConfirm()
-
-async function askTurnOff() {
-  if (!room.value) return
-  const ok = await confirm({
-    title: `Turn off ${room.value.name_en}?`,
-    text: 'People can no longer book it. You can turn it on again.',
-    confirmLabel: 'Turn off',
-    icon: 'power',
-  })
-  if (ok) await setActive(false)
+  room.value = await updateRoom(api, room.value.id, { is_active: active })
+  emit('changed', room.value)
 }
 
 const place = computed(() =>
@@ -210,15 +189,14 @@ defineExpose({ update, tab })
     </template>
 
     <template v-if="room" #foot>
+      <ActiveToggle
+        class="toggle"
+        :active="room.is_active"
+        :name="room.name_en"
+        kind="room"
+        :turn="turn"
+      />
       <BaseButton @click="emit('edit')">Edit</BaseButton>
-      <BaseButton v-if="room.is_active" variant="danger" :busy="switching" @click="askTurnOff">
-        <Power aria-hidden="true" />
-        Turn off
-      </BaseButton>
-      <BaseButton v-else :busy="switching" @click="setActive(true)">
-        <Power aria-hidden="true" />
-        Turn on
-      </BaseButton>
     </template>
   </SidePanel>
 </template>
@@ -300,5 +278,9 @@ defineExpose({ update, tab })
 }
 .action-error {
   margin-top: 16px;
+}
+/* The Active switch sits apart, at the start of the foot. */
+.toggle {
+  margin-right: auto;
 }
 </style>

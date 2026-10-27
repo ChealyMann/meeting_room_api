@@ -121,7 +121,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const position = await updatePosition(api, props.position!.id, { is_active: active })
-  done(position, `${position.name_en} turned ${active ? 'on' : 'off'}`)
+  done(position, `${position.name_en} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -207,7 +207,7 @@ h3 {
 .order {
   max-width: 160px;
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

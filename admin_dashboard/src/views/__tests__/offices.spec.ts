@@ -172,7 +172,7 @@ describe('OfficesView', () => {
 
     const save = [...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!
     expect(save.disabled).toBe(true)
-    expect(panel()?.textContent).toContain('Turn off')
+    expect(panel()?.querySelector('.panel-foot [role="switch"]')?.getAttribute('aria-checked')).toBe('true')
   })
 
   it('opens the panel only when the office has loaded, marking the row busy meanwhile', async () => {
@@ -214,7 +214,7 @@ describe('OfficesView', () => {
 
   it('closes only the turn-off question on Escape, keeping the panel and the typing', async () => {
     await mountAt('/offices?id=3')
-    const turnOff = () => [...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!
+    const turnOff = () => panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!
     turnOff().click()
     await flushPromises()
     expect(confirmDialog()).not.toBeNull()
@@ -231,7 +231,7 @@ describe('OfficesView', () => {
     setValue('#name_en', 'Head Office 2')
     await flushPromises()
 
-    ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!.click()
+    ;panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
     await flushPromises()
 
     expect(confirmDialog()).toBeNull()
@@ -243,7 +243,7 @@ describe('OfficesView', () => {
   it("counts the office's active rooms before asking to turn it off", async () => {
     await mountAt('/offices?id=3')
 
-    ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Turn off')!.click()
+    ;panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
     await flushPromises()
 
     expect(roomCalls).toEqual(['?location_id=3&is_active=true&page=1&size=1'])

@@ -119,28 +119,29 @@ describe('RoomDetailPanel', () => {
     expect(wrapper.text()).toContain('No door code set')
   })
 
-  it('asks before turning a room off, then turns it off', async () => {
+  it('asks before making a room inactive with its Active switch, then does it', async () => {
     const wrapper = await mountPanel()
 
-    await button(wrapper, 'Turn off')!.trigger('click')
+    await wrapper.get('.panel-foot [role="switch"]').trigger('click')
     await flushPromises()
     expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
-    expect(confirmDialog()?.textContent).toContain('Turn off Mekong Room?')
+    expect(confirmDialog()?.textContent).toContain('Make Mekong Room inactive?')
+    expect(confirmDialog()?.textContent).toContain('People can no longer book it. You can make it active again.')
 
-    await answerConfirm('Turn off')
+    await answerConfirm('Make inactive')
 
     expect(calls.find((c) => c.method === 'PATCH')?.body).toBe('{"is_active":false}')
     expect(wrapper.emitted('changed')?.[0]?.[0]).toMatchObject({ is_active: false })
     expect(wrapper.text()).toContain('Inactive')
   })
 
-  it('turns a room on, and shows the reason when the API refuses', async () => {
+  it('makes a room active, and shows the reason when the API refuses', async () => {
     current = room({ is_active: false })
     patchAnswer = () =>
       json({ error: { code: 'INACTIVE_REFERENCE', message: 'Turn on its floor first.' } }, 409)
     const wrapper = await mountPanel()
 
-    await button(wrapper, 'Turn on')!.trigger('click')
+    await wrapper.get('.panel-foot [role="switch"]').trigger('click')
     await flushPromises()
 
     expect(calls.find((c) => c.method === 'PATCH')?.body).toBe('{"is_active":true}')

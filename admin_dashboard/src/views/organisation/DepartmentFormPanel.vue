@@ -131,7 +131,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const department = await updateDepartment(api, props.department!.id, { is_active: active })
-  done(department, `${department.name_en} turned ${active ? 'on' : 'off'}`)
+  done(department, `${department.name_en} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -241,7 +241,7 @@ h3 {
   font-size: 12px;
   color: var(--color-intaglio);
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

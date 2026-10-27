@@ -1,25 +1,26 @@
 <script setup lang="ts">
-// Turn off / turn on for a place, a catalog record or an organisation record (DSH-G07, P05, C01,
-// C02, O01–O03). Turning off asks in the confirm dialog and says what happens to the active rooms
-// or users it touches (the page passes the count); turning on does not ask.
-import { CircleAlert, Lock, Power } from 'lucide-vue-next'
+// The Active switch for a place, a catalog record, an organisation record or a user (DSH-G07,
+// P05, C01, C02, O01–O03, U03). Making it inactive asks in the confirm dialog and says what happens
+// to the active rooms or users it touches (the page passes the count); making it active does not
+// ask. The switch moves only when the page's record changes, never before the API answers
+// (owner decision, 27 Oct 2026: a switch labelled Active/Inactive, not a Turn off button).
+import { CircleAlert, Lock } from 'lucide-vue-next'
 import { ref, useId } from 'vue'
 
 import { ApiError } from '../../api/errors'
 import { useConfirm } from '../../composables/useConfirm'
-import BaseButton from '../base/BaseButton.vue'
 
 const props = defineProps<{
   active: boolean
   name: string
-  kind: 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
-  /** How many active rooms or users it touches (the warning's number). */
-  count: () => Promise<number>
+  kind: 'room' | 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
+  /** How many active rooms or users it touches (the warning's number); a room has none to count. */
+  count?: () => Promise<number>
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
   turn: (active: boolean) => Promise<void>
   /** Why it cannot turn now (e.g. unsaved changes): shown instead of turning. */
   blocked?: string
-  /** Why it can never turn here (e.g. your own user): the button looks off, names the reason on hover, and a click says it. */
+  /** Why it can never turn here (e.g. your own user): the switch looks off-limits, names the reason on hover, and a click says it. */
   locked?: string
 }>()
 
@@ -29,7 +30,7 @@ const { confirm } = useConfirm()
 const busy = ref(false)
 const error = ref('')
 
-const AGAIN = 'You can turn it on again.'
+const AGAIN = 'You can make it active again.'
 
 // A place's rooms stop being bookable; rooms keep a room type or an item, and users keep their
 // department, division or position — it only cannot be chosen again (the API changes nobody).
@@ -37,14 +38,15 @@ function warning(count: number | null): string {
   const one = count === 1
   const rooms = one ? '1 room' : `${count} rooms`
   const users = one ? '1 user' : `${count} users`
+  if (props.kind === 'room') return `People can no longer book it. ${AGAIN}`
   if (props.kind === 'user') {
     // The count is the rooms they own: turning them off clears the owner (R9).
-    if (!count) return 'They cannot sign in until you turn them on again.'
-    return `They cannot sign in, and ${rooms} ${one ? 'loses its' : 'lose their'} owner. You can turn them on again.`
+    if (!count) return 'They cannot sign in until you make them active again.'
+    return `They cannot sign in, and ${rooms} ${one ? 'loses its' : 'lose their'} owner. You can make them active again.`
   }
   if (props.kind === 'department') {
-    // Its divisions stay on and still take new users (the API checks only the division).
-    const divisions = 'Its divisions stay on, but no new division can be added to it.'
+    // Its divisions stay active and still take new users (the API checks only the division).
+    const divisions = 'Its divisions stay active, but no new division can be added to it.'
     if (count === null) return `Its users and divisions stay as they are, but no new division can be added to it. ${AGAIN}`
     if (count === 0) return `No users work in it. ${divisions} ${AGAIN}`
     return `${users} ${one ? 'works' : 'work'} in this department and ${one ? 'stays' : 'stay'} in it. ${divisions} ${AGAIN}`
@@ -92,21 +94,27 @@ function refuse(): boolean {
   return !!error.value
 }
 
+function flip() {
+  if (busy.value) return
+  if (props.active) void turnOff()
+  else void run(true)
+}
+
 async function turnOff() {
   if (refuse()) return
   busy.value = true
   let count: number | null = null
   try {
-    count = await props.count()
+    count = props.count ? await props.count() : null
   } catch {
     count = null // still ask, with the general warning
   } finally {
     busy.value = false
   }
   const ok = await confirm({
-    title: `Turn off ${props.name}?`,
+    title: `Make ${props.name} inactive?`,
     text: warning(count),
-    confirmLabel: 'Turn off',
+    confirmLabel: 'Make inactive',
     icon: 'power',
   })
   if (ok) await run(false)
@@ -119,34 +127,24 @@ async function turnOff() {
       <CircleAlert aria-hidden="true" />
       <b>{{ error }}</b>
     </div>
-    <!-- A locked button stays focusable (aria-disabled), so its reason can be read and clicked for. -->
-    <BaseButton
-      v-if="active"
-      variant="danger"
-      :class="{ locked: !!locked }"
-      :busy="busy"
-      :title="locked"
+    <!-- A locked switch stays focusable (aria-disabled), so its reason can be read and clicked for. -->
+    <button
+      type="button"
+      role="switch"
+      class="switch"
+      aria-label="Active"
+      :aria-checked="active"
+      :aria-busy="busy || undefined"
       :aria-disabled="locked ? 'true' : undefined"
       :aria-describedby="locked ? lockId : undefined"
-      @click="turnOff"
-    >
-      <Lock v-if="locked" aria-hidden="true" />
-      <Power v-else-if="!busy" aria-hidden="true" />
-      Turn off
-    </BaseButton>
-    <BaseButton
-      v-else
-      :class="{ locked: !!locked }"
-      :busy="busy"
       :title="locked"
-      :aria-disabled="locked ? 'true' : undefined"
-      :aria-describedby="locked ? lockId : undefined"
-      @click="run(true)"
-    >
-      <Lock v-if="locked" aria-hidden="true" />
-      <Power v-else-if="!busy" aria-hidden="true" />
-      Turn on
-    </BaseButton>
+      :class="{ locked: !!locked, busy }"
+      @click="flip"
+    />
+    <span class="state" :class="{ off: !active }" aria-hidden="true">
+      <Lock v-if="locked" />
+      {{ active ? 'Active' : 'Inactive' }}
+    </span>
     <span v-if="locked" :id="lockId" class="sr-only">{{ locked }}</span>
   </div>
 </template>
@@ -158,9 +156,27 @@ async function turnOff() {
   align-items: center;
   gap: 10px;
 }
-.locked {
+.switch.locked,
+.switch.busy {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.state.off {
+  color: var(--color-intaglio);
+}
+.state svg {
+  width: 13px;
+  height: 13px;
+  color: var(--color-intaglio);
 }
 /* Shown above the button, so a refusal is read right where it happened. The button sits at
    the start of the panel foot, so the message grows to the right. */

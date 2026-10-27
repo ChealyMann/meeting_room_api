@@ -26,15 +26,16 @@ async function mountToggle(
   return { wrapper, turn, count }
 }
 
-const click = async (wrapper: Awaited<ReturnType<typeof mountToggle>>['wrapper'], text: string) => {
-  await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click')
+/** The Active switch: on for an active record; flipping it off asks first. */
+const flip = async (wrapper: Awaited<ReturnType<typeof mountToggle>>['wrapper']) => {
+  await wrapper.get('[role="switch"]').trigger('click')
   await flushPromises()
 }
 
 /** The dialog text for turning off one kind with one count answer. */
 async function warningFor(kind: Kind, count: ReturnType<typeof counted>) {
   const { wrapper } = await mountToggle(true, { kind, count })
-  await click(wrapper, 'Turn off')
+  await flip(wrapper)
   const text = confirmDialog()?.textContent ?? ''
   await answerConfirm('Cancel')
   wrapper.unmount()
@@ -42,15 +43,33 @@ async function warningFor(kind: Kind, count: ReturnType<typeof counted>) {
 }
 
 describe('ActiveToggle', () => {
+  it('is a switch named Active that shows the state beside it', async () => {
+    const { wrapper } = await mountToggle(true)
+    const toggle = wrapper.get('[role="switch"]')
+
+    expect(toggle.attributes('aria-label')).toBe('Active')
+    expect(toggle.attributes('aria-checked')).toBe('true')
+    expect(wrapper.get('.state').text()).toBe('Active')
+    expect(wrapper.text()).not.toContain('Turn off')
+
+    const off = await mountToggle(false)
+    expect(off.wrapper.get('[role="switch"]').attributes('aria-checked')).toBe('false')
+    expect(off.wrapper.get('.state').text()).toBe('Inactive')
+  })
+
+  it('says it can be made active again', async () => {
+    expect(await warningFor('office', counted(2))).toContain('You can make it active again.')
+  })
+
   it('counts first, warns, then turns off', async () => {
     const { wrapper, turn, count } = await mountToggle(true)
 
-    await click(wrapper, 'Turn off')
+    await flip(wrapper)
 
     expect(count).toHaveBeenCalledTimes(1)
-    expect(confirmDialog()?.textContent).toContain('Turn off Head Office?')
+    expect(confirmDialog()?.textContent).toContain('Make Head Office inactive?')
     expect(confirmDialog()?.textContent).toContain('12 rooms in this office stop being bookable.')
-    await answerConfirm('Turn off')
+    await answerConfirm('Make inactive')
     expect(turn).toHaveBeenCalledWith(false)
     expect(turn).toHaveBeenCalledTimes(1)
   })
@@ -58,7 +77,7 @@ describe('ActiveToggle', () => {
   it('does nothing when cancelled', async () => {
     const { wrapper, turn } = await mountToggle(true)
 
-    await click(wrapper, 'Turn off')
+    await flip(wrapper)
     await answerConfirm('Cancel')
 
     expect(turn).not.toHaveBeenCalled()
@@ -87,10 +106,10 @@ describe('ActiveToggle', () => {
 
   it('counts users for departments, divisions and positions', async () => {
     expect(await warningFor('department', counted(12))).toContain(
-      '12 users work in this department and stay in it. Its divisions stay on, but no new division can be added to it.',
+      '12 users work in this department and stay in it. Its divisions stay active, but no new division can be added to it.',
     )
     expect(await warningFor('department', counted(1))).toContain('1 user works in this department and stays in it.')
-    expect(await warningFor('department', counted(0))).toContain('No users work in it. Its divisions stay on')
+    expect(await warningFor('department', counted(0))).toContain('No users work in it. Its divisions stay active')
     expect(await warningFor('department', failing())).toContain(
       'Its users and divisions stay as they are, but no new division can be added to it.',
     )
@@ -104,31 +123,32 @@ describe('ActiveToggle', () => {
   })
 
   it('says what turning a user off does to their rooms', async () => {
-    expect(await warningFor('user', counted(3))).toContain('They cannot sign in, and 3 rooms lose their owner. You can turn them on again.')
+    expect(await warningFor('user', counted(3))).toContain('They cannot sign in, and 3 rooms lose their owner. You can make them active again.')
     expect(await warningFor('user', counted(1))).toContain('They cannot sign in, and 1 room loses its owner.')
-    expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you turn them on again.')
+    expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you make them active again.')
   })
 
-  it('can be locked: the button stays one line, and a click says why instead of turning', async () => {
+  it('can be locked: the switch looks off-limits, and a click says why instead of turning', async () => {
     mountConfirmHost()
     const turn = vi.fn<(a: boolean) => Promise<void>>()
     const wrapper = mount(ActiveToggle, {
-      props: { active: true, name: 'Sok Dara', kind: 'user', count: counted(0), turn, locked: 'You cannot turn yourself off.' },
+      props: { active: true, name: 'Sok Dara', kind: 'user', count: counted(0), turn, locked: 'You cannot make yourself inactive.' },
       attachTo: document.body,
     })
-    const button = wrapper.findAll('button').find((b) => b.text() === 'Turn off')!
+    const toggle = wrapper.get('[role="switch"]')
 
-    expect(button.attributes('aria-disabled')).toBe('true')
-    expect(button.attributes('title')).toBe('You cannot turn yourself off.')
-    expect(document.getElementById(button.attributes('aria-describedby')!)?.textContent).toContain('You cannot turn yourself off.')
+    expect(toggle.attributes('aria-disabled')).toBe('true')
+    expect(toggle.attributes('title')).toBe('You cannot make yourself inactive.')
+    expect(document.getElementById(toggle.attributes('aria-describedby')!)?.textContent).toContain('You cannot make yourself inactive.')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
 
-    await button.trigger('click')
+    await toggle.trigger('click')
     await flushPromises()
 
     expect(confirmDialog()).toBeNull()
     expect(turn).not.toHaveBeenCalled()
-    expect(wrapper.get('[role="alert"]').text()).toContain('You cannot turn yourself off.')
+    expect(wrapper.get('[role="switch"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.get('[role="alert"]').text()).toContain('You cannot make yourself inactive.')
   })
 
   it('turns on without asking, and shows a refusal', async () => {
@@ -137,7 +157,7 @@ describe('ActiveToggle', () => {
     })
     const { wrapper } = await mountToggle(false, { turn })
 
-    await click(wrapper, 'Turn on')
+    await flip(wrapper)
 
     expect(confirmDialog()).toBeNull()
     expect(turn).toHaveBeenCalledWith(true)

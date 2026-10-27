@@ -131,7 +131,7 @@ async function save() {
 async function turn(active: boolean) {
   const office = await updateOffice(api, props.office!.id, { is_active: active })
   drafts.clear(draftKey.value)
-  toast.show(`${office.name_en} turned ${active ? 'on' : 'off'}`, serial('OF', office.id))
+  toast.show(`${office.name_en} is now ${active ? 'active' : 'inactive'}`, serial('OF', office.id))
   emit('saved', office)
 }
 </script>
@@ -252,7 +252,7 @@ textarea.input {
   font-size: 12px;
   color: var(--color-intaglio);
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

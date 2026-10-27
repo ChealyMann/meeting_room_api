@@ -123,7 +123,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const item = await updateEquipment(api, props.item!.id, { is_active: active })
-  done(item, `${item.name} turned ${active ? 'on' : 'off'}`)
+  done(item, `${item.name} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -211,7 +211,7 @@ h3 {
   font-size: 12.5px;
   color: var(--color-crimson);
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

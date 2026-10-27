@@ -16,6 +16,7 @@ import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ActiveToggle from '../../components/list/ActiveToggle.vue'
 import SignatureField from '../../components/SignatureField.vue'
+import UserAvatar from '../../components/UserAvatar.vue'
 import { useFieldErrors } from '../../composables/useFieldErrors'
 import { useToast } from '../../composables/useToast'
 import { useDraftsStore } from '../../stores/drafts'
@@ -162,7 +163,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const user = await updateUser(api, props.user.id, { is_active: active })
-  toast.show(`${user.name_en} turned ${active ? 'on' : 'off'}`, serial('US', user.id))
+  toast.show(`${user.name_en} is now ${active ? 'active' : 'inactive'}`, serial('US', user.id))
   changed(user)
 }
 </script>
@@ -176,6 +177,9 @@ async function turn(active: boolean) {
     :serial="serial('US', user.id)"
     @close="close"
   >
+    <template #lead>
+      <UserAvatar :path="user.avatar_url" :name="user.name_en" :version="user.updated_at" />
+    </template>
     <div v-if="unassigned.length" class="unassigned" role="status">
       <CircleAlert aria-hidden="true" />
       <div>
@@ -244,7 +248,7 @@ async function turn(active: boolean) {
         :count="ownedRooms"
         :turn="turn"
         :blocked="dirty ? 'Save or cancel your changes first.' : undefined"
-        :locked="self ? 'You cannot turn yourself off.' : undefined"
+        :locked="self ? 'You cannot make yourself inactive.' : undefined"
       />
       <template v-if="tab === 'details'">
         <BaseButton variant="quiet" :disabled="!dirty" @click="cancel">Cancel</BaseButton>
@@ -312,7 +316,7 @@ async function turn(active: boolean) {
 .rooms a {
   color: var(--color-crimson);
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

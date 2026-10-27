@@ -167,7 +167,8 @@ describe('BuildingsView', () => {
     rows = [building(5, { is_active: false })]
     const { wrapper } = await mountAt('/buildings?status=all&id=5')
 
-    await clickInPanel('Turn on')
+    panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
+    await flushPromises()
 
     expect(writes).toEqual([{ method: 'PATCH', path: '/api/v1/buildings/5', body: JSON.stringify({ is_active: true }) }])
     expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('Turn on its office first.')

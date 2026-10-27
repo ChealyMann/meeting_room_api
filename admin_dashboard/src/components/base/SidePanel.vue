@@ -85,6 +85,7 @@ defineExpose({ focusFirst })
         :aria-labelledby="titleId"
       >
         <header class="panel-head">
+          <slot name="lead" />
           <div class="titles">
             <h2 :id="titleId">{{ title }}</h2>
             <span v-if="subtitle || serial" class="subtitle">
@@ -134,7 +135,7 @@ defineExpose({ focusFirst })
 .panel-head {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   padding: 16px 12px 16px 20px;
   border-bottom: 1px solid var(--color-rule);
 }

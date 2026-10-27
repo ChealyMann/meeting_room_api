@@ -135,7 +135,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const division = await updateDivision(api, props.division!.id, { is_active: active })
-  done(division, `${division.name_en} turned ${active ? 'on' : 'off'}`)
+  done(division, `${division.name_en} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -261,7 +261,7 @@ h3 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }

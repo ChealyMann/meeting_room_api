@@ -150,7 +150,8 @@ describe('DivisionsView', () => {
     rows = [division(12, { is_active: false })]
     const { wrapper } = await mountAt('/divisions?status=all&id=12')
 
-    await clickInPanel('Turn on')
+    panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
+    await flushPromises()
 
     expect(writes).toEqual([{ method: 'PATCH', path: '/api/v1/divisions/12', body: JSON.stringify({ is_active: true }) }])
     expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('Turn on its department first.')

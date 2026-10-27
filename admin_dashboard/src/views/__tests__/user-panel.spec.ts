@@ -79,6 +79,7 @@ beforeEach(() => {
       switch (url.pathname) {
         case '/api/v1/users/7':
           return json(detail)
+        case '/api/v1/users/7/avatar':
         case '/api/v1/users/7/signature':
           return new Response(new Blob(['png']))
         case '/api/v1/users':
@@ -121,6 +122,18 @@ async function click(el: HTMLElement | undefined) {
 }
 
 describe('UserPanel', () => {
+  it('shows the photo in the head, or the initials when there is none', async () => {
+    detail.avatar_url = '/api/v1/users/7/avatar'
+    await mountAt('/users?id=7')
+
+    expect(panel().querySelector('.panel-head .avatar img')?.getAttribute('src')).toBe('blob:1')
+
+    detail.avatar_url = null
+    await mountAt('/users?id=7')
+    const heads = document.body.querySelectorAll('.panel-head .avatar')
+    expect(heads[heads.length - 1]!.textContent?.trim()).toBe('SD')
+  })
+
   it('opens on Details with the values, and sends only what changed', async () => {
     await mountAt('/users?id=7')
 
@@ -166,8 +179,8 @@ describe('UserPanel', () => {
 
     expect(box('Admin').disabled).toBe(true)
     expect(panel().textContent).toContain('You cannot remove your own Admin role.')
-    expect(button('Turn off')!.getAttribute('aria-disabled')).toBe('true')
-    expect(panel().textContent).toContain('You cannot turn yourself off.')
+    expect(panel().querySelector('.panel-foot [role="switch"]')!.getAttribute('aria-disabled')).toBe('true')
+    expect(panel().textContent).toContain('You cannot make yourself inactive.')
   })
 
   it('sets a temporary password after asking, then empties the field', async () => {

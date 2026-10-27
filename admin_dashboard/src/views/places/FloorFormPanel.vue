@@ -158,7 +158,7 @@ async function save() {
 
 async function turn(active: boolean) {
   const floor = await updateFloor(api, props.floor!.id, { is_active: active })
-  done(floor, `${floor.floor_label} turned ${active ? 'on' : 'off'}`)
+  done(floor, `${floor.floor_label} is now ${active ? 'active' : 'inactive'}`)
 }
 </script>
 
@@ -277,7 +277,7 @@ h3 {
   align-items: start;
   gap: 12px;
 }
-/* Turn off sits apart, at the start of the foot. */
+/* The Active switch sits apart, at the start of the foot. */
 .toggle {
   margin-right: auto;
 }
