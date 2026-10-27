@@ -4,7 +4,7 @@ The admin dashboard for the meeting-room booking API in this repository.
 Vue 3 (Composition API, `<script setup>`), TypeScript, Vite, Pinia, Vue Router, Tailwind CSS 4.
 
 Phase 1 has: sign-in, the first password change, Admin-only access, the app shell, and My profile (with my photo and signature).
-Phase 2 has: Rooms — the list with filters and paging, room detail, create and edit, turn off/on, door code on request, photos and equipment.
+Phase 2 has: Rooms — the list with filters and paging, room detail, create and edit, the Active switch, door code on request, photos and equipment.
 The design rules are in [`../DESIGN.md`](../DESIGN.md).
 
 ## Setup
@@ -61,14 +61,14 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - Offices (`/offices`), Buildings (`/buildings`) and Floors (`/floors`) work like Rooms: filters, page and status live in the address, and the open record is `?id=3` (edit) or `?id=new` (create).
 - An office is a "location" in the API. Buildings and floors only carry their parent's id, so the lists look up the office and building names; a parent the list cannot find shows as `#id`.
 - Changing a building's office moves the building with its floors and rooms; changing a floor's building moves the floor with its rooms.
-- "Turn off" first counts the active rooms inside and says how many stop being bookable; "Turn on" does not ask. The API refuses to turn on a building or floor whose parent is off, and the panel shows why.
+- Every record panel has an "Active" switch in its foot. Making a record inactive first counts the active rooms inside and says how many stop being bookable; making it active does not ask. The API refuses to make a building or floor active while its parent is inactive, and the panel shows why.
 - The real-API test for places (`e2e/places.spec.ts`) adds an office, a building and a floor with unique names each run, and leaves them on.
 
 ## Catalog
 
 - Room types (`/room-types`) and Equipment (`/equipment`) work like the place pages: search and status in the address, `?id=2` (edit) or `?id=new` (create), and a saved record loads before its panel opens.
 - The API searches room types by English and Khmer name, and equipment by name; there are no other filters.
-- Turning a room type or an item off leaves rooms as they are (still bookable); it only stops it being chosen for other rooms. The warning counts the active rooms that use it.
+- Making a room type or an item inactive leaves rooms as they are (still bookable); it only stops it being chosen for other rooms. The warning counts the active rooms that use it.
 - An item's icon is a Lucide name from the picker's list in `src/utils/equipmentIcons.ts`. A name not on that list (set elsewhere) is kept and shown as "Unknown icon"; add it to the list to show it.
 - The real-API test for the catalog (`e2e/catalog.spec.ts`) adds a room type and an item with unique names each run, and turns the item off.
 
@@ -77,8 +77,20 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - Departments (`/departments`), Divisions (`/divisions`) and Positions (`/positions`) work like the other record pages: filters in the address, `?id=3` or `?id=new`, and a saved record loads before its panel opens.
 - The API filters departments by office and divisions by department only; the department select is grouped by office so the right one is easy to find.
 - Moving a department to another office moves the province of every user in its divisions (the API does it).
-- Turning a department, division or position off changes nobody; it only stops new divisions or users from using it. The warning counts the active users (`GET /users`, Admin only).
+- Making a department, division or position inactive changes nobody; it only stops new divisions or users from using it. The warning counts the active users (`GET /users`, Admin only).
 - The real-API test (`e2e/organisation.spec.ts`) adds a department, a division and a position with unique names each run, and turns the position off.
+
+## People
+
+- Users (`/users`) filter by role, department, status and search on the first row; division, position and province sit under "More filters". All of them live in the address.
+- The open user is `?id=7`, with `&tab=roles`, `&tab=password` or `&tab=signature` for the other tabs; `?id=new` creates one. A new user has no roles, so their panel then opens on the Roles tab.
+- The temporary password (create, or the Password tab) is never kept: not in the address, a draft, a toast or a log. "Generate" makes a 14-character one; "Copy" puts it on the clipboard.
+- Setting a temporary password signs the user out everywhere, and they must choose a new one when they next sign in.
+- The user panel stays open after a save. Making a user inactive, or taking away Room owner, clears the rooms they own; the panel lists them with links to each room.
+- Pitika, IT Lead and IT Staff need a division: choose one on the Details tab, then tick the role.
+- You cannot make yourself inactive or remove your own Admin role. The API also refuses to remove the last Admin.
+- Roles (`/roles`) are the six fixed roles. Only their Khmer and English names can change; the counts are active users with each role.
+- The real-API test (`e2e/people.spec.ts`) adds a user with a unique staff ID and email each run, gives them Staff and sets a temporary password. It needs at least one active position.
 
 ## How sign-in works
 

@@ -9,7 +9,7 @@ const password = process.env.E2E_ADMIN_PASSWORD
 // eslint-disable-next-line playwright/no-skipped-test -- skipped on purpose when no account is given
 test.skip(!email || !password, 'Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run this test.')
 
-test('add an office, a building and a floor, then turn the office off and on', async ({ page }) => {
+test('add an office, a building and a floor, then make the office inactive and active again', async ({ page }) => {
   const stamp = Date.now()
   const office = `E2E Office ${stamp}`
   const building = `E2E Building ${stamp}`
@@ -53,12 +53,12 @@ test('add an office, a building and a floor, then turn the office off and on', a
   await page.getByPlaceholder('Search name or address').fill(office)
   await expect(page.locator('tbody tr')).toHaveCount(1)
   await page.locator('tbody tr').first().click()
-  await panel.getByRole('button', { name: 'Turn off' }).click()
+  await panel.locator('.panel-foot').getByRole('switch', { name: 'Active' }).click()
   await expect(page.getByRole('alertdialog')).toContainText('No rooms are affected.')
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Make inactive' }).click()
   await expect(page.locator('tbody tr').first()).toContainText('Inactive')
 
   await page.locator('tbody tr').first().click()
-  await panel.getByRole('button', { name: 'Turn on' }).click()
+  await panel.locator('.panel-foot').getByRole('switch', { name: 'Active' }).click()
   await expect(page.locator('tbody tr').first()).toContainText('Active')
 })

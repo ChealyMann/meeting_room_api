@@ -39,9 +39,9 @@ test('add a room type and an item with an icon, then turn the item off', async (
   await expect(page.locator('tbody tr .col-icon svg')).toBeVisible()
 
   await page.locator('tbody tr').first().click()
-  await panel.getByRole('button', { name: 'Turn off' }).click()
+  await panel.locator('.panel-foot').getByRole('switch', { name: 'Active' }).click()
   await expect(page.getByRole('alertdialog')).toContainText('No rooms have it.')
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Make inactive' }).click()
   await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'All' }).click()
   await expect(page.locator('tbody tr').first()).toContainText('Inactive')
 })

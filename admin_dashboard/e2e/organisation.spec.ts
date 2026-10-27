@@ -9,7 +9,7 @@ const password = process.env.E2E_ADMIN_PASSWORD
 // eslint-disable-next-line playwright/no-skipped-test -- skipped on purpose when no account is given
 test.skip(!email || !password, 'Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run this test.')
 
-test('add a department, a division and a position, then turn the position off', async ({ page }) => {
+test('add a department, a division and a position, then make the position inactive', async ({ page }) => {
   const stamp = Date.now()
   const department = `E2E Department ${stamp}`
   const division = `E2E Division ${stamp}`
@@ -51,9 +51,9 @@ test('add a department, a division and a position, then turn the position off', 
   await expect(page.locator('tbody tr')).toHaveCount(1)
 
   await page.locator('tbody tr').first().click()
-  await panel.getByRole('button', { name: 'Turn off' }).click()
+  await panel.locator('.panel-foot').getByRole('switch', { name: 'Active' }).click()
   await expect(page.getByRole('alertdialog')).toContainText('No users have it.')
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Make inactive' }).click()
   await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'All' }).click()
   await expect(page.locator('tbody tr').first()).toContainText('Inactive')
 })

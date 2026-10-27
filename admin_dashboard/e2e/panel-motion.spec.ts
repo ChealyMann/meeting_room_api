@@ -22,9 +22,38 @@ const ITEM = { id: 4, name: 'Projector', icon: 'projector', sort_order: 1, ...st
 const DEPARTMENT = { id: 3, location_id: 3, name_en: 'IT Department', name_kh: 'ព័ត៌មានវិទ្យា', sort_order: 1, ...stamps }
 const DIVISION = { id: 12, department_id: 3, name_en: 'Software', name_kh: 'កម្មវិធី', short_name: 'SW', sort_order: 1, ...stamps }
 const POSITION = { id: 4, name_en: 'IT Lead', name_kh: 'ប្រធាន', sort_order: 1, ...stamps }
+const ROLE = { id: 3, code: 'STAFF', name_en: 'Staff', name_kh: 'បុគ្គលិក', is_active: true }
+const USER_ITEM = {
+  id: 9,
+  staff_id: 'EMP-009',
+  title: 'Ms.',
+  name_en: 'Chan Sophea',
+  name_kh: 'ចាន់ សុភា',
+  email: 'sophea@company.com',
+  division: { id: 12, name_en: 'Software', name_kh: 'កម្មវិធី' },
+  position: { id: 4, name_en: 'IT Lead', name_kh: 'ប្រធាន' },
+  province: PP,
+  role_codes: ['STAFF'],
+  is_active: true,
+  last_login_at: null,
+}
+const USER = {
+  ...USER_ITEM,
+  ...stamps,
+  secondary_email: null,
+  phone: null,
+  avatar_url: null,
+  signature_url: null,
+  email_notifications: true,
+  department: { id: 3, name_en: 'IT Department', name_kh: 'ព័ត៌មានវិទ្យា' },
+  roles: [{ code: 'STAFF', name_en: 'Staff', name_kh: 'បុគ្គលិក' }],
+  owned_room_ids: [],
+  must_change_password: false,
+}
 const NAMED = { location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' }, province: PP }
 
 const RECORDS: Record<string, unknown> = {
+  '/api/v1/users/9': USER,
   '/api/v1/departments/3': DEPARTMENT,
   '/api/v1/divisions/12': DIVISION,
   '/api/v1/positions/4': POSITION,
@@ -35,6 +64,8 @@ const RECORDS: Record<string, unknown> = {
   '/api/v1/floors/7': { ...FLOOR, building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' }, ...NAMED },
 }
 const LISTS: Record<string, unknown[]> = {
+  '/api/v1/users': [USER_ITEM],
+  '/api/v1/roles': [ROLE],
   '/api/v1/departments': [DEPARTMENT],
   '/api/v1/divisions': [DIVISION],
   '/api/v1/positions': [POSITION],
@@ -90,7 +121,7 @@ function frames(page: Page, ms: number) {
   )
 }
 
-for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment', '/departments', '/divisions', '/positions']) {
+for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment', '/departments', '/divisions', '/positions', '/users', '/roles']) {
   for (const recordMs of [60, 800]) {
     test(`${path}: a record (answer after ${recordMs}ms) slides in once`, async ({ page }) => {
       await listPage(page, path, recordMs)
