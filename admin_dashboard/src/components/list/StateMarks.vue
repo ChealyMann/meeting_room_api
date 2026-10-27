@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarX, Lock } from 'lucide-vue-next'
+import { CalendarX, EyeOff } from 'lucide-vue-next'
 
 // State by shape and word, never colour alone (DESIGN.md "State cell").
 // A missing `bookable` means "no such mark" (places), not "not bookable": Vue would make it false.
@@ -12,7 +12,7 @@ withDefaults(defineProps<{ active: boolean; bookable?: boolean; private?: boolea
     <span v-if="active && bookable === false" class="mark unbookable">
       <CalendarX aria-hidden="true" />Not bookable
     </span>
-    <span v-if="private" class="mark private"><Lock aria-hidden="true" />Private</span>
+    <span v-if="private" class="mark private"><EyeOff aria-hidden="true" />Private</span>
   </div>
 </template>
 
