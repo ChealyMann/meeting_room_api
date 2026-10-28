@@ -622,3 +622,18 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* A new page fades in over 160ms, nothing moves (owner decision, 28 Oct 2026). It plays when a
+   page appears; opening a panel keeps the same page, so it does not fade again. No fill mode: after
+   the fade nothing stays on the page (a lasting opacity animation would trap its pop-ups under
+   the top bar). Off for people who ask for less motion. */
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  main.page > * {
+    animation: page-fade 160ms ease-out;
+  }
+}

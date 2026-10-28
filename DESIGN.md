@@ -481,6 +481,8 @@ Every scroll area uses the theme scrollbar: a slim pill in rule-strong with tran
 ### Motion
 Ease-out-quint (`cubic-bezier(0.23, 1, 0.32, 1)`) for things that travel (toast 260ms, switch thumb 180ms); the drawer curve (`cubic-bezier(0.32, 0.72, 0, 1)`) for the sidebar fold (240ms) and the side panel (opens in 340ms, closes in 240ms, its scrim fading at the same pace; a panel that replaces another one starts where the old one was, and a panel the page removes still slides out); plain `ease` for colour (120 to 200ms). Under `prefers-reduced-motion: reduce`, all animation and transition durations collapse to 1ms.
 
+**Page change.** A new page fades in over 160ms (ease-out), and nothing moves (owner decision, 28 Oct 2026). The rail and top bar stay still. It plays only when a page appears: opening a panel keeps the same page, so nothing fades then. It uses no fill mode, so after the fade nothing remains that could trap pop-ups under the top bar. It is off when the person asks for reduced motion.
+
 ### Accessibility
 - Global focus: 2px crimson outline, 2px offset, 4px corner. Inputs replace it with the crimson border and halo.
 - Contrast on paper and sheet: ink 15.4:1, intaglio 6.8:1, crimson 8.3:1, off ink 5.6:1, lock amber 6.3:1, ledger green 6.4:1. In the rail: rail-ink 13.5:1 and gold 8.6:1 on the active ground, rail-muted 8.7:1.
