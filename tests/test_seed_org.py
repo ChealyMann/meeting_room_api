@@ -37,7 +37,7 @@ def _key(name: str) -> str:
 
 
 def test_data_has_the_whole_organisation():
-    assert (len(ORG["departments"]), HEAD_DIVISIONS, BRANCHES) == (41, 156, 19)
+    assert (len(ORG["departments"]), HEAD_DIVISIONS, BRANCHES) == (41, 156, 1)
     assert len(ORG["branch_divisions"]) == 4
 
 
@@ -133,25 +133,31 @@ def test_head_office_departments_and_divisions(db_session):
     ]
 
 
+def test_only_phnom_penh_offices(db_session):
+    seed_org(db_session)
+    assert set(db_session.scalars(select(Location.province))) == {"PHNOM_PENH"}
+    assert set(db_session.scalars(select(Location.name_en))) == {"Head Office", "Phnom Penh Branch"}
+
+
 def test_branches_give_users_their_province(db_session, make_user):
     seed_org(db_session)
-    kampot = db_session.scalars(
+    branch_division = db_session.scalars(
         select(Division)
         .join(Department, Department.id == Division.department_id)
         .join(Location, Location.id == Department.location_id)
-        .where(Location.name_en == "Kampot Branch", Division.name_en == "Operations")
+        .where(Location.name_en == "Phnom Penh Branch", Division.name_en == "Operations")
     ).one()
-    user = make_user(division=kampot, roles=["PITIKA"])
-    assert get_user_province(user).code == "KAMPOT"
+    user = make_user(division=branch_division, roles=["PITIKA"])
+    assert get_user_province(user).code == "PHNOM_PENH"
 
 
 def test_works_with_the_demo_places(db_session):
-    # seed_demo already has "Head Office", "Siem Reap Branch" and "Battambang Branch".
+    # seed_demo already has "Head Office" and "Phnom Penh Branch": both are reused.
     seed_demo(db_session)
     demo_locations = count(db_session, Location)
     result = seed_org(db_session)
-    assert result.locations == LOCATIONS - 3
-    assert count(db_session, Location) == demo_locations + LOCATIONS - 3
+    assert result.locations == LOCATIONS - 2
+    assert count(db_session, Location) == demo_locations + LOCATIONS - 2
     assert (result.departments, result.divisions) == (DEPARTMENTS, DIVISIONS)
 
 

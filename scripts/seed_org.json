@@ -5,8 +5,8 @@
     "department exists are included (dept_status OK); hr_id is the id in that export.",
     "Offices are divisions. English names of divisions, and of departments the export left",
     "blank, are DRAFT translations: have a Khmer speaker review them before production.",
-    "Every branch becomes an office (location) with one department holding the 4 shared",
-    "branch divisions."
+    "Only Phnom Penh is seeded (owner decision, 30 Oct 2026): the Head Office and the Phnom Penh",
+    "Branch, which becomes an office (location) with one department holding the 4 shared branch divisions."
   ],
   "head_office": {
     "name_en": "Head Office",
@@ -1310,114 +1310,6 @@
       "province": "PHNOM_PENH",
       "name_en": "Phnom Penh Branch",
       "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា រាជធានីភ្នំពេញ"
-    },
-    {
-      "hr_id": 103,
-      "province": "KANDAL",
-      "name_en": "Kandal Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកណ្តាល"
-    },
-    {
-      "hr_id": 104,
-      "province": "KAMPONG_CHAM",
-      "name_en": "Kampong Cham Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ចាម"
-    },
-    {
-      "hr_id": 105,
-      "province": "BATTAMBANG",
-      "name_en": "Battambang Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តបាត់ដំបង"
-    },
-    {
-      "hr_id": 106,
-      "province": "PREY_VENG",
-      "name_en": "Prey Veng Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តព្រៃវែង"
-    },
-    {
-      "hr_id": 107,
-      "province": "SIEM_REAP",
-      "name_en": "Siem Reap Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តសៀមរាប"
-    },
-    {
-      "hr_id": 108,
-      "province": "KAMPONG_THOM",
-      "name_en": "Kampong Thom Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ធំ"
-    },
-    {
-      "hr_id": 109,
-      "province": "TAKEO",
-      "name_en": "Takeo Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តតាកែវ"
-    },
-    {
-      "hr_id": 110,
-      "province": "SVAY_RIENG",
-      "name_en": "Svay Rieng Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តស្វាយរៀង"
-    },
-    {
-      "hr_id": 111,
-      "province": "PURSAT",
-      "name_en": "Pursat Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តពោធិ៍សាត់"
-    },
-    {
-      "hr_id": 112,
-      "province": "KAMPONG_CHHNANG",
-      "name_en": "Kampong Chhnang Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ឆ្នាំង"
-    },
-    {
-      "hr_id": 113,
-      "province": "KAMPONG_SPEU",
-      "name_en": "Kampong Speu Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពង់ស្ពឺ"
-    },
-    {
-      "hr_id": 114,
-      "province": "KAMPOT",
-      "name_en": "Kampot Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកំពត"
-    },
-    {
-      "hr_id": 115,
-      "province": "PREAH_SIHANOUK",
-      "name_en": "Preah Sihanouk Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តព្រះសីហនុ"
-    },
-    {
-      "hr_id": 116,
-      "province": "KOH_KONG",
-      "name_en": "Koh Kong Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តកោះកុង"
-    },
-    {
-      "hr_id": 118,
-      "province": "KRATIE",
-      "name_en": "Kratie Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តក្រចេះ"
-    },
-    {
-      "hr_id": 119,
-      "province": "RATANAKIRI",
-      "name_en": "Ratanakiri Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តរតនគិរី"
-    },
-    {
-      "hr_id": 121,
-      "province": "STUNG_TRENG",
-      "name_en": "Stung Treng Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តស្ទឹងត្រែង"
-    },
-    {
-      "hr_id": 122,
-      "province": "BANTEAY_MEANCHEY",
-      "name_en": "Banteay Meanchey Branch",
-      "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា ខេត្តបន្ទាយមានជ័យ"
     }
   ]
 }

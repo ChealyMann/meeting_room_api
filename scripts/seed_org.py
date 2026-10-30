@@ -2,8 +2,9 @@
 and divisions of the National Bank of Cambodia.
 
 - Head Office (Phnom Penh) with its departments and their divisions (HR "offices").
-- Every provincial branch as its own office, with one department holding the 4 divisions
-  all branches share. Users in those divisions get the branch's province.
+- Each branch in the file as its own office, with one department holding the 4 divisions
+  all branches share. Users in those divisions get the branch's province. The file now holds
+  only the Phnom Penh Branch (owner decision, 30 Oct 2026).
 
 Safe to run many times: it adds what is missing (matched by English name within the same
 parent, ignoring case) and never changes or turns off anything that exists. Run it by hand,

@@ -1,4 +1,5 @@
-"""Demo data for development: offices, buildings and floors to try the API with.
+"""Demo data for development: offices, buildings and floors to try the API with. Only Phnom
+Penh (owner decision, 30 Oct 2026).
 
 NOT for production. Run it by hand on a dev database, after `python -m scripts.seed`:
 
@@ -59,11 +60,11 @@ DEMO_PLACES = [
         ],
     },
     {
-        "name_en": "Siem Reap Branch",
-        "name_kh": "សាខាសៀមរាប",
-        "province": "SIEM_REAP",
-        "address": "Sivatha Blvd, Siem Reap",
-        "map_query": "13.3633,103.8564",
+        "name_en": "Phnom Penh Branch",
+        "name_kh": "សាខាធនាគារជាតិនៃកម្ពុជា រាជធានីភ្នំពេញ",
+        "province": "PHNOM_PENH",
+        "address": "Phnom Penh",
+        "map_query": "11.5564,104.9282",
         "buildings": [
             {
                 "name_en": "Main Building",
@@ -71,22 +72,6 @@ DEMO_PLACES = [
                 "short_name": "M",
                 "sort_order": 1,
                 "floors": [("Ground floor", 0), ("1st floor", 1)],
-            },
-        ],
-    },
-    {
-        "name_en": "Battambang Branch",
-        "name_kh": "សាខាបាត់ដំបង",
-        "province": "BATTAMBANG",
-        "address": "Street 3, Battambang",
-        "map_query": "13.0957,103.2022",
-        "buildings": [
-            {
-                "name_en": "Main Building",
-                "name_kh": "អគារធំ",
-                "short_name": "M",
-                "sort_order": 1,
-                "floors": [("Ground floor", 0)],
             },
         ],
     },

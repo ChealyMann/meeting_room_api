@@ -56,9 +56,10 @@ def test_has_active_and_inactive_records_to_try_filters(db_session):
     assert statuses == {True, False}
 
 
-def test_covers_several_provinces(db_session):
+def test_has_only_phnom_penh_offices(db_session):
     seed_demo(db_session)
-    assert len(set(db_session.scalars(select(Location.province)))) >= 3
+    assert set(db_session.scalars(select(Location.province))) == {"PHNOM_PENH"}
+    assert count(db_session, Location) == 2
 
 
 def test_does_not_change_existing_records(db_session, make_location):
