@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RoomDetail } from '../../api/types'
 import { useSessionStore } from '../../stores/session'
 import RoomFormPanel from '../rooms/RoomFormPanel.vue'
-import { choosePicker, pickerLabel, pickerOptions } from '../../test-utils/picker'
+import { choosePicker, chooseTime, pickerLabel, pickerOptions } from '../../test-utils/picker'
 
 const page = <T>(items: T[]) => ({ items, page: 1, size: 100, total: items.length })
 const BUILDINGS: Record<string, unknown[]> = {
@@ -188,6 +188,19 @@ describe('RoomFormPanel', () => {
 
     expect(await pickerOptions('room_owner_id')).toEqual(['No owner', 'Sok Dara'])
     expect(fetchCalls).toContain('/api/v1/users?role=ROOM_OWNER&is_active=true&page=1&size=100')
+  })
+
+  it('picks the opening and closing times with the time pickers', async () => {
+    const wrapper = await mountPanel()
+    await fillValid(wrapper)
+    expect(document.querySelector('input[type="time"]')).toBeNull()
+    expect(wrapper.get('#start_time').text()).toContain('08:00')
+
+    await chooseTime('start_time', '09:30')
+    await chooseTime('end_time', '18:45')
+    await submit(wrapper)
+
+    expect(JSON.parse(posts[0]!.body)).toMatchObject({ start_time: '09:30', end_time: '18:45' })
   })
 
   it('keeps "Save changes" off until something changes, then sends only that', async () => {

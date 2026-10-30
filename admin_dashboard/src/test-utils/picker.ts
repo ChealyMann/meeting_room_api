@@ -41,3 +41,20 @@ export async function pickerOptions(id: string): Promise<string[]> {
 
 /** What the picker's button shows. */
 export const pickerLabel = (id: string) => trigger(id).querySelector('.label')?.textContent?.trim()
+
+/** Opens a TimePicker and picks this "HH:MM": the hour, then the minute. */
+export async function chooseTime(id: string, value: string): Promise<void> {
+  const button = trigger(id)
+  if (button.getAttribute('aria-expanded') !== 'true') {
+    button.click()
+    await flushPromises()
+  }
+  const [hour, minute] = value.split(':')
+  for (const [column, text] of [['Hour', hour], ['Minute', minute]] as const) {
+    const list = document.querySelector<HTMLElement>(`[role="listbox"][aria-label="${column}"]`)
+    const option = [...(list?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])].find((o) => o.textContent?.trim() === text)
+    if (!option) throw new Error(`no ${column.toLowerCase()} "${text}" in #${id}`)
+    option.click()
+    await flushPromises()
+  }
+}

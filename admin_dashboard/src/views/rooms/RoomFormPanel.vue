@@ -16,6 +16,7 @@ import BaseField from '../../components/base/BaseField.vue'
 import BaseSwitch from '../../components/base/BaseSwitch.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import PasswordInput from '../../components/base/PasswordInput.vue'
+import TimePicker from '../../components/base/TimePicker.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useFieldErrors } from '../../composables/useFieldErrors'
 import { useToast } from '../../composables/useToast'
@@ -309,12 +310,12 @@ async function save() {
         <div class="row2">
           <BaseField id="start_time" label="Opening" :error="errors.start_time">
             <template #default="{ describedBy, invalid }">
-              <input id="start_time" v-model="form.start_time" class="input mono" type="time" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
+              <TimePicker id="start_time" v-model="form.start_time" label="Opening" :described-by="describedBy" :invalid="invalid" />
             </template>
           </BaseField>
           <BaseField id="end_time" label="Closing" :error="errors.end_time">
             <template #default="{ describedBy, invalid }">
-              <input id="end_time" v-model="form.end_time" class="input mono" type="time" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
+              <TimePicker id="end_time" v-model="form.end_time" label="Closing" :described-by="describedBy" :invalid="invalid" />
             </template>
           </BaseField>
         </div>
