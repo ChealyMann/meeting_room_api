@@ -171,6 +171,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
       <template v-else-if="result && !result.items.length">
         <EmptyState
           v-if="filtered"
+          filtered
           title="No rooms match"
           :text="`Nothing matches ${summary.join(', ')}.`"
         >

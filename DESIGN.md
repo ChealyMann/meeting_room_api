@@ -436,7 +436,7 @@ At the top of the panel body, `role="alert"`: crimson wash, 8px corner, 10px/12p
 The newly saved row enters at the top of the table with the saved tint, which fades to transparent over 2.4s ease-out. This and the toast are the entire save feedback.
 
 ### Empty State
-Between two engraved hairlines, centred, 40px vertical padding. Behind it, the guilloche rosette watermark: 240px, two layered hypotrochoid strokes (0.5 stroke), no ring, crimson at 7% opacity. Heading 15px 600, a 13px intaglio sentence that names the actual filters (max 40ch), then actions: secondary "Clear filters" and primary create.
+Centred under the table head, 40px top and 36px bottom padding, an engraved hairline below. On top, a seal (owner decision, 30 Oct 2026; replaces the rosette watermark): a 72px dashed off-ring circle around a 54px crimson-wash disc holding a 24px crimson icon (1.75 stroke), like the Confirm Dialog's circle. The icon is the page's own menu icon ("No rooms yet" shows the open door), or Inbox on a page without one; when filters hide every record it is SearchX, so "nothing here yet" and "nothing matches" never look the same. The seal is hidden from assistive tech. Heading 15px 600, a 13px intaglio sentence that names the actual filters (max 40ch), then actions: secondary "Clear filters" and primary create.
 
 ### Loading Skeleton
 Rows that match the table's column grid, 14px vertical padding, engraved hairline between. Bars are 10px tall (22px for the name plate column), 4px corner, a skeleton-to-light shimmer over 1.4s. Hidden from assistive tech.

@@ -105,7 +105,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1.2fr', '64px', '96px', '32px']
       </div>
       <TableSkeleton v-else-if="loading && !result" :columns="SKELETON_COLUMNS" />
       <template v-else-if="result && !result.items.length">
-        <EmptyState v-if="filtered" title="No buildings match" :text="`Nothing matches ${words.join(', ')}.`">
+        <EmptyState v-if="filtered" filtered title="No buildings match" :text="`Nothing matches ${words.join(', ')}.`">
           <BaseButton @click="list.reset()">Clear filters</BaseButton>
           <BaseButton variant="primary" @click="panel.open('new')">New building</BaseButton>
         </EmptyState>
