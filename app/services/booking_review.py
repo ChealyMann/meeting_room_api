@@ -27,7 +27,7 @@ from app.services.records import not_found
 STARTED_MESSAGE = "The meeting has started. It cannot be approved."
 
 
-def _first_start_sql():
+def first_start_sql():
     """The local start of a booking's first session, as a correlated subquery."""
     return (
         select(func.min(func.timestamp(BookingSession.date, BookingSession.start_time)))
@@ -68,7 +68,7 @@ def _list_in_rooms(
     query = apply_search(
         query, q, [Booking.meeting_title, Booking.reference_code, User.name_en, User.name_kh]
     )
-    query = query.order_by(_first_start_sql(), Booking.id)
+    query = query.order_by(first_start_sql(), Booking.id)
     return paginate(session, query, page, size)
 
 
