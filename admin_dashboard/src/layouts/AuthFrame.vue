@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Pages outside the shell (sign-in, new password, no access), full screen in two panels:
-// the form on the paper, with the brand above it, and the Bakong temple in halftone beside it.
+// Pages outside the shell (sign-in, new password, no access): one card in the middle of the
+// paper, with the logo on top, and the Bakong temple in faint halftone behind it
+// (owner decision, 30 Oct 2026; replaces the two-panel layout).
 import TempleHalftone from '../components/TempleHalftone.vue'
 
 defineProps<{ title: string; subtitle?: string }>()
@@ -10,18 +11,15 @@ const LOGO = '/nbc-logo.png'
 
 <template>
   <div class="frame">
-    <main class="form-panel">
-      <div class="brand">
-        <span class="seal"><img :src="LOGO" alt="" width="34" height="34" /></span>
-        <div class="name">
-          <b>Meeting Rooms</b>
-          <span>Admin</span>
-        </div>
-      </div>
+    <div class="backdrop">
+      <TempleHalftone />
+    </div>
 
+    <main class="card">
+      <img class="logo" :src="LOGO" alt="" width="56" height="56" />
+      <h1>{{ title }}</h1>
+      <p v-if="subtitle" class="subtitle">{{ subtitle }}</p>
       <div class="column">
-        <h1>{{ title }}</h1>
-        <p v-if="subtitle" class="subtitle">{{ subtitle }}</p>
         <slot />
       </div>
 
@@ -30,91 +28,76 @@ const LOGO = '/nbc-logo.png'
         <span>Authorised NBC personnel only</span>
       </div>
     </main>
-
-    <div class="art">
-      <TempleHalftone />
-    </div>
   </div>
 </template>
 
 <style scoped>
 .frame {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(440px, 46fr) minmax(0, 54fr);
+  place-items: center;
   min-height: 100vh;
   min-height: 100dvh;
+  padding: 32px 24px;
+  overflow: hidden;
   background: var(--color-paper);
 }
 
-.form-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 40px;
-  padding: 40px clamp(32px, 7vw, 112px);
+/* The temple fills the window, faint, so it reads as a watermark behind the card. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.seal {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 1px solid rgba(226, 179, 60, 0.5);
-  border-radius: 50%;
-  background: var(--color-rail);
-  box-shadow: 0 4px 10px rgba(38, 7, 7, 0.22);
-}
-.seal img {
-  width: 34px;
-  height: 34px;
-}
-.name b {
-  display: block;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-.name span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
+.backdrop :deep(.halftone) {
+  position: absolute;
+  inset: 0;
 }
 
-.column {
+.card {
+  position: relative;
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
+  padding: 34px 34px 22px;
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+  background: var(--color-sheet);
+  box-shadow: 0 18px 50px rgba(38, 7, 7, 0.14);
+}
+.logo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
 }
 h1 {
   margin: 0;
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.02em;
+  text-align: center;
 }
 .subtitle {
   margin: 8px 0 0;
   font-size: 14px;
   color: var(--color-intaglio);
+  text-align: center;
 }
-.column > :slotted(*:first-of-type) {
-  margin-top: 32px;
+.column > :slotted(*:first-child) {
+  margin-top: 28px;
 }
 .foot {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: center;
   gap: 4px 24px;
-  max-width: 380px;
-  padding-top: 16px;
+  margin-top: 24px;
+  padding-top: 14px;
   border-top: 1px solid var(--color-rule);
   font-size: 12px;
   color: var(--color-intaglio);
+  text-align: center;
 }
 
 /* Roomier controls on these single-task pages. */
@@ -143,40 +126,19 @@ h1 {
   font-size: 13.5px;
 }
 
-.art {
-  position: relative;
-  min-height: 100%;
-}
-.art :deep(.halftone) {
-  position: absolute;
-  inset: 0;
+:root[data-theme='dark'] .card {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
 }
 
-/* Narrow: the temple goes, the form stays centred. */
-@media (max-width: 900px) {
-  .frame {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .art {
-    display: none;
-  }
-  .form-panel {
-    align-items: center;
-  }
-  .brand,
-  .column,
-  .foot {
-    width: 100%;
-    max-width: 420px;
-  }
-}
+/* Phone: the card sits near the top, flat, with less padding. */
 @media (max-width: 680px) {
-  .form-panel {
-    gap: 32px;
-    padding: 24px 20px;
+  .frame {
+    place-items: start center;
+    padding: 40px 16px 24px;
   }
-  h1 {
-    font-size: 26px;
+  .card {
+    padding: 26px 20px 18px;
+    box-shadow: none;
   }
 }
 </style>

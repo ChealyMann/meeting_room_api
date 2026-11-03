@@ -113,7 +113,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '96px', '1.4fr', '1.2fr', '1fr', '96p
       </div>
       <TableSkeleton v-else-if="loading && !result" :columns="SKELETON_COLUMNS" />
       <template v-else-if="result && !result.items.length">
-        <EmptyState v-if="filtered" title="No users match" text="Nothing matches these filters.">
+        <EmptyState v-if="filtered" filtered title="No users match" text="Nothing matches these filters.">
           <BaseButton @click="list.reset()">Clear filters</BaseButton>
           <BaseButton variant="primary" @click="panel.open('new')">New user</BaseButton>
         </EmptyState>

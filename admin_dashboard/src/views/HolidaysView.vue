@@ -104,7 +104,7 @@ const SKELETON_COLUMNS = ['72px', '160px', '2fr', '2fr', '2fr', '32px']
       </div>
       <TableSkeleton v-else-if="loading && !result" :columns="SKELETON_COLUMNS" />
       <template v-else-if="result && !result.items.length">
-        <EmptyState v-if="year" title="No holidays in this year" :text="`Nothing is set for ${year}.`">
+        <EmptyState v-if="year" filtered title="No holidays in this year" :text="`Nothing is set for ${year}.`">
           <BaseButton @click="list.reset()">All years</BaseButton>
           <BaseButton variant="primary" @click="panel.open('new')">New holiday</BaseButton>
         </EmptyState>

@@ -1,35 +1,28 @@
 <script setup lang="ts">
-// An empty list: what is missing, what to do, and the one ornament the design allows on
-// the paper — a guilloche rosette watermark (DESIGN.md "Empty State").
-defineProps<{ title: string; text: string }>()
+// An empty list: what is missing, what to do, and a seal with the page's own menu icon
+// (DESIGN.md "Empty State", owner decision 30 Oct 2026; replaces the rosette watermark).
+// When filters hide every record the seal shows a search icon instead, so the two cases
+// never look the same.
+import { Inbox, SearchX } from 'lucide-vue-next'
+import { computed, inject } from 'vue'
+import { routeLocationKey } from 'vue-router'
 
-/** Two layered hypotrochoids, as on a banknote seal. */
-function rosette(scale: number): string[] {
-  const rings = [
-    { R: 1, r: 0.36, d: 0.52, turns: 9, phase: 0 },
-    { R: 1, r: 0.24, d: 0.3, turns: 6, phase: 0.2 },
-  ]
-  return rings.map(({ R, r, d, turns, phase }) => {
-    const steps = 720 * turns
-    const points: string[] = []
-    for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * Math.PI * 2 * turns + phase
-      const x = (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t)
-      const y = (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)
-      points.push(`${(x * scale).toFixed(2)} ${(y * scale).toFixed(2)}`)
-    }
-    return `M${points.join('L')}`
-  })
-}
+import { navIcon } from '../../layouts/nav'
 
-const PATHS = rosette(46)
+const props = withDefaults(defineProps<{ title: string; text: string; filtered?: boolean }>(), {
+  filtered: false,
+})
+
+// Injected with a default, so the component also works outside a router (tests, previews).
+const route = inject(routeLocationKey, null)
+const icon = computed(() => (props.filtered ? SearchX : (navIcon(route?.name) ?? Inbox)))
 </script>
 
 <template>
   <div class="empty">
-    <svg class="watermark" viewBox="-50 -50 100 100" aria-hidden="true">
-      <path v-for="(d, i) in PATHS" :key="i" :d="d" />
-    </svg>
+    <div class="seal" aria-hidden="true">
+      <span><component :is="icon" class="icon" /></span>
+    </div>
     <h2>{{ title }}</h2>
     <p>{{ text }}</p>
     <div class="actions"><slot /></div>
@@ -38,44 +31,48 @@ const PATHS = rosette(46)
 
 <style scoped>
 .empty {
-  position: relative;
   display: grid;
-  place-items: center;
-  overflow: hidden;
-  padding: 40px 16px;
+  justify-items: center;
+  padding: 40px 16px 36px;
   border-bottom: 1px solid var(--color-rule);
   text-align: center;
 }
-.watermark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 240px;
-  height: 240px;
-  color: var(--color-crimson);
-  opacity: 0.07;
-  transform: translate(-50%, -50%);
+/* A dashed ring around a crimson-wash disc, as on the Confirm Dialog. */
+.seal {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 14px;
+  border: 1.5px dashed var(--color-off-ring);
+  border-radius: 50%;
 }
-.watermark path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 0.5;
+.seal span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+}
+.icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.75;
 }
 h2 {
-  position: relative;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-size: 15px;
   font-weight: 600;
 }
 p {
-  position: relative;
   max-width: 40ch;
   margin: 0 0 16px;
   font-size: 13px;
   color: var(--color-intaglio);
 }
 .actions {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
