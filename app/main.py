@@ -27,6 +27,7 @@ from app.routers import (
     roles,
     room_equipment,
     room_photos,
+    room_schedule,
     rooms,
     users,
 )
@@ -73,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(users.router)
     api.include_router(rooms.router)
     api.include_router(room_photos.router)
+    api.include_router(room_schedule.router)
     api.include_router(room_equipment.router)
     api.include_router(catering_packages.router)
     api.include_router(it_services.router)
