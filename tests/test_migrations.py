@@ -22,6 +22,18 @@ ALL_TABLES = {
     "users",
     "roles",
     "user_roles",
+    "catering_packages",
+    "it_services",
+    "public_holidays",
+    "bookings",
+    "booking_sessions",
+    "booking_reviews",
+    "booking_rejections",
+    "booking_door_passes",
+    "booking_participants",
+    "catering_orders",
+    "it_tickets",
+    "it_ticket_staff",
 }
 
 
@@ -29,7 +41,7 @@ def _tables(engine) -> set[str]:
     return set(inspect(engine).get_table_names()) - {"alembic_version"}
 
 
-def test_models_define_the_14_spec_tables():
+def test_models_define_all_tables():
     assert set(Base.metadata.tables) == ALL_TABLES
 
 

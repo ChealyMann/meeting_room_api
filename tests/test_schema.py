@@ -1,13 +1,20 @@
 """The database schema matches spec sections 6 and 7."""
 
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from app.models import Base, Location, utcnow
+from app.models import (
+    Base,
+    Booking,
+    BookingRejection,
+    BookingSession,
+    Location,
+    utcnow,
+)
 
 ER_DUP_ENTRY = 1062
 ER_DATA_TOO_LONG = 1406
@@ -22,6 +29,11 @@ COMMON = {
     "updated_at": ("datetime", False),
 }
 SORT_ORDER = {"sort_order": ("int", False)}
+CATALOG = {
+    "name": ("varchar(200)", False),
+    "description": ("varchar(1000)", True),
+    "version": ("int", False),
+}
 NAMES = {"name_en": ("varchar(100)", False), "name_kh": ("varchar(100)", False)}
 
 # table -> column -> (MySQL column type, nullable)
@@ -110,6 +122,98 @@ EXPECTED_COLUMNS = {
     },
     "roles": {**COMMON, **NAMES, "code": ("varchar(50)", False)},
     "user_roles": {"user_id": ("int unsigned", False), "role_id": ("int unsigned", False)},
+    "catering_packages": {**COMMON, **SORT_ORDER, **CATALOG},
+    "it_services": {**COMMON, **SORT_ORDER, **CATALOG},
+    "public_holidays": {
+        "id": ("int unsigned", False),
+        "created_at": ("datetime", False),
+        "updated_at": ("datetime", False),
+        "holiday_date": ("date", False),
+        "name_km": ("varchar(255)", False),
+        "name_en": ("varchar(255)", True),
+        "remarks": ("varchar(1000)", True),
+    },
+    "bookings": {
+        "id": ("int unsigned", False),
+        "created_at": ("datetime", False),
+        "updated_at": ("datetime", False),
+        "reference_code": ("varchar(20)", False),
+        "requester_id": ("int unsigned", False),
+        "room_id": ("int unsigned", False),
+        "requester_info": ("json", False),
+        "meeting_title": ("varchar(200)", False),
+        "meeting_type": ("varchar(30)", False),
+        "meeting_purpose": ("varchar(1000)", True),
+        "attendees": ("int unsigned", False),
+        "private_justification": ("varchar(1000)", True),
+        "route": ("varchar(2)", False),
+        "status": ("varchar(20)", False),
+        "cancelled_at": ("datetime", True),
+        "cancel_reason": ("varchar(500)", True),
+        "version": ("int unsigned", False),
+    },
+    "booking_sessions": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "room_id": ("int unsigned", False),
+        "date": ("date", False),
+        "start_time": ("time", False),
+        "end_time": ("time", False),
+        "is_blocking": ("tinyint(1)", False),
+    },
+    "booking_reviews": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "stage": ("varchar(10)", False),
+        "decision": ("varchar(15)", False),
+        "reviewer_id": ("int unsigned", True),
+        "notes": ("varchar(1000)", True),
+        "reviewed_at": ("datetime", False),
+    },
+    "booking_rejections": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "rejected_by": ("varchar(10)", False),
+        "actor_user_id": ("int unsigned", True),
+        "reason": ("varchar(1000)", False),
+        "decided_at": ("datetime", False),
+    },
+    "booking_door_passes": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "passcode": ("varchar(10)", False),
+        "expires_at": ("datetime", False),
+    },
+    "booking_participants": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "email": ("varchar(254)", False),
+    },
+    "catering_orders": {
+        "id": ("int unsigned", False),
+        "created_at": ("datetime", False),
+        "updated_at": ("datetime", False),
+        "booking_id": ("int unsigned", False),
+        "packages": ("json", False),
+        "remarks": ("varchar(1000)", True),
+        "approver_notes": ("varchar(1000)", True),
+        "decided_by": ("int unsigned", True),
+        "decided_at": ("datetime", True),
+    },
+    "it_tickets": {
+        "id": ("int unsigned", False),
+        "created_at": ("datetime", False),
+        "updated_at": ("datetime", False),
+        "booking_id": ("int unsigned", False),
+        "requested_items": ("json", False),
+        "special_requirements": ("varchar(1000)", True),
+        "status": ("varchar(10)", False),
+        "technician_notes": ("varchar(1000)", True),
+        "forwarded_at": ("datetime", True),
+        "assigned_at": ("datetime", True),
+        "ready_at": ("datetime", True),
+    },
+    "it_ticket_staff": {"ticket_id": ("int unsigned", False), "user_id": ("int unsigned", False)},
 }
 
 EXPECTED_UNIQUE_KEYS = {
@@ -125,12 +229,22 @@ EXPECTED_UNIQUE_KEYS = {
     ("users", ("staff_id",)),
     ("users", ("email",)),
     ("roles", ("code",)),
+    ("catering_packages", ("name",)),
+    ("it_services", ("name",)),
+    ("public_holidays", ("holiday_date",)),
+    ("bookings", ("reference_code",)),
+    ("booking_rejections", ("booking_id",)),
+    ("booking_door_passes", ("booking_id",)),
+    ("booking_participants", ("booking_id", "email")),
+    ("catering_orders", ("booking_id",)),
+    ("it_tickets", ("booking_id",)),
 }
 
 EXPECTED_PRIMARY_KEYS = {
     **{table: ("id",) for table in EXPECTED_COLUMNS if "id" in EXPECTED_COLUMNS[table]},
     "room_equipment": ("room_id", "equipment_id"),
     "user_roles": ("user_id", "role_id"),
+    "it_ticket_staff": ("ticket_id", "user_id"),
 }
 
 # (table, column, referenced table)
@@ -149,6 +263,21 @@ EXPECTED_FOREIGN_KEYS = {
     ("users", "position_id", "positions"),
     ("user_roles", "user_id", "users"),
     ("user_roles", "role_id", "roles"),
+    ("bookings", "requester_id", "users"),
+    ("bookings", "room_id", "rooms"),
+    ("booking_sessions", "booking_id", "bookings"),
+    ("booking_sessions", "room_id", "rooms"),
+    ("booking_reviews", "booking_id", "bookings"),
+    ("booking_reviews", "reviewer_id", "users"),
+    ("booking_rejections", "booking_id", "bookings"),
+    ("booking_rejections", "actor_user_id", "users"),
+    ("booking_door_passes", "booking_id", "bookings"),
+    ("booking_participants", "booking_id", "bookings"),
+    ("catering_orders", "booking_id", "bookings"),
+    ("catering_orders", "decided_by", "users"),
+    ("it_tickets", "booking_id", "bookings"),
+    ("it_ticket_staff", "ticket_id", "it_tickets"),
+    ("it_ticket_staff", "user_id", "users"),
 }
 
 # Columns the spec marks "Indexed": each must lead some index.
@@ -166,6 +295,14 @@ EXPECTED_INDEXED = {
     ("users", "division_id"),
     ("users", "position_id"),
     ("user_roles", "role_id"),
+    ("bookings", "requester_id"),
+    ("bookings", "room_id"),
+    ("bookings", "status"),
+    ("booking_sessions", "booking_id"),
+    ("booking_sessions", "room_id"),
+    ("booking_reviews", "booking_id"),
+    ("booking_door_passes", "passcode"),
+    ("it_ticket_staff", "user_id"),
 }
 
 
@@ -553,6 +690,82 @@ def test_room_photo_rows_can_be_deleted(conn):
     )
     conn.execute(text("DELETE FROM room_photos WHERE id = :id"), {"id": photo_id})
     assert _rows(conn, "SELECT id FROM room_photos WHERE id = :id", id=photo_id) == []
+
+
+# --- Booking tables --------------------------------------------------------------------
+
+
+def test_booking_session_index(conn):
+    indexes = _indexes(conn)
+    key = ("booking_sessions", "ix_booking_sessions_room_id_date_is_blocking")
+    assert indexes[key] == (False, ("room_id", "date", "is_blocking"))
+
+
+def _booking(session, make_user, make_room, **values) -> Booking:
+    values = {
+        "reference_code": "NBC-26-48213",
+        "requester_id": make_user().id,
+        "room_id": make_room().id,
+        "requester_info": {},
+        "meeting_title": "Weekly sync",
+        "meeting_type": "INTERNAL",
+        "attendees": 5,
+        "route": "R1",
+        "status": "PENDING_PITIKA",
+        **values,
+    }
+    booking = Booking(**values)
+    session.add(booking)
+    session.flush()
+    return booking
+
+
+def _fails_in(session, code: int, action) -> None:
+    with pytest.raises(DBAPIError) as exc_info, session.begin_nested():
+        action()
+        session.flush()
+    assert _error_code(exc_info) == code
+
+
+def test_booking_status_check_constraint(db_session, make_user, make_room):
+    _fails_in(
+        db_session,
+        ER_CHECK_CONSTRAINT_VIOLATED,
+        lambda: _booking(db_session, make_user, make_room, status="DONE"),
+    )
+
+
+def test_session_time_order_check(db_session, make_user, make_room):
+    booking = _booking(db_session, make_user, make_room)
+    _fails_in(
+        db_session,
+        ER_CHECK_CONSTRAINT_VIOLATED,
+        lambda: db_session.add(
+            BookingSession(
+                booking_id=booking.id,
+                room_id=booking.room_id,
+                date=date(2026, 11, 10),
+                start_time=time(10),
+                end_time=time(9),
+            )
+        ),
+    )
+
+
+def test_reference_code_unique(db_session, make_user, make_room):
+    _booking(db_session, make_user, make_room)
+    _fails_in(db_session, ER_DUP_ENTRY, lambda: _booking(db_session, make_user, make_room))
+
+
+def test_rejection_actor_may_be_null(db_session, make_user, make_room):
+    booking = _booking(db_session, make_user, make_room)
+    db_session.add(
+        BookingRejection(
+            booking_id=booking.id, rejected_by="SYSTEM", reason="Expired", decided_at=utcnow()
+        )
+    )
+    db_session.flush()
+    assert db_session.scalar(select(BookingRejection.actor_user_id)) is None
 
 
 # --- Timestamps ------------------------------------------------------------------------

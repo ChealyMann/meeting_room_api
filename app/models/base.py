@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
+from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Integer, MetaData, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, MetaData, text
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -17,6 +18,12 @@ UnsignedInt = INTEGER(unsigned=True)
 def utcnow() -> datetime:
     """Current UTC time, naive, whole seconds: what a MySQL DATETIME column stores."""
     return datetime.now(UTC).replace(tzinfo=None, microsecond=0)
+
+
+def enum_check(column: str, enum: type[StrEnum]) -> CheckConstraint:
+    """CHECK that `column` holds one of the enum values (named `<column>_values`)."""
+    values = ", ".join(f"'{member.value}'" for member in enum)
+    return CheckConstraint(f"{column} IN ({values})", name=f"{column}_values")
 
 
 class Base(DeclarativeBase):

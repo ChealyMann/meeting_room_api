@@ -43,7 +43,7 @@ class Room(IdMixin, ActiveMixin, TimestampMixin, Base):
     # Cambodia local time (UTC+7), the same every day.
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
-    # A label only, shown and filterable; it changes no access or booking rule.
+    # Picks the booking route (private: the owner approves) and needs an owner to be bookable.
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
     floor: Mapped["Floor"] = relationship()
