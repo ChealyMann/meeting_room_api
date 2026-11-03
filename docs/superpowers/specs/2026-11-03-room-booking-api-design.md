@@ -69,6 +69,8 @@ These are not in the requirements. They are my calls; change them with a comment
 | B-28 | Reference code | **Changes the requirements** (glossary: "NBC-" and 5 digits). The format is `NBC-YY-NNNNN`, e.g. `NBC-26-48213`: 90,000 codes per year, so they never run out (decided Nov 3, 2026). The door pass keeps `NBC-` + 5 digits. |
 | B-29 | Waiting bookings | No limit per person on waiting bookings or rooms held at one time. Pitika rejects bookings that look wrong (decided Nov 3, 2026). |
 | B-20 | Self-approval | A Pitika may approve or reject their own booking (decided Nov 3, 2026). The same holds for a room owner on an R2 booking they made before they became the owner. No extra check. |
+| B-30 | Masking by route | A booking is private when the room is private now **or** the booking's route is not R1 (it was made while the room was private). So a room that turns shared does not show its old private bookings: the schedule and the clash message still show `Reserved (Private Session)` to those who cannot view them. One helper, `booking_access.is_private_booking`, decides it everywhere. |
+| B-31 | Loaded for write | Every booking write (edit, cancel, Pitika and owner approve/reject, IT assign and ready) reads the booking row `FOR UPDATE` with fresh values (`load_booking_for_write`) before `check_version`. A second request at the same version waits, then sees the new version and gets `409 STALE_VERSION` before it writes any child row (no duplicate-key 500). The visibility rules stay (hidden bookings are still 404). Room changes and new bookings lock the room row the same way. |
 
 ## 3. File map
 
@@ -106,7 +108,7 @@ These are not in the requirements. They are my calls; change them with a comment
 | `app/services/booking_ics.py` | The calendar file |
 | `app/services/booking_expiry.py` | `run_once(session)`: T15 and T17 |
 | `app/services/room_schedule.py` | The schedule of one room |
-| `app/services/room_bookings.py` | Guards for section 10 (counts only; imports models only, so `room.py` and `user.py` can use it) |
+| `app/services/room_bookings.py` | Guards for section 10 (counts only; imports models, clock, errors and constants only, so `room.py` and `user.py` can use it) |
 | `app/services/it_ticket.py` | List, assign staff, ready |
 | `app/services/catering_order.py` | The day's food list |
 | `app/services/catering_package.py`, `it_service.py`, `public_holiday.py` | Catalog CRUD |
@@ -284,7 +286,11 @@ Index `(room_id, date, is_blocking)`.
 ```python
 def can_view(session, current: CurrentUser, booking: Booking) -> bool
 def can_see_door_pass(session, current, booking) -> bool
-def load_visible_booking(session, current, booking_id) -> Booking   # 404 if missing or not can_view
+def load_visible_booking(session, current, booking_id, *, for_write=False) -> Booking
+    # 404 if missing or not can_view; for_write=True reads it with load_booking_for_write
+def load_booking_for_write(session, booking_id) -> Booking
+    # FOR UPDATE + populate_existing, 404 if missing (B-31)
+def is_private_booking(booking) -> bool   # room private now, or route != R1 (B-30)
 def pitika_province(current) -> str | None                          # get_user_province(user).code
 ```
 
@@ -301,7 +307,7 @@ def pitika_province(current) -> str | None                          # get_user_p
 
 `can_see_door_pass`: booking is CONFIRMED and (booker, Admin, room owner, or Pitika of the province). IT roles: no.
 
-**Masking** (BR-PRV-01, BR-PRV-02): `visible_title(session, current, booking) -> str`. If the room is private and not `can_view` → `MASKED_TITLE`. Otherwise the real title. Shared-room bookings are never masked.
+**Masking** (BR-PRV-01, BR-PRV-02, B-30): a booking is masked when the room is private now or the booking's route is not R1 (`is_private_booking`), and the user cannot `can_view` it. `visible_title(session, current, booking) -> str` gives `MASKED_TITLE` for a masked booking, else the real title. The schedule decides `masked` once per item and takes the title from it. R1 bookings in a shared room are never masked.
 
 ### 8.2 Scheduling — `app/services/booking_scheduling.py`
 
@@ -383,6 +389,8 @@ def advance(session, booking, version, **values) -> None
 
 def invalid(message) -> AppError        # 409 INVALID_TRANSITION
 def stop_blocking(session, booking)     # UPDATE booking_sessions SET is_blocking = 0 WHERE booking_id
+def cancel(session, booking, version, reason)
+    # advance(status=CANCELLED, cancelled_at=now_utc(), cancel_reason=reason); stop_blocking
 def reject(session, booking, version, by: RejectedBy, actor_id | None, reason, stage | None)
     # advance(status=REJECTED); stop_blocking; insert booking_rejections;
     # if stage: insert booking_reviews(stage, REJECTED, actor, notes=reason)
@@ -633,7 +641,7 @@ def run_once(session) -> ExpiryResult   # rejected: list[int], confirmed: list[i
 
 ## 12. Changes to the current API (requirements section 10)
 
-Helpers in `app/services/room_bookings.py` (imports models and clock only):
+Helpers in `app/services/room_bookings.py` (imports models, clock, errors and constants only):
 
 ```python
 def future_booking_count(session, room_ids) -> int
