@@ -134,7 +134,31 @@ def settings(tmp_path):
         signature_dir=tmp_path / "signatures",
         avatar_dir=tmp_path / "avatars",
         cors_origins="https://rooms.company.com",
+        expiry_job_enabled=False,
     )
+
+
+@pytest.fixture
+def freeze_now(monkeypatch):
+    """`freeze_now(datetime(2026, 11, 9, 8, 0))` sets the local time (UTC+7) the app sees."""
+    from datetime import UTC
+
+    from app.services import clock
+
+    def freeze(local):
+        monkeypatch.setattr(
+            clock, "_source", lambda: (local - clock.LOCAL_OFFSET).replace(tzinfo=UTC)
+        )
+
+    return freeze
+
+
+@pytest.fixture
+def frozen(freeze_now):
+    """Time frozen at tests.booking_helpers.NOW: a Monday, 08:00 local."""
+    from tests.booking_helpers import NOW
+
+    freeze_now(NOW)
 
 
 @pytest.fixture

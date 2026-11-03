@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     max_photos_per_room: int = Field(default=20, ge=1)
     cors_origins: str = ""
 
+    # Room bookings (design spec section 4). Services check these, not the schemas.
+    booking_min_minutes: int = Field(default=15, ge=1)
+    booking_max_sessions: int = Field(default=20, ge=1)
+    booking_max_days_ahead: int = Field(default=90, ge=1)
+    booking_max_attendees: int = Field(default=100, ge=1)
+    booking_max_participants: int = Field(default=50, ge=1)
+    schedule_max_days: int = Field(default=31, ge=1)
+    it_setup_lead_minutes: int = Field(default=30, ge=1)
+    expiry_job_enabled: bool = True
+    expiry_interval_seconds: int = Field(default=60, ge=1)
+
     # Used only by scripts/seed.py.
     first_admin_email: str | None = None
     first_admin_password: str | None = None

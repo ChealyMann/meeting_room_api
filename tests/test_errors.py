@@ -126,8 +126,24 @@ def test_unexpected_error_hides_details(routes, client):
     assert "Traceback" not in response.text
 
 
+BOOKING_CODES = {
+    "SCHEDULE_CONFLICT",
+    "TIME_PASSED",
+    "OUTSIDE_ROOM_HOURS",
+    "ROOM_NOT_BOOKABLE",
+    "NO_REVIEWER",
+    "INVALID_TRANSITION",
+    "STALE_VERSION",
+    "FIELD_NOT_EDITABLE",
+    "OWNER_REQUIRED",
+    "OWNER_HAS_PRIVATE_ROOMS",
+    "HAS_FUTURE_BOOKINGS",
+    "HAS_PENDING_OWNER_BOOKINGS",
+}
+
+
 def test_error_codes_are_the_complete_spec_list():
-    assert {code.value for code in ErrorCode} == {
+    assert {code.value for code in ErrorCode} == BOOKING_CODES | {
         "WRONG_PASSWORD",
         "UNAUTHORIZED",
         "INVALID_CREDENTIALS",
