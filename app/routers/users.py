@@ -31,9 +31,15 @@ from app.services import user_signature as signature_service
 router = APIRouter(prefix="/users", tags=["User & roles"])
 
 
-def _changed(session, user, rooms_unassigned: list[int]) -> UserChanged:
+def _changed(
+    session, user, rooms_unassigned: list[int], bookings_cancelled: list[int]
+) -> UserChanged:
     detail = user_service.build_user_detail(session, user)
-    return UserChanged(**detail.model_dump(), rooms_unassigned=rooms_unassigned)
+    return UserChanged(
+        **detail.model_dump(),
+        rooms_unassigned=rooms_unassigned,
+        bookings_cancelled=bookings_cancelled,
+    )
 
 
 @router.get("", response_model=Page[UserListItem], summary="List users")
@@ -92,10 +98,14 @@ def create_user(body: UserCreate, current: AdminUser, session: DbSession) -> Use
 def update_user(
     user_id: IdPath, body: UserUpdate, current: AdminUser, session: DbSession
 ) -> UserChanged:
-    """Turning a user off clears the rooms they own; `rooms_unassigned` lists them."""
+    """Turning a user off clears the shared rooms they own (`rooms_unassigned`) and cancels
+    their bookings that have not ended (`bookings_cancelled`). Refused while they own a
+    private room."""
     changes = body.model_dump(exclude_unset=True)
-    user, rooms_unassigned = user_service.update_user(session, user_id, changes, current.id)
-    return _changed(session, user, rooms_unassigned)
+    user, rooms_unassigned, bookings_cancelled = user_service.update_user(
+        session, user_id, changes, current.id
+    )
+    return _changed(session, user, rooms_unassigned, bookings_cancelled)
 
 
 @router.post(
@@ -113,11 +123,12 @@ def reset_password(
 def set_roles(
     user_id: IdPath, body: SetRolesRequest, current: AdminUser, session: DbSession
 ) -> UserChanged:
-    """Removing Room owner clears the rooms the user owns; `rooms_unassigned` lists them."""
+    """Removing Room owner clears the shared rooms the user owns; `rooms_unassigned` lists
+    them. Refused while they own a private room. `bookings_cancelled` is always empty."""
     user, rooms_unassigned = user_service.set_user_roles(
         session, user_id, body.role_codes, current.id
     )
-    return _changed(session, user, rooms_unassigned)
+    return _changed(session, user, rooms_unassigned, [])
 
 
 @router.get(

@@ -1,6 +1,7 @@
 """Rooms. Rules R2 (active floor and room type), R3 (no reactivation on an inactive
 floor), R4, R7 (valid owner), R8 (owners edit only their rooms and some fields), R12
-(bookable), R13 (opening hours)."""
+(bookable), R13 (opening hours), and the booking guards of spec section 12 (a private room
+needs an owner; B-14; no turning off or moving with future bookings, B-21)."""
 
 from datetime import time
 
@@ -40,6 +41,7 @@ from app.services.records import (
     get_reference,
     save,
 )
+from app.services.room_bookings import check_no_future_bookings, pending_owner_count
 
 FLOOR = "Floor"
 ROOM_TYPE = "Room type"
@@ -252,11 +254,27 @@ def _get_owner(session: Session, user_id: int) -> User:
     return user
 
 
+def _check_has_owner(is_private: bool, owner: User | None) -> None:
+    """A private room needs an owner (spec section 12)."""
+    if is_private and owner is None:
+        message = "A private room needs an owner."
+        raise AppError(ErrorCode.OWNER_REQUIRED, 422, message, {"room_owner_id": message})
+
+
+def _check_no_pending_owner(session: Session, room: Room) -> None:
+    """B-14: a private room becomes shared only when nothing waits for its owner."""
+    count = pending_owner_count(session, room.id)
+    if count:
+        message = f"Resolve {count} bookings waiting for the room owner first."
+        raise AppError(ErrorCode.HAS_PENDING_OWNER_BOOKINGS, 409, message, {"is_private": message})
+
+
 def create_room(session: Session, data: dict) -> Room:
     _check_hours(data["start_time"], data["end_time"])
     floor = get_reference(session, Floor, data["floor_id"], "floor_id", FLOOR)
     category = get_reference(session, Category, data["category_id"], "category_id", ROOM_TYPE)
     owner = _get_owner(session, data["room_owner_id"]) if data["room_owner_id"] else None
+    _check_has_owner(data["is_private"], owner)
 
     room = Room(**data)
     room.floor, room.category, room.owner = floor, category, owner
@@ -278,7 +296,8 @@ def update_room(session: Session, room_id: int, changes: dict, current: CurrentU
             changes.get("start_time", room.start_time), changes.get("end_time", room.end_time)
         )
     floor = room.floor
-    if "floor_id" in changes and changes["floor_id"] != room.floor_id:
+    moving = "floor_id" in changes and changes["floor_id"] != room.floor_id
+    if moving:
         floor = get_reference(session, Floor, changes["floor_id"], "floor_id", FLOOR)
     category = room.category
     if "category_id" in changes and changes["category_id"] != room.category_id:
@@ -291,6 +310,13 @@ def update_room(session: Session, room_id: int, changes: dict, current: CurrentU
         owner = _get_owner(session, owner_id) if owner_id is not None else None
     if changes.get("is_active") is True and not room.is_active:
         check_parent_active(floor, FLOOR)
+    _check_has_owner(changes.get("is_private", room.is_private), owner)
+    if changes.get("is_private") is False and room.is_private:
+        _check_no_pending_owner(session, room)
+    if changes.get("is_active") is False and room.is_active:
+        check_no_future_bookings(session, [room.id], "room", "is_active")
+    if moving:
+        check_no_future_bookings(session, [room.id], "room", "floor_id")
 
     apply_changes(room, changes)
     room.floor, room.category, room.owner = floor, category, owner

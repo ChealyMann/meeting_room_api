@@ -32,7 +32,7 @@ DETAIL_FIELDS = {
     "created_at",
     "updated_at",
 }
-CHANGED_FIELDS = DETAIL_FIELDS | {"rooms_unassigned"}
+CHANGED_FIELDS = DETAIL_FIELDS | {"rooms_unassigned", "bookings_cancelled"}
 LIST_FIELDS = {
     "id",
     "staff_id",

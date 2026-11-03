@@ -1,4 +1,5 @@
-"""Floors. Rules R2 (active building), R3 (no reactivation under an inactive building), R4."""
+"""Floors. Rules R2 (active building), R3 (no reactivation under an inactive building), R4.
+Not turned off or moved while a room inside has future bookings (spec section 12, B-21)."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ from app.services.records import (
     get_reference,
     save,
 )
+from app.services.room_bookings import check_no_future_bookings, room_ids_in
 
 BUILDING = "Building"
 
@@ -53,10 +55,18 @@ def create_floor(session: Session, data: dict) -> Floor:
 def update_floor(session: Session, floor_id: int, changes: dict) -> Floor:
     floor = get_or_404(session, Floor, floor_id)
     building = floor.building
-    if "building_id" in changes and changes["building_id"] != floor.building_id:
+    moving = "building_id" in changes and changes["building_id"] != floor.building_id
+    if moving:
         building = get_reference(session, Building, changes["building_id"], "building_id", BUILDING)
     if changes.get("is_active") is True and not floor.is_active:
         check_parent_active(building, BUILDING)
+    turning_off = changes.get("is_active") is False and floor.is_active
+    if turning_off or moving:
+        room_ids = room_ids_in(session, floor_id=floor.id)
+        if turning_off:
+            check_no_future_bookings(session, room_ids, "floor", "is_active")
+        if moving:
+            check_no_future_bookings(session, room_ids, "floor", "building_id")
     apply_changes(floor, changes)
     floor.building = building
     save(session)

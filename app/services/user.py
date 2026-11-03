@@ -2,23 +2,39 @@
 
 Rules: R2 (position and division), R5 (unique email and staff ID, second email differs),
 R6 (some roles need a division), R9 (losing ROOM_OWNER or being turned off clears the
-user's rooms), R10 (always one active Admin), R11 (an Admin cannot demote or turn off
-themselves), R18 (new passwords).
+user's shared rooms), R10 (always one active Admin), R11 (an Admin cannot demote or turn off
+themselves), R18 (new passwords). Spec section 12: an owner of a private room cannot lose
+the role or be turned off (OWNER_HAS_PRIVATE_ROOMS); turning a booker off cancels their
+bookings (B-27).
 """
 
 from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
+from app.constants.booking import BOOKER_OFF_REASON, FINAL, BookingStatus
 from app.constants.roles import RoleCode, seed_order
 from app.errors import AppError, ErrorCode
-from app.models import Department, Division, Location, Position, Role, Room, User, user_roles
+from app.models import (
+    Booking,
+    Department,
+    Division,
+    Location,
+    Position,
+    Role,
+    Room,
+    User,
+    user_roles,
+)
 from app.schemas.refs import NamedRef, ProvinceRef, RoleRef
 from app.schemas.user import UserDetail, UserListItem
 from app.security import hash_password
+from app.services import booking_transitions as transitions
+from app.services import clock
 from app.services.listing import apply_active_filter, apply_default_order, apply_search, paginate
 from app.services.passwords import check_new_password
 from app.services.province import check_province_code, get_user_province
 from app.services.records import apply_changes, get_or_404, get_reference, save
+from app.services.room_bookings import private_room_ids_owned_by
 from app.services.user_avatar import avatar_url
 from app.services.user_signature import signature_url
 
@@ -189,8 +205,42 @@ def _check_not_last_admin(session: Session, user_id: int, field: str) -> None:
         raise _conflict(ErrorCode.LAST_ADMIN, field, "You cannot remove the last Admin.")
 
 
+def _check_no_private_rooms(session: Session, user_id: int, field: str) -> None:
+    """Spec section 12: a private room always has an owner, so its owner cannot leave."""
+    count = len(private_room_ids_owned_by(session, user_id))
+    if count:
+        message = f"Assign a new owner for {count} private rooms first."
+        raise _conflict(ErrorCode.OWNER_HAS_PRIVATE_ROOMS, field, message)
+
+
+def _cancel_bookings_of(session: Session, user_id: int) -> list[int]:
+    """B-27: every booking of the user that is not final and has not ended is cancelled;
+    its sessions stop blocking. Returns their ids."""
+    bookings = session.scalars(
+        select(Booking)
+        .where(Booking.requester_id == user_id, Booking.status.not_in(FINAL))
+        .order_by(Booking.id)
+    ).all()
+    cancelled = []
+    for booking in bookings:
+        if transitions.has_ended(booking):
+            continue
+        transitions.advance(
+            session,
+            booking,
+            booking.version,
+            status=BookingStatus.CANCELLED,
+            cancelled_at=clock.now_utc(),
+            cancel_reason=BOOKER_OFF_REASON,
+        )
+        transitions.stop_blocking(session, booking)
+        cancelled.append(booking.id)
+    return cancelled
+
+
 def _clear_owned_rooms(session: Session, user_id: int) -> list[int]:
-    """R9: every room the user owns becomes a no-owner room. Returns their ids."""
+    """R9: every room the user owns becomes a no-owner room. Returns their ids. Only shared
+    rooms are left by then: private ones are refused first (OWNER_HAS_PRIVATE_ROOMS)."""
     rooms = session.scalars(
         select(Room).where(Room.room_owner_id == user_id).order_by(Room.id)
     ).all()
@@ -229,8 +279,9 @@ def create_user(session: Session, data: dict) -> User:
 
 def update_user(
     session: Session, user_id: int, changes: dict, actor_id: int
-) -> tuple[User, list[int]]:
-    """PATCH /users/{id}. Returns the user and the rooms cleared by R9."""
+) -> tuple[User, list[int], list[int]]:
+    """PATCH /users/{id}. Returns the user, the rooms cleared by R9 and the bookings
+    cancelled by B-27."""
     user = get_or_404(session, User, user_id)
 
     email = changes.get("email", user.email)
@@ -259,12 +310,15 @@ def update_user(
             raise _self_action("is_active")  # R11, checked before R10
         if any(role.code == RoleCode.ADMIN for role in load_roles(session, user.id)):
             _check_not_last_admin(session, user.id, "is_active")
+        _check_no_private_rooms(session, user.id, "is_active")
 
+    # Before the user changes: `advance` flushes, and only `save` may flush those (DUPLICATE).
+    bookings_cancelled = _cancel_bookings_of(session, user.id) if turning_off else []
     apply_changes(user, changes)
     user.position, user.division = position, division
     rooms_unassigned = _clear_owned_rooms(session, user.id) if turning_off else []
     save(session)
-    return user, rooms_unassigned
+    return user, rooms_unassigned, bookings_cancelled
 
 
 def set_user_roles(
@@ -291,6 +345,8 @@ def set_user_roles(
         raise _invalid("role_codes", "Unknown role.")
 
     losing_owner = RoleCode.ROOM_OWNER in old_codes and RoleCode.ROOM_OWNER not in new_codes
+    if losing_owner:
+        _check_no_private_rooms(session, user.id, "role_codes")
     rooms_unassigned = _clear_owned_rooms(session, user.id) if losing_owner else []
     session.execute(delete(user_roles).where(user_roles.c.user_id == user.id))
     if new_codes:

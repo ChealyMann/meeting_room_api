@@ -303,17 +303,18 @@ def test_create_is_public_by_default(client, as_admin, floor, category):
     assert room["is_private"] is False
 
 
-def test_create_private_room(client, as_admin, floor, category):
-    body = new(floor, category, is_private=True)
+def test_create_private_room(client, as_admin, floor, category, owner):
+    body = new(floor, category, is_private=True, room_owner_id=owner.id)
     room = client.post(URL, json=body, headers=as_admin).json()
     assert room["is_private"] is True
 
 
-def test_private_room_without_owner_is_allowed(client, as_admin, floor, category):
-    # is_private is only a label; it does not depend on the owner.
+def test_private_room_without_owner_is_refused(client, as_admin, floor, category):
+    # Spec section 12: a private room needs an owner.
     body = new(floor, category, is_private=True, room_owner_id=None)
-    room = client.post(URL, json=body, headers=as_admin).json()
-    assert (room["is_private"], room["owner"]) == (True, None)
+    response = client.post(URL, json=body, headers=as_admin)
+    assert _error(response) == (422, "OWNER_REQUIRED")
+    assert _fields(response) == {"room_owner_id": "A private room needs an owner."}
 
 
 @pytest.mark.parametrize("value", [None, "maybe", 2])

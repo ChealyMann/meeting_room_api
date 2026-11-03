@@ -120,6 +120,8 @@ class UserDetail(ResponseModel):
 
 class UserChanged(UserDetail):
     """PATCH /users/{id} and PUT /users/{id}/roles: the user, plus the rooms whose owner
-    was cleared by this change (R9). Empty when nothing was cleared."""
+    was cleared by this change (R9) and the bookings cancelled because the user was turned
+    off (B-27). Each is empty when nothing changed."""
 
     rooms_unassigned: list[int]
+    bookings_cancelled: list[int]
