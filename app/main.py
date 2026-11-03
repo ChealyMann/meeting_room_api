@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import Settings, get_settings
 from app.errors import register_error_handlers
+from app.expiry_runner import ExpiryRunner
 from app.middleware import RequestIdLogFilter, RequestIdMiddleware
 from app.routers import (
     auth,
@@ -52,11 +55,27 @@ def configure_logging() -> None:
             handler.addFilter(RequestIdLogFilter())
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Starts the expiry job (B-03) when it is on, and stops it at shutdown."""
+    settings: Settings = app.state.settings
+    runner = ExpiryRunner(settings) if settings.expiry_job_enabled else None
+    app.state.expiry_runner = runner
+    if runner is not None:
+        runner.start()
+    try:
+        yield
+    finally:
+        if runner is not None:
+            runner.stop()
+        app.state.expiry_runner = None
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging()
 
-    app = FastAPI(title="Room Booking API", version="1.0.0")
+    app = FastAPI(title="Room Booking API", version="1.0.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.login_limiter = LoginRateLimiter()
     register_error_handlers(app)
