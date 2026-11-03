@@ -42,7 +42,7 @@ def booking_load_options() -> tuple:
     )
 
 
-def _room_ref(room: Room) -> BookingRoomRef:
+def room_ref(room: Room) -> BookingRoomRef:
     location = room.floor.building.location
     return BookingRoomRef(
         id=room.id,
@@ -62,7 +62,7 @@ def _list_item_fields(booking: Booking) -> dict[str, Any]:
     return {
         "id": booking.id,
         "reference_code": booking.reference_code,
-        "room": _room_ref(booking.room),
+        "room": room_ref(booking.room),
         "meeting_title": booking.meeting_title,
         "meeting_type": booking.meeting_type,
         "route": booking.route,

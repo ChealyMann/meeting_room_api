@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.constants.booking import MASKED_TITLE
 from app.constants.roles import RoleCode
-from app.models import Booking, Room, it_ticket_staff
+from app.models import Booking, Building, Floor, Location, Room, it_ticket_staff
 from app.security import CurrentUser
 from app.services.province import get_room_province, get_user_province
 from app.services.records import not_found
@@ -19,6 +19,18 @@ def pitika_province(current: CurrentUser) -> str | None:
     """The province of the user's office, or None when they have no division."""
     province = get_user_province(current.user)
     return province.code if province else None
+
+
+def room_ids_in_province(code: str | None):
+    """A subquery of the ids of the rooms in a province (room, floor, building, location).
+    A None code matches no room."""
+    return (
+        select(Room.id)
+        .join(Floor, Room.floor_id == Floor.id)
+        .join(Building, Floor.building_id == Building.id)
+        .join(Location, Building.location_id == Location.id)
+        .where(Location.province == code)
+    )
 
 
 def _is_pitika_of(current: CurrentUser, booking: Booking) -> bool:

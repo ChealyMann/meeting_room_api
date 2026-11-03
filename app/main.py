@@ -12,6 +12,7 @@ from app.routers import (
     bookings,
     buildings,
     categories,
+    catering_orders,
     catering_packages,
     departments,
     divisions,
@@ -21,6 +22,7 @@ from app.routers import (
     it_services,
     locations,
     me,
+    pitika_bookings,
     positions,
     provinces,
     public_holidays,
@@ -78,6 +80,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(room_equipment.router)
     api.include_router(catering_packages.router)
     api.include_router(it_services.router)
+    api.include_router(pitika_bookings.router)
+    api.include_router(catering_orders.router)
     api.include_router(public_holidays.router)
     api.include_router(bookings.router)
     app.include_router(api)
