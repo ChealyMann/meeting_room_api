@@ -11,15 +11,18 @@ from app.routers import (
     auth,
     buildings,
     categories,
+    catering_packages,
     departments,
     divisions,
     equipment,
     floors,
     health,
+    it_services,
     locations,
     me,
     positions,
     provinces,
+    public_holidays,
     roles,
     room_equipment,
     room_photos,
@@ -70,6 +73,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(rooms.router)
     api.include_router(room_photos.router)
     api.include_router(room_equipment.router)
+    api.include_router(catering_packages.router)
+    api.include_router(it_services.router)
+    api.include_router(public_holidays.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)

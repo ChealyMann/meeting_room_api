@@ -4,7 +4,7 @@ Parents are created when not given: `make_room()` builds a whole active
 location -> building -> floor chain plus a category.
 """
 
-from datetime import time
+from datetime import date, time
 from itertools import count
 
 from sqlalchemy import select
@@ -14,12 +14,15 @@ from app.constants.roles import RoleCode
 from app.models import (
     Building,
     Category,
+    CateringPackage,
     Department,
     Division,
     Equipment,
     Floor,
+    ITService,
     Location,
     Position,
+    PublicHoliday,
     Role,
     Room,
     User,
@@ -107,6 +110,22 @@ def make_room(
 
 def make_equipment(session: Session, **fields) -> Equipment:
     return _save(session, Equipment(**{"name": f"Equipment {_next()}", **fields}))
+
+
+# --- Booking catalogs ------------------------------------------------------------------
+
+
+def make_catering_package(session: Session, **fields) -> CateringPackage:
+    return _save(session, CateringPackage(**{"name": f"Package {_next()}", **fields}))
+
+
+def make_it_service(session: Session, **fields) -> ITService:
+    return _save(session, ITService(**{"name": f"IT service {_next()}", **fields}))
+
+
+def make_holiday(session: Session, holiday_date: date, **fields) -> PublicHoliday:
+    values = {"holiday_date": holiday_date, "name_km": f"Holiday {_next()}"}
+    return _save(session, PublicHoliday(**{**values, **fields}))
 
 
 # --- Organisation ----------------------------------------------------------------------

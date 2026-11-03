@@ -26,6 +26,7 @@ _DUPLICATE_MESSAGES = {
     "floor_label": "This floor already exists.",
     "email": "This email already exists.",
     "staff_id": "This staff ID already exists.",
+    "holiday_date": "This date already has a holiday.",
 }
 
 
