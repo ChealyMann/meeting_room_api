@@ -175,9 +175,16 @@ def check_clashes(
     room: Room,
     sessions: Sequence,
     exclude_booking_id: int | None = None,
+    *,
+    locking: bool = False,
 ) -> None:
     """BR-SCH-04, 05, BR-PRV-02: the first session that meets a blocking one is refused.
-    Back-to-back sessions are fine."""
+    Back-to-back sessions are fine.
+
+    `locking=True` (create and other writes, after the room lock): read with FOR SHARE, so
+    the check sees bookings committed after this transaction's snapshot was taken. Under
+    REPEATABLE READ a plain SELECT would miss them and two requests could book one slot.
+    """
     for i, item in enumerate(sessions):
         query = (
             select(BookingSession)
@@ -193,12 +200,15 @@ def check_clashes(
         )
         if exclude_booking_id is not None:
             query = query.where(BookingSession.booking_id != exclude_booking_id)
+        if locking:
+            query = query.with_for_update(read=True)
         other = session.scalar(query)
         if other is None:
             continue
-        title = booking_access.visible_title(
-            session, current, session.get(Booking, other.booking_id)
-        )
+        # The booking row may also be newer than the snapshot: read it the same way.
+        lock = {"read": True} if locking else None
+        booking = session.get(Booking, other.booking_id, with_for_update=lock)
+        title = booking_access.visible_title(session, current, booking)
         message = (
             f"This room is already booked from {_hhmm(other.start_time)} "
             f"to {_hhmm(other.end_time)} for {title}."

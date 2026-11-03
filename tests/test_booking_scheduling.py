@@ -292,6 +292,37 @@ def test_clash_reports_the_index_of_the_clashing_session(clash_setup, make_user,
     assert list(error.fields) == ["sessions.1"]
 
 
+@pytest.mark.parametrize("locking", [False, True])
+def test_clash_locking_read(clash_setup, make_user, db_session, conn, locking):
+    """`locking=True` reads with FOR SHARE (it sees rows newer than the snapshot); the
+    default is a plain read, as /bookings/check needs."""
+    from sqlalchemy import event
+
+    statements = []
+
+    def remember(_conn, _cursor, statement, *_args):
+        statements.append(statement)
+
+    current = current_for(db_session, make_user())
+    db_session.expire_all()
+    event.listen(conn, "before_cursor_execute", remember)
+    try:
+        error = refused(
+            scheduling.check_clashes,
+            db_session,
+            current,
+            clash_setup.room,
+            one(time(9, 30), time(10, 30)),
+            locking=locking,
+        )
+    finally:
+        event.remove(conn, "before_cursor_execute", remember)
+    assert error.code == ErrorCode.SCHEDULE_CONFLICT
+    shared = [s for s in statements if "FOR SHARE" in s or "LOCK IN SHARE MODE" in s]
+    # The clashing session and its booking are both read with the lock.
+    assert len(shared) == (2 if locking else 0)
+
+
 def test_back_to_back_ok(clash_setup, make_user, db_session):
     current = current_for(db_session, make_user())
     scheduling.check_clashes(db_session, current, clash_setup.room, one(time(10), time(11)))

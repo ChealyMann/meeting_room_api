@@ -105,6 +105,8 @@ def advance(session: Session, booking: Booking, version: int, **values) -> None:
     WHERE id = :id AND version = :version`. No row hit -> 409 STALE_VERSION.
     With no `values` it only raises the version (an edit of other fields or child rows).
     """
+    # Send pending ORM changes first (autoflush is off): `refresh` below would drop them.
+    session.flush()
     statement = (
         update(Booking)
         .where(Booking.id == booking.id, Booking.version == version)

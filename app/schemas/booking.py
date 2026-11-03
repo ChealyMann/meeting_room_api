@@ -16,6 +16,9 @@ from app.constants.booking import (
     DisplayStatus,
     ITStatus,
     MeetingType,
+    RejectedBy,
+    ReviewDecision,
+    ReviewStage,
 )
 from app.schemas.common import (
     BookingText,
@@ -149,15 +152,15 @@ class ITOut(ResponseModel):
 
 
 class ReviewOut(ResponseModel):
-    stage: str
-    decision: str
+    stage: ReviewStage
+    decision: ReviewDecision
     reviewer: PersonRef | None
     notes: str | None
     reviewed_at: UtcDateTime
 
 
 class RejectionOut(ResponseModel):
-    rejected_by: str
+    rejected_by: RejectedBy
     actor: PersonRef | None
     reason: str
     decided_at: UtcDateTime

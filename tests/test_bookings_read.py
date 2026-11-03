@@ -188,3 +188,44 @@ def test_mine_paging(client, frozen, make_user, make_bookable_room, make_booking
                      sessions=((DAY, time(hour), time(hour + 1)),))  # fmt: skip
     data = client.get(f"{URL}/mine", params={"size": 2, "page": 2}, headers=auth_headers(booker))
     assert (len(data.json()["items"]), data.json()["total"]) == (1, 3)
+
+
+def test_mine_query_count_does_not_grow(
+    client, frozen, conn, db_session, make_user, make_bookable_room, make_booking, auth_headers
+):
+    """The list preloads rooms, sessions, food and IT (booking_load_options): the number of
+    SQL statements is the same for 2 or 6 bookings in different offices."""
+    from sqlalchemy import event
+
+    booker = make_user(roles=["STAFF"])
+    headers = auth_headers(booker)
+
+    def add(n):
+        for _ in range(n):
+            make_booking(
+                make_bookable_room(), booker, status=BookingStatus.PENDING_PITIKA, catering=True,
+                it=True,
+            )  # fmt: skip
+        db_session.expire_all()
+
+    def statements():
+        seen = []
+
+        def remember(*_args):
+            seen.append(1)
+
+        event.listen(conn, "before_cursor_execute", remember)
+        try:
+            response = client.get(f"{URL}/mine", headers=headers)
+        finally:
+            event.remove(conn, "before_cursor_execute", remember)
+        assert response.status_code == 200
+        return len(seen), response.json()["total"]
+
+    add(2)
+    few = statements()
+    add(4)
+    many = statements()
+    assert (few[1], many[1]) == (2, 6)
+    assert many[0] == few[0]
+    assert few[0] <= 15

@@ -417,6 +417,25 @@ def test_same_person_two_rooms_same_time(
     assert book(client, auth_headers(booker), other.id).status_code == 201
 
 
+def test_create_reads_clashes_with_a_lock(client, frozen, room, booker, auth_headers, monkeypatch):
+    """BR-SCH-08: after the room lock, the clash check must be a locking read, or it reads
+    the transaction's old snapshot and two requests can book one slot. /check does not lock."""
+    from app.services import booking_scheduling
+
+    calls = []
+    original = booking_scheduling.check_clashes
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("locking", False))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(booking_scheduling, "check_clashes", spy)
+    assert book(client, auth_headers(booker), room.id).status_code == 201
+    check = {"room_id": room.id, "sessions": [one_session(NEXT_DAY)]}
+    assert client.post(f"{URL}/check", json=check, headers=auth_headers(booker)).status_code == 200
+    assert calls == [True, False]
+
+
 def test_reference_code_taken_meanwhile_is_drawn_again(
     client, frozen, room, booker, make_user, make_booking, auth_headers, monkeypatch
 ):
