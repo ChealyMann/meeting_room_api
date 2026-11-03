@@ -9,6 +9,7 @@ from app.errors import register_error_handlers
 from app.middleware import RequestIdLogFilter, RequestIdMiddleware
 from app.routers import (
     auth,
+    bookings,
     buildings,
     categories,
     catering_packages,
@@ -76,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(catering_packages.router)
     api.include_router(it_services.router)
     api.include_router(public_holidays.router)
+    api.include_router(bookings.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
