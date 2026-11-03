@@ -103,6 +103,9 @@ make_department = _factory_fixture("make_department")
 make_division = _factory_fixture("make_division")
 make_position = _factory_fixture("make_position")
 make_user = _factory_fixture("make_user")
+make_pitika = _factory_fixture("make_pitika")
+make_bookable_room = _factory_fixture("make_bookable_room")
+make_booking = _factory_fixture("make_booking")
 
 
 @pytest.fixture

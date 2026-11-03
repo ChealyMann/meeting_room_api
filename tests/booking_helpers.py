@@ -16,3 +16,10 @@ def error(response) -> tuple[int, str]:
 def fields(response) -> dict:
     """The `fields` of an error response."""
     return response.json()["error"]["fields"]
+
+
+def current_for(session, user):
+    """A `CurrentUser` for `user`, with the roles saved in the database."""
+    from app.security import CurrentUser, load_role_codes
+
+    return CurrentUser(user=user, role_codes=load_role_codes(session, user.id))
