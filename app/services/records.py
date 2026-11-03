@@ -4,6 +4,7 @@
 - `get_reference` (R2): a record linked by id must exist (else 422 on that field) and be
   active (else 409 INACTIVE_REFERENCE).
 - `check_parent_active` (R3): a record cannot be turned on again under an inactive parent.
+- `check_and_bump_version`: the version a person saw must still be current (STALE_VERSION).
 - `save` (R4): flush and commit; a unique-key clash becomes 409 DUPLICATE on its field.
   The database's unique keys (case- and accent-insensitive) are the single source of
   truth, which also covers two requests racing to create the same name.
@@ -47,8 +48,13 @@ def not_found() -> AppError:
     return AppError(ErrorCode.NOT_FOUND, 404, "Not found.")
 
 
-def get_or_404(session: Session, model, record_id: int):
-    record = session.get(model, record_id)
+def get_or_404(session: Session, model, record_id: int, *, lock: bool = False):
+    """`lock=True` reads the row with FOR UPDATE and fresh values, so a second request
+    for the same row waits until the first one commits."""
+    if lock:
+        record = session.get(model, record_id, with_for_update=True, populate_existing=True)
+    else:
+        record = session.get(model, record_id)
     if record is None:
         raise not_found()
     return record
@@ -72,6 +78,16 @@ def check_parent_active(parent, label: str) -> None:
     if not parent.is_active:
         message = f"The {label.lower()} is inactive."
         raise AppError(ErrorCode.INACTIVE_REFERENCE, 409, message, {"is_active": message})
+
+
+def check_and_bump_version(
+    record, version: int, message: str = "This item changed. Reload it."
+) -> None:
+    """Optimistic lock: `version` is what the person saw. Load the record with
+    `get_or_404(..., lock=True)` first, so the check and the bump are one step."""
+    if record.version != version:
+        raise AppError(ErrorCode.STALE_VERSION, 409, message)
+    record.version += 1
 
 
 def apply_changes(record, changes: dict) -> None:

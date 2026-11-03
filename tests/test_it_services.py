@@ -16,7 +16,7 @@ OUT_FIELDS = {
 NEW = {"name": "Wi-Fi support", "description": "Network help", "sort_order": 1}
 
 
-def test_create_package(client, as_admin):
+def test_create_service(client, as_admin):
     response = client.post(URL, json=NEW, headers=as_admin)
     assert response.status_code == 201
     body = response.json()
