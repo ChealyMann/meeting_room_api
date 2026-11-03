@@ -75,6 +75,12 @@ const router = createRouter({
           meta: { title: 'Equipment' },
         },
         {
+          path: 'public-holidays',
+          name: 'public-holidays',
+          component: () => import('../views/HolidaysView.vue'),
+          meta: { title: 'Public holidays' },
+        },
+        {
           path: 'departments',
           name: 'departments',
           component: () => import('../views/DepartmentsView.vue'),

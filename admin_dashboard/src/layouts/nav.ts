@@ -26,6 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Room types', icon: 'tags', route: 'room-types' },
       { label: 'Equipment', icon: 'projector', route: 'equipment' },
+      { label: 'Public holidays', icon: 'calendar-days', route: 'public-holidays' },
     ],
   },
   {

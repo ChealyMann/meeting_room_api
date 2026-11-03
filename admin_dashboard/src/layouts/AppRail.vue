@@ -2,6 +2,7 @@
 import {
   Briefcase,
   Building2,
+  CalendarDays,
   DoorOpen,
   GitFork,
   Landmark,
@@ -31,6 +32,7 @@ const ICONS: Record<string, Component> = {
   layers: Layers,
   tags: Tags,
   projector: Projector,
+  'calendar-days': CalendarDays,
   network: Network,
   'git-fork': GitFork,
   briefcase: Briefcase,
