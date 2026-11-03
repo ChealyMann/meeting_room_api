@@ -10,6 +10,8 @@ from app.schemas.booking import (
     BookingDetail,
     BookingListItem,
     BookingSaved,
+    BookingUpdate,
+    CancelBody,
     DoorPassOut,
 )
 from app.schemas.common import Page
@@ -97,3 +99,37 @@ def get_booking_ics(booking_id: IdPath, current: AnyUser, session: DbSession) ->
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{booking.reference_code}.ics"'},
     )
+
+
+@router.patch("/{booking_id}", response_model=BookingSaved, summary="Edit a booking a little")
+def update_booking(
+    booking_id: IdPath,
+    body: BookingUpdate,
+    current: AnyUser,
+    session: DbSession,
+    settings: AppSettings,
+) -> BookingSaved:
+    """T13. Only the booker, and only before the first session starts. You can change the
+    title, type, purpose, attendees, participant emails, the food remarks and the IT
+    requirements. The room, dates, times and the choice of packages or services cannot change
+    (422 FIELD_NOT_EDITABLE): cancel and book again. The status does not change. A body with
+    only `version` changes nothing."""
+    booking, warnings = booking_service.update_booking(session, current, booking_id, body, settings)
+    detail = booking_view.build_booking_detail(session, booking, settings)
+    return BookingSaved(**dict(detail), warnings=warnings)
+
+
+@router.post("/{booking_id}/cancel", response_model=BookingDetail, summary="Cancel a booking")
+def cancel_booking(
+    booking_id: IdPath,
+    body: CancelBody,
+    current: AnyUser,
+    session: DbSession,
+    settings: AppSettings,
+) -> BookingDetail:
+    """T12. Only the booker, while the booking is not final and its last session has not
+    ended. The reason is optional (5 to 500 characters). The room is free again."""
+    booking = booking_service.cancel_booking(
+        session, current, booking_id, body.reason, body.version
+    )
+    return booking_view.build_booking_detail(session, booking, settings)

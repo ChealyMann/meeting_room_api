@@ -76,6 +76,44 @@ class BookingCreate(RequestModel):
     it: ITIn | None = None
 
 
+class CateringUpdate(RequestModel):
+    """Food: only the remarks can change. `package_ids` is declared so the service can
+    refuse it with FIELD_NOT_EDITABLE (B-15)."""
+
+    remarks: OptionalBookingText(1000) = None
+    package_ids: Any = None
+
+
+class ITUpdate(RequestModel):
+    """IT: only the special requirements can change. `service_ids` is declared to be refused."""
+
+    special_requirements: OptionalBookingText(1000) = None
+    service_ids: Any = None
+
+
+class BookingUpdate(RequestModel):
+    """The body of PATCH /bookings/{id} (T13): small edits only. A field left out keeps its
+    value; read what was sent with `model_fields_set`. `room_id`, `sessions` and
+    `private_justification` are declared so the service can refuse them (BR-EDT-03)."""
+
+    version: int
+    meeting_title: BookingText(200, min_length=3) = None
+    meeting_type: MeetingType = None
+    meeting_purpose: OptionalBookingText(1000) = None
+    attendees: int = None
+    participant_emails: list[Email] = None
+    catering: CateringUpdate = None
+    it: ITUpdate = None
+    room_id: Any = None
+    sessions: Any = None
+    private_justification: Any = None
+
+
+class CancelBody(RequestModel):
+    reason: OptionalBookingText(500, min_length=5) = None
+    version: int
+
+
 # --- Check answer ----------------------------------------------------------------------
 
 

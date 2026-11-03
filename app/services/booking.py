@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.constants.booking import (
+    FINAL,
     BookingRoute,
     BookingStatus,
     DisplayStatus,
@@ -32,7 +33,13 @@ from app.models import (
     Room,
     User,
 )
-from app.schemas.booking import BookingCheck, BookingCheckResult, BookingCreate, Problem
+from app.schemas.booking import (
+    BookingCheck,
+    BookingCheckResult,
+    BookingCreate,
+    BookingUpdate,
+    Problem,
+)
 from app.security import CurrentUser
 from app.services import booking_access, booking_codes
 from app.services import booking_scheduling as scheduling
@@ -279,6 +286,130 @@ def create_booking(
     session.commit()
     warnings = scheduling.warnings_for(session, room, body.sessions, body.attendees)
     return booking, warnings
+
+
+# --- Edit and cancel (spec 9.7, 9.8: T13, T12) -------------------------------------------
+
+EDIT_FIELDS = ("meeting_title", "meeting_type", "meeting_purpose", "attendees")
+NOT_EDITABLE_MESSAGE = "To change the room, date or time, cancel and book again."
+STARTED_MESSAGE = "The meeting has started. It cannot be changed."
+ENDED_MESSAGE = "This booking has ended."
+
+
+def _only_booker(current: CurrentUser, booking: Booking, message: str) -> None:
+    if booking.requester_id != current.id:
+        raise AppError(ErrorCode.FORBIDDEN, 403, message)
+
+
+def _check_editable_fields(booking: Booking, body: BookingUpdate) -> None:
+    """BR-EDT-03, B-15: 422 FIELD_NOT_EDITABLE when a refused field was sent, even as null."""
+    sent = body.model_fields_set
+    refused = bool(sent & {"room_id", "sessions", "private_justification"})
+    if "catering" in sent:
+        refused = refused or booking.catering_order is None
+        refused = refused or "package_ids" in body.catering.model_fields_set
+    if "it" in sent:
+        refused = refused or booking.it_ticket is None
+        refused = refused or "service_ids" in body.it.model_fields_set
+    if refused:
+        raise AppError(ErrorCode.FIELD_NOT_EDITABLE, 422, NOT_EDITABLE_MESSAGE)
+
+
+def _check_open(booking: Booking) -> None:
+    """Not final and not completed (INVALID_TRANSITION)."""
+    if booking.status in FINAL or transitions.display_status(booking) == DisplayStatus.COMPLETED:
+        raise transitions.invalid_transition(booking)
+
+
+def _apply_participants(session: Session, booking: Booking, emails: list[str]) -> None:
+    """Replace the participants: delete those no longer listed, add the new ones."""
+    wanted = set(emails)
+    current = {row.email: row for row in booking.participants}
+    for email, row in current.items():
+        if email not in wanted:
+            session.delete(row)
+    for email in emails:
+        if email not in current:
+            session.add(BookingParticipant(booking_id=booking.id, email=email))
+
+
+def update_booking(
+    session: Session,
+    current: CurrentUser,
+    booking_id: int,
+    body: BookingUpdate,
+    settings: Settings,
+) -> tuple[Booking, list[dict]]:
+    """Spec 9.7: small edits by the booker. The status never changes. A body with only the
+    version writes nothing and keeps the version (B-24). Returns the booking and warnings."""
+    booking = booking_access.load_visible_booking(session, current, booking_id)
+    _only_booker(current, booking, "Only the booker can change this booking.")
+    _check_editable_fields(booking, body)
+    transitions.check_version(booking, body.version)
+    _check_open(booking)
+    if transitions.has_started(booking):
+        raise AppError(ErrorCode.TIME_PASSED, 409, STARTED_MESSAGE)
+
+    sent = body.model_fields_set
+    emails = None
+    if "attendees" in sent or "participant_emails" in sent:
+        attendees = body.attendees if "attendees" in sent else booking.attendees
+        wanted = (
+            body.participant_emails
+            if "participant_emails" in sent
+            else [row.email for row in booking.participants]
+        )
+        emails = _participant_emails(current, attendees, wanted, settings)
+
+    changed = False
+    for name in EDIT_FIELDS:
+        if name in sent:
+            setattr(booking, name, getattr(body, name))
+            changed = True
+    if "catering" in sent and "remarks" in body.catering.model_fields_set:
+        booking.catering_order.remarks = body.catering.remarks
+        changed = True
+    if "it" in sent and "special_requirements" in body.it.model_fields_set:
+        booking.it_ticket.special_requirements = body.it.special_requirements
+        changed = True
+    if "participant_emails" in sent:
+        _apply_participants(session, booking, emails)
+        changed = True
+
+    if changed:
+        transitions.advance(session, booking, body.version)
+        session.commit()
+    warnings = scheduling.warnings_for(session, booking.room, booking.sessions, booking.attendees)
+    return booking, warnings
+
+
+def cancel_booking(
+    session: Session,
+    current: CurrentUser,
+    booking_id: int,
+    reason: str | None,
+    version: int,
+) -> Booking:
+    """Spec 9.8, T12: the booker cancels any booking that is not final and has not ended.
+    The sessions stop blocking the room; food and IT rows stay (B-11)."""
+    booking = booking_access.load_visible_booking(session, current, booking_id)
+    _only_booker(current, booking, "Only the booker can cancel. Reject it instead.")
+    transitions.check_version(booking, version)
+    if booking.status in FINAL:
+        raise transitions.invalid_transition(booking)
+    if transitions.has_ended(booking):
+        raise transitions.invalid_transition(booking, ENDED_MESSAGE)
+    transitions.advance(
+        session,
+        booking,
+        version,
+        status=BookingStatus.CANCELLED,
+        cancelled_at=now_utc(),
+        cancel_reason=reason,
+    )
+    transitions.stop_blocking(session, booking)
+    session.commit()
+    return booking
 
 
 # --- Read (spec 9.5, 9.6) --------------------------------------------------------------
