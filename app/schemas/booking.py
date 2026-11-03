@@ -201,6 +201,12 @@ class BookingDetail(BookingListItem):
     updated_at: UtcDateTime
 
 
+class DoorPassOut(ResponseModel):
+    passcode: str
+    expires_at: UtcDateTime
+    expired: bool  # now is at or after expires_at (BR-DP-03)
+
+
 class BookingSaved(BookingDetail):
     """The answer of create and edit: the booking plus things to tell the booker."""
 

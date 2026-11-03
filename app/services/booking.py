@@ -21,6 +21,7 @@ from app.constants.booking import (
 from app.errors import AppError, ErrorCode
 from app.models import (
     Booking,
+    BookingDoorPass,
     BookingParticipant,
     BookingReview,
     BookingSession,
@@ -286,6 +287,18 @@ def create_booking(
 def get_booking(session: Session, current: CurrentUser, booking_id: int) -> Booking:
     """404 when missing or not visible to this user (B-08)."""
     return booking_access.load_visible_booking(session, current, booking_id)
+
+
+def get_door_pass(session: Session, current: CurrentUser, booking_id: int) -> BookingDoorPass:
+    """Spec 9.9: not visible 404; visible but not CONFIRMED 404 "No door pass yet."; the
+    booker, Admin, room owner and the Pitika of the province see it, others 403."""
+    booking = booking_access.load_visible_booking(session, current, booking_id)
+    door_pass = booking.door_pass
+    if booking.status != BookingStatus.CONFIRMED or door_pass is None:
+        raise AppError(ErrorCode.NOT_FOUND, 404, "No door pass yet.")
+    if not booking_access.is_door_pass_viewer(current, booking):
+        raise AppError(ErrorCode.FORBIDDEN, 403, "You are not allowed.")
+    return door_pass
 
 
 def _last_end_sql():

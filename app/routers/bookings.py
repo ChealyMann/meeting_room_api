@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from app.routers.common import AppSettings, DbSession, IdPath, PageParams, SearchQuery
 from app.schemas.booking import (
@@ -10,11 +10,14 @@ from app.schemas.booking import (
     BookingDetail,
     BookingListItem,
     BookingSaved,
+    DoorPassOut,
 )
 from app.schemas.common import Page
 from app.security import AnyUser
 from app.services import booking as booking_service
 from app.services import booking_view
+from app.services.booking_ics import build_ics
+from app.services.clock import now_utc
 
 router = APIRouter(prefix="/bookings", tags=["Booking"])
 
@@ -65,3 +68,32 @@ def get_booking(
     users of a forwarded ticket. Anyone else gets 404."""
     booking = booking_service.get_booking(session, current, booking_id)
     return booking_view.build_booking_detail(session, booking, settings)
+
+
+@router.get("/{booking_id}/door-pass", response_model=DoorPassOut, summary="See the door pass")
+def get_door_pass(booking_id: IdPath, current: AnyUser, session: DbSession) -> DoorPassOut:
+    """For the booker, Admin, the room owner and a Pitika of the room's province, once the
+    booking is CONFIRMED. Before that: 404. IT users get 403."""
+    door_pass = booking_service.get_door_pass(session, current, booking_id)
+    return DoorPassOut(
+        passcode=door_pass.passcode,
+        expires_at=door_pass.expires_at,
+        expired=now_utc() >= door_pass.expires_at,
+    )
+
+
+@router.get(
+    "/{booking_id}/ics",
+    response_class=Response,
+    responses={200: {"content": {"text/calendar": {}}}},
+    summary="Download the calendar file",
+)
+def get_booking_ics(booking_id: IdPath, current: AnyUser, session: DbSession) -> Response:
+    """A calendar file with one event per session. Same visibility as the booking. It never
+    holds the door pass."""
+    booking = booking_service.get_booking(session, current, booking_id)
+    return Response(
+        content=build_ics(booking),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{booking.reference_code}.ics"'},
+    )
