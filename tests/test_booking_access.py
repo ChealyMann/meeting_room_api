@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.constants.booking import MASKED_TITLE, BookingStatus
+from app.constants.booking import MASKED_TITLE, BookingRoute, BookingStatus
 from app.errors import AppError, ErrorCode
 from app.services import booking_access as access
 from app.services import clock
@@ -153,3 +153,34 @@ def test_shared_room_title_never_masked(make_bookable_room, make_user, make_book
     )
     stranger = current_for(db_session, make_user(roles=["STAFF"]))
     assert access.visible_title(db_session, stranger, booking) == "Open"
+
+
+@pytest.mark.parametrize(
+    ("private", "route", "expected"),
+    [
+        (True, BookingRoute.R1, True),
+        (True, BookingRoute.R2, True),
+        (False, BookingRoute.R1, False),
+        (False, BookingRoute.R2, True),
+        (False, BookingRoute.R3, True),
+        (False, BookingRoute.R4, True),
+    ],
+)
+def test_is_private_booking(
+    make_bookable_room, make_user, make_booking, db_session, private, route, expected
+):
+    """B-30: a booking made in a private room stays private after the room turns shared."""
+    owner = make_user(roles=["ROOM_OWNER"])
+    room = make_bookable_room(private=private, owner=owner)
+    booking = make_booking(room, make_user(), status=BookingStatus.CONFIRMED, route=route)
+    assert access.is_private_booking(booking) is expected
+
+
+def test_old_private_booking_masked_after_room_turns_shared(world, db_session):
+    world.room.is_private = False
+    db_session.flush()
+    title = access.visible_title(db_session, world.current(world.stranger), world.booking)
+    assert title == MASKED_TITLE
+    assert access.visible_title(db_session, world.current(world.booker), world.booking) == (
+        "Budget talk"
+    )

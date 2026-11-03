@@ -5,7 +5,7 @@ The answers are built in `booking_view`."""
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -170,6 +170,7 @@ def _new_booking(
     reference_code: str,
 ) -> Booking:
     """The booking and its child rows, not yet saved."""
+    created_at = now_utc()
     booking = Booking(
         reference_code=reference_code,
         requester_id=current.id,
@@ -183,6 +184,9 @@ def _new_booking(
         route=route,
         status=scheduling.first_status(route),
         version=1,
+        # From the app clock like every other time, so "newest first" follows it.
+        created_at=created_at,
+        updated_at=created_at,
     )
     booking.sessions = [
         BookingSession(
@@ -236,13 +240,17 @@ def _insert_booking(session: Session, now: datetime, make) -> Booking:
 def create_booking(
     session: Session, current: CurrentUser, body: BookingCreate, settings: Settings
 ) -> tuple[Booking, list[dict]]:
-    """Spec 9.4: checks in order, then lock the room, check clashes and save it all in one
-    transaction. Returns the booking and its warnings."""
+    """Spec 9.4: checks in order, then check clashes and save it all in one transaction.
+    Returns the booking and its warnings."""
     now = now_local()
     scheduling.check_session_shapes(body.sessions, settings, now.date())
     emails = _participant_emails(current, body.attendees, body.participant_emails, settings)
 
-    room = session.get(Room, body.room_id)
+    # BR-SCH-08: one booking at a time per room, so two requests cannot both pass the
+    # clash check, and a room change (turned off, made shared) cannot pass a new booking.
+    # The room is read FOR UPDATE with fresh values at the room step; the lock is held
+    # until the commit.
+    room = session.get(Room, body.room_id, with_for_update=True, populate_existing=True)
     if room is None:
         raise _room_not_found()
     scheduling.check_room_bookable(room)
@@ -269,11 +277,9 @@ def create_booking(
             session, ITService, body.it.service_ids, "it.service_ids", "IT service", "IT service"
         )
 
-    # BR-SCH-08: one booking at a time per room, so two requests cannot both pass the
-    # clash check. The lock is held until the commit. The clash check is a locking read:
-    # a plain SELECT would read this transaction's old snapshot (REPEATABLE READ) and miss
-    # a booking the other request committed while we waited for the lock.
-    session.execute(select(Room.id).where(Room.id == room.id).with_for_update())
+    # The clash check is a locking read: a plain SELECT would read this transaction's old
+    # snapshot (REPEATABLE READ) and miss a booking the other request committed while we
+    # waited for the room lock.
     scheduling.check_clashes(session, current, room, body.sessions, locking=True)
 
     booking = _insert_booking(
@@ -302,14 +308,15 @@ def _only_booker(current: CurrentUser, booking: Booking, message: str) -> None:
 
 
 def _check_editable_fields(booking: Booking, body: BookingUpdate) -> None:
-    """BR-EDT-03, B-15: 422 FIELD_NOT_EDITABLE when a refused field was sent, even as null."""
+    """BR-EDT-03, B-15: 422 FIELD_NOT_EDITABLE when a refused field was sent, even as null.
+    `catering: null` or `it: null` would remove the food or IT part: refused too."""
     sent = body.model_fields_set
     refused = bool(sent & {"room_id", "sessions", "private_justification"})
     if "catering" in sent:
-        refused = refused or booking.catering_order is None
+        refused = refused or body.catering is None or booking.catering_order is None
         refused = refused or "package_ids" in body.catering.model_fields_set
     if "it" in sent:
-        refused = refused or booking.it_ticket is None
+        refused = refused or body.it is None or booking.it_ticket is None
         refused = refused or "service_ids" in body.it.model_fields_set
     if refused:
         raise AppError(ErrorCode.FIELD_NOT_EDITABLE, 422, NOT_EDITABLE_MESSAGE)
@@ -342,7 +349,7 @@ def update_booking(
 ) -> tuple[Booking, list[dict]]:
     """Spec 9.7: small edits by the booker. The status never changes. A body with only the
     version writes nothing and keeps the version (B-24). Returns the booking and warnings."""
-    booking = booking_access.load_visible_booking(session, current, booking_id)
+    booking = booking_access.load_visible_booking(session, current, booking_id, for_write=True)
     _only_booker(current, booking, "Only the booker can change this booking.")
     _check_editable_fields(booking, body)
     transitions.check_version(booking, body.version)
@@ -392,22 +399,14 @@ def cancel_booking(
 ) -> Booking:
     """Spec 9.8, T12: the booker cancels any booking that is not final and has not ended.
     The sessions stop blocking the room; food and IT rows stay (B-11)."""
-    booking = booking_access.load_visible_booking(session, current, booking_id)
+    booking = booking_access.load_visible_booking(session, current, booking_id, for_write=True)
     _only_booker(current, booking, "Only the booker can cancel. Reject it instead.")
     transitions.check_version(booking, version)
     if booking.status in FINAL:
         raise transitions.invalid_transition(booking)
     if transitions.has_ended(booking):
         raise transitions.invalid_transition(booking, ENDED_MESSAGE)
-    transitions.advance(
-        session,
-        booking,
-        version,
-        status=BookingStatus.CANCELLED,
-        cancelled_at=now_utc(),
-        cancel_reason=reason,
-    )
-    transitions.stop_blocking(session, booking)
+    transitions.cancel(session, booking, version, reason)
     session.commit()
     return booking
 
@@ -421,43 +420,18 @@ def get_booking(session: Session, current: CurrentUser, booking_id: int) -> Book
 
 
 def get_door_pass(session: Session, current: CurrentUser, booking_id: int) -> BookingDoorPass:
-    """Spec 9.9: not visible 404; visible but not CONFIRMED 404 "No door pass yet."; the
-    booker, Admin, room owner and the Pitika of the province see it, others 403."""
+    """Spec 9.9: not visible 404; visible but not CONFIRMED 404 ("No door pass yet.", or
+    "This booking has no door pass." once REJECTED or CANCELLED); the booker, Admin, room
+    owner and the Pitika of the province see it, others 403."""
     booking = booking_access.load_visible_booking(session, current, booking_id)
     door_pass = booking.door_pass
+    if booking.status in FINAL:
+        raise AppError(ErrorCode.NOT_FOUND, 404, "This booking has no door pass.")
     if booking.status != BookingStatus.CONFIRMED or door_pass is None:
         raise AppError(ErrorCode.NOT_FOUND, 404, "No door pass yet.")
     if not booking_access.is_door_pass_viewer(current, booking):
         raise AppError(ErrorCode.FORBIDDEN, 403, "You are not allowed.")
     return door_pass
-
-
-def _last_end_sql():
-    """The local end of a booking's last session, as a correlated subquery."""
-    return (
-        select(func.max(func.timestamp(BookingSession.date, BookingSession.end_time)))
-        .where(BookingSession.booking_id == Booking.id)
-        .scalar_subquery()
-    )
-
-
-def filter_display_status(query: Select, status: str | None) -> Select:
-    """`?status=` is a display status (B-10): CONFIRMED means not yet ended; COMPLETED
-    means confirmed and ended. Empty means no filter; anything else is 422."""
-    if status is None or not status.strip():
-        return query
-    try:
-        wanted = DisplayStatus(status.strip())
-    except ValueError:
-        choices = ", ".join(DisplayStatus)
-        raise _invalid("status", f"Must be one of {choices}.") from None
-    if wanted == DisplayStatus.COMPLETED:
-        return query.where(
-            Booking.status == BookingStatus.CONFIRMED, _last_end_sql() <= now_local()
-        )
-    if wanted == DisplayStatus.CONFIRMED:
-        return query.where(Booking.status == BookingStatus.CONFIRMED, _last_end_sql() > now_local())
-    return query.where(Booking.status == wanted.value)
 
 
 def list_my_bookings(
@@ -472,7 +446,7 @@ def list_my_bookings(
     query = (
         select(Booking).where(Booking.requester_id == current.id).options(*booking_load_options())
     )
-    query = filter_display_status(query, status)
+    query = transitions.filter_display_status(query, status)
     query = apply_search(query, q, [Booking.meeting_title, Booking.reference_code])
     query = query.order_by(Booking.created_at.desc(), Booking.id.desc())
     return paginate(session, query, page, size)

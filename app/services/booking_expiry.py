@@ -16,7 +16,6 @@ from app.errors import AppError, ErrorCode
 from app.models import Booking
 from app.services import booking_transitions as transitions
 from app.services import clock
-from app.services.booking_review import first_start_sql
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ def run_once(session: Session) -> ExpiryResult:
     ids = list(
         session.scalars(
             select(Booking.id)
-            .where(Booking.status.in_(WATCHED), first_start_sql() <= clock.now_local())
+            .where(Booking.status.in_(WATCHED), transitions.first_start_sql() <= clock.now_local())
             .order_by(Booking.id)
         )
     )

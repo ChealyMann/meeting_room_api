@@ -10,6 +10,7 @@ guard or the room lock), not by a lucky read of the winner's commit.
 """
 
 import threading
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import delete, event, inspect, select
@@ -30,9 +31,10 @@ from app.models import (
     it_ticket_staff,
     user_roles,
 )
-from app.schemas.booking import BookingCreate
+from app.schemas.booking import BookingCreate, BookingUpdate
 from app.security import CurrentUser, load_role_codes
-from app.services import booking, booking_review
+from app.services import booking, booking_review, it_ticket
+from app.services import room as room_service
 from tests import factories
 from tests.booking_helpers import NOW, body
 
@@ -166,3 +168,206 @@ def test_two_creates_one_wins(committed, migrated_engine, settings):
         saved = session.scalars(select(Booking).where(Booking.room_id == room_id)).all()
         assert len(saved) == 1
         assert len(saved[0].sessions) == 1
+
+
+def test_two_edits_with_new_participants_one_wins(committed, migrated_engine, settings):
+    """Both requests add the same participant at the same version. The booking row is read
+    with a lock, so the second waits, sees version 2 and stops with STALE_VERSION; it never
+    reaches the participant insert (which would hit the unique key: a 500)."""
+    room = factories.make_bookable_room(committed)
+    requester = factories.make_user(committed, roles=["STAFF"])
+    saved = factories.make_booking(committed, room, requester, status=BookingStatus.CONFIRMED)
+    committed.commit()
+    booking_id = saved.id
+    edit = BookingUpdate(version=1, participant_emails=["guest@company.com"])
+
+    results = _run_together(
+        migrated_engine,
+        [requester.id, requester.id],
+        lambda session, current: booking.update_booking(
+            session, current, booking_id, edit, settings
+        ),
+    )
+
+    assert sorted(results) == ["STALE_VERSION", "ok"]
+    with _new_session(migrated_engine) as session:
+        row = session.get(Booking, booking_id)
+        assert row.version == 2
+        assert [p.email for p in row.participants] == ["guest@company.com"]
+
+
+def test_two_staff_assigns_one_wins(committed, migrated_engine):
+    """The same IT Staff assigned twice at the same version: one wins, the other gets
+    STALE_VERSION (not a duplicate key on it_ticket_staff)."""
+    lead = factories.make_user(committed, roles=["IT_LEAD"])
+    helper = factories.make_user(committed, roles=["IT_STAFF"])
+    room = factories.make_bookable_room(committed)
+    requester = factories.make_user(committed, roles=["STAFF"])
+    saved = factories.make_booking(
+        committed,
+        room,
+        requester,
+        status=BookingStatus.SETUP_IN_PROGRESS,
+        it=True,
+        forwarded=True,
+    )
+    committed.commit()
+    booking_id, ticket_id, helper_id = saved.id, saved.it_ticket.id, helper.id
+
+    results = _run_together(
+        migrated_engine,
+        [lead.id, lead.id],
+        lambda session, current: it_ticket.assign_staff(
+            session, current, ticket_id, [helper_id], None, 1
+        ),
+    )
+
+    assert sorted(results) == ["STALE_VERSION", "ok"]
+    with _new_session(migrated_engine) as session:
+        row = session.get(Booking, booking_id)
+        assert row.version == 2
+        assert [user.id for user in row.it_ticket.staff] == [helper_id]
+
+
+# --- Rows read for a write are locked (B-31) ---------------------------------------------
+
+
+def _statements(conn, call) -> list[str]:
+    """The SQL statements `call()` sends, on one line each."""
+    seen: list[str] = []
+
+    def remember(_conn, _cursor, statement, *_args):
+        seen.append(" ".join(statement.split()))
+
+    event.listen(conn, "before_cursor_execute", remember)
+    try:
+        call()
+    finally:
+        event.remove(conn, "before_cursor_execute", remember)
+    return seen
+
+
+def _first_read(statements: list[str], table: str) -> str:
+    """The first SELECT whose FROM is `table`."""
+    return next(s for s in statements if s.startswith("SELECT") and f"FROM {table} " in s)
+
+
+def _edit(session, current, ids, settings):
+    body = BookingUpdate(version=1, meeting_title="New title")
+    booking.update_booking(session, current, ids.booking_id, body, settings)
+
+
+def _cancel(session, current, ids, _settings):
+    booking.cancel_booking(session, current, ids.booking_id, None, 1)
+
+
+def _pitika_approve(session, current, ids, _settings):
+    booking_review.pitika_approve(session, current, ids.booking_id, None, 1)
+
+
+def _pitika_reject(session, current, ids, _settings):
+    booking_review.pitika_reject(session, current, ids.booking_id, "Wrong room.", 1)
+
+
+def _owner_approve(session, current, ids, _settings):
+    booking_review.owner_approve(session, current, ids.booking_id, None, 1)
+
+
+def _owner_reject(session, current, ids, _settings):
+    booking_review.owner_reject(session, current, ids.booking_id, "Wrong room.", 1)
+
+
+def _it_assign(session, current, ids, _settings):
+    it_ticket.assign_staff(session, current, ids.ticket_id, [ids.helper_id], None, 1)
+
+
+def _it_ready(session, current, ids, _settings):
+    it_ticket.mark_ready(session, current, ids.ticket_id, 1)
+
+
+IT = {"it": True, "forwarded": True}
+R2 = BookingRoute.R2
+# name: (status, route, factory options, who acts, call)
+WRITES = {
+    "edit": (BookingStatus.CONFIRMED, R2, {}, "booker", _edit),
+    "cancel": (BookingStatus.CONFIRMED, R2, {}, "booker", _cancel),
+    "pitika_approve": (BookingStatus.PENDING_PITIKA, R2, {}, "pitika", _pitika_approve),
+    "pitika_reject": (BookingStatus.PENDING_PITIKA, R2, {}, "pitika", _pitika_reject),
+    "owner_approve": (BookingStatus.PENDING_OWNER, R2, {}, "owner", _owner_approve),
+    "owner_reject": (BookingStatus.PENDING_OWNER, R2, {}, "owner", _owner_reject),
+    "it_assign": (BookingStatus.SETUP_IN_PROGRESS, R2, IT, "lead", _it_assign),
+    "it_ready": (BookingStatus.SETUP_IN_PROGRESS, R2, IT, "lead", _it_ready),
+}
+
+
+@pytest.mark.parametrize("name", list(WRITES))
+def test_writes_read_the_booking_with_a_lock(frozen, conn, db_session, settings, name):
+    """B-31: every booking write reads the booking row FOR UPDATE before the version check,
+    so two requests at the same version cannot both reach the child-row writes."""
+    status, route, options, who, call = WRITES[name]
+    owner = factories.make_user(db_session, roles=["ROOM_OWNER"])
+    room = factories.make_bookable_room(db_session, private=True, owner=owner)
+    booker = factories.make_user(db_session, roles=["STAFF"])
+    helper = factories.make_user(db_session, roles=["IT_STAFF"])
+    people = {
+        "booker": booker,
+        "owner": owner,
+        "pitika": factories.make_pitika(db_session),
+        "lead": factories.make_user(db_session, roles=["IT_LEAD"]),
+    }
+    staff = (helper,) if name == "it_ready" else ()
+    saved = factories.make_booking(
+        db_session, room, booker, status=status, route=route, assigned_staff=staff, **options
+    )
+    ticket_id = saved.it_ticket.id if saved.it_ticket else None
+    ids = SimpleNamespace(booking_id=saved.id, ticket_id=ticket_id, helper_id=helper.id)
+    user = people[who]
+    current = CurrentUser(user=user, role_codes=load_role_codes(db_session, user.id))
+    # Plain ids are read before this: touching an expired object would load it first.
+    db_session.expire_all()
+
+    statements = _statements(conn, lambda: call(db_session, current, ids, settings))
+
+    assert _first_read(statements, "bookings").endswith("FOR UPDATE"), statements
+
+
+def test_create_reads_the_room_with_a_lock(frozen, conn, db_session, settings):
+    """The room is read FOR UPDATE at the room step, so the checks after it see the room as
+    it is now, and the room cannot change until the booking is saved."""
+    factories.make_pitika(db_session)
+    room = factories.make_bookable_room(db_session)
+    user = factories.make_user(db_session, roles=["STAFF"])
+    current = CurrentUser(user=user, role_codes=load_role_codes(db_session, user.id))
+    request = BookingCreate(**body(room.id))
+    db_session.expire_all()
+
+    statements = _statements(
+        conn, lambda: booking.create_booking(db_session, current, request, settings)
+    )
+
+    assert _first_read(statements, "rooms").endswith("FOR UPDATE"), statements
+
+
+@pytest.mark.parametrize(
+    ("change", "table"),
+    [({"is_active": False}, "booking_sessions"), ({"is_private": False}, "bookings")],
+)
+def test_room_update_locks_the_room_and_reads_bookings_for_share(
+    frozen, conn, db_session, change, table
+):
+    """A room change and a new booking of the room cannot pass each other: the room is
+    read FOR UPDATE and the booking counts are locking reads (FOR SHARE)."""
+    owner = factories.make_user(db_session, roles=["ROOM_OWNER"])
+    room = factories.make_bookable_room(db_session, private=True, owner=owner)
+    admin = factories.make_user(db_session, roles=["ADMIN"])
+    current = CurrentUser(user=admin, role_codes=load_role_codes(db_session, admin.id))
+    room_id = room.id
+    db_session.expire_all()
+
+    statements = _statements(
+        conn, lambda: room_service.update_room(db_session, room_id, change, current)
+    )
+
+    assert _first_read(statements, "rooms").endswith("FOR UPDATE"), statements
+    count = next(s for s in statements if s.startswith("SELECT count") and f"FROM {table}" in s)
+    assert count.endswith(("FOR SHARE", "LOCK IN SHARE MODE")), count

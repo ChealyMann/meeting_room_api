@@ -9,7 +9,7 @@ from app.constants.booking import ITStatus
 from app.schemas.booking import BookingListItem
 from app.schemas.common import (
     LocalTime,
-    OptionalText,
+    OptionalBookingText,
     RefId,
     RequestModel,
     ResponseModel,
@@ -21,7 +21,7 @@ class AssignStaffBody(RequestModel):
     """`version` is the booking's version (B-19). The staff list replaces the old one."""
 
     user_ids: list[RefId] = Field(min_length=1)
-    technician_notes: OptionalText(1000) = None
+    technician_notes: OptionalBookingText(1000) = None
     version: int
 
 

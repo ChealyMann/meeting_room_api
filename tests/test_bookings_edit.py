@@ -74,6 +74,8 @@ def test_over_capacity_warning(client, frozen, booking, room, booker, auth_heade
         {"private_justification": "x"},
         {"catering": {"package_ids": [1]}},
         {"it": {"service_ids": [1]}},
+        {"catering": None},
+        {"it": None},
     ],
 )
 def test_refused_fields(client, frozen, make_booking, room, booker, auth_headers, extra):

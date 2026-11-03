@@ -58,7 +58,7 @@ def list_my_bookings(
     """Newest first. `q` matches the title or the reference code. CONFIRMED means confirmed
     and not yet ended; COMPLETED means confirmed and ended."""
     result = booking_service.list_my_bookings(session, current, paging.page, paging.size, status, q)
-    items = booking_view.build_booking_list_items(session, result["items"])
+    items = booking_view.build_booking_list_items(result["items"])
     return Page[BookingListItem](**{**result, "items": items})
 
 
@@ -73,10 +73,13 @@ def get_booking(
 
 
 @router.get("/{booking_id}/door-pass", response_model=DoorPassOut, summary="See the door pass")
-def get_door_pass(booking_id: IdPath, current: AnyUser, session: DbSession) -> DoorPassOut:
+def get_door_pass(
+    booking_id: IdPath, current: AnyUser, session: DbSession, response: Response
+) -> DoorPassOut:
     """For the booker, Admin, the room owner and a Pitika of the room's province, once the
-    booking is CONFIRMED. Before that: 404. IT users get 403."""
+    booking is CONFIRMED. Before that: 404. IT users get 403. Never cached (no-store)."""
     door_pass = booking_service.get_door_pass(session, current, booking_id)
+    response.headers["Cache-Control"] = "no-store"
     return DoorPassOut(
         passcode=door_pass.passcode,
         expires_at=door_pass.expires_at,

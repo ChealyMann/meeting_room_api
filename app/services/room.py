@@ -263,7 +263,7 @@ def _check_has_owner(is_private: bool, owner: User | None) -> None:
 
 def _check_no_pending_owner(session: Session, room: Room) -> None:
     """B-14: a private room becomes shared only when nothing waits for its owner."""
-    count = pending_owner_count(session, room.id)
+    count = pending_owner_count(session, room.id, locking=True)
     if count:
         message = f"Resolve {count} bookings waiting for the room owner first."
         raise AppError(ErrorCode.HAS_PENDING_OWNER_BOOKINGS, 409, message, {"is_private": message})
@@ -285,8 +285,9 @@ def create_room(session: Session, data: dict) -> Room:
 
 def update_room(session: Session, room_id: int, changes: dict, current: CurrentUser) -> Room:
     """PATCH /rooms/{id}. A room owner may change only OWNER_FIELDS of their own rooms (R8);
-    anything else is refused before any change."""
-    room = get_or_404(session, Room, room_id)
+    anything else is refused before any change. The room is read FOR UPDATE and the
+    booking counts are locking reads, so a new booking cannot pass the guards."""
+    room = get_or_404(session, Room, room_id, lock=True)
     check_can_manage(current, room)
     if not current.has_role(RoleCode.ADMIN) and set(changes) - OWNER_FIELDS:
         raise _forbidden("Only the Admin can change the floor, owner or status of a room.")
@@ -314,9 +315,9 @@ def update_room(session: Session, room_id: int, changes: dict, current: CurrentU
     if changes.get("is_private") is False and room.is_private:
         _check_no_pending_owner(session, room)
     if changes.get("is_active") is False and room.is_active:
-        check_no_future_bookings(session, [room.id], "room", "is_active")
+        check_no_future_bookings(session, [room.id], "room", "is_active", locking=True)
     if moving:
-        check_no_future_bookings(session, [room.id], "room", "floor_id")
+        check_no_future_bookings(session, [room.id], "room", "floor_id", locking=True)
 
     apply_changes(room, changes)
     room.floor, room.category, room.owner = floor, category, owner

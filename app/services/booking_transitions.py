@@ -8,7 +8,7 @@ local Phnom Penh times; "now" comes from `clock`.
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.orm import Session
 
 from app.constants.booking import (
@@ -43,6 +43,7 @@ _STATUS_MESSAGES = {
 
 
 # --- Times -----------------------------------------------------------------------------
+# Each Python helper has its SQL twin (a correlated subquery on `Booking.id`) for queries.
 
 
 def first_start(booking: Booking) -> datetime:
@@ -50,9 +51,36 @@ def first_start(booking: Booking) -> datetime:
     return min(clock.session_start(s) for s in booking.sessions)
 
 
+def first_start_sql():
+    """`first_start` in SQL: the local start of a booking's first session."""
+    return (
+        select(func.min(func.timestamp(BookingSession.date, BookingSession.start_time)))
+        .where(BookingSession.booking_id == Booking.id)
+        .scalar_subquery()
+    )
+
+
+def first_day_sql():
+    """The date of a booking's first session (the day of `first_start`), in SQL."""
+    return (
+        select(func.min(BookingSession.date))
+        .where(BookingSession.booking_id == Booking.id)
+        .scalar_subquery()
+    )
+
+
 def last_end(booking: Booking) -> datetime:
     """Local end of the latest session."""
     return max(clock.session_end(s) for s in booking.sessions)
+
+
+def last_end_sql():
+    """`last_end` in SQL: the local end of a booking's last session."""
+    return (
+        select(func.max(func.timestamp(BookingSession.date, BookingSession.end_time)))
+        .where(BookingSession.booking_id == Booking.id)
+        .scalar_subquery()
+    )
 
 
 def has_started(booking: Booking) -> bool:
@@ -68,6 +96,26 @@ def display_status(booking: Booking) -> DisplayStatus:
     if booking.status == BookingStatus.CONFIRMED and has_ended(booking):
         return DisplayStatus.COMPLETED
     return DisplayStatus(booking.status)
+
+
+def filter_display_status(query: Select, status: str | None) -> Select:
+    """`display_status` in SQL, for `?status=` (B-10): CONFIRMED means not yet ended;
+    COMPLETED means confirmed and ended. Empty means no filter; anything else is 422."""
+    if status is None or not status.strip():
+        return query
+    try:
+        wanted = DisplayStatus(status.strip())
+    except ValueError:
+        message = f"Must be one of {', '.join(DisplayStatus)}."
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR, 422, "Invalid request.", {"status": message}
+        ) from None
+    confirmed = Booking.status == BookingStatus.CONFIRMED
+    if wanted == DisplayStatus.COMPLETED:
+        return query.where(confirmed, last_end_sql() <= clock.now_local())
+    if wanted == DisplayStatus.CONFIRMED:
+        return query.where(confirmed, last_end_sql() > clock.now_local())
+    return query.where(Booking.status == wanted.value)
 
 
 def setup_start(booking: Booking, lead_minutes: int) -> datetime:
@@ -125,6 +173,19 @@ def stop_blocking(session: Session, booking: Booking) -> None:
         .where(BookingSession.booking_id == booking.id)
         .values(is_blocking=False)
     )
+
+
+def cancel(session: Session, booking: Booking, version: int, reason: str | None) -> None:
+    """T12 and B-27: CANCELLED with the time and the reason; the sessions stop blocking."""
+    advance(
+        session,
+        booking,
+        version,
+        status=BookingStatus.CANCELLED,
+        cancelled_at=clock.now_utc(),
+        cancel_reason=reason,
+    )
+    stop_blocking(session, booking)
 
 
 def add_door_pass(session: Session, booking: Booking) -> None:

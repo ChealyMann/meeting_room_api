@@ -45,9 +45,11 @@ def _door_pass_taken(session: Session, code: str) -> bool:
 
 
 def new_door_pass_code(session: Session, reference_code: str) -> str:
-    """`NBC-NNNNN` (BR-DP-01): not the booking's reference code, not used by an active pass."""
+    """`NBC-NNNNN` (BR-DP-01): its 5 digits are not the last 5 digits of the booking's
+    reference code (`NBC-26-48213` -> `48213`), and no active pass uses it."""
     for _ in range(MAX_TRIES):
-        code = f"{REFERENCE_PREFIX}{_five_digits()}"
-        if code != reference_code and not _door_pass_taken(session, code):
+        digits = str(_five_digits())
+        code = f"{REFERENCE_PREFIX}{digits}"
+        if digits != reference_code[-5:] and not _door_pass_taken(session, code):
             return code
     raise RuntimeError("No free door pass code after 20 tries.")

@@ -19,9 +19,8 @@ from app.errors import AppError, ErrorCode
 from app.models import Booking, ITTicket, User, it_ticket_staff
 from app.schemas.it_ticket import ITStaffOut, ITTicketItem
 from app.security import CurrentUser, load_role_codes
+from app.services import booking_access, booking_view
 from app.services import booking_transitions as transitions
-from app.services import booking_view
-from app.services.booking_review import first_start_sql
 from app.services.clock import now_utc
 from app.services.listing import apply_search, paginate
 from app.services.records import not_found
@@ -82,15 +81,13 @@ def list_tickets(
             choices = ", ".join(ITStatus)
             raise _invalid("status", f"Must be one of {choices}.") from None
     query = apply_search(query, q, [Booking.meeting_title, Booking.reference_code])
-    query = query.order_by(first_start_sql(), ITTicket.id)
+    query = query.order_by(transitions.first_start_sql(), ITTicket.id)
     return paginate(session, query, page, size)
 
 
-def build_ticket_items(
-    session: Session, tickets: list[ITTicket], settings: Settings
-) -> list[ITTicketItem]:
+def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTicketItem]:
     """Answers for `tickets`. Their bookings, staff and reviews should be preloaded."""
-    bookings = booking_view.build_booking_list_items(session, [t.booking for t in tickets])
+    bookings = booking_view.build_booking_list_items([t.booking for t in tickets])
     items = []
     for ticket, booking_item in zip(tickets, bookings, strict=True):
         booking = ticket.booking
@@ -122,13 +119,24 @@ def build_ticket_items(
 # --- T10: assign -----------------------------------------------------------------------
 
 
-def _check_open(ticket: ITTicket, version: int) -> Booking:
+def _load_for_write(
+    session: Session, current: CurrentUser, ticket_id: int
+) -> tuple[ITTicket, Booking]:
+    """The visible ticket (else 404) and its booking, read for a write (B-31)."""
+    ticket = _load_visible(session, current, ticket_id)
+    return ticket, booking_access.load_booking_for_write(session, ticket.booking_id)
+
+
+def _check_open(booking: Booking, version: int) -> None:
     """Spec 8.5 steps 4 and 5: the booking's version, then it must be in IT setup."""
-    booking = ticket.booking
     transitions.check_version(booking, version)
     if booking.status != BookingStatus.SETUP_IN_PROGRESS:
         raise transitions.invalid_transition(booking)
-    return booking
+
+
+def _is_active_it_staff(session: Session, user: User) -> bool:
+    """Active and still holding the IT_STAFF role."""
+    return user.is_active and RoleCode.IT_STAFF in load_role_codes(session, user.id)
 
 
 def _active_it_staff(session: Session, user_ids: list[int]) -> list[User]:
@@ -140,7 +148,7 @@ def _active_it_staff(session: Session, user_ids: list[int]) -> list[User]:
             raise _invalid("user_ids", "User not found.")
         users.append(user)
     for user in users:
-        if not user.is_active or RoleCode.IT_STAFF not in load_role_codes(session, user.id):
+        if not _is_active_it_staff(session, user):
             raise AppError(
                 ErrorCode.INACTIVE_REFERENCE, 409, NOT_ACTIVE_STAFF, {"user_ids": NOT_ACTIVE_STAFF}
             )
@@ -156,8 +164,8 @@ def assign_staff(
     version: int,
 ) -> ITTicket:
     """T10 (BR-IT-02). The new list replaces the old one; the booking version goes up by 1."""
-    ticket = _load_visible(session, current, ticket_id)
-    booking = _check_open(ticket, version)
+    ticket, booking = _load_for_write(session, current, ticket_id)
+    _check_open(booking, version)
     if ticket.status == ITStatus.READY:
         raise transitions.invalid_transition(booking)
     users = _active_it_staff(session, user_ids)
@@ -175,10 +183,12 @@ def assign_staff(
 
 
 def mark_ready(session: Session, current: CurrentUser, ticket_id: int, version: int) -> ITTicket:
-    """T11 (BR-IT-03, B-22): needs at least one active assigned IT Staff. Confirms the booking."""
-    ticket = _load_visible(session, current, ticket_id)
-    booking = _check_open(ticket, version)
-    if ticket.status != ITStatus.ASSIGNED or not any(user.is_active for user in ticket.staff):
+    """T11 (BR-IT-03, B-22): needs at least one assigned user who is active and still holds
+    IT_STAFF. Confirms the booking."""
+    ticket, booking = _load_for_write(session, current, ticket_id)
+    _check_open(booking, version)
+    staff_ready = any(_is_active_it_staff(session, user) for user in ticket.staff)
+    if ticket.status != ITStatus.ASSIGNED or not staff_ready:
         raise transitions.invalid_transition(booking, NO_ACTIVE_STAFF)
 
     ticket.status = ITStatus.READY.value

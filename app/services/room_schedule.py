@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
+from app.constants.booking import MASKED_TITLE
 from app.errors import AppError, ErrorCode
 from app.models import Booking, BookingSession, Room
 from app.schemas.room_schedule import ScheduleItem
@@ -33,14 +34,15 @@ def _range(date_from: date | None, date_to: date | None, settings: Settings) -> 
 
 
 def _item(session: Session, current: CurrentUser, row: BookingSession, booking: Booking):
-    masked = booking.room.is_private and not booking_access.can_view(session, current, booking)
+    """Spec 8.1: `masked` is decided once; the title and the hidden fields follow from it."""
+    masked = booking_access.is_masked(session, current, booking)
     return ScheduleItem(
         date=row.date,
         start_time=row.start_time,
         end_time=row.end_time,
         booking_id=None if masked else booking.id,
         reference_code=None if masked else booking.reference_code,
-        title=booking_access.visible_title(session, current, booking),
+        title=MASKED_TITLE if masked else booking.meeting_title,
         requester_name=None if masked else booking.requester_info.get("name_en"),
         status=booking.status,
         is_masked=masked,

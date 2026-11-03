@@ -11,7 +11,7 @@ bookings (B-27).
 from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
-from app.constants.booking import BOOKER_OFF_REASON, FINAL, BookingStatus
+from app.constants.booking import BOOKER_OFF_REASON, FINAL
 from app.constants.roles import RoleCode, seed_order
 from app.errors import AppError, ErrorCode
 from app.models import (
@@ -29,7 +29,6 @@ from app.schemas.refs import NamedRef, ProvinceRef, RoleRef
 from app.schemas.user import UserDetail, UserListItem
 from app.security import hash_password
 from app.services import booking_transitions as transitions
-from app.services import clock
 from app.services.listing import apply_active_filter, apply_default_order, apply_search, paginate
 from app.services.passwords import check_new_password
 from app.services.province import check_province_code, get_user_province
@@ -225,15 +224,7 @@ def _cancel_bookings_of(session: Session, user_id: int) -> list[int]:
     for booking in bookings:
         if transitions.has_ended(booking):
             continue
-        transitions.advance(
-            session,
-            booking,
-            booking.version,
-            status=BookingStatus.CANCELLED,
-            cancelled_at=clock.now_utc(),
-            cancel_reason=BOOKER_OFF_REASON,
-        )
-        transitions.stop_blocking(session, booking)
+        transitions.cancel(session, booking, booking.version, BOOKER_OFF_REASON)
         cancelled.append(booking.id)
     return cancelled
 

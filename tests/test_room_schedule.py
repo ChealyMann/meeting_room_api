@@ -4,7 +4,7 @@ from datetime import date, time, timedelta
 
 from sqlalchemy import event
 
-from app.constants.booking import MASKED_TITLE, BookingStatus
+from app.constants.booking import MASKED_TITLE, BookingRoute, BookingStatus
 from tests.booking_helpers import error, fields
 
 
@@ -254,3 +254,88 @@ def test_query_count_does_not_grow(
     many = statements()
     assert (few[1], many[1]) == (2, 6)
     assert many[0] == few[0]
+
+
+def test_private_booking_stays_masked_after_room_turns_shared(
+    client, frozen, make_user, make_pitika, make_bookable_room, make_booking, auth_headers
+):
+    """B-30: an R2 booking made while the room was private keeps its privacy when the
+    room turns shared: in the schedule and in the clash message."""
+    make_pitika()
+    owner = make_user(roles=["ROOM_OWNER"])
+    room = make_bookable_room(private=True, owner=owner)
+    booker = make_user(roles=["STAFF"])
+    make_booking(
+        room, booker, status=BookingStatus.CONFIRMED, route=BookingRoute.R2, sessions=one_hour(1)
+    )
+    admin = auth_headers(make_user(roles=["ADMIN"]))
+    response = client.patch(f"/api/v1/rooms/{room.id}", json={"is_private": False}, headers=admin)
+    assert response.status_code == 200
+
+    viewer = auth_headers(make_user(roles=["STAFF"]))
+    item = client.get(url(room), headers=viewer).json()["items"][0]
+    assert item["is_masked"] is True
+    assert item["title"] == MASKED_TITLE
+    assert (item["booking_id"], item["reference_code"], item["requester_name"]) == (
+        None,
+        None,
+        None,
+    )
+
+    response = client.post(
+        "/api/v1/bookings",
+        json={
+            "room_id": room.id,
+            "sessions": [{"date": day(1).isoformat(), "start_time": "09:00", "end_time": "10:00"}],
+            "meeting_title": "Team meeting",
+            "meeting_type": "INTERNAL",
+            "attendees": 5,
+        },
+        headers=viewer,
+    )
+    assert error(response) == (409, "SCHEDULE_CONFLICT")
+    assert response.json()["error"]["message"] == (
+        f"This room is already booked from 09:00 to 10:00 for {MASKED_TITLE}."
+    )
+
+
+def test_query_count_with_it_staff_viewer(
+    client, frozen, conn, db_session, make_user, make_bookable_room, make_booking, auth_headers
+):
+    """An IT Staff viewer costs one access query per masked item, not two: `masked` is
+    decided once per item and the title follows from it."""
+    room = make_bookable_room(private=True)
+    headers = auth_headers(make_user(roles=["IT_STAFF"]))
+
+    def add(n, start):
+        for i in range(n):
+            make_booking(
+                room,
+                make_user(roles=["STAFF"]),
+                status=BookingStatus.CONFIRMED,
+                it=True,
+                sessions=one_hour(1, start + i),
+            )
+        db_session.expire_all()
+
+    def statements():
+        seen = []
+
+        def remember(*_args):
+            seen.append(1)
+
+        event.listen(conn, "before_cursor_execute", remember)
+        try:
+            response = client.get(url(room), headers=headers)
+        finally:
+            event.remove(conn, "before_cursor_execute", remember)
+        assert response.status_code == 200
+        assert all(item["is_masked"] for item in response.json()["items"])
+        return len(seen), response.json()["total"]
+
+    add(2, 8)
+    few = statements()
+    add(4, 10)
+    many = statements()
+    assert (few[1], many[1]) == (2, 6)
+    assert many[0] - few[0] == 4

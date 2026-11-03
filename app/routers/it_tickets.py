@@ -24,7 +24,7 @@ def list_tickets(
     see the tickets they are assigned to. Rejected and cancelled bookings are left out. `q`
     matches the meeting title or the reference code."""
     result = it_ticket.list_tickets(session, current, paging.page, paging.size, status, q)
-    items = it_ticket.build_ticket_items(session, result["items"], settings)
+    items = it_ticket.build_ticket_items(result["items"], settings)
     return Page[ITTicketItem](**{**result, "items": items})
 
 
@@ -42,7 +42,7 @@ def assign_staff(
     ticket = it_ticket.assign_staff(
         session, current, ticket_id, body.user_ids, body.technician_notes, body.version
     )
-    return it_ticket.build_ticket_items(session, [ticket], settings)[0]
+    return it_ticket.build_ticket_items([ticket], settings)[0]
 
 
 @router.post("/{ticket_id}/ready", response_model=ITTicketItem, summary="Mark the setup ready")
@@ -56,4 +56,4 @@ def mark_ready(
     """T11. IT Lead only. `version` is the booking's. Needs at least one active assigned IT
     Staff (409 INVALID_TRANSITION). The booking becomes CONFIRMED with a door pass."""
     ticket = it_ticket.mark_ready(session, current, ticket_id, body.version)
-    return it_ticket.build_ticket_items(session, [ticket], settings)[0]
+    return it_ticket.build_ticket_items([ticket], settings)[0]

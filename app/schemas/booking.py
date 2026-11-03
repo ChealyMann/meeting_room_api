@@ -102,8 +102,9 @@ class BookingUpdate(RequestModel):
     meeting_purpose: OptionalBookingText(1000) = None
     attendees: int = None
     participant_emails: list[Email] = None
-    catering: CateringUpdate = None
-    it: ITUpdate = None
+    # `| None` so an explicit null reaches the service and is refused as FIELD_NOT_EDITABLE.
+    catering: CateringUpdate | None = None
+    it: ITUpdate | None = None
     room_id: Any = None
     sessions: Any = None
     private_justification: Any = None

@@ -25,9 +25,14 @@ def test_reference_code_uses_the_local_year(db_session):
 def test_reference_code_skips_a_taken_code(
     db_session, monkeypatch, frozen, make_bookable_room, make_user, make_booking
 ):
-    booking = make_booking(make_bookable_room(), make_user(), status=BookingStatus.PENDING_PITIKA)
-    taken = int(booking.reference_code[-5:])
-    draws = iter([taken - 10000, 4321])
+    # The taken code is fixed, so the second draw can never be it.
+    make_booking(
+        make_bookable_room(),
+        make_user(),
+        status=BookingStatus.PENDING_PITIKA,
+        reference_code="NBC-26-55555",
+    )
+    draws = iter([45555, 4321, 7777])  # 45555 + 10000 = 55555 is taken
     monkeypatch.setattr(secrets, "randbelow", lambda _n: next(draws))
     assert booking_codes.new_reference_code(db_session, NOW) == "NBC-26-14321"
 
@@ -68,6 +73,7 @@ def test_door_pass_may_reuse_an_expired_code(
 
 
 def test_door_pass_differs_from_the_reference_code(db_session, monkeypatch):
-    draws = iter([38213, 11111])  # the first draw gives NBC-48213, the reference code itself
+    """BR-DP-01: the pass's 5 digits are never the last 5 digits of the reference code."""
+    draws = iter([38213, 11111])  # the first draw gives NBC-48213: the digits of NBC-26-48213
     monkeypatch.setattr(secrets, "randbelow", lambda _n: next(draws))
-    assert booking_codes.new_door_pass_code(db_session, "NBC-48213") == "NBC-21111"
+    assert booking_codes.new_door_pass_code(db_session, "NBC-26-48213") == "NBC-21111"

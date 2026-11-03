@@ -79,7 +79,7 @@ def _list_item_fields(booking: Booking) -> dict[str, Any]:
     }
 
 
-def build_booking_list_items(session: Session, bookings: list[Booking]) -> list[BookingListItem]:
+def build_booking_list_items(bookings: list[Booking]) -> list[BookingListItem]:
     return [BookingListItem(**_list_item_fields(booking)) for booking in bookings]
 
 

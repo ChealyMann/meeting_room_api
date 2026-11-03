@@ -45,6 +45,18 @@ def test_door_pass_viewers(client, frozen, confirmed, make_user, make_pitika, au
     assert set(data) == {"passcode", "expires_at", "expired"}
     assert data["passcode"] == booking.door_pass.passcode
     assert data["expired"] is False
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("status", [BookingStatus.REJECTED, BookingStatus.CANCELLED])
+def test_no_door_pass_after_reject_or_cancel(
+    client, frozen, make_user, make_bookable_room, make_booking, auth_headers, status
+):
+    booker = make_user(roles=["STAFF"])
+    booking = make_booking(make_bookable_room(), booker, status=status)
+    response = client.get(f"{URL}/{booking.id}/door-pass", headers=auth_headers(booker))
+    assert error(response) == (404, "NOT_FOUND")
+    assert response.json()["error"]["message"] == "This booking has no door pass."
 
 
 def test_door_pass_it_lead_403(

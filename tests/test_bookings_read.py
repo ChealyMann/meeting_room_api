@@ -5,7 +5,7 @@ from datetime import datetime, time, timedelta
 import pytest
 
 from app.constants.booking import BookingRoute, BookingStatus
-from tests.booking_helpers import DAY, URL, error, fields
+from tests.booking_helpers import DAY, NOW, URL, book, error, fields
 
 NEXT_DAY = DAY + timedelta(days=1)
 
@@ -123,6 +123,8 @@ def test_mine_newest_first_and_q(
     assert response.status_code == 200
     data = response.json()
     assert [item["id"] for item in data["items"]] == [second.id, first.id]
+    created = [item["created_at"] for item in data["items"]]
+    assert created == sorted(created, reverse=True)
     assert (data["page"], data["size"], data["total"]) == (1, 20, 2)
 
     data = client.get(f"{URL}/mine", params={"q": "budg"}, headers=headers).json()
@@ -130,6 +132,29 @@ def test_mine_newest_first_and_q(
 
     data = client.get(f"{URL}/mine", params={"q": second.reference_code}, headers=headers).json()
     assert [item["id"] for item in data["items"]] == [second.id]
+
+
+def test_mine_orders_by_created_at(
+    client, freeze_now, make_pitika, make_user, make_bookable_room, auth_headers
+):
+    """`created_at` comes from the app clock, so the newest sent comes first even when
+    its id is lower."""
+    make_pitika()
+    booker = make_user(roles=["STAFF"])
+    room = make_bookable_room()
+    headers = auth_headers(booker)
+    freeze_now(NOW + timedelta(minutes=30))
+    later = book(client, headers, room.id).json()
+    freeze_now(NOW)
+    sessions = [{"date": DAY.isoformat(), "start_time": "11:00", "end_time": "12:00"}]
+    earlier = book(client, headers, room.id, sessions=sessions).json()
+    assert later["id"] < earlier["id"]
+    assert (later["created_at"], later["updated_at"]) == ("2026-11-09T01:30:00Z",) * 2
+    assert earlier["created_at"] == "2026-11-09T01:00:00Z"
+
+    items = client.get(f"{URL}/mine", headers=headers).json()["items"]
+    assert [item["id"] for item in items] == [later["id"], earlier["id"]]
+    assert [item["created_at"] for item in items] == [later["created_at"], earlier["created_at"]]
 
 
 def test_mine_item_shape(client, frozen, make_user, make_bookable_room, make_booking, auth_headers):

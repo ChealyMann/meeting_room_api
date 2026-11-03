@@ -3,7 +3,7 @@
 
 from datetime import date
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.constants.booking import (
@@ -18,22 +18,12 @@ from app.models import Booking, BookingReview, BookingSession, Room, User
 from app.security import CurrentUser
 from app.services import booking_access
 from app.services import booking_transitions as transitions
-from app.services.booking import filter_display_status
 from app.services.booking_view import booking_load_options
 from app.services.clock import now_utc
 from app.services.listing import apply_search, paginate
 from app.services.records import not_found
 
 STARTED_MESSAGE = "The meeting has started. It cannot be approved."
-
-
-def first_start_sql():
-    """The local start of a booking's first session, as a correlated subquery."""
-    return (
-        select(func.min(func.timestamp(BookingSession.date, BookingSession.start_time)))
-        .where(BookingSession.booking_id == Booking.id)
-        .scalar_subquery()
-    )
 
 
 def _list_in_rooms(
@@ -55,7 +45,7 @@ def _list_in_rooms(
         .where(Booking.room_id.in_(room_ids))
         .options(*booking_load_options())
     )
-    query = filter_display_status(query, status)
+    query = transitions.filter_display_status(query, status)
     if room_id is not None:
         query = query.where(Booking.room_id == room_id)
     if date_from is not None or date_to is not None:
@@ -68,7 +58,7 @@ def _list_in_rooms(
     query = apply_search(
         query, q, [Booking.meeting_title, Booking.reference_code, User.name_en, User.name_kh]
     )
-    query = query.order_by(first_start_sql(), Booking.id)
+    query = query.order_by(transitions.first_start_sql(), Booking.id)
     return paginate(session, query, page, size)
 
 
@@ -120,14 +110,11 @@ def list_pitika_bookings(
 
 
 def _load_in_province(session: Session, current: CurrentUser, booking_id: int) -> Booking:
-    """404 when the booking is missing or its room is outside the Pitika's province (B-08)."""
-    booking = session.get(Booking, booking_id)
+    """404 when the booking is missing or its room is outside the Pitika's province (B-08).
+    The booking is read for a write (B-31)."""
+    booking = booking_access.load_booking_for_write(session, booking_id)
     province = booking_access.pitika_province(current)
-    if (
-        booking is None
-        or province is None
-        or booking_access.room_province(booking.room) != province
-    ):
+    if province is None or booking_access.room_province(booking.room) != province:
         raise not_found()
     return booking
 
@@ -188,11 +175,10 @@ def list_owner_bookings(
 
 
 def _load_owned(session: Session, current: CurrentUser, booking_id: int) -> Booking:
-    """404 when the booking is missing or not in a private room the user owns now (B-08)."""
-    booking = session.get(Booking, booking_id)
-    if booking is None or not (
-        booking.room.is_private and booking.room.room_owner_id == current.id
-    ):
+    """404 when the booking is missing or not in a private room the user owns now (B-08).
+    The booking is read for a write (B-31)."""
+    booking = booking_access.load_booking_for_write(session, booking_id)
+    if not (booking.room.is_private and booking.room.room_owner_id == current.id):
         raise not_found()
     return booking
 

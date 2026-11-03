@@ -236,6 +236,15 @@ def test_assign_needs_active_it_staff(client, frozen, lead, staff, make_user, se
     assert error(assign(client, headers, booking, [])) == (422, "VALIDATION_ERROR")
 
 
+def test_assign_technician_notes_refuse_html(client, frozen, lead, staff, setup, auth_headers):
+    booking = setup()
+    response = assign(
+        client, auth_headers(lead), booking, [staff.id], technician_notes="<b>Bring cables</b>"
+    )
+    assert error(response) == (422, "VALIDATION_ERROR")
+    assert "technician_notes" in fields(response)
+
+
 def test_assign_wrong_state(client, frozen, lead, staff, setup, auth_headers):
     confirmed = setup(status=BookingStatus.CONFIRMED)
     assert error(assign(client, auth_headers(lead), confirmed, [staff.id])) == (
@@ -291,6 +300,17 @@ def test_ready_with_one_inactive_one_active(
     off = make_user(roles=["IT_STAFF"], is_active=False)
     booking = setup(assigned_staff=(off, staff))
     assert ready(client, auth_headers(lead), booking).status_code == 200
+
+
+def test_ready_when_the_staff_lost_the_it_staff_role(
+    client, frozen, lead, make_user, setup, auth_headers
+):
+    """An active user who still holds IT_STAFF is needed: the role counts, not only is_active."""
+    former = make_user(roles=["STAFF"])  # was IT Staff when assigned, lost the role since
+    booking = setup(assigned_staff=(former,))
+    response = ready(client, auth_headers(lead), booking)
+    assert error(response) == (409, "INVALID_TRANSITION")
+    assert response.json()["error"]["message"] == "Assign active IT Staff first."
 
 
 def test_ready_stale_and_wrong_status(client, frozen, lead, staff, setup, auth_headers):

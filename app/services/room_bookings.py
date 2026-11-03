@@ -12,25 +12,32 @@ from app.models import Booking, BookingSession, Building, Floor, Room
 from app.services import clock
 
 
-def future_booking_count(session: Session, room_ids: list[int]) -> int:
+def _share_locked(query, locking: bool):
+    """`locking=True`: a locking read (FOR SHARE). It sees rows committed after this
+    transaction's snapshot, and holds them until the commit."""
+    return query.with_for_update(read=True) if locking else query
+
+
+def future_booking_count(session: Session, room_ids: list[int], *, locking: bool = False) -> int:
     """Distinct bookings with a blocking session in these rooms that has not ended yet."""
     if not room_ids:
         return 0
     session_end = func.timestamp(BookingSession.date, BookingSession.end_time)
-    return session.scalar(
-        select(func.count(distinct(BookingSession.booking_id))).where(
-            BookingSession.room_id.in_(room_ids),
-            BookingSession.is_blocking.is_(True),
-            session_end > clock.now_local(),
-        )
+    query = select(func.count(distinct(BookingSession.booking_id))).where(
+        BookingSession.room_id.in_(room_ids),
+        BookingSession.is_blocking.is_(True),
+        session_end > clock.now_local(),
     )
+    return session.scalar(_share_locked(query, locking))
 
 
-def check_no_future_bookings(session: Session, room_ids: list[int], place: str, field: str) -> None:
+def check_no_future_bookings(
+    session: Session, room_ids: list[int], place: str, field: str, *, locking: bool = False
+) -> None:
     """409 HAS_FUTURE_BOOKINGS when the rooms have future bookings. `place` is the word
     for what changes ("room", "floor", "building", "office"); `field` is `is_active` when it
-    is turned off, else the field that moves it (B-21)."""
-    count = future_booking_count(session, room_ids)
+    is turned off, else the field that moves it (B-21). `locking`: see `_share_locked`."""
+    count = future_booking_count(session, room_ids, locking=locking)
     if not count:
         return
     then = "Ask the bookers to cancel first." if field == "is_active" else "Move it after they end."
@@ -38,19 +45,17 @@ def check_no_future_bookings(session: Session, room_ids: list[int], place: str, 
     raise AppError(ErrorCode.HAS_FUTURE_BOOKINGS, 409, message, {field: message})
 
 
-def pending_owner_count(session: Session, room_id: int) -> int:
+def pending_owner_count(session: Session, room_id: int, *, locking: bool = False) -> int:
     """Bookings waiting for the room owner, plus R2 bookings still waiting for Pitika
-    (they reach the owner next, B-14)."""
-    return session.scalar(
-        select(func.count(Booking.id)).where(
-            Booking.room_id == room_id,
-            or_(
-                Booking.status == BookingStatus.PENDING_OWNER,
-                (Booking.status == BookingStatus.PENDING_PITIKA)
-                & (Booking.route == BookingRoute.R2),
-            ),
-        )
+    (they reach the owner next, B-14). `locking`: see `_share_locked`."""
+    query = select(func.count(Booking.id)).where(
+        Booking.room_id == room_id,
+        or_(
+            Booking.status == BookingStatus.PENDING_OWNER,
+            (Booking.status == BookingStatus.PENDING_PITIKA) & (Booking.route == BookingRoute.R2),
+        ),
     )
+    return session.scalar(_share_locked(query, locking))
 
 
 def private_room_ids_owned_by(session: Session, user_id: int) -> list[int]:

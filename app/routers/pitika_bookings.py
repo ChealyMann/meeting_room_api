@@ -36,7 +36,7 @@ def list_pitika_bookings(
     result = booking_review.list_pitika_bookings(
         session, current, paging.page, paging.size, status, date_from, date_to, room_id, q
     )
-    items = booking_view.build_booking_list_items(session, result["items"])
+    items = booking_view.build_booking_list_items(result["items"])
     return Page[BookingListItem](**{**result, "items": items})
 
 
