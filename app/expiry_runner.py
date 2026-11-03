@@ -18,6 +18,7 @@ from app.services import booking_expiry
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "booking_expiry"
+STOP_TIMEOUT_SECONDS = 5
 
 
 class ExpiryRunner:
@@ -29,18 +30,29 @@ class ExpiryRunner:
         self._has_lock = False
 
     def start(self) -> None:
+        """Start the thread. A second call does nothing."""
+        if self._thread is not None:
+            return
         self._thread = threading.Thread(target=self._loop, name="expiry-job", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
         self._stopping.set()
         if self._thread is not None:
-            self._thread.join()
+            self._thread.join(timeout=STOP_TIMEOUT_SECONDS)
+            if self._thread.is_alive():
+                logger.warning("Expiry job still running at shutdown. Not waiting for it.")
         self._close()
 
     def tick(self) -> bool:
         """One step: take the lock if needed, then run the job. False without the lock."""
-        if not self._hold_lock():
+        try:
+            has_lock = self._hold_lock()
+        except Exception:
+            # The lock connection is broken: throw it away (MySQL frees the lock with it).
+            self._drop_connection()
+            raise
+        if not has_lock:
             return False
         with db.SessionLocal() as session:
             booking_expiry.run_once(session)
@@ -52,7 +64,6 @@ class ExpiryRunner:
                 self.tick()
             except Exception:
                 logger.exception("Expiry job failed. It runs again at the next tick.")
-                self._drop_connection()
             self._stopping.wait(self._interval)
 
     def _hold_lock(self) -> bool:

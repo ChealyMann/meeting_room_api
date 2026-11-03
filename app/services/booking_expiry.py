@@ -45,12 +45,13 @@ def run_once(session: Session) -> ExpiryResult:
     for booking_id in ids:
         try:
             new_status = _expire(session, booking_id)
-        except AppError as exc:
+            session.commit()
+        except Exception as exc:
+            # One bad booking must not stop the others. STALE_VERSION: a person acted first.
             session.rollback()
-            if exc.code != ErrorCode.STALE_VERSION:
-                raise
-            continue  # a person acted first
-        session.commit()
+            if not (isinstance(exc, AppError) and exc.code == ErrorCode.STALE_VERSION):
+                logger.exception("Expiry job: booking %d failed. Skipped.", booking_id)
+            continue
         if new_status == BookingStatus.REJECTED:
             result.rejected.append(booking_id)
         elif new_status == BookingStatus.CONFIRMED:

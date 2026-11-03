@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -67,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         if runner is not None:
-            runner.stop()
+            await asyncio.to_thread(runner.stop)  # stop() waits for the thread
         app.state.expiry_runner = None
 
 

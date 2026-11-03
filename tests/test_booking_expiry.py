@@ -120,6 +120,38 @@ def test_skips_changed_booking(monkeypatch, freeze_now, booking, db_session):
     assert changed.rejection is None
 
 
+def test_failing_booking_does_not_stop_the_others(
+    monkeypatch, caplog, freeze_now, booking, db_session
+):
+    freeze_now(START - timedelta(days=1))
+    broken = booking(status=BookingStatus.SETUP_IN_PROGRESS, it=True)  # the lowest id
+    pending = booking()
+    setup = booking(status=BookingStatus.SETUP_IN_PROGRESS, it=True)
+    freeze_now(START)
+
+    real_make_confirmed = transitions.make_confirmed
+
+    def make_confirmed(session, b, version):
+        if b.id == broken.id:
+            raise RuntimeError("bad data")
+        real_make_confirmed(session, b, version)
+
+    monkeypatch.setattr(transitions, "make_confirmed", make_confirmed)
+
+    result = run_once(db_session)
+
+    assert result == ExpiryResult(rejected=[pending.id], confirmed=[setup.id])
+    assert f"booking {broken.id} failed" in caplog.text
+    db_session.rollback()  # only what run_once committed stays
+    for b, status in (
+        (broken, BookingStatus.SETUP_IN_PROGRESS),
+        (pending, BookingStatus.REJECTED),
+        (setup, BookingStatus.CONFIRMED),
+    ):
+        db_session.refresh(b)
+        assert b.status == status
+
+
 def test_script_prints_counts(capsys, monkeypatch, freeze_now, booking, db_session):
     from scripts import run_expiry
 
@@ -137,15 +169,22 @@ def test_runner_not_started_in_tests(app):
         assert app.state.expiry_runner is None
 
 
-def test_runner_holds_the_lock_until_stopped(monkeypatch, settings, migrated_engine):
-    # Its own lock name, so a dev server on the same MySQL cannot get in the way.
+@pytest.fixture
+def lock_is_free(monkeypatch, migrated_engine):
+    """The runner uses its own lock name, so a dev server on the same MySQL cannot get in
+    the way. Returns a check: is that lock free?"""
     monkeypatch.setattr(expiry_runner, "LOCK_NAME", "booking_expiry_test")
-    ran = threading.Event()
-    monkeypatch.setattr(booking_expiry, "run_once", lambda session: ran.set())
 
-    def lock_is_free() -> bool:
+    def check() -> bool:
         with migrated_engine.connect() as connection:
             return connection.scalar(text("SELECT IS_FREE_LOCK('booking_expiry_test')")) == 1
+
+    return check
+
+
+def test_runner_holds_the_lock_until_stopped(monkeypatch, settings, lock_is_free):
+    ran = threading.Event()
+    monkeypatch.setattr(booking_expiry, "run_once", lambda session: ran.set())
 
     first = ExpiryRunner(settings)
     second = ExpiryRunner(settings)
@@ -157,4 +196,61 @@ def test_runner_holds_the_lock_until_stopped(monkeypatch, settings, migrated_eng
     finally:
         second.stop()
         first.stop()
+    assert lock_is_free()
+
+
+def test_runner_keeps_the_lock_when_the_job_fails(
+    monkeypatch, settings, migrated_engine, lock_is_free
+):
+    holders = []  # the MySQL connection that holds the lock, at each run
+    two_runs = threading.Event()
+
+    def fail(session):
+        with migrated_engine.connect() as connection:
+            sql = "SELECT IS_USED_LOCK('booking_expiry_test')"
+            holders.append(connection.scalar(text(sql)))
+        if len(holders) == 2:
+            two_runs.set()
+        raise RuntimeError("job failed")
+
+    monkeypatch.setattr(booking_expiry, "run_once", fail)
+    runner = ExpiryRunner(settings.model_copy(update={"expiry_interval_seconds": 1}))
+    runner.start()
+    try:
+        assert two_runs.wait(5)
+    finally:
+        runner.stop()
+    assert holders[0] is not None
+    assert holders[0] == holders[1]  # the lock connection was kept
+    assert lock_is_free()
+
+
+def test_runner_start_twice_makes_one_thread(monkeypatch, settings, lock_is_free):
+    monkeypatch.setattr(booking_expiry, "run_once", lambda session: None)
+
+    def job_threads() -> int:
+        return sum(t.name == "expiry-job" for t in threading.enumerate())
+
+    before = job_threads()
+    runner = ExpiryRunner(settings)
+    runner.start()
+    runner.start()
+    try:
+        assert job_threads() == before + 1
+    finally:
+        runner.stop()
+    assert job_threads() == before
+
+
+def test_lifespan_starts_and_stops_the_runner(monkeypatch, settings, lock_is_free):
+    from app.main import create_app
+
+    ran = threading.Event()
+    monkeypatch.setattr(booking_expiry, "run_once", lambda session: ran.set())
+    app = create_app(settings.model_copy(update={"expiry_job_enabled": True}))
+
+    with TestClient(app):
+        assert app.state.expiry_runner is not None
+        assert ran.wait(5)
+    assert app.state.expiry_runner is None
     assert lock_is_free()
