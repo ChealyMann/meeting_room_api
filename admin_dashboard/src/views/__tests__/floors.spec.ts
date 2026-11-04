@@ -38,7 +38,10 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
+let saveError: (() => Response) | null
+
 beforeEach(() => {
+  saveError = null
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   listCalls.length = 0
@@ -51,6 +54,7 @@ beforeEach(() => {
       const method = init?.method ?? 'GET'
       if (method !== 'GET') {
         writes.push({ method, path: url.pathname, body: String(init?.body) })
+        if (saveError) return saveError()
         return json({
           ...floor(12, { floor_label: 'Ground' }),
           building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' },
@@ -148,6 +152,20 @@ describe('FloorsView', () => {
     expect(writes).toEqual([
       { method: 'POST', path: '/api/v1/floors', body: JSON.stringify({ building_id: 5, floor_label: 'Ground', sort_order: 0 }) },
     ])
+  })
+
+  it('shows future bookings under Building when the floor moves', async () => {
+    const message = 'This floor has 2 future bookings. Move it after they end.'
+    saveError = () => json({ error: { code: 'HAS_FUTURE_BOOKINGS', message, fields: { building_id: message } } }, 409)
+    await mountAt('/floors?location_id=3&building_id=5&id=new')
+
+    const label = inPanel<HTMLInputElement>('#floor_label')!
+    label.value = 'Ground'
+    label.dispatchEvent(new Event('input'))
+    inPanel<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'))
+    await flushPromises()
+
+    expect(inPanel('#building_id-error')?.textContent).toContain(message)
   })
 
   it('is a real page in the sidebar', () => {

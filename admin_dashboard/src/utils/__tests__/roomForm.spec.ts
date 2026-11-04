@@ -54,6 +54,12 @@ describe('roomProblems', () => {
     })
   })
 
+  it('needs an owner for a private room', () => {
+    expect(roomProblems(valid({ is_private: true, room_owner_id: null })).room_owner_id).toBe('A private room needs an owner.')
+    expect(roomProblems(valid({ is_private: true, room_owner_id: 7 })).room_owner_id).toBeUndefined()
+    expect(roomProblems(valid({ is_private: false, room_owner_id: null })).room_owner_id).toBeUndefined()
+  })
+
   it('finds nothing wrong with a complete form', () => {
     expect(roomProblems(valid())).toEqual({})
   })

@@ -216,6 +216,41 @@ describe('RoomFormPanel', () => {
   })
 })
 
+describe('RoomFormPanel booking rules', () => {
+  it('needs an owner before it sends a private room', async () => {
+    const wrapper = await mountPanel()
+    await fillValid(wrapper)
+    await wrapper.get('#is_private').trigger('click')
+
+    await submit(wrapper)
+
+    expect(posts).toEqual([])
+    expect(wrapper.get('#room_owner_id-error').text()).toBe('A private room needs an owner.')
+  })
+
+  it('shows bookings waiting for the owner under Private', async () => {
+    const message = 'Resolve 3 bookings waiting for the room owner first.'
+    saveAnswer = () => json({ error: { code: 'HAS_PENDING_OWNER_BOOKINGS', message, fields: { is_private: message } } }, 409)
+    const wrapper = await mountPanel(SAVED as unknown as RoomDetail)
+    await wrapper.get('#capacity').setValue('14')
+
+    await submit(wrapper)
+
+    expect(wrapper.get('#is_private-error').text()).toBe(message)
+  })
+
+  it('shows future bookings under Floor when the room moves', async () => {
+    const message = 'This room has 3 future bookings. Move it after they end.'
+    saveAnswer = () => json({ error: { code: 'HAS_FUTURE_BOOKINGS', message, fields: { floor_id: message } } }, 409)
+    const wrapper = await mountPanel(SAVED as unknown as RoomDetail)
+    await wrapper.get('#capacity').setValue('14')
+
+    await submit(wrapper)
+
+    expect(wrapper.get('#floor_id-error').text()).toBe(message)
+  })
+})
+
 describe('RoomFormPanel review fixes', () => {
   const room = (changes: Record<string, unknown> = {}) => ({ ...SAVED, ...changes }) as unknown as RoomDetail
   const value = (wrapper: Wrapper, id: string) => (wrapper.get(id).element as HTMLInputElement).value
