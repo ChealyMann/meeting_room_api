@@ -169,9 +169,10 @@ def test_after_last_review_without_it_confirms(frozen, db_session, booking):
 
 def test_cancel(frozen, db_session, booking):
     b = booking(sessions=((DAY, time(9), time(10)), (NEXT_DAY, time(9), time(10))))
-    transitions.cancel(db_session, b, 1, "No longer needed.")
+    transitions.cancel(db_session, b, 1, "No longer needed.", b.requester_id)
     assert (b.status, b.version) == ("CANCELLED", 2)
     assert (b.cancelled_at, b.cancel_reason) == (datetime(2026, 11, 9, 1, 0), "No longer needed.")
+    assert b.cancelled_by == b.requester_id
     blocking = db_session.scalars(
         select(BookingSession.is_blocking).where(BookingSession.booking_id == b.id)
     ).all()
@@ -181,5 +182,5 @@ def test_cancel(frozen, db_session, booking):
 def test_cancel_stale(frozen, db_session, booking):
     b = booking()
     with pytest.raises(AppError) as caught:
-        transitions.cancel(db_session, b, 7, None)
+        transitions.cancel(db_session, b, 7, None, None)
     assert caught.value.code == "STALE_VERSION"

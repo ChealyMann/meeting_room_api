@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openGroup } from './rail'
+
 // Needs the API running (run.bat) and an Admin whose password is already changed.
 const email = process.env.E2E_ADMIN_EMAIL
 const password = process.env.E2E_ADMIN_PASSWORD
@@ -19,6 +21,7 @@ test('add a room type and an item with an icon, then turn the item off', async (
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.locator('.count')).toBeVisible()
 
+  await openGroup(page, 'Catalog')
   await page.getByRole('link', { name: 'Room types' }).click()
   await page.getByRole('button', { name: 'New room type' }).first().click()
   await panel.locator('#name_kh').fill(`ប្រភេទ ${stamp}`)
@@ -28,6 +31,7 @@ test('add a room type and an item with an icon, then turn the item off', async (
   await page.getByPlaceholder('Search Khmer or English name').fill(roomType)
   await expect(page.locator('tbody tr')).toHaveCount(1)
 
+  await openGroup(page, 'Catalog')
   await page.getByRole('link', { name: 'Equipment' }).click()
   await page.getByRole('button', { name: 'New item' }).first().click()
   await panel.locator('#name').fill(item)

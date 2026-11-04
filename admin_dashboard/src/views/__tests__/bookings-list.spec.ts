@@ -96,8 +96,8 @@ describe('BookingsView', () => {
     expect(router.currentRoute.value.query.id).toBe('12')
   })
 
-  it('is in the Bookings group of the sidebar', () => {
-    const group = NAV_GROUPS.find((g) => g.title === 'Bookings')
-    expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list'])
+  it('is in the Daily group of the sidebar', () => {
+    const group = NAV_GROUPS.find((g) => g.title === 'Daily')
+    expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list', 'home'])
   })
 })

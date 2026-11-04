@@ -105,6 +105,119 @@ describe('AppShell', () => {
   })
 })
 
+describe('AppShell sidebar groups', () => {
+  const linkLabels = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper']) =>
+    wrapper.findAll('aside .nav a[href]').map((a) => a.text())
+  const fold = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper'], name: string) =>
+    wrapper.findAll('aside .nav button.fold').find((b) => b.text().includes(name))!
+
+  it('puts the daily pages first: Bookings, Food list, Rooms', async () => {
+    const { wrapper } = await mountShell('/')
+
+    expect(wrapper.get('aside .nav h2').text()).toBe('Daily')
+    expect(linkLabels(wrapper).slice(0, 3)).toEqual(['Bookings', 'Food list', 'Rooms'])
+  })
+
+  it('folds the setup groups, except the one holding the current page', async () => {
+    const { wrapper } = await mountShell('/offices')
+
+    expect(fold(wrapper, 'Places').attributes('aria-expanded')).toBe('true')
+    expect(fold(wrapper, 'Catalog').attributes('aria-expanded')).toBe('false')
+    expect(linkLabels(wrapper)).toContain('Offices')
+    expect(linkLabels(wrapper)).not.toContain('Room types')
+    expect(fold(wrapper, 'Catalog').text()).toContain('5')
+  })
+
+  it('opens and closes a setup group', async () => {
+    const { wrapper } = await mountShell('/')
+
+    await fold(wrapper, 'Catalog').trigger('click')
+    expect(fold(wrapper, 'Catalog').attributes('aria-expanded')).toBe('true')
+    expect(linkLabels(wrapper)).toContain('Room types')
+
+    await fold(wrapper, 'Catalog').trigger('click')
+    expect(linkLabels(wrapper)).not.toContain('Room types')
+  })
+
+  it('opens the group of a page reached later', async () => {
+    const { wrapper, router } = await mountShell('/')
+
+    await router.push('/users')
+    await flushPromises()
+
+    expect(fold(wrapper, 'People').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('a[aria-current="page"]').text()).toContain('Users')
+  })
+})
+
+describe('AppShell folded sidebar', () => {
+  async function folded(path: string) {
+    localStorage.clear()
+    const mounted = await mountShell(path)
+    await mounted.wrapper.get('button[aria-label="Collapse sidebar"]').trigger('click')
+    return mounted
+  }
+  const group = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper'], name: string) =>
+    wrapper.get(`aside button.group-icon[aria-label="${name}"]`)
+  const menu = () => document.body.querySelector('[role="menu"]') as HTMLElement | null
+
+  it('shows the daily links and one icon per setup group, not every setup link', async () => {
+    const { wrapper } = await folded('/')
+
+    const links = wrapper.findAll('aside .nav a[href]').map((a) => a.attributes('title'))
+    expect(links).toEqual(['Bookings', 'Food list', 'Rooms'])
+    expect(wrapper.findAll('aside button.group-icon').map((b) => b.attributes('aria-label'))).toEqual([
+      'Places',
+      'Catalog',
+      'Organisation',
+      'People',
+    ])
+    expect(menu()).toBeNull()
+  })
+
+  it('marks the group holding the current page', async () => {
+    const { wrapper } = await folded('/positions')
+
+    expect(group(wrapper, 'Organisation').classes()).toContain('holds')
+    expect(group(wrapper, 'Catalog').classes()).not.toContain('holds')
+  })
+
+  it('opens a group menu, marks the current page in it, and closes after a pick', async () => {
+    const { wrapper, router } = await folded('/positions')
+
+    await group(wrapper, 'Organisation').trigger('click')
+    expect(group(wrapper, 'Organisation').attributes('aria-expanded')).toBe('true')
+    const items = [...menu()!.querySelectorAll('a')].map((a) => a.textContent?.trim())
+    expect(items).toEqual(['Departments', 'Divisions', 'Positions'])
+    expect(menu()!.querySelector('.menu-head')?.textContent).toMatch(/Organisation\s*3/)
+    expect(menu()!.querySelectorAll('a svg')).toHaveLength(3)
+    expect(menu()!.querySelector('.menu-pointer')).not.toBeNull()
+    expect(menu()!.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Positions')
+
+    menu()!.querySelector<HTMLAnchorElement>('a[href="/divisions"]')!.click()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('divisions')
+    expect(menu()).toBeNull()
+  })
+
+  it('switches menus, and closes with the same icon or Escape', async () => {
+    const { wrapper } = await folded('/')
+
+    await group(wrapper, 'Catalog').trigger('click')
+    await group(wrapper, 'People').trigger('click')
+    expect(menu()?.getAttribute('aria-label')).toBe('People')
+
+    await group(wrapper, 'People').trigger('click')
+    expect(menu()).toBeNull()
+
+    await group(wrapper, 'Places').trigger('click')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+    expect(menu()).toBeNull()
+  })
+})
+
 describe('AppShell photo', () => {
   it('shows the user photo in the rail instead of initials', async () => {
     URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:photo')

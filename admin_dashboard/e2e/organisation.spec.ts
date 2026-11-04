@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openGroup } from './rail'
+
 import { pick } from './picker'
 
 // Needs the API running (run.bat), an Admin whose password is already changed, and at least one active office.
@@ -22,6 +24,7 @@ test('add a department, a division and a position, then make the position inacti
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.locator('.count')).toBeVisible()
 
+  await openGroup(page, 'Organisation')
   await page.getByRole('link', { name: 'Departments' }).click()
   await page.getByRole('button', { name: 'New department' }).first().click()
   await pick(page, 'location_id', { first: true })
@@ -30,6 +33,7 @@ test('add a department, a division and a position, then make the position inacti
   await panel.getByRole('button', { name: 'Create department' }).click()
   await expect(page.getByRole('status')).toContainText(`${department} saved`)
 
+  await openGroup(page, 'Organisation')
   await page.getByRole('link', { name: 'Divisions' }).click()
   await page.getByRole('button', { name: 'New division' }).first().click()
   await pick(page, 'department_id', department)
@@ -41,6 +45,7 @@ test('add a department, a division and a position, then make the position inacti
   await expect(page.locator('tbody tr')).toHaveCount(1)
   await expect(page.locator('tbody tr').first()).toContainText(department)
 
+  await openGroup(page, 'Organisation')
   await page.getByRole('link', { name: 'Positions' }).click()
   await page.getByRole('button', { name: 'New position' }).first().click()
   await panel.locator('#name_kh').fill(`តួនាទី ${stamp}`)

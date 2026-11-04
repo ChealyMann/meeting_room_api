@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openGroup } from './rail'
+
 import { pick } from './picker'
 
 // Needs the API running (run.bat) and an Admin whose password is already changed.
@@ -22,6 +24,7 @@ test('add an office, a building and a floor, then make the office inactive and a
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.locator('.count')).toBeVisible()
 
+  await openGroup(page, 'Places')
   await page.getByRole('link', { name: 'Offices' }).click()
   await page.getByRole('button', { name: 'New office' }).first().click()
   await panel.locator('#name_kh').fill(`ការិយាល័យ ${stamp}`)
@@ -32,6 +35,7 @@ test('add an office, a building and a floor, then make the office inactive and a
   await page.getByPlaceholder('Search name or address').fill(office)
   await expect(page.locator('tbody tr')).toHaveCount(1)
 
+  await openGroup(page, 'Places')
   await page.getByRole('link', { name: 'Buildings' }).click()
   await page.getByRole('button', { name: 'New building' }).first().click()
   await pick(page, 'location_id', office)
@@ -40,6 +44,7 @@ test('add an office, a building and a floor, then make the office inactive and a
   await panel.getByRole('button', { name: 'Create building' }).click()
   await expect(page.getByRole('status')).toContainText(`${building} saved`)
 
+  await openGroup(page, 'Places')
   await page.getByRole('link', { name: 'Floors' }).click()
   await page.getByRole('button', { name: 'New floor' }).first().click()
   await pick(page, 'location_id', office)
@@ -48,6 +53,7 @@ test('add an office, a building and a floor, then make the office inactive and a
   await panel.getByRole('button', { name: 'Create floor' }).click()
   await expect(page.getByRole('status')).toContainText(`${floor} saved`)
 
+  await openGroup(page, 'Places')
   await page.getByRole('link', { name: 'Offices' }).click()
   await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'All' }).click()
   await page.getByPlaceholder('Search name or address').fill(office)

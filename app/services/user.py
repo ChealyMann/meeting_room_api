@@ -224,7 +224,7 @@ def _cancel_bookings_of(session: Session, user_id: int) -> list[int]:
     for booking in bookings:
         if transitions.has_ended(booking):
             continue
-        transitions.cancel(session, booking, booking.version, BOOKER_OFF_REASON)
+        transitions.cancel(session, booking, booking.version, BOOKER_OFF_REASON, None)
         cancelled.append(booking.id)
     return cancelled
 

@@ -1,7 +1,7 @@
 // Bookings, read only for the Admin: the list of all bookings, a room's schedule and the day's food list.
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { BookingDetail, BookingListItem, CateringOrderItem, DoorPassOut, ItemList, Page, ScheduleItem } from './types'
+import type { AdminActionsOut, BookingDetail, BookingListItem, CateringOrderItem, DoorPassOut, ItemList, Page, ScheduleItem } from './types'
 
 /** The blocking sessions of one room, `from`..`to` (Phnom Penh days, at most 31). */
 export function getRoomSchedule(client: ApiClient, roomId: number, from: string, to: string): Promise<ItemList<ScheduleItem>> {
@@ -41,4 +41,21 @@ export function getDoorPass(client: ApiClient, id: number): Promise<DoorPassOut>
 /** The calendar file (text/calendar), one event per session. */
 export function getBookingIcs(client: ApiClient, id: number): Promise<Blob> {
   return client.requestBlob(`/api/v1/bookings/${id}/ics`)
+}
+
+// The Admin's actions (B-33, B-34): cancel any open booking; approve or reject as a backup.
+const ADMIN = '/api/v1/admin/bookings'
+
+/** What the Admin may do with this booking now; the buttons follow it. */
+export function getAdminActions(client: ApiClient, id: number): Promise<AdminActionsOut> {
+  return client.request<AdminActionsOut>('GET', `${ADMIN}/${id}/actions`)
+}
+export function adminCancel(client: ApiClient, id: number, body: { reason: string | null; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${ADMIN}/${id}/cancel`, { json: body })
+}
+export function adminApprove(client: ApiClient, id: number, body: { notes: string | null; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${ADMIN}/${id}/approve`, { json: body })
+}
+export function adminReject(client: ApiClient, id: number, body: { reason: string | null; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${ADMIN}/${id}/reject`, { json: body })
 }

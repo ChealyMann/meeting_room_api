@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { LogOut, X } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ChevronDown, ChevronRight, LogOut, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
-import { NAV_GROUPS, NAV_ICONS as ICONS } from './nav'
+import { NAV_GROUPS, NAV_ICONS as ICONS, type NavGroup } from './nav'
 
-defineProps<{ open: boolean; compact: boolean }>()
+const props = defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 // Served from public/, not bundled.
@@ -15,6 +15,55 @@ const LOGO = '/nbc-logo.png'
 
 const session = useSessionStore()
 const router = useRouter()
+const route = useRoute()
+
+// Setup groups fold; the one holding the current page opens by itself, the others keep what
+// the Admin chose. The folded (icon-only) rail shows every link, with no group headers.
+const SETUP_AT = NAV_GROUPS.findIndex((group) => group.foldable)
+const opened = ref<Record<string, boolean>>({})
+const isOpen = (group: NavGroup) => !!opened.value[group.title ?? '']
+function toggle(group: NavGroup) {
+  opened.value = { ...opened.value, [group.title ?? '']: !isOpen(group) }
+}
+watch(
+  () => route.name,
+  (name) => {
+    const holder = NAV_GROUPS.find((group) => group.foldable && group.items.some((item) => item.route === name))
+    if (holder && !isOpen(holder)) toggle(holder)
+  },
+  { immediate: true },
+)
+
+// Folded rail (owner decision, 4 Nov 2026, option A): one icon per setup group; its links pop
+// out in a small menu beside it. The icon of the group holding the current page is marked.
+const holds = (group: NavGroup) => group.items.some((item) => item.route === route.name)
+// The open menu, by group title (a stored group object would come back wrapped by Vue).
+const menuTitle = ref<string | null>(null)
+const menuGroup = computed(() => NAV_GROUPS.find((group) => group.title === menuTitle.value) ?? null)
+const menuAt = ref({ top: 0, left: 0, pointer: 0 })
+const menuEl = ref<HTMLElement | null>(null)
+function toggleMenu(group: NavGroup, event: MouseEvent) {
+  if (menuTitle.value === group.title) {
+    menuTitle.value = null
+    return
+  }
+  const button = event.currentTarget as HTMLElement
+  const box = button.getBoundingClientRect()
+  // Clear of the rail's edge, not just the icon; the pointer is level with the icon's middle.
+  const railRight = button.closest('aside')?.getBoundingClientRect().right ?? box.right
+  const top = Math.max(8, box.top - 14)
+  menuAt.value = { top, left: railRight + 14, pointer: box.top + box.height / 2 - top - 5 }
+  menuTitle.value = group.title
+}
+watch([() => route.name, () => props.compact], () => (menuTitle.value = null))
+function onPointerDown(event: PointerEvent) {
+  const target = event.target as Element | null
+  if (!menuGroup.value || !target) return
+  if (menuEl.value?.contains(target) || target.closest('.group-icon')) return
+  menuTitle.value = null
+}
+onMounted(() => document.addEventListener('pointerdown', onPointerDown))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDown))
 
 // The user's photo, when they have one; otherwise the initials show.
 const { imageUrl: photo } = usePrivateImage(
@@ -38,7 +87,9 @@ async function signOut() {
 }
 
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('close')
+  if (event.key !== 'Escape') return
+  if (menuTitle.value) menuTitle.value = null
+  else emit('close')
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
@@ -55,8 +106,38 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </div>
 
     <nav class="nav">
-      <template v-for="group in NAV_GROUPS" :key="group.title ?? 'top'">
-        <h2 v-if="group.title">{{ group.title }}</h2>
+      <template v-for="(group, index) in NAV_GROUPS" :key="group.title ?? 'top'">
+        <h2 v-if="index === SETUP_AT && !compact">Setup</h2>
+        <span v-if="index === SETUP_AT && compact" class="divider" aria-hidden="true" />
+        <h2 v-if="group.title && !group.foldable && !compact">{{ group.title }}</h2>
+        <button
+          v-if="group.foldable && compact"
+          type="button"
+          class="group-icon"
+          :class="{ holds: holds(group) }"
+          :aria-label="group.title ?? ''"
+          :title="group.title ?? ''"
+          aria-haspopup="menu"
+          :aria-expanded="menuTitle === group.title ? 'true' : 'false'"
+          @click="toggleMenu(group, $event)"
+        >
+          <component :is="ICONS[group.icon ?? '']" aria-hidden="true" />
+        </button>
+        <button
+          v-if="group.foldable && !compact"
+          type="button"
+          class="fold"
+          :aria-expanded="isOpen(group) ? 'true' : 'false'"
+          :title="group.title ?? ''"
+          @click="toggle(group)"
+        >
+          <component :is="ICONS[group.icon ?? '']" aria-hidden="true" />
+          <span class="label">{{ group.title }}</span>
+          <span class="count">{{ group.items.length }}</span>
+          <ChevronDown v-if="isOpen(group)" class="chevron" aria-hidden="true" />
+          <ChevronRight v-else class="chevron" aria-hidden="true" />
+        </button>
+        <div v-if="!group.foldable || (!compact && isOpen(group))" :class="{ sub: group.foldable }">
         <template v-for="item in group.items" :key="item.label">
           <RouterLink
             v-if="item.route"
@@ -79,8 +160,35 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span class="label">{{ item.label }}</span>
           </a>
         </template>
+        </div>
       </template>
     </nav>
+
+    <Teleport to="body">
+      <div
+        v-if="menuGroup && compact"
+        ref="menuEl"
+        class="rail-menu"
+        role="menu"
+        :aria-label="menuGroup.title ?? ''"
+        :style="{ top: `${menuAt.top}px`, left: `${menuAt.left}px` }"
+      >
+        <span class="menu-pointer" aria-hidden="true" :style="{ top: `${menuAt.pointer}px` }" />
+        <div class="menu-head">
+          <span class="menu-tile"><component :is="ICONS[menuGroup.icon ?? '']" aria-hidden="true" /></span>
+          <span class="menu-title">{{ menuGroup.title }}</span>
+          <span class="menu-count">{{ menuGroup.items.length }}</span>
+        </div>
+        <template v-for="item in menuGroup.items" :key="item.label">
+          <RouterLink v-if="item.route" v-slot="{ href, navigate, isExactActive }" :to="{ name: item.route }" custom>
+            <a :href="href" role="menuitem" :aria-current="isExactActive ? 'page' : undefined" @click="navigate">
+              <component :is="ICONS[item.icon]" aria-hidden="true" />
+              {{ item.label }}
+            </a>
+          </RouterLink>
+        </template>
+      </div>
+    </Teleport>
 
     <div class="who">
       <RouterLink :to="{ name: 'profile' }" class="me" title="My profile">
@@ -168,6 +276,53 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .nav a svg.lucide {
   color: var(--color-rail-muted);
+}
+/* A setup group's header: the same row as a link, with its count and a chevron. */
+.fold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px 7px 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-rail-ink);
+  font: inherit;
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.fold:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.fold svg.lucide {
+  color: var(--color-rail-muted);
+}
+.fold .label {
+  flex: 1;
+}
+.fold .count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-rail-muted);
+}
+.fold .chevron {
+  width: 14px;
+  height: 14px;
+}
+/* An open group's links sit under its header, on a thin rail line. */
+.sub {
+  margin: 2px 0 6px 23px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-rail-line);
+}
+.sub a {
+  padding-left: 12px;
+  font-size: 13px;
 }
 .nav a[href]:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -283,6 +438,136 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 /* Folded rail (toggle, or always on tablets): icons only. Icons keep their place; text
    fades out fast (no delay) and stays in the accessibility tree, so links keep their names. */
+/* Folded: the daily links, a line, then one icon per setup group (its links pop out). */
+.divider {
+  display: block;
+  height: 1px;
+  margin: 10px 18px;
+  background: var(--color-rail-line);
+}
+.group-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px 7px 16px; /* the icon lines up with the links above */
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-rail-muted);
+  cursor: pointer;
+}
+.group-icon:hover,
+.group-icon[aria-expanded='true'] {
+  background: rgba(255, 255, 255, 0.05);
+}
+.group-icon.holds {
+  background: var(--color-rail-raised);
+  color: var(--color-thread);
+}
+.group-icon.holds::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--color-thread) 0 5px, transparent 5px 8px);
+}
+.rail-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 240px;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-sheet);
+  box-shadow: 0 16px 36px rgba(42, 28, 19, 0.14), 0 2px 6px rgba(42, 28, 19, 0.06);
+  font-family: var(--font-sans);
+}
+/* The pointer: a small turned square on the menu's left edge, toward the group icon. */
+.menu-pointer {
+  position: absolute;
+  left: -6px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-sheet);
+  border-left: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  transform: rotate(45deg);
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--color-rule);
+}
+.menu-tile {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+}
+.menu-tile svg {
+  width: 16px;
+  height: 16px;
+}
+.menu-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.menu-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-off);
+}
+.rail-menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--color-ink);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+.rail-menu a svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-intaglio);
+}
+.rail-menu a[aria-current='page'] svg {
+  color: var(--color-crimson);
+}
+.rail-menu a:hover {
+  background: var(--color-row-hover);
+}
+.rail-menu a[aria-current='page'] {
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+  font-weight: 500;
+}
+.rail-menu a:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-halo);
+}
+.group-icon:focus-visible {
+  outline: 2px solid var(--color-thread);
+  outline-offset: -2px;
+}
 .compact .brand-text,
 .compact .nav h2,
 .compact .nav .label {

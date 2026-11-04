@@ -33,7 +33,7 @@ from app.models import (
 )
 from app.schemas.booking import BookingCreate, BookingUpdate
 from app.security import CurrentUser, load_role_codes
-from app.services import booking, booking_review, it_ticket
+from app.services import booking, booking_admin, booking_review, it_ticket
 from app.services import room as room_service
 from tests import factories
 from tests.booking_helpers import NOW, body
@@ -146,6 +146,40 @@ def test_two_pitika_one_wins(committed, migrated_engine):
         assert (saved.status, saved.version) == (BookingStatus.CONFIRMED, 2)
         assert len(saved.reviews) == 1
         assert saved.door_pass is not None
+
+
+def test_two_admins_one_wins(committed, migrated_engine):
+    """B-31 for the Admin (B-33, B-34): an approve and a cancel at the same version."""
+    first = factories.make_user(committed, roles=["ADMIN"])
+    second = factories.make_user(committed, roles=["ADMIN"])
+    owner = factories.make_user(committed, roles=["ROOM_OWNER"])
+    room = factories.make_bookable_room(committed, private=True, owner=owner)
+    requester = factories.make_user(committed, roles=["STAFF"])
+    waiting = factories.make_booking(
+        committed, room, requester, status=BookingStatus.PENDING_OWNER, route=BookingRoute.R2
+    )
+    committed.commit()
+    booking_id = waiting.id
+    calls = iter(
+        [
+            lambda s, c: booking_admin.admin_approve(s, c, booking_id, None, 1),
+            lambda s, c: booking_admin.admin_cancel(s, c, booking_id, None, 1),
+        ]
+    )
+    chosen = {first.id: next(calls), second.id: next(calls)}
+
+    results = _run_together(
+        migrated_engine,
+        [first.id, second.id],
+        lambda session, current: chosen[current.id](session, current),
+    )
+
+    assert sorted(results) == ["STALE_VERSION", "ok"]
+    with _new_session(migrated_engine) as session:
+        saved = session.get(Booking, booking_id)
+        assert saved.version == 2
+        assert saved.status in (BookingStatus.CONFIRMED, BookingStatus.CANCELLED)
+        assert len([r for r in saved.reviews if r.stage == "OWNER"]) <= 1
 
 
 def test_two_creates_one_wins(committed, migrated_engine, settings):
@@ -285,6 +319,18 @@ def _it_ready(session, current, ids, _settings):
     it_ticket.mark_ready(session, current, ids.ticket_id, 1)
 
 
+def _admin_cancel(session, current, ids, _settings):
+    booking_admin.admin_cancel(session, current, ids.booking_id, None, 1)
+
+
+def _admin_approve(session, current, ids, _settings):
+    booking_admin.admin_approve(session, current, ids.booking_id, None, 1)
+
+
+def _admin_reject(session, current, ids, _settings):
+    booking_admin.admin_reject(session, current, ids.booking_id, None, 1)
+
+
 IT = {"it": True, "forwarded": True}
 R2 = BookingRoute.R2
 # name: (status, route, factory options, who acts, call)
@@ -297,6 +343,9 @@ WRITES = {
     "owner_reject": (BookingStatus.PENDING_OWNER, R2, {}, "owner", _owner_reject),
     "it_assign": (BookingStatus.SETUP_IN_PROGRESS, R2, IT, "lead", _it_assign),
     "it_ready": (BookingStatus.SETUP_IN_PROGRESS, R2, IT, "lead", _it_ready),
+    "admin_cancel": (BookingStatus.CONFIRMED, R2, {}, "admin", _admin_cancel),
+    "admin_approve": (BookingStatus.PENDING_OWNER, R2, {}, "admin", _admin_approve),
+    "admin_reject": (BookingStatus.PENDING_OWNER, R2, {}, "admin", _admin_reject),
 }
 
 
@@ -314,6 +363,7 @@ def test_writes_read_the_booking_with_a_lock(frozen, conn, db_session, settings,
         "owner": owner,
         "pitika": factories.make_pitika(db_session),
         "lead": factories.make_user(db_session, roles=["IT_LEAD"]),
+        "admin": factories.make_user(db_session, roles=["ADMIN"]),
     }
     staff = (helper,) if name == "it_ready" else ()
     saved = factories.make_booking(

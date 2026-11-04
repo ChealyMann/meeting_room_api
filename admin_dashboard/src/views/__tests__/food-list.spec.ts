@@ -125,8 +125,8 @@ describe('FoodListView', () => {
     expect(wrapper.text()).toContain('No food orders on this day.')
   })
 
-  it('is in the Bookings group of the sidebar', () => {
-    const group = NAV_GROUPS.find((g) => g.title === 'Bookings')
+  it('is in the Daily group of the sidebar', () => {
+    const group = NAV_GROUPS.find((g) => g.title === 'Daily')
     expect(group?.items.find((i) => i.label === 'Food list')?.route).toBe('food-list')
   })
 })

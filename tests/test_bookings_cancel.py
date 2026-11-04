@@ -46,6 +46,7 @@ def test_cancel_pending(client, frozen, db_session, make_booking, room, booker, 
         2,
     )
     assert data["cancel_reason"] == "Plans changed"
+    assert data["cancelled_by"]["id"] == booker.id
     assert data["cancelled_at"].endswith("Z")
     assert len(data["sessions"]) == 1
     assert blocking_flags(db_session, booking.id) == [False]

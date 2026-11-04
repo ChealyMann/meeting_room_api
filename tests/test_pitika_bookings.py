@@ -166,6 +166,7 @@ def test_t3_r2_goes_to_owner(client, frozen, pitika, pending, make_bookable_room
     review = data["reviews"][-1]
     assert (review["stage"], review["decision"], review["notes"]) == ("PITIKA", "APPROVED", "Fine")
     assert review["reviewer"]["id"] == pitika.id
+    assert review["by_admin"] is False
     assert data["rejection"] is None
 
 
@@ -298,6 +299,7 @@ def test_t6_reject_needs_reason(client, frozen, pitika, pending, db_session, aut
     assert response.status_code == 200
     data = response.json()
     assert (data["status"], data["version"]) == ("REJECTED", 2)
+    assert data["rejection"]["by_admin"] is False
     assert (data["rejection"]["rejected_by"], data["rejection"]["reason"]) == (
         RejectedBy.PITIKA,
         "Not available",

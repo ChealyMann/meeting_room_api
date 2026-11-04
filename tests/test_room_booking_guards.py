@@ -370,6 +370,7 @@ def test_booker_turned_off_cancels_bookings(
         booking = db_session.get(Booking, booking_id, populate_existing=True)
         assert booking.status == BookingStatus.CANCELLED
         assert booking.cancel_reason == BOOKER_OFF_REASON
+        assert booking.cancelled_by is None  # the system, not a person (B-35)
         assert booking.cancelled_at == NOW - LOCAL_OFFSET  # UTC
         assert booking.version == 2
         assert blocking_flags(db_session, booking_id) == [False]

@@ -175,8 +175,11 @@ def stop_blocking(session: Session, booking: Booking) -> None:
     )
 
 
-def cancel(session: Session, booking: Booking, version: int, reason: str | None) -> None:
-    """T12 and B-27: CANCELLED with the time and the reason; the sessions stop blocking."""
+def cancel(
+    session: Session, booking: Booking, version: int, reason: str | None, actor_id: int | None
+) -> None:
+    """T12, B-27, B-33: CANCELLED with the time, the reason and who did it (null: the system);
+    the sessions stop blocking."""
     advance(
         session,
         booking,
@@ -184,6 +187,7 @@ def cancel(session: Session, booking: Booking, version: int, reason: str | None)
         status=BookingStatus.CANCELLED,
         cancelled_at=clock.now_utc(),
         cancel_reason=reason,
+        cancelled_by=actor_id,
     )
     stop_blocking(session, booking)
 
@@ -205,13 +209,16 @@ def reject(
     actor_id: int | None,
     reason: str,
     stage: ReviewStage | None,
+    *,
+    by_admin: bool = False,
 ) -> None:
-    """T6, T9, T15. `stage` adds a REJECTED review row (none for the system)."""
+    """T6, T9, T15. `stage` adds a REJECTED review row (none for the system). `by_admin`: the
+    Admin rejected as a backup for that stage (B-34)."""
     advance(session, booking, version, status=BookingStatus.REJECTED)
     stop_blocking(session, booking)
     now = clock.now_utc()
     booking.rejection = BookingRejection(
-        rejected_by=by, actor_user_id=actor_id, reason=reason, decided_at=now
+        rejected_by=by, actor_user_id=actor_id, reason=reason, decided_at=now, by_admin=by_admin
     )
     if stage is not None:
         booking.reviews.append(
@@ -221,6 +228,7 @@ def reject(
                 reviewer_id=actor_id,
                 notes=reason,
                 reviewed_at=now,
+                by_admin=by_admin,
             )
         )
     session.flush()

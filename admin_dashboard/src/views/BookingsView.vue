@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 
 import { api } from '../api'
 import { getBooking, listBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
-import type { BookingListItem } from '../api/types'
+import type { BookingDetail, BookingListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
@@ -20,7 +20,7 @@ import BookingFilters from './bookings/BookingFilters.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
 import { BOOKING_FILTERS } from './bookings/bookingFilters'
 
-const { list, result, loading, error, errorFields, filtered, load } = useResourceList<BookingListItem>(
+const { list, result, loading, error, errorFields, filtered, load, refresh } = useResourceList<BookingListItem>(
   BOOKING_FILTERS,
   (params) => listBookingPage(api, params as BookingFilterParams),
   { activeFilter: false },
@@ -37,6 +37,12 @@ const words = ref<string[]>([])
 const fieldMessages = computed(() => Object.values(errorFields.value))
 
 const hhmm = (time: string) => time.slice(0, 5)
+
+/** After an Admin action: the panel shows the new booking, the list reloads and tints its row. */
+async function onChanged(booking: BookingDetail) {
+  openBooking.value = booking
+  await refresh(booking.id)
+}
 
 const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', '32px']
 </script>
@@ -140,7 +146,13 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       </div>
     </div>
 
-    <BookingPanel v-if="openBooking" :key="`booking-${openBooking.id}`" :booking="openBooking" @close="panel.close" />
+    <BookingPanel
+      v-if="openBooking"
+      :key="`booking-${openBooking.id}`"
+      :booking="openBooking"
+      @close="panel.close"
+      @changed="onChanged"
+    />
 
     <PagingFoot
       v-if="result && total > 0"

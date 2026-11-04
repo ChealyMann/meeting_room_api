@@ -28,20 +28,26 @@ export interface NavItem {
 
 export interface NavGroup {
   title: string | null
+  /** Setup groups fold (owner decision, 4 Nov 2026: "daily first, setup folds"); they carry an icon. */
+  foldable?: boolean
+  icon?: string
   items: NavItem[]
 }
 
+// The pages used every day come first; the setup lists fold below them.
 export const NAV_GROUPS: NavGroup[] = [
-  { title: null, items: [{ label: 'Rooms', icon: 'door-open', route: 'home' }] },
   {
-    title: 'Bookings',
+    title: 'Daily',
     items: [
       { label: 'Bookings', icon: 'calendar-check', route: 'bookings' },
       { label: 'Food list', icon: 'utensils-crossed', route: 'food-list' },
+      { label: 'Rooms', icon: 'door-open', route: 'home' },
     ],
   },
   {
     title: 'Places',
+    foldable: true,
+    icon: 'building-2',
     items: [
       { label: 'Offices', icon: 'landmark', route: 'offices' },
       { label: 'Buildings', icon: 'building-2', route: 'buildings' },
@@ -50,6 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Catalog',
+    foldable: true,
+    icon: 'tags',
     items: [
       { label: 'Room types', icon: 'tags', route: 'room-types' },
       { label: 'Equipment', icon: 'projector', route: 'equipment' },
@@ -60,6 +68,8 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'Organisation',
+    foldable: true,
+    icon: 'network',
     items: [
       { label: 'Departments', icon: 'network', route: 'departments' },
       { label: 'Divisions', icon: 'git-fork', route: 'divisions' },
@@ -68,6 +78,8 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     title: 'People',
+    foldable: true,
+    icon: 'users',
     items: [
       { label: 'Users', icon: 'users', route: 'users' },
       { label: 'Roles', icon: 'shield-check', route: 'roles' },

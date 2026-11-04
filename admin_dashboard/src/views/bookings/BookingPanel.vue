@@ -3,20 +3,21 @@
 // cannot approve, reject, cancel or edit, so there is no form. The door pass shows only when
 // the Admin asks, and only for a confirmed booking (the API's own rule).
 import { CalendarArrowDown, CircleAlert } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../../api'
-import { getBookingIcs, getDoorPass } from '../../api/bookings'
+import { adminApprove, adminCancel, adminReject, getAdminActions, getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
-import type { BookingDetail, DoorPassOut } from '../../api/types'
+import type { AdminActionsOut, BookingDetail, DoorPassOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
+import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
 
 const props = defineProps<{ booking: BookingDetail }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; changed: [booking: BookingDetail] }>()
 
 type Tab = 'details' | 'sessions' | 'services' | 'history'
 const tab = ref<Tab>('details')
@@ -65,6 +66,90 @@ const doorPass = ref<DoorPassOut | undefined>(undefined)
 async function revealDoorPass(): Promise<string> {
   doorPass.value = await getDoorPass(api, props.booking.id)
   return doorPass.value.passcode
+}
+
+// The Admin's actions (B-33, B-34): the buttons follow what the API allows now, and each
+// opens a confirm step with an optional reason (D-35) before anything is sent.
+type Action = 'cancel' | 'approve' | 'reject'
+const actions = ref<AdminActionsOut | null>(null)
+const step = ref<Action | null>(null)
+const stepText = ref('')
+const stepBusy = ref(false)
+const stepError = ref('')
+const fieldError = ref('')
+const toast = useToast()
+
+async function loadActions() {
+  try {
+    actions.value = await getAdminActions(api, props.booking.id)
+  } catch {
+    actions.value = null // no buttons; the booking still shows
+  }
+}
+onMounted(loadActions)
+
+const STEP_WORDS: Record<Action, { title: string; confirm: string; label: string; max: number; done: string }> = {
+  cancel: { title: 'Cancel this booking?', confirm: 'Cancel booking', label: 'Reason (optional)', max: 500, done: 'cancelled' },
+  approve: { title: 'Approve this booking?', confirm: 'Approve', label: 'Notes (optional)', max: 1000, done: 'approved' },
+  reject: { title: 'Reject this booking?', confirm: 'Reject', label: 'Reason (optional)', max: 1000, done: 'rejected' },
+}
+const stepWords = computed(() => (step.value ? STEP_WORDS[step.value] : null))
+const actingFor = computed(() =>
+  actions.value?.stage === 'PITIKA' ? 'You act for Pitika.' : actions.value?.stage === 'OWNER' ? 'You act for the room owner.' : '',
+)
+const stepEffect = computed(() => {
+  if (step.value === 'cancel') return 'The room is free again. The booker sees the reason when they open the booking.'
+  if (step.value === 'reject') return 'The booking stops and the room is free again.'
+  if (actions.value?.stage === 'PITIKA' && props.booking.route === 'R2') return 'It goes to the room owner next.'
+  return props.booking.has_it ? 'It goes to IT setup next.' : 'It is confirmed, with a door pass.'
+})
+
+function openStep(action: Action) {
+  step.value = action
+  stepText.value = ''
+  stepError.value = ''
+  fieldError.value = ''
+}
+
+async function confirmStep() {
+  if (!step.value) return
+  const action = step.value
+  const text = stepText.value.trim() || null
+  const version = props.booking.version
+  stepBusy.value = true
+  stepError.value = ''
+  fieldError.value = ''
+  try {
+    const updated =
+      action === 'cancel'
+        ? await adminCancel(api, props.booking.id, { reason: text, version })
+        : action === 'approve'
+          ? await adminApprove(api, props.booking.id, { notes: text, version })
+          : await adminReject(api, props.booking.id, { reason: text, version })
+    toast.show(`${updated.reference_code} ${STEP_WORDS[action].done}`, statusLabel(updated.display_status))
+    step.value = null
+    emit('changed', updated)
+    await loadActions()
+  } catch (err) {
+    if (err instanceof ApiError) {
+      fieldError.value = err.fields.reason ?? err.fields.notes ?? ''
+      stepError.value = fieldError.value ? '' : err.message
+      // Someone else acted, or the booking moved on: show the booking as it is now, so a retry
+      // sends its new version, and offer only what is still allowed.
+      if (err.status === 403 || err.status === 409) {
+        try {
+          emit('changed', await getBooking(api, props.booking.id))
+        } catch {
+          // the message already says to reload
+        }
+        await loadActions()
+      }
+    } else {
+      stepError.value = 'Something went wrong.'
+    }
+  } finally {
+    stepBusy.value = false
+  }
 }
 
 const icsBusy = ref(false)
@@ -213,22 +298,41 @@ async function downloadIcs() {
         </li>
         <li v-for="(r, i) in reviews" :key="i">
           <b>{{ STAGES[r.stage] ?? r.stage }} {{ DECISIONS[r.decision] ?? r.decision }}</b>
-          <span v-if="r.reviewer">{{ r.reviewer.name_en }}</span>
+          <span v-if="r.reviewer">{{ r.reviewer.name_en }}{{ r.by_admin ? ` (Admin, for ${r.stage === 'PITIKA' ? 'Pitika' : 'the owner'})` : '' }}</span>
           <span class="mono">{{ formatPhnomPenh(r.reviewed_at) }}</span>
           <span v-if="r.notes" class="note">{{ r.notes }}</span>
         </li>
         <li v-if="booking.rejection">
           <b>{{ REJECTED_BY[booking.rejection.rejected_by] ?? booking.rejection.rejected_by }}</b>
-          <span v-if="booking.rejection.actor">{{ booking.rejection.actor.name_en }}</span>
+          <span v-if="booking.rejection.actor">{{ booking.rejection.actor.name_en }}{{ booking.rejection.by_admin ? ` (Admin, for ${booking.rejection.rejected_by === 'PITIKA' ? 'Pitika' : 'the owner'})` : '' }}</span>
           <span class="mono">{{ formatPhnomPenh(booking.rejection.decided_at) }}</span>
           <span class="note">{{ booking.rejection.reason }}</span>
         </li>
         <li v-if="booking.cancelled_at">
-          <b>Cancelled</b>
+          <b>{{ booking.cancelled_by ? `Cancelled by ${booking.cancelled_by.name_en}` : 'Cancelled' }}</b>
           <span class="mono">{{ formatPhnomPenh(booking.cancelled_at) }}</span>
           <span v-if="booking.cancel_reason" class="note">{{ booking.cancel_reason }}</span>
         </li>
       </ol>
+    </section>
+
+    <section v-if="step && stepWords" class="action-step" aria-labelledby="action-step-title">
+      <h3 id="action-step-title">{{ stepWords.title }}</h3>
+      <p v-if="step !== 'cancel' && actingFor" class="acting">{{ actingFor }}</p>
+      <p class="effect">{{ stepEffect }}</p>
+      <label class="step-field">
+        <span>{{ stepWords.label }}</span>
+        <textarea id="action-step-text" v-model="stepText" rows="3" :maxlength="stepWords.max" :aria-invalid="!!fieldError || undefined" />
+        <span class="count">{{ [...stepText].length }}/{{ stepWords.max }}</span>
+      </label>
+      <p v-if="fieldError" class="field-error" role="alert">{{ fieldError }}</p>
+      <p v-if="stepError" class="step-error" role="alert">{{ stepError }}</p>
+      <div class="step-buttons">
+        <BaseButton variant="quiet" @click="step = null">Back</BaseButton>
+        <BaseButton :variant="step === 'approve' ? 'primary' : 'danger'" class="confirm" :busy="stepBusy" :disabled="!actions?.[step]" @click="confirmStep">
+          {{ stepWords.confirm }}
+        </BaseButton>
+      </div>
     </section>
 
     <div v-if="icsError" class="summary" role="alert">
@@ -238,6 +342,11 @@ async function downloadIcs() {
 
     <template #foot>
       <BaseButton variant="quiet" class="close" @click="emit('close')">Close</BaseButton>
+      <template v-if="actions && !step">
+        <BaseButton v-if="actions.cancel" variant="quiet" class="danger" @click="openStep('cancel')">Cancel booking</BaseButton>
+        <BaseButton v-if="actions.reject" @click="openStep('reject')">Reject</BaseButton>
+        <BaseButton v-if="actions.approve" variant="primary" @click="openStep('approve')">Approve</BaseButton>
+      </template>
       <BaseButton :busy="icsBusy" @click="downloadIcs">
         <CalendarArrowDown v-if="!icsBusy" aria-hidden="true" />
         Calendar file
@@ -379,5 +488,66 @@ section > h3:first-child {
 }
 .close {
   margin-right: auto;
+}
+.danger {
+  color: var(--color-crimson);
+}
+.action-step {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 10px;
+  background: var(--color-paper);
+}
+.action-step h3 {
+  margin: 0;
+}
+.acting {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-crimson);
+}
+.effect {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-intaglio);
+}
+.step-field {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--color-intaglio);
+}
+.step-field textarea {
+  font: 13.5px/1.5 var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-sheet);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.step-field textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-halo);
+}
+.count {
+  justify-self: end;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.field-error,
+.step-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-crimson);
+}
+.step-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>

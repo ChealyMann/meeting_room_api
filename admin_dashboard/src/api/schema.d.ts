@@ -1322,10 +1322,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/bookings/{booking_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the Admin may do
+         * @description Cancel while the booking is open; approve or reject as a backup reviewer: for Pitika only
+         *     when the province has no active Pitika, for the room owner always (B-33, B-34).
+         */
+        get: operations["get_actions_api_v1_admin_bookings__booking_id__actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bookings/{booking_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a booking (Admin)
+         * @description B-33. Any booking that is not final and has not ended; the reason is optional.
+         */
+        post: operations["cancel_booking_api_v1_admin_bookings__booking_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bookings/{booking_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve as backup (Admin)
+         * @description B-34. 403 when the province has an active Pitika; 409 TIME_PASSED after the first
+         *     session started; 409 INVALID_TRANSITION unless the booking waits for Pitika or the owner.
+         */
+        post: operations["approve_booking_api_v1_admin_bookings__booking_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/bookings/{booking_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject as backup (Admin)
+         * @description B-34. Allowed while the booking waits for Pitika (no active Pitika) or the owner; the
+         *     reason is optional ("Rejected by the Admin." when none).
+         */
+        post: operations["reject_booking_api_v1_admin_bookings__booking_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdminActionsOut
+         * @description What the Admin may do with a booking now (B-33, B-34). `stage`: the review step that
+         *     approve and reject would decide, or null.
+         */
+        AdminActionsOut: {
+            /** Cancel */
+            cancel: boolean;
+            /** Approve */
+            approve: boolean;
+            /** Reject */
+            reject: boolean;
+            stage: components["schemas"]["ReviewStage"] | null;
+        };
+        /**
+         * AdminRejectBody
+         * @description The reason is optional for the Admin (D-35); `version` is the booking version seen.
+         */
+        AdminRejectBody: {
+            /** Reason */
+            reason?: string | null;
+            /** Version */
+            version: number;
+        };
         /**
          * ApproveBody
          * @description `version` is the booking version the person saw (B-04). The notes go to the review and,
@@ -1476,6 +1583,7 @@ export interface components {
             cancelled_at: string | null;
             /** Cancel Reason */
             cancel_reason: string | null;
+            cancelled_by: components["schemas"]["PersonRef"] | null;
             /** Updated At */
             updated_at: string;
         };
@@ -1577,6 +1685,7 @@ export interface components {
             cancelled_at: string | null;
             /** Cancel Reason */
             cancel_reason: string | null;
+            cancelled_by: components["schemas"]["PersonRef"] | null;
             /** Updated At */
             updated_at: string;
             /** Warnings */
@@ -2792,6 +2901,8 @@ export interface components {
             reason: string;
             /** Decided At */
             decided_at: string;
+            /** By Admin */
+            by_admin: boolean;
         };
         /** ResetPasswordRequest */
         ResetPasswordRequest: {
@@ -2812,6 +2923,8 @@ export interface components {
             notes: string | null;
             /** Reviewed At */
             reviewed_at: string;
+            /** By Admin */
+            by_admin: boolean;
         };
         /**
          * ReviewStage
@@ -6643,6 +6756,142 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_actions_api_v1_admin_bookings__booking_id__actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_booking_api_v1_admin_bookings__booking_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_booking_api_v1_admin_bookings__booking_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_booking_api_v1_admin_bookings__booking_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminRejectBody"];
             };
         };
         responses: {

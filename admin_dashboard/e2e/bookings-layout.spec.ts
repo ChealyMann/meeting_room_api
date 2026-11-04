@@ -91,6 +91,9 @@ async function signedIn(page: Page, path: string) {
     if (url.pathname === '/api/v1/me') return route.fulfill({ json: ME })
     if (url.pathname === '/api/v1/catering-packages') return route.fulfill({ json: { items: PACKAGES, page: 1, size: 20, total: 57 } })
     if (url.pathname === '/api/v1/bookings') return route.fulfill({ json: { items: BOOKINGS, page: 1, size: 20, total: 57 } })
+    if (url.pathname === '/api/v1/admin/bookings/100/actions') {
+      return route.fulfill({ json: { cancel: true, approve: true, reject: true, stage: 'OWNER' } })
+    }
     if (url.pathname === '/api/v1/bookings/100/door-pass') {
       return route.fulfill({ json: { passcode: 'NBC-54248', expires_at: '2026-11-02T04:00:00Z', expired: true } })
     }
@@ -146,5 +149,23 @@ for (const width of [1366, 390]) {
     expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
     const code = page.locator('.door-pass .secret-code')
     expect(await code.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+  })
+}
+
+for (const width of [1366, 390]) {
+  test(`the Admin action buttons and confirm step fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/bookings?id=100')
+    const panel = page.getByRole('dialog')
+    for (const name of ['Cancel booking', 'Reject', 'Approve']) {
+      await expect(panel.locator('.panel-foot').getByRole('button', { name })).toBeVisible()
+    }
+
+    await panel.locator('.panel-foot').getByRole('button', { name: 'Cancel booking' }).click()
+    await expect(panel.locator('.action-step')).toBeVisible()
+    await expect(panel.locator('.action-step textarea')).toBeVisible()
+
+    expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0)
   })
 }

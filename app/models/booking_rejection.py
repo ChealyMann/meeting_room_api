@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.constants.booking import RejectedBy
@@ -24,4 +24,6 @@ class BookingRejection(IdMixin, Base):
         UnsignedInt, ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT")
     )
     reason: Mapped[str] = mapped_column(String(1000))
+    # The Admin rejected as a backup for `rejected_by`'s stage (B-34); actor_user_id is the Admin.
+    by_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     decided_at: Mapped[datetime] = mapped_column(DateTime)

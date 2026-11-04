@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, type Mock } from 'vitest'
 
-import { listBookingPage } from '../bookings'
+import { adminReject, listBookingPage } from '../bookings'
 import { createApiClient } from '../client'
 
 const BASE = 'http://localhost:8000'
@@ -30,5 +30,20 @@ describe('bookings API', () => {
     expect(String(fetchMock.mock.calls[0]![0])).toBe(
       `${BASE}/api/v1/bookings?status=CONFIRMED&province=SIEM_REAP&from=2026-11-01&to=2026-11-30&q=NBC-26&page=1&size=20`,
     )
+  })
+})
+
+describe('Admin booking actions API', () => {
+  it('rejects with exactly the given body', async () => {
+    const fetchMock = answer({ id: 12 })
+
+    await adminReject(client(fetchMock), 12, { reason: null, version: 3 })
+
+    const call = fetchMock.mock.calls[0]!
+    expect([call[1]?.method, String(call[0]), call[1]?.body]).toEqual([
+      'POST',
+      `${BASE}/api/v1/admin/bookings/12/reject`,
+      JSON.stringify({ reason: null, version: 3 }),
+    ])
   })
 })
