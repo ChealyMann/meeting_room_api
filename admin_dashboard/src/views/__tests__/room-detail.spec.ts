@@ -100,12 +100,13 @@ describe('RoomDetailPanel', () => {
   it('shows the door code only when asked, and hides it again', async () => {
     const wrapper = await mountPanel()
 
-    await button(wrapper, 'Show door code')!.trigger('click')
+    expect(wrapper.get('[aria-label="Door code hidden"]').text()).toBe('•••••')
+    await wrapper.get('button[aria-label="Show door code"]').trigger('click')
     await flushPromises()
     expect(calls.some((c) => c.path === '/api/v1/rooms/12/door-code')).toBe(true)
-    expect(wrapper.get('.door-code').text()).toBe('4821#')
+    expect(wrapper.get('.secret-code').text()).toBe('4821#')
 
-    await button(wrapper, 'Hide')!.trigger('click')
+    await wrapper.get('button[aria-label="Hide door code"]').trigger('click')
     expect(wrapper.text()).not.toContain('4821#')
   })
 
@@ -113,7 +114,7 @@ describe('RoomDetailPanel', () => {
     doorCode = null
     const wrapper = await mountPanel()
 
-    await button(wrapper, 'Show door code')!.trigger('click')
+    await wrapper.get('button[aria-label="Show door code"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('No door code set')

@@ -2,7 +2,7 @@
 // One booking, read only (DSH-B02 to B04): details, sessions, services and history. The Admin
 // cannot approve, reject, cancel or edit, so there is no form. The door pass shows only when
 // the Admin asks, and only for a confirmed booking (the API's own rule).
-import { CalendarArrowDown, CircleAlert, Eye } from 'lucide-vue-next'
+import { CalendarArrowDown, CircleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import { api } from '../../api'
@@ -11,6 +11,7 @@ import { ApiError } from '../../api/errors'
 import type { BookingDetail, DoorPassOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
+import SecretReveal from '../../components/SecretReveal.vue'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
 
@@ -58,24 +59,12 @@ const reviews = computed(() =>
 )
 const IT_STATUS: Record<string, string> = { RECEIVED: 'Received', ASSIGNED: 'Staff assigned', READY: 'Ready' }
 
-// The door pass: undefined = hidden, else the API's answer or its refusal.
+// The door pass, fetched only when the eye is pressed; an expired one gets a small tag. Its end
+// time is on the Sessions tab ("Ends …"), so the row stays one line.
 const doorPass = ref<DoorPassOut | undefined>(undefined)
-const doorError = ref('')
-const doorBusy = ref(false)
-async function showDoorPass() {
-  doorBusy.value = true
-  doorError.value = ''
-  try {
-    doorPass.value = await getDoorPass(api, props.booking.id)
-  } catch (err) {
-    doorError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
-  } finally {
-    doorBusy.value = false
-  }
-}
-function hideDoorPass() {
-  doorPass.value = undefined
-  doorError.value = ''
+async function revealDoorPass(): Promise<string> {
+  doorPass.value = await getDoorPass(api, props.booking.id)
+  return doorPass.value.passcode
 }
 
 const icsBusy = ref(false)
@@ -150,25 +139,14 @@ async function downloadIcs() {
             <template v-else>None</template>
           </dd>
         </div>
-        <div v-if="booking.status === 'CONFIRMED'">
+        <div v-if="booking.status === 'CONFIRMED'" class="secret-row">
           <dt>Door pass</dt>
           <dd class="door-pass">
-            <template v-if="doorPass === undefined && !doorError">
-              <span class="none">Hidden</span>
-              <BaseButton class="small" :busy="doorBusy" @click="showDoorPass">
-                <Eye v-if="!doorBusy" aria-hidden="true" />
-                Show door pass
-              </BaseButton>
-            </template>
-            <template v-else>
-              <span v-if="doorError" class="refused">{{ doorError }}</span>
-              <template v-else-if="doorPass">
-                <span class="mono code">{{ doorPass.passcode }}</span>
-                <span class="until">Valid until {{ formatPhnomPenh(doorPass.expires_at) }}</span>
-                <span v-if="doorPass.expired" class="expired">Expired</span>
+            <SecretReveal label="door pass" :reveal="revealDoorPass" @hide="doorPass = undefined">
+              <template #extra>
+                <span v-if="doorPass?.expired" class="expired">Expired</span>
               </template>
-              <BaseButton variant="quiet" class="small" @click="hideDoorPass">Hide</BaseButton>
-            </template>
+            </SecretReveal>
           </dd>
         </div>
       </dl>
@@ -345,31 +323,19 @@ section > h3:first-child {
   color: var(--color-ink-off);
   font-size: 13px;
 }
-.door-pass {
-  display: flex;
-  flex-wrap: wrap;
+.details > .secret-row {
   align-items: center;
-  gap: 8px;
-}
-.code {
-  font-size: 15px;
-  letter-spacing: 0.04em;
-}
-.until {
-  font-size: 12px;
-  color: var(--color-intaglio);
+  padding: 4px 0;
 }
 .expired {
-  padding: 1px 6px;
+  flex: none;
+  padding: 0 5px;
+  line-height: 18px;
   border: 1px solid var(--color-crimson);
   border-radius: 6px;
   color: var(--color-crimson);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
-}
-.refused {
-  color: var(--color-crimson);
-  font-size: 13px;
 }
 .sessions,
 .history {
@@ -410,11 +376,6 @@ section > h3:first-child {
   flex-basis: 100%;
   white-space: pre-line;
   overflow-wrap: anywhere;
-}
-.small {
-  min-height: 28px;
-  padding: 0 10px;
-  font-size: 12.5px;
 }
 .close {
   margin-right: auto;

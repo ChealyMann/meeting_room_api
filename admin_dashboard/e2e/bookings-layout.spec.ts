@@ -91,6 +91,9 @@ async function signedIn(page: Page, path: string) {
     if (url.pathname === '/api/v1/me') return route.fulfill({ json: ME })
     if (url.pathname === '/api/v1/catering-packages') return route.fulfill({ json: { items: PACKAGES, page: 1, size: 20, total: 57 } })
     if (url.pathname === '/api/v1/bookings') return route.fulfill({ json: { items: BOOKINGS, page: 1, size: 20, total: 57 } })
+    if (url.pathname === '/api/v1/bookings/100/door-pass') {
+      return route.fulfill({ json: { passcode: 'NBC-54248', expires_at: '2026-11-02T04:00:00Z', expired: true } })
+    }
     if (url.pathname === '/api/v1/bookings/100') return route.fulfill({ json: DETAIL })
     if (url.pathname === '/api/v1/pitika/catering') return route.fulfill({ json: { items: ORDERS, total: ORDERS.length } })
     if (url.pathname === '/api/v1/provinces') return route.fulfill({ json: { items: [ROOM.province], total: 1 } })
@@ -126,3 +129,22 @@ test('the booking panel fits a phone without sideways scroll', async ({ page }) 
   expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
   expect(await sideways(page)).toBe(0)
 })
+
+for (const width of [1366, 390]) {
+  test(`the door pass shows in full on one row at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/bookings?id=100')
+    const row = page.locator('.door-pass .secret')
+    await expect(row).toBeVisible()
+    const hiddenHeight = (await row.boundingBox())!.height
+
+    await page.getByRole('button', { name: 'Show door pass' }).click()
+    await expect(page.locator('.door-pass .secret-code')).toHaveText('NBC-54248')
+    await expect(page.locator('.door-pass')).toContainText('Expired')
+
+    expect((await row.boundingBox())!.height).toBe(hiddenHeight)
+    expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+    const code = page.locator('.door-pass .secret-code')
+    expect(await code.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+  })
+}
