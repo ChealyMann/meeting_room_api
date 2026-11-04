@@ -465,6 +465,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   width: 1px;
   background: repeating-linear-gradient(to bottom, var(--color-thread) 0 5px, transparent 5px 8px);
 }
+/* On the white menu the thread is crimson: gold would not show on paper. */
+.rail-menu a[aria-current='page']::before {
+  background: repeating-linear-gradient(to bottom, var(--color-crimson) 0 5px, transparent 5px 8px);
+}
 .rail-menu {
   position: fixed;
   z-index: 60;
@@ -474,10 +478,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   width: 210px;
   box-sizing: border-box;
   padding: 8px;
-  border: 1px solid var(--color-rail-line);
+  border: 1px solid var(--color-rule);
   border-radius: 10px;
-  background: var(--color-rail);
-  box-shadow: 0 12px 28px rgba(38, 7, 7, 0.35);
+  background: var(--color-sheet);
+  box-shadow: var(--shadow-toast);
   font-family: var(--font-sans);
 }
 .menu-title {
@@ -486,7 +490,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-rail-muted);
+  color: var(--color-intaglio);
 }
 .rail-menu a {
   position: relative;
@@ -495,17 +499,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   height: 34px;
   padding: 0 10px 0 14px;
   border-radius: 6px;
-  color: var(--color-rail-ink);
+  color: var(--color-ink);
   font-size: 13.5px;
   text-decoration: none;
 }
 .rail-menu a:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-row-hover);
 }
 .rail-menu a[aria-current='page'] {
-  background: var(--color-rail-raised);
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+  font-weight: 500;
 }
-.rail-menu a:focus-visible,
+.rail-menu a:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-halo);
+}
 .group-icon:focus-visible {
   outline: 2px solid var(--color-thread);
   outline-offset: -2px;
