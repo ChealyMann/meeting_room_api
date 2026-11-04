@@ -82,7 +82,13 @@ def _check_not_started(booking: Booking) -> None:
 
 
 def _add_review(
-    booking: Booking, stage: ReviewStage, current: CurrentUser, notes: str | None, now
+    booking: Booking,
+    stage: ReviewStage,
+    current: CurrentUser,
+    notes: str | None,
+    now,
+    *,
+    by_admin: bool = False,
 ) -> None:
     booking.reviews.append(
         BookingReview(
@@ -91,8 +97,47 @@ def _add_review(
             reviewer_id=current.id,
             notes=notes,
             reviewed_at=now,
+            by_admin=by_admin,
         )
     )
+
+
+def approve_pitika_stage(
+    session: Session,
+    booking: Booking,
+    version: int,
+    actor: CurrentUser,
+    notes: str | None,
+    *,
+    by_admin: bool = False,
+) -> None:
+    """The write of a Pitika approval (T3, T4, T5), checks done by the caller: R2 goes on to the
+    owner, any other route to IT setup or confirmed; the food order is decided too (BR-APR-06)."""
+    if booking.route == BookingRoute.R2:
+        transitions.advance(session, booking, version, status=BookingStatus.PENDING_OWNER)
+    else:
+        transitions.after_last_review(session, booking, version)
+    now = now_utc()
+    _add_review(booking, ReviewStage.PITIKA, actor, notes, now, by_admin=by_admin)
+    order = booking.catering_order
+    if order is not None:
+        order.decided_by = actor.id
+        order.decided_at = now
+        order.approver_notes = notes
+
+
+def approve_owner_stage(
+    session: Session,
+    booking: Booking,
+    version: int,
+    actor: CurrentUser,
+    notes: str | None,
+    *,
+    by_admin: bool = False,
+) -> None:
+    """The write of an owner approval (T7, T8), checks done by the caller."""
+    transitions.after_last_review(session, booking, version)
+    _add_review(booking, ReviewStage.OWNER, actor, notes, now_utc(), by_admin=by_admin)
 
 
 # --- Pitika ----------------------------------------------------------------------------
@@ -133,19 +178,7 @@ def pitika_approve(
     booking = _load_in_province(session, current, booking_id)
     _check_waiting(booking, version, BookingStatus.PENDING_PITIKA)
     _check_not_started(booking)
-
-    if booking.route == BookingRoute.R2:
-        transitions.advance(session, booking, version, status=BookingStatus.PENDING_OWNER)
-    else:
-        transitions.after_last_review(session, booking, version)
-
-    now = now_utc()
-    _add_review(booking, ReviewStage.PITIKA, current, notes, now)
-    order = booking.catering_order
-    if order is not None:
-        order.decided_by = current.id
-        order.decided_at = now
-        order.approver_notes = notes
+    approve_pitika_stage(session, booking, version, current, notes)
     session.commit()
     return booking
 
@@ -196,8 +229,7 @@ def owner_approve(
     booking = _load_owned(session, current, booking_id)
     _check_waiting(booking, version, BookingStatus.PENDING_OWNER)
     _check_not_started(booking)
-    transitions.after_last_review(session, booking, version)
-    _add_review(booking, ReviewStage.OWNER, current, notes, now_utc())
+    approve_owner_stage(session, booking, version, current, notes)
     session.commit()
     return booking
 
