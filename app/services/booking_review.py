@@ -22,6 +22,7 @@ from app.services import booking_transitions as transitions
 from app.services.booking_view import booking_load_options
 from app.services.clock import now_utc
 from app.services.listing import apply_search, paginate
+from app.services.province import check_province_code
 from app.services.records import not_found
 
 STARTED_MESSAGE = "The meeting has started. It cannot be approved."
@@ -232,5 +233,6 @@ def list_admin_bookings(
     if province is None or not province.strip():
         rooms = select(Room.id)
     else:
+        check_province_code(province.strip())  # rule R1: a code from GET /provinces
         rooms = booking_access.room_ids_in_province(province.strip())
     return _list_in_rooms(session, rooms, page, size, status, date_from, date_to, room_id, q)

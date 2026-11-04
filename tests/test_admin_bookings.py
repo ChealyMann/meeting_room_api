@@ -50,6 +50,14 @@ def test_province_filter(client, frozen, admin, booking, make_bookable_room, aut
     assert ids(client, auth_headers(admin), province="SIEM_REAP") == [there.id]
 
 
+def test_unknown_province_422(client, frozen, admin, auth_headers):
+    response = client.get(LIST, params={"province": "siem_reap"}, headers=auth_headers(admin))
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == {
+        "province": "Must be a province code from GET /provinces."
+    }
+
+
 def test_status_filter_uses_display_status(client, frozen, admin, booking, auth_headers):
     ended = booking(status=BookingStatus.CONFIRMED, sessions=((PAST_DAY, time(9), time(10)),))
     coming = booking(status=BookingStatus.CONFIRMED)

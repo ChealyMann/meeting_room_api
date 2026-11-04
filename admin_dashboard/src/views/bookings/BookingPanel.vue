@@ -52,6 +52,10 @@ const REJECTED_BY: Record<string, string> = {
   OWNER: 'Rejected by the room owner',
   SYSTEM: 'Rejected by the system',
 }
+// The API writes a rejection twice: as a REJECTED review and as `rejection`. Show it once.
+const reviews = computed(() =>
+  props.booking.rejection ? props.booking.reviews.filter((r) => r.decision !== 'REJECTED') : props.booking.reviews,
+)
 const IT_STATUS: Record<string, string> = { RECEIVED: 'Received', ASSIGNED: 'Staff assigned', READY: 'Ready' }
 
 // The door pass: undefined = hidden, else the API's answer or its refusal.
@@ -85,8 +89,11 @@ async function downloadIcs() {
     const link = document.createElement('a')
     link.href = url
     link.download = `${props.booking.reference_code}.ics`
+    // Safari needs the link in the page, and the file URL alive until the download starts.
+    document.body.append(link)
     link.click()
-    URL.revokeObjectURL(url)
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   } catch (err) {
     icsError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
@@ -226,7 +233,7 @@ async function downloadIcs() {
           <span>{{ booking.requester.name_en }}</span>
           <span class="mono">{{ formatPhnomPenh(booking.created_at) }}</span>
         </li>
-        <li v-for="(r, i) in booking.reviews" :key="i">
+        <li v-for="(r, i) in reviews" :key="i">
           <b>{{ STAGES[r.stage] ?? r.stage }} {{ DECISIONS[r.decision] ?? r.decision }}</b>
           <span v-if="r.reviewer">{{ r.reviewer.name_en }}</span>
           <span class="mono">{{ formatPhnomPenh(r.reviewed_at) }}</span>

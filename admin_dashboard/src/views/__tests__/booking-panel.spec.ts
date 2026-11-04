@@ -70,7 +70,10 @@ beforeEach(() => {
     }),
   )
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 async function mountAt(path: string) {
   const router: Router = createRouter({
@@ -136,6 +139,25 @@ describe('BookingPanel', () => {
     expect(history).toContain('Room is closed that day.')
   })
 
+  it('shows a rejection once, though the API also sends it as a review', async () => {
+    const reason = 'Room is closed that day.'
+    current = detail({
+      status: 'REJECTED',
+      display_status: 'REJECTED',
+      reviews: [
+        { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 9, name_en: 'Chan Pitika' }, notes: 'Fine', reviewed_at: '2026-11-04T02:00:00Z' },
+        { stage: 'OWNER', decision: 'REJECTED', reviewer: { id: 5, name_en: 'Keo Owner' }, notes: reason, reviewed_at: '2026-11-04T03:00:00Z' },
+      ],
+      rejection: { rejected_by: 'OWNER', actor: { id: 5, name_en: 'Keo Owner' }, reason, decided_at: '2026-11-04T03:00:00Z' },
+    })
+    await mountAt('/bookings?id=12')
+
+    const history = panel()!.querySelector('#tabpanel-history')!
+    expect(history.querySelectorAll('li')).toHaveLength(3)
+    expect(history.textContent!.split(reason)).toHaveLength(2)
+    expect(history.textContent).toContain('Rejected by the room owner')
+  })
+
   it('shows the door pass only when asked', async () => {
     await mountAt('/bookings?id=12')
     expect(panel()?.textContent).not.toContain('NBC-48213')
@@ -165,12 +187,20 @@ describe('BookingPanel', () => {
   })
 
   it('downloads the calendar file', async () => {
+    const revokedAtClick: boolean[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      revokedAtClick.push(vi.mocked(URL.revokeObjectURL).mock.calls.length > 0 || !this.isConnected)
+    })
     await mountAt('/bookings?id=12')
 
     await click(panelButton('Calendar file'))
 
     expect(calls).toContain('GET /api/v1/bookings/12/ics')
     expect(URL.createObjectURL).toHaveBeenCalled()
+    // Safari needs the link in the page and the file URL alive until the download starts.
+    expect(revokedAtClick).toEqual([false])
+    await new Promise((done) => setTimeout(done, 0))
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:1')
   })
 
   it('is read only', async () => {
