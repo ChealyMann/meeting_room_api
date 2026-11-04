@@ -237,7 +237,7 @@ watchEffect(() => {
         type="number"
         min="1"
         max="10000"
-        placeholder="Min. seats"
+        placeholder="Min.seats"
         @change="chooseMinSeats"
       />
     </label>
