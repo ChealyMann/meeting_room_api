@@ -16,8 +16,9 @@ import { serial } from '../../utils/serial'
 import { formatPhnomPenh } from '../../utils/time'
 import RoomEquipment from './RoomEquipment.vue'
 import RoomPhotos from './RoomPhotos.vue'
+import RoomSchedule from './RoomSchedule.vue'
 
-export type RoomStep = 'details' | 'photos' | 'equipment'
+export type RoomStep = 'details' | 'photos' | 'equipment' | 'schedule'
 
 /** `initial`: the room the page already has (just saved), so the panel opens at once. */
 const props = defineProps<{ roomId: number; step?: RoomStep; initial?: RoomDetail }>()
@@ -26,6 +27,8 @@ const emit = defineEmits<{ edit: []; changed: [room: RoomDetail]; close: [] }>()
 const room = ref<RoomDetail | null>(props.initial?.id === props.roomId ? props.initial : null)
 const loadError = ref('')
 const tab = ref<RoomStep>(props.step ?? 'details')
+const scheduleSeen = ref(false)
+watch(tab, (value) => (scheduleSeen.value ||= value === 'schedule'), { immediate: true })
 watch(
   () => props.step,
   (step) => (tab.value = step ?? 'details'),
@@ -82,6 +85,7 @@ const TABS: Array<{ id: RoomStep; label: () => string }> = [
   { id: 'details', label: () => 'Details' },
   { id: 'photos', label: () => `Photos ${room.value?.photos.length ?? 0}/20` },
   { id: 'equipment', label: () => `Equipment ${room.value?.equipment.length ?? 0}` },
+  { id: 'schedule', label: () => 'Schedule' },
 ]
 
 /** Children (photos, equipment) report their new lists here. */
@@ -179,6 +183,11 @@ defineExpose({ update, tab })
 
       <section v-show="tab === 'equipment'" id="tabpanel-equipment" role="tabpanel" aria-labelledby="tab-equipment">
         <RoomEquipment :room-id="room.id" :equipment="room.equipment" @change="update({ equipment: $event })" />
+      </section>
+
+      <!-- Loads the first time its tab opens. -->
+      <section v-if="tab === 'schedule' || scheduleSeen" v-show="tab === 'schedule'" id="tabpanel-schedule" role="tabpanel" aria-labelledby="tab-schedule">
+        <RoomSchedule :room-id="room.id" />
       </section>
 
       <div v-if="actionError" class="summary action-error" role="alert">

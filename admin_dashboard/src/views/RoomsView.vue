@@ -67,7 +67,7 @@ const roomId = computed(() => (/^\d+$/.test(roomParam.value ?? '') ? Number(room
 const editing = computed(() => roomId.value !== null && one(route.query.edit) === '1')
 const step = computed(() => {
   const value = one(route.query.step)
-  return value === 'photos' || value === 'equipment' ? (value as RoomStep) : undefined
+  return value === 'photos' || value === 'equipment' || value === 'schedule' ? (value as RoomStep) : undefined
 })
 
 function panelQuery(changes: Record<string, string | undefined>) {
