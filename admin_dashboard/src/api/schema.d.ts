@@ -1188,7 +1188,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List all bookings (Admin)
+         * @description B-32. Bookings in every province, earliest first start first. `q` matches the title,
+         *     the reference code or the booker's name. Read only: the Admin cannot approve, reject,
+         *     cancel or edit.
+         */
+        get: operations["list_all_bookings_api_v1_bookings_get"];
         put?: never;
         /**
          * Send a booking
@@ -6375,6 +6381,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookingCheckResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_bookings_api_v1_bookings_get: {
+        parameters: {
+            query?: {
+                /** @description A display status, e.g. PENDING_PITIKA or COMPLETED */
+                status?: string | null;
+                province?: string | null;
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BookingListItem_"];
                 };
             };
             /** @description Validation Error */

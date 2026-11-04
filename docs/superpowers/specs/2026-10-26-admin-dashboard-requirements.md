@@ -27,7 +27,7 @@ Later, a Room owner may manage only their own rooms (the API already supports th
 
 ## 4. Not in this version
 
-- Bookings, approvals, IT support pages.
+- Approvals and IT support pages. Bookings are read only for the Admin (Phase 7, added 4 Nov 2026): the Admin cannot approve, reject, cancel or edit.
 - Reports and charts.
 - Screens for roles other than Admin.
 - A phone app. (The dashboard must still work on a tablet.)
@@ -163,6 +163,17 @@ DSH-A01 to DSH-A09, the sidebar, the top bar with the user's name and sign out.
 | DSH-U06 | Signature: upload, see, remove. The image needs a token, so load it with `fetch` and show it from a blob URL. | `/users/{id}/signature` |
 | DSH-U07 | Roles page: the 6 roles; only the English and Khmer names can change. | `GET /roles`, `PATCH /roles/{id}` |
 | DSH-U08 | The Admin cannot turn themselves off or remove their own Admin role; the buttons are disabled with a short reason. | — |
+
+### Phase 7: Bookings (added 4 Nov 2026)
+
+| ID | Requirement | API |
+| --- | --- | --- |
+| DSH-B01 | Bookings list: reference, meeting, room, booker, first session, status, food and IT marks. Filters: status, province, room, from, to, search. | `GET /bookings` |
+| DSH-B02 | Booking detail, read only: details, sessions, services, history (reviews, rejection, cancel). | `GET /bookings/{id}` |
+| DSH-B03 | Door pass: hidden; a "Show door pass" button for confirmed bookings calls the API and shows it. | `GET /bookings/{id}/door-pass` |
+| DSH-B04 | Calendar file download. | `GET /bookings/{id}/ics` |
+| DSH-B05 | Catering packages and IT services: list, create, edit, turn off/on (with `version`). | `/catering-packages`, `/it-services` |
+| DSH-B06 | Room schedule tab (one week) and the day's food list, read only. | `GET /rooms/{id}/schedule`, `GET /pitika/catering` |
 
 ## 11. Done means
 

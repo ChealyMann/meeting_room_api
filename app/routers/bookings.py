@@ -1,8 +1,17 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from app.routers.common import AppSettings, DbSession, IdPath, PageParams, SearchQuery
+from app.routers.common import (
+    AppSettings,
+    DbSession,
+    IdPath,
+    IdQuery,
+    PageParams,
+    ProvinceQuery,
+    SearchQuery,
+)
 from app.schemas.booking import (
     BookingCheck,
     BookingCheckResult,
@@ -15,9 +24,9 @@ from app.schemas.booking import (
     DoorPassOut,
 )
 from app.schemas.common import Page
-from app.security import AnyUser
+from app.security import AdminUser, AnyUser
 from app.services import booking as booking_service
-from app.services import booking_view
+from app.services import booking_review, booking_view
 from app.services.booking_ics import build_ics
 from app.services.clock import now_utc
 
@@ -43,6 +52,34 @@ def create_booking(
     booking, warnings = booking_service.create_booking(session, current, body, settings)
     detail = booking_view.build_booking_detail(session, booking, settings)
     return BookingSaved(**dict(detail), warnings=warnings)
+
+
+@router.get("", response_model=Page[BookingListItem], summary="List all bookings (Admin)")
+def list_all_bookings(
+    current: AdminUser,
+    session: DbSession,
+    paging: Annotated[PageParams, Depends()],
+    status: Annotated[
+        str | None, Query(description="A display status, e.g. PENDING_PITIKA or COMPLETED")
+    ] = None,
+    province: ProvinceQuery = None,
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Any session on or after this day")
+    ] = None,
+    date_to: Annotated[
+        date | None, Query(alias="to", description="Any session on or before this day")
+    ] = None,
+    room_id: IdQuery = None,
+    q: SearchQuery = None,
+) -> Page[BookingListItem]:
+    """B-32. Bookings in every province, earliest first start first. `q` matches the title,
+    the reference code or the booker's name. Read only: the Admin cannot approve, reject,
+    cancel or edit."""
+    result = booking_review.list_admin_bookings(
+        session, paging.page, paging.size, status, province, date_from, date_to, room_id, q
+    )
+    items = booking_view.build_booking_list_items(result["items"])
+    return Page[BookingListItem](**{**result, "items": items})
 
 
 @router.get("/mine", response_model=Page[BookingListItem], summary="List my bookings")

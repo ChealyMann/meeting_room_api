@@ -71,6 +71,7 @@ These are not in the requirements. They are my calls; change them with a comment
 | B-20 | Self-approval | A Pitika may approve or reject their own booking (decided Nov 3, 2026). The same holds for a room owner on an R2 booking they made before they became the owner. No extra check. |
 | B-30 | Masking by route | A booking is private when the room is private now **or** the booking's route is not R1 (it was made while the room was private). So a room that turns shared does not show its old private bookings: the schedule and the clash message still show `Reserved (Private Session)` to those who cannot view them. One helper, `booking_access.is_private_booking`, decides it everywhere. |
 | B-31 | Loaded for write | Every booking write (edit, cancel, Pitika and owner approve/reject, IT assign and ready) reads the booking row `FOR UPDATE` with fresh values (`load_booking_for_write`) before `check_version`. A second request at the same version waits, then sees the new version and gets `409 STALE_VERSION` before it writes any child row (no duplicate-key 500). The visibility rules stay (hidden bookings are still 404). Room changes and new bookings lock the room row the same way. |
+| B-32 | Admin list | `GET /bookings` lists every booking for the Admin, with the Pitika list's filters plus `province` (section 9.5b). Read only: the Admin still cannot approve, reject, cancel or edit (decided Nov 4, 2026, for the admin dashboard). |
 
 ## 3. File map
 
@@ -510,6 +511,10 @@ Steps in `booking_service.create_booking(session, current, body, settings)`:
 ### 9.5 `GET /bookings/mine?status=&q=`
 
 The current user's bookings. `status` = a `DisplayStatus` value (422 if not). `q` matches `meeting_title` or `reference_code` (`apply_search`). Sort `created_at desc, id desc`.
+
+### 9.5b `GET /bookings?status=&province=&from=&to=&room_id=&q=` (B-32)
+
+Admin only (`AdminUser`, others 403). Every booking, or those of rooms in `province`. Same filters, search and sort as the Pitika list (9.11): `status` = a `DisplayStatus` (422 if not), `from`/`to` keep bookings with any session in the range, `q` matches title, reference code and booker name. Sort by first start, then id. Item: `BookingListItem`. `booking_review.list_admin_bookings` shares `_list_in_rooms` with the Pitika and owner lists.
 
 ### 9.6 `GET /bookings/{id}`
 

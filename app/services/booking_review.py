@@ -1,5 +1,6 @@
 """Review of bookings by Pitika (spec 9.11: T3, T4, T5, T6) and by the room owner
-(spec 9.13: T7, T8, T9): list, approve and reject."""
+(spec 9.13: T7, T8, T9): list, approve and reject. Also the Admin's read-only list of
+every booking (B-32), which shares the list query."""
 
 from datetime import date
 
@@ -207,3 +208,25 @@ def owner_reject(
     )
     session.commit()
     return booking
+
+
+# --- Admin -------------------------------------------------------------------------------
+
+
+def list_admin_bookings(
+    session: Session,
+    page: int,
+    size: int,
+    status: str | None,
+    province: str | None,
+    date_from: date | None,
+    date_to: date | None,
+    room_id: int | None,
+    q: str | None,
+) -> dict:
+    """Every booking (B-32), or those of one province. Read only: the Admin still cannot act."""
+    if province is None or not province.strip():
+        rooms = select(Room.id)
+    else:
+        rooms = booking_access.room_ids_in_province(province.strip())
+    return _list_in_rooms(session, rooms, page, size, status, date_from, date_to, room_id, q)
