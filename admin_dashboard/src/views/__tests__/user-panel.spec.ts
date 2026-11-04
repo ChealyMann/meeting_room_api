@@ -107,6 +107,7 @@ async function mountAt(path: string) {
     routes: [
       { path: '/', name: 'home', component: Stub },
       { path: '/users', name: 'users', component: UsersView },
+      { path: '/bookings', name: 'bookings', component: Stub },
     ],
   })
   await router.push(path)
@@ -184,7 +185,11 @@ describe('UserPanel', () => {
 
     expect(calls).toEqual([{ method: 'PATCH', path: '/api/v1/users/7', body: { is_active: false } }])
     expect(panel().querySelector('.unassigned')?.textContent).toContain('RM·0004')
-    expect([...panel().querySelectorAll('.cancelled .serial')].map((s) => s.textContent?.trim())).toEqual(['#12', '#15'])
+    const cancelled = [...panel().querySelectorAll('.cancelled a')].map((a) => [a.textContent?.trim(), a.getAttribute('href')])
+    expect(cancelled).toEqual([
+      ['#12', '/bookings?id=12'],
+      ['#15', '/bookings?id=15'],
+    ])
   })
 
   it('says to give private rooms a new owner before turning off', async () => {

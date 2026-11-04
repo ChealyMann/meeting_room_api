@@ -114,7 +114,9 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
                 <span class="sub">{{ order.room.location.name_en }}</span>
               </td>
               <td>
-                <span class="title">{{ order.meeting_title }}</span>
+                <RouterLink class="title link" :to="{ name: 'bookings', query: { id: String(order.booking_id) } }">
+                  {{ order.meeting_title }}
+                </RouterLink>
                 <span class="sub mono">{{ order.reference_code }}</span>
               </td>
               <td class="num mono">{{ order.servings }}</td>
@@ -156,6 +158,12 @@ td .sub {
 }
 .title {
   font-weight: 500;
+}
+.link {
+  color: inherit;
+}
+.link:hover {
+  color: var(--color-crimson);
 }
 .sub {
   font-size: 12px;

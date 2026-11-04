@@ -112,6 +112,12 @@ describe('FoodListView', () => {
     expect(row).toContain('Confirmed')
   })
 
+  it('links each order to its booking', async () => {
+    const { wrapper } = await mountAt('/food-list')
+
+    expect(wrapper.get('tbody tr a').attributes('href')).toBe('/bookings?id=7')
+  })
+
   it('says when there is no food that day', async () => {
     orders = []
     const { wrapper } = await mountAt('/food-list')

@@ -1,6 +1,8 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 import { useSessionStore } from '../../stores/session'
 import { mountConfirmHost } from '../../test-utils/confirm'
@@ -94,9 +96,18 @@ afterEach(() => {
 
 async function mountPanel(step?: 'schedule') {
   mountConfirmHost()
+  const Stub = defineComponent({ render: () => h('div') })
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'home', component: Stub },
+      { path: '/bookings', name: 'bookings', component: Stub },
+    ],
+  })
+  await router.push('/')
   const wrapper = mount(RoomDetailPanel, {
     props: { roomId: 12, step },
-    global: { stubs: { teleport: true } },
+    global: { stubs: { teleport: true }, plugins: [router] },
     attachTo: document.body,
   })
   await flushPromises()
@@ -151,6 +162,14 @@ describe('RoomSchedule', () => {
     expect(masked.find('svg.lock').exists()).toBe(true)
     expect(masked.text()).toContain('Reserved (Private Session)')
     expect(masked.text()).not.toContain('NBC-')
+  })
+
+  it('links each session to its booking, but not a masked one', async () => {
+    const wrapper = await mountPanel('schedule')
+
+    const [first, masked] = [wrapper.findAll('#tabpanel-schedule li')[0]!, wrapper.find('#tabpanel-schedule li.masked')]
+    expect(first.find('a').attributes('href')).toBe('/bookings?id=7')
+    expect(masked.find('a').exists()).toBe(false)
   })
 
   it('says when the week is free', async () => {

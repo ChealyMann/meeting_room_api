@@ -87,7 +87,10 @@ const hhmm = (time: string) => time.slice(0, 5)
             <span class="what">
               <span class="title">
                 <Lock v-if="item.is_masked" class="lock" aria-hidden="true" />
-                {{ item.title }}
+                <RouterLink v-if="item.booking_id" class="link" :to="{ name: 'bookings', query: { id: String(item.booking_id) } }">
+                  {{ item.title }}
+                </RouterLink>
+                <template v-else>{{ item.title }}</template>
               </span>
               <span v-if="!item.is_masked" class="meta">
                 <span class="mono">{{ item.reference_code }}</span>
@@ -173,6 +176,12 @@ li {
   gap: 4px 12px;
   font-size: 12px;
   color: var(--color-ink-off);
+}
+.link {
+  color: inherit;
+}
+.link:hover {
+  color: var(--color-crimson);
 }
 .masked .title {
   font-weight: 400;

@@ -124,7 +124,7 @@ function cancel() {
 
 // Turning a user off or taking Room owner away clears the rooms they own: the last answer's
 // rooms show here, each linked to its panel on the Rooms page. Turning off also cancels their
-// open bookings (B-27): the last answer's bookings show too.
+// open bookings (B-27): the last answer's bookings show too, each linked to its panel on Bookings.
 const unassigned = ref<number[]>([])
 const cancelled = ref<number[]>([])
 /** Turning off clears every room they own: the turn-off warning's number. */
@@ -199,7 +199,9 @@ async function turn(active: boolean) {
       <div>
         <b>These bookings were cancelled:</b>
         <span class="rooms">
-          <span v-for="id in cancelled" :key="id" class="serial">#{{ id }}</span>
+          <RouterLink v-for="id in cancelled" :key="id" class="serial" :to="{ name: 'bookings', query: { id: String(id) } }">
+            #{{ id }}
+          </RouterLink>
         </span>
       </div>
     </div>
