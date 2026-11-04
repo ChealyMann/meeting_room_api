@@ -13,6 +13,7 @@ import {
   Tags,
   Users,
   Utensils,
+  UtensilsCrossed,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -31,6 +32,10 @@ export interface NavGroup {
 
 export const NAV_GROUPS: NavGroup[] = [
   { title: null, items: [{ label: 'Rooms', icon: 'door-open', route: 'home' }] },
+  {
+    title: 'Bookings',
+    items: [{ label: 'Food list', icon: 'utensils-crossed', route: 'food-list' }],
+  },
   {
     title: 'Places',
     items: [
@@ -75,6 +80,7 @@ export const NAV_ICONS: Record<string, Component> = {
   tags: Tags,
   projector: Projector,
   utensils: Utensils,
+  'utensils-crossed': UtensilsCrossed,
   'monitor-cog': MonitorCog,
   'calendar-days': CalendarDays,
   network: Network,
