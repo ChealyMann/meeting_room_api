@@ -40,7 +40,7 @@ const holds = (group: NavGroup) => group.items.some((item) => item.route === rou
 // The open menu, by group title (a stored group object would come back wrapped by Vue).
 const menuTitle = ref<string | null>(null)
 const menuGroup = computed(() => NAV_GROUPS.find((group) => group.title === menuTitle.value) ?? null)
-const menuAt = ref({ top: 0, left: 0 })
+const menuAt = ref({ top: 0, left: 0, pointer: 0 })
 const menuEl = ref<HTMLElement | null>(null)
 function toggleMenu(group: NavGroup, event: MouseEvent) {
   if (menuTitle.value === group.title) {
@@ -48,7 +48,9 @@ function toggleMenu(group: NavGroup, event: MouseEvent) {
     return
   }
   const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  menuAt.value = { top: Math.max(8, box.top - 8), left: box.right + 8 }
+  const top = Math.max(8, box.top - 14)
+  // The pointer sits level with the middle of the group icon it came from.
+  menuAt.value = { top, left: box.right + 12, pointer: box.top + box.height / 2 - top - 5 }
   menuTitle.value = group.title
 }
 watch([() => route.name, () => props.compact], () => (menuTitle.value = null))
@@ -169,10 +171,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :aria-label="menuGroup.title ?? ''"
         :style="{ top: `${menuAt.top}px`, left: `${menuAt.left}px` }"
       >
-        <span class="menu-title">{{ menuGroup.title }}</span>
+        <span class="menu-pointer" aria-hidden="true" :style="{ top: `${menuAt.pointer}px` }" />
+        <div class="menu-head">
+          <span class="menu-tile"><component :is="ICONS[menuGroup.icon ?? '']" aria-hidden="true" /></span>
+          <span class="menu-title">{{ menuGroup.title }}</span>
+          <span class="menu-count">{{ menuGroup.items.length }}</span>
+        </div>
         <template v-for="item in menuGroup.items" :key="item.label">
           <RouterLink v-if="item.route" v-slot="{ href, navigate, isExactActive }" :to="{ name: item.route }" custom>
             <a :href="href" role="menuitem" :aria-current="isExactActive ? 'page' : undefined" @click="navigate">
+              <component :is="ICONS[item.icon]" aria-hidden="true" />
               {{ item.label }}
             </a>
           </RouterLink>
@@ -455,8 +463,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   background: var(--color-rail-raised);
   color: var(--color-thread);
 }
-.group-icon.holds::before,
-.rail-menu a[aria-current='page']::before {
+.group-icon.holds::before {
   content: '';
   position: absolute;
   left: 0;
@@ -465,43 +472,83 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   width: 1px;
   background: repeating-linear-gradient(to bottom, var(--color-thread) 0 5px, transparent 5px 8px);
 }
-/* On the white menu the thread is crimson: gold would not show on paper. */
-.rail-menu a[aria-current='page']::before {
-  background: repeating-linear-gradient(to bottom, var(--color-crimson) 0 5px, transparent 5px 8px);
-}
 .rail-menu {
   position: fixed;
   z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 210px;
+  width: 240px;
   box-sizing: border-box;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--color-rule);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--color-sheet);
-  box-shadow: var(--shadow-toast);
+  box-shadow: 0 16px 36px rgba(42, 28, 19, 0.14), 0 2px 6px rgba(42, 28, 19, 0.06);
   font-family: var(--font-sans);
 }
+/* The pointer: a small turned square on the menu's left edge, toward the group icon. */
+.menu-pointer {
+  position: absolute;
+  left: -6px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-sheet);
+  border-left: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  transform: rotate(45deg);
+}
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--color-rule);
+}
+.menu-tile {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+}
+.menu-tile svg {
+  width: 16px;
+  height: 16px;
+}
 .menu-title {
-  padding: 4px 10px 6px;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.menu-count {
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-intaglio);
+  color: var(--color-ink-off);
 }
 .rail-menu a {
   position: relative;
   display: flex;
   align-items: center;
-  height: 34px;
-  padding: 0 10px 0 14px;
-  border-radius: 6px;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
   color: var(--color-ink);
   font-size: 13.5px;
   text-decoration: none;
+}
+.rail-menu a svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-intaglio);
+}
+.rail-menu a[aria-current='page'] svg {
+  color: var(--color-crimson);
 }
 .rail-menu a:hover {
   background: var(--color-row-hover);

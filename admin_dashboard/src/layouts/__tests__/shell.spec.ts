@@ -189,6 +189,9 @@ describe('AppShell folded sidebar', () => {
     expect(group(wrapper, 'Organisation').attributes('aria-expanded')).toBe('true')
     const items = [...menu()!.querySelectorAll('a')].map((a) => a.textContent?.trim())
     expect(items).toEqual(['Departments', 'Divisions', 'Positions'])
+    expect(menu()!.querySelector('.menu-head')?.textContent).toMatch(/Organisation\s*3/)
+    expect(menu()!.querySelectorAll('a svg')).toHaveLength(3)
+    expect(menu()!.querySelector('.menu-pointer')).not.toBeNull()
     expect(menu()!.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Positions')
 
     menu()!.querySelector<HTMLAnchorElement>('a[href="/divisions"]')!.click()
