@@ -6,7 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
-import { mountConfirmHost } from '../../test-utils/confirm'
+import { answerConfirm, mountConfirmHost } from '../../test-utils/confirm'
 import ServiceCatalogView from '../ServiceCatalogView.vue'
 
 enableAutoUnmount(afterEach)
@@ -147,6 +147,24 @@ describe('ServiceCatalogView', () => {
     expect(listCalls.length).toBeGreaterThan(calls)
     expect(inPanel<HTMLInputElement>('#name')!.value).toBe('Coffee and tea')
     expect(panel()?.textContent).not.toContain('This package changed. Reload it.')
+  })
+
+  it('offers Reload when someone saved first and the Active switch is flipped', async () => {
+    saveAnswer = () => json({ error: { code: 'STALE_VERSION', message: 'This package changed. Reload it.', fields: {} } }, 409)
+    await mountAt('/catering-packages?id=3')
+
+    panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
+    await flushPromises()
+    await answerConfirm('Make inactive')
+    expect(writes[0]!.body).toBe(JSON.stringify({ is_active: false, version: 2 }))
+    expect(panelButton('Reload')).toBeDefined()
+
+    listItems = () => [service(3, { name: 'Coffee and tea', version: 3 })]
+    panelButton('Reload')!.click()
+    await flushPromises()
+
+    expect(inPanel<HTMLInputElement>('#name')!.value).toBe('Coffee and tea')
+    expect(panelButton('Reload')).toBeUndefined()
   })
 
   it('shows IT services with their own words', async () => {

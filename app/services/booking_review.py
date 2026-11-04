@@ -39,7 +39,11 @@ def _list_in_rooms(
     q: str | None,
 ) -> dict:
     """Bookings of the rooms in the `room_ids` subquery, earliest first start first.
-    `date_from` / `date_to` keep bookings with any session in the range."""
+    `date_from` / `date_to` keep bookings with any session in the range; `to` before `from`
+    is 422, like the room schedule (spec 9.2)."""
+    if date_from is not None and date_to is not None and date_to < date_from:
+        message = "Must be on or after from."
+        raise AppError(ErrorCode.VALIDATION_ERROR, 422, "Invalid request.", {"to": message})
     query = (
         select(Booking)
         .join(User, Booking.requester_id == User.id)

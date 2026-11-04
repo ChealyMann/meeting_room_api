@@ -151,8 +151,16 @@ async function reload() {
 }
 
 async function turn(active: boolean) {
-  const item = await updateService(api, props.kind, current.value!.id, { is_active: active, version: current.value!.version })
-  done(item, `${item.name} is now ${active ? 'active' : 'inactive'}`)
+  try {
+    const item = await updateService(api, props.kind, current.value!.id, { is_active: active, version: current.value!.version })
+    done(item, `${item.name} is now ${active ? 'active' : 'inactive'}`)
+  } catch (err) {
+    // Someone saved first: say it at the top with "Reload", the one way forward. Other refusals
+    // show next to the switch, as on every page.
+    if (!(err instanceof ApiError && err.code === 'STALE_VERSION')) throw err
+    clear()
+    failed(err)
+  }
 }
 </script>
 

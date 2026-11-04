@@ -76,6 +76,13 @@ def test_from_to_match_any_session(client, frozen, admin, booking, auth_headers)
     assert ids(client, headers, **{"from": NEXT_DAY.isoformat()}) == [two_days.id]
 
 
+def test_from_after_to_422(client, frozen, admin, auth_headers):
+    params = {"from": NEXT_DAY.isoformat(), "to": DAY.isoformat()}
+    response = client.get(LIST, params=params, headers=auth_headers(admin))
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == {"to": "Must be on or after from."}
+
+
 def test_room_and_q(
     client, frozen, admin, booking, make_user, make_bookable_room, make_booking, auth_headers
 ):
