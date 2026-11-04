@@ -47,10 +47,12 @@ function toggleMenu(group: NavGroup, event: MouseEvent) {
     menuTitle.value = null
     return
   }
-  const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const button = event.currentTarget as HTMLElement
+  const box = button.getBoundingClientRect()
+  // Clear of the rail's edge, not just the icon; the pointer is level with the icon's middle.
+  const railRight = button.closest('aside')?.getBoundingClientRect().right ?? box.right
   const top = Math.max(8, box.top - 14)
-  // The pointer sits level with the middle of the group icon it came from.
-  menuAt.value = { top, left: box.right + 12, pointer: box.top + box.height / 2 - top - 5 }
+  menuAt.value = { top, left: railRight + 14, pointer: box.top + box.height / 2 - top - 5 }
   menuTitle.value = group.title
 }
 watch([() => route.name, () => props.compact], () => (menuTitle.value = null))
