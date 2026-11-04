@@ -15,3 +15,6 @@ avatars/
 .impeccable/questions/
 .impeccable/mocks/
 .superpowers/
+
+# Local frontend mockup (own GitHub repo)
+frontend_mockup/

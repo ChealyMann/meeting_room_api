@@ -28,5 +28,7 @@ export const FILTER_WORDS = {
   private: { all: 'Private or public', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show private or public' },
   division: { all: 'All divisions', search: 'Search divisions', unknown: 'Unknown division', none: 'No division matches', clear: 'Show all divisions' },
   position: { all: 'All positions', search: 'Search positions', unknown: 'Unknown position', none: 'No position matches', clear: 'Show all positions' },
+  bookingStatus: { all: 'Any status', search: 'Search statuses', unknown: 'Unknown status', none: 'No status matches', clear: 'Show any status' },
+  room: { all: 'All rooms', search: 'Search rooms', unknown: 'Unknown room', none: 'No room matches', clear: 'Show all rooms' },
   role: { all: 'All roles', search: 'Search roles', unknown: 'Unknown role', none: 'No role matches', clear: 'Show all roles' },
 } satisfies Record<string, PickerWords>

@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.errors import AppError
 from app.models import Building, Location, User
 from app.services.records import (
+    check_and_bump_version,
     check_parent_active,
     get_or_404,
     get_reference,
@@ -24,6 +25,30 @@ def test_get_or_404(db_session, make_location):
     assert get_or_404(db_session, Location, location.id) is location
     error = _raises(lambda: get_or_404(db_session, Location, 999_999))
     assert (error.status, error.code, error.message) == (404, "NOT_FOUND", "Not found.")
+
+
+def test_version_matches_then_goes_up(make_catering_package):
+    package = make_catering_package()
+    check_and_bump_version(package, 1)
+    assert package.version == 2
+
+
+def test_old_version_is_stale_and_not_bumped(make_catering_package):
+    package = make_catering_package()
+    error = _raises(lambda: check_and_bump_version(package, 2))
+    assert (error.status, error.code, error.message) == (
+        409,
+        "STALE_VERSION",
+        "This item changed. Reload it.",
+    )
+    assert package.version == 1
+
+
+def test_get_or_404_with_lock(db_session, make_catering_package):
+    package = make_catering_package()
+    assert get_or_404(db_session, type(package), package.id, lock=True) is package
+    error = _raises(lambda: get_or_404(db_session, type(package), 999_999, lock=True))
+    assert (error.status, error.code) == (404, "NOT_FOUND")
 
 
 def test_reference_must_exist(db_session):

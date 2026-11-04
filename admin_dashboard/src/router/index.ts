@@ -45,6 +45,18 @@ const router = createRouter({
           meta: { title: 'Rooms' },
         },
         {
+          path: 'bookings',
+          name: 'bookings',
+          component: () => import('../views/BookingsView.vue'),
+          meta: { title: 'Bookings' },
+        },
+        {
+          path: 'food-list',
+          name: 'food-list',
+          component: () => import('../views/FoodListView.vue'),
+          meta: { title: 'Food list' },
+        },
+        {
           path: 'offices',
           name: 'offices',
           component: () => import('../views/OfficesView.vue'),
@@ -73,6 +85,26 @@ const router = createRouter({
           name: 'equipment',
           component: () => import('../views/EquipmentView.vue'),
           meta: { title: 'Equipment' },
+        },
+        {
+          path: 'public-holidays',
+          name: 'public-holidays',
+          component: () => import('../views/HolidaysView.vue'),
+          meta: { title: 'Public holidays' },
+        },
+        {
+          path: 'catering-packages',
+          name: 'catering-packages',
+          component: () => import('../views/ServiceCatalogView.vue'),
+          props: { kind: 'catering' },
+          meta: { title: 'Catering packages' },
+        },
+        {
+          path: 'it-services',
+          name: 'it-services',
+          component: () => import('../views/ServiceCatalogView.vue'),
+          props: { kind: 'it' },
+          meta: { title: 'IT services' },
         },
         {
           path: 'departments',

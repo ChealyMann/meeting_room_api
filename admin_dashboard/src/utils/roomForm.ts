@@ -84,6 +84,8 @@ export function roomProblems(form: RoomForm): Record<string, string> {
   if (form.building_id === null) problems.building_id = 'Choose a building.'
   if (form.floor_id === null) problems.floor_id = 'Choose a floor.'
   if (form.category_id === null) problems.category_id = 'Choose a room type.'
+  // A private room's bookings go to its owner, so it needs one (the API's OWNER_REQUIRED).
+  if (form.is_private && form.room_owner_id === null) problems.room_owner_id = 'A private room needs an owner.'
   if (wholeNumber(form.capacity, 1, 10000) === null) {
     problems.capacity = 'Seats must be a whole number from 1 to 10000.'
   }

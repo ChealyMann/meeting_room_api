@@ -8,7 +8,18 @@ import ActiveToggle from '../ActiveToggle.vue'
 
 enableAutoUnmount(afterEach)
 
-type Kind = 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
+type Kind =
+  | 'office'
+  | 'building'
+  | 'floor'
+  | 'room type'
+  | 'equipment'
+  | 'catering package'
+  | 'IT service'
+  | 'department'
+  | 'division'
+  | 'position'
+  | 'user'
 type Count = () => Promise<number>
 
 const counted = (total: number) => vi.fn<Count>(async () => total)
@@ -104,6 +115,12 @@ describe('ActiveToggle', () => {
     )
   })
 
+  it('says bookings keep a catering package or an IT service', async () => {
+    const text = 'Bookings that have it keep it, but it cannot be chosen for new bookings. You can make it active again.'
+    expect(await warningFor('catering package', counted(0))).toContain(text)
+    expect(await warningFor('IT service', failing())).toContain(text)
+  })
+
   it('counts users for departments, divisions and positions', async () => {
     expect(await warningFor('department', counted(12))).toContain(
       '12 users work in this department and stay in it. Its divisions stay active, but no new division can be added to it.',
@@ -122,10 +139,14 @@ describe('ActiveToggle', () => {
     )
   })
 
-  it('says what turning a user off does to their rooms', async () => {
-    expect(await warningFor('user', counted(3))).toContain('They cannot sign in, and 3 rooms lose their owner. You can make them active again.')
-    expect(await warningFor('user', counted(1))).toContain('They cannot sign in, and 1 room loses its owner.')
-    expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you make them active again.')
+  it('says what turning a user off does to their bookings and rooms', async () => {
+    expect(await warningFor('user', counted(3))).toContain(
+      'They cannot sign in, their bookings that have not ended are cancelled, and 3 rooms lose their owner. You can make them active again.',
+    )
+    expect(await warningFor('user', counted(1))).toContain('and 1 room loses its owner.')
+    expect(await warningFor('user', counted(0))).toContain(
+      'They cannot sign in, and their bookings that have not ended are cancelled. You can make them active again.',
+    )
   })
 
   it('can be locked: the switch looks off-limits, and a click says why instead of turning', async () => {

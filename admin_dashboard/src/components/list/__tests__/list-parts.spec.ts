@@ -1,5 +1,7 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { Inbox, Landmark, SearchX } from 'lucide-vue-next'
 import { afterEach, describe, expect, it } from 'vitest'
+import { routeLocationKey } from 'vue-router'
 
 import EmptyState from '../EmptyState.vue'
 import { choosePicker } from '../../../test-utils/picker'
@@ -93,16 +95,35 @@ describe('StateMarks', () => {
 })
 
 describe('EmptyState and TableSkeleton', () => {
-  it('shows the heading, the text, the actions and a hidden watermark', () => {
-    const wrapper = mount(EmptyState, {
-      props: { title: 'No rooms yet', text: 'Add the first meeting room.' },
-      slots: { default: '<button>New room</button>' },
+  /** An empty state on the page whose route is `name`. */
+  const onPage = (name: string, props: Record<string, unknown> = {}) =>
+    mount(EmptyState, {
+      props: { title: 'No offices yet', text: 'Add the first office.', ...props },
+      slots: { default: '<button>New office</button>' },
+      global: { provide: { [routeLocationKey as symbol]: { name } } },
     })
 
-    expect(wrapper.text()).toContain('No rooms yet')
-    expect(wrapper.text()).toContain('Add the first meeting room.')
-    expect(wrapper.find('button').text()).toBe('New room')
-    expect(wrapper.get('svg.watermark').attributes('aria-hidden')).toBe('true')
+  it("shows the page's own icon in a hidden seal, the heading, the text and the actions", () => {
+    const wrapper = onPage('offices')
+
+    expect(wrapper.text()).toContain('No offices yet')
+    expect(wrapper.text()).toContain('Add the first office.')
+    expect(wrapper.find('button').text()).toBe('New office')
+    expect(wrapper.get('.seal').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.findComponent(Landmark).exists()).toBe(true)
+    expect(wrapper.find('svg.watermark').exists()).toBe(false)
+  })
+
+  it('shows a search icon when the filters hide every record', () => {
+    const wrapper = onPage('offices', { filtered: true })
+
+    expect(wrapper.findComponent(SearchX).exists()).toBe(true)
+    expect(wrapper.findComponent(Landmark).exists()).toBe(false)
+  })
+
+  it('falls back to an inbox icon on a page without a menu icon', () => {
+    expect(onPage('profile').findComponent(Inbox).exists()).toBe(true)
+    expect(mount(EmptyState, { props: { title: 'Nothing', text: 'Nothing here.' } }).findComponent(Inbox).exists()).toBe(true)
   })
 
   it('draws hidden rows that match the columns', () => {

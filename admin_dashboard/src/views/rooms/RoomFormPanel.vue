@@ -360,10 +360,11 @@ async function save() {
         <div class="switch-row">
           <div>
             <label for="is_private">Private</label>
-            <p>Only a label: shows the room as private.</p>
+            <p>The owner approves its bookings. It needs an owner.</p>
           </div>
-          <BaseSwitch id="is_private" v-model="form.is_private" />
+          <BaseSwitch id="is_private" v-model="form.is_private" :aria-describedby="errors.is_private ? 'is_private-error' : undefined" />
         </div>
+        <p v-if="errors.is_private" id="is_private-error" class="switch-error" role="alert">{{ errors.is_private }}</p>
       </section>
     </form>
 
@@ -417,6 +418,11 @@ h3 {
 }
 textarea.input {
   min-height: 72px;
+}
+.switch-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-crimson);
 }
 .switch-row {
   display: flex;

@@ -51,6 +51,42 @@ const USER = {
   must_change_password: false,
 }
 const NAMED = { location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' }, province: PP }
+const SERVICE = { id: 3, name: 'Coffee break', description: null, sort_order: 1, version: 1, ...stamps }
+const SESSION = { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' }
+const BOOKING_ITEM = {
+  id: 100,
+  reference_code: 'NBC-26-10000',
+  room: { id: 12, name_en: 'Mekong Room', name_kh: 'បន្ទប់មេគង្គ', is_private: false, ...NAMED },
+  meeting_title: 'Budget review',
+  meeting_type: 'INTERNAL',
+  route: 'R1',
+  status: 'CONFIRMED',
+  display_status: 'CONFIRMED',
+  requester: { id: 4, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' },
+  first_session: SESSION,
+  session_count: 1,
+  attendees: 10,
+  has_catering: false,
+  has_it: false,
+  created_at: '2026-11-03T02:00:00Z',
+  version: 1,
+}
+const BOOKING = {
+  ...BOOKING_ITEM,
+  requester_info: { name_en: 'Sok Dara' },
+  meeting_purpose: null,
+  private_justification: null,
+  participant_emails: [],
+  sessions: [SESSION],
+  last_end: { date: '2026-11-10', time: '10:30' },
+  catering: null,
+  it: null,
+  reviews: [],
+  rejection: null,
+  cancelled_at: null,
+  cancel_reason: null,
+  updated_at: '2026-11-03T02:00:00Z',
+}
 
 const RECORDS: Record<string, unknown> = {
   '/api/v1/users/9': USER,
@@ -59,6 +95,7 @@ const RECORDS: Record<string, unknown> = {
   '/api/v1/positions/4': POSITION,
   '/api/v1/categories/2': ROOM_TYPE,
   '/api/v1/equipment/4': ITEM,
+  '/api/v1/bookings/100': BOOKING,
   '/api/v1/locations/3': OFFICE,
   '/api/v1/buildings/5': { ...BUILDING, ...NAMED },
   '/api/v1/floors/7': { ...FLOOR, building: { id: 5, name_en: 'Tower A', name_kh: 'អគារ ក' }, ...NAMED },
@@ -71,6 +108,9 @@ const LISTS: Record<string, unknown[]> = {
   '/api/v1/positions': [POSITION],
   '/api/v1/categories': [ROOM_TYPE],
   '/api/v1/equipment': [ITEM],
+  '/api/v1/catering-packages': [SERVICE],
+  '/api/v1/it-services': [SERVICE],
+  '/api/v1/bookings': [BOOKING_ITEM],
   '/api/v1/locations': [OFFICE],
   '/api/v1/buildings': [BUILDING],
   '/api/v1/floors': [FLOOR],
@@ -121,7 +161,21 @@ function frames(page: Page, ms: number) {
   )
 }
 
-for (const path of ['/offices', '/buildings', '/floors', '/room-types', '/equipment', '/departments', '/divisions', '/positions', '/users', '/roles']) {
+for (const path of [
+  '/offices',
+  '/buildings',
+  '/floors',
+  '/room-types',
+  '/equipment',
+  '/catering-packages',
+  '/it-services',
+  '/bookings',
+  '/departments',
+  '/divisions',
+  '/positions',
+  '/users',
+  '/roles',
+]) {
   for (const recordMs of [60, 800]) {
     test(`${path}: a record (answer after ${recordMs}ms) slides in once`, async ({ page }) => {
       await listPage(page, path, recordMs)

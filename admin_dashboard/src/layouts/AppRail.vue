@@ -1,42 +1,14 @@
 <script setup lang="ts">
-import {
-  Briefcase,
-  Building2,
-  DoorOpen,
-  GitFork,
-  Landmark,
-  Layers,
-  LogOut,
-  Network,
-  Projector,
-  ShieldCheck,
-  Tags,
-  Users,
-  X,
-} from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, type Component } from 'vue'
+import { LogOut, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
-import { NAV_GROUPS } from './nav'
+import { NAV_GROUPS, NAV_ICONS as ICONS } from './nav'
 
 defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
-
-const ICONS: Record<string, Component> = {
-  'door-open': DoorOpen,
-  landmark: Landmark,
-  'building-2': Building2,
-  layers: Layers,
-  tags: Tags,
-  projector: Projector,
-  network: Network,
-  'git-fork': GitFork,
-  briefcase: Briefcase,
-  users: Users,
-  'shield-check': ShieldCheck,
-}
 
 // Served from public/, not bundled.
 const LOGO = '/nbc-logo.png'

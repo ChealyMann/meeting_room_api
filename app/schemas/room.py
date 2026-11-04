@@ -47,7 +47,7 @@ class RoomCreate(RequestModel):
     description: OptionalText(1000) = None
     door_code: OptionalText(50) = None  # write-only: never returned here
     room_owner_id: OptionalRefId = None  # null = no-owner room; else R7
-    is_private: bool = False  # a label only; independent of the owner
+    is_private: bool = False  # picks the booking route; a private room needs an owner
 
 
 class RoomUpdate(RequestModel):
@@ -90,7 +90,7 @@ class RoomListItem(ResponseModel):
     cover_photo: CoverPhoto | None
     is_active: bool
     is_bookable: bool  # computed (R12), never stored
-    is_private: bool  # a label only
+    is_private: bool  # picks the booking route (private: the owner approves)
 
 
 class RoomDetail(RoomListItem):

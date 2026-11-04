@@ -71,6 +71,17 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 - Making a room type or an item inactive leaves rooms as they are (still bookable); it only stops it being chosen for other rooms. The warning counts the active rooms that use it.
 - An item's icon is a Lucide name from the picker's list in `src/utils/equipmentIcons.ts`. A name not on that list (set elsewhere) is kept and shown as "Unknown icon"; add it to the list to show it.
 - The real-API test for the catalog (`e2e/catalog.spec.ts`) adds a room type and an item with unique names each run, and turns the item off.
+- Catering packages (`/catering-packages`) and IT services (`/it-services`) share one page (`ServiceCatalogView`, set by the route's `kind`) and one form panel. Every change sends the `version` that was read; if someone saved first the API answers 409 `STALE_VERSION` and the panel offers "Reload". Making one inactive changes no booking (bookings keep a copy of the name).
+
+## Bookings
+
+- Read only for the Admin: the Admin cannot approve, reject, cancel or edit (the API refuses it, spec B-32).
+- Bookings (`/bookings`) lists every booking (`GET /bookings`). Filters in the address: `status` (a display status), `province`, `room_id`, `from`, `to`, `q`. There is no Active filter, so the list uses `useResourceList(..., { activeFilter: false })`.
+- `?id=12` opens a booking: Details (with the door pass, shown only after "Show door pass" and only for a confirmed booking), Sessions, Services, History, and "Calendar file" (the `.ics`).
+- The Food list (`/food-list?date=2026-11-04`) is the day's food orders (`GET /pitika/catering`, every province for the Admin). No date means today in Phnom Penh.
+- A room's panel has a Schedule tab: one week of its bookings (`GET /rooms/{id}/schedule`). A private session the viewer may not see shows as "Reserved (Private Session)" with a lock and no link.
+- Schedule rows, food orders and the bookings cancelled when a user is turned off link to `/bookings?id=…`.
+- The real-API test (`e2e/bookings.spec.ts`) adds a catering package and opens the bookings list; it opens a booking only when one exists.
 
 ## Organisation
 

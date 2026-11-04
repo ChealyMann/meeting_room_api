@@ -41,10 +41,16 @@ function serialize(value: unknown): string {
   return Array.isArray(value) ? value.join(',') : String(value)
 }
 
-export function useListQuery(spec: FilterSpec) {
+export interface ListQueryOptions {
+  /** false: the list has no Active/Inactive/All filter, so `status` and `is_active` are not used. */
+  activeFilter?: boolean
+}
+
+export function useListQuery(spec: FilterSpec, options: ListQueryOptions = {}) {
   const route = useRoute()
   const router = useRouter()
-  const managed = new Set([...Object.keys(spec), 'page', 'size', 'status'])
+  const activeFilter = options.activeFilter ?? true
+  const managed = new Set([...Object.keys(spec), 'page', 'size', ...(activeFilter ? ['status'] : [])])
 
   const filters: ComputedRef<Record<string, unknown>> = computed(() => {
     const out: Record<string, unknown> = {}
@@ -63,6 +69,7 @@ export function useListQuery(spec: FilterSpec) {
     return size !== null && (PAGE_SIZES as readonly number[]).includes(size) ? size : DEFAULT_SIZE
   })
   const currentStatus = computed<Status>(() => {
+    if (!activeFilter) return 'all'
     const status = first(route.query.status)
     return status === 'inactive' || status === 'all' ? status : 'active'
   })
@@ -78,7 +85,7 @@ export function useListQuery(spec: FilterSpec) {
     }
     if (next.page > 1) query.page = String(next.page)
     if (next.size !== DEFAULT_SIZE) query.size = String(next.size)
-    if (next.status !== 'active') query.status = next.status
+    if (activeFilter && next.status !== 'active') query.status = next.status
     // replace: typing in a filter must not add a history entry per change.
     void router.replace({ query })
   }
@@ -102,7 +109,7 @@ export function useListQuery(spec: FilterSpec) {
   }
 
   function reset() {
-    write({ filters: {}, page: 1, size: DEFAULT_SIZE, status: 'active' })
+    write({ filters: {}, page: 1, size: DEFAULT_SIZE, status: activeFilter ? 'active' : 'all' })
   }
 
   const page: Ref<number> = computed({

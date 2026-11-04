@@ -566,7 +566,9 @@ export interface paths {
         head?: never;
         /**
          * Change a user, or turn them off or on
-         * @description Turning a user off clears the rooms they own; `rooms_unassigned` lists them.
+         * @description Turning a user off clears the shared rooms they own (`rooms_unassigned`) and cancels
+         *     their bookings that have not ended (`bookings_cancelled`). Refused while they own a
+         *     private room.
          */
         patch: operations["update_user_api_v1_users__user_id__patch"];
         trace?: never;
@@ -598,7 +600,8 @@ export interface paths {
         get?: never;
         /**
          * Replace a user's roles
-         * @description Removing Room owner clears the rooms the user owns; `rooms_unassigned` lists them.
+         * @description Removing Room owner clears the shared rooms the user owns; `rooms_unassigned` lists
+         *     them. Refused while they own a private room. `bookings_cancelled` is always empty.
          */
         put: operations["set_roles_api_v1_users__user_id__roles_put"];
         post?: never;
@@ -776,6 +779,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms/{room_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See a room's schedule
+         * @description Every session that blocks the room, by date and start time, both days included
+         *     (at most 31 days). A private room's booking you may not see shows as a masked item.
+         */
+        get: operations["get_schedule_api_v1_rooms__room_id__schedule_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms/{room_id}/equipment": {
         parameters: {
             query?: never;
@@ -797,10 +821,534 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catering-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List catering packages
+         * @description Admin can filter by status; everyone else sees active packages only.
+         */
+        get: operations["list_catering_packages_api_v1_catering_packages_get"];
+        put?: never;
+        /** Add a package */
+        post: operations["create_catering_package_api_v1_catering_packages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catering-packages/{package_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a package, or turn it off or on
+         * @description Send the `version` you read. If someone saved first, this returns 409 STALE_VERSION.
+         */
+        patch: operations["update_catering_package_api_v1_catering_packages__package_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/it-services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List IT services
+         * @description Admin can filter by status; everyone else sees active services only.
+         */
+        get: operations["list_it_services_api_v1_it_services_get"];
+        put?: never;
+        /** Add an IT service */
+        post: operations["create_it_service_api_v1_it_services_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it-services/{service_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an IT service, or turn it off or on
+         * @description Send the `version` you read. If someone saved first, this returns 409 STALE_VERSION.
+         */
+        patch: operations["update_it_service_api_v1_it_services__service_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/it/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List IT tickets
+         * @description Tickets sent to IT, earliest first start first. The IT Lead sees all of them; IT Staff
+         *     see the tickets they are assigned to. Rejected and cancelled bookings are left out. `q`
+         *     matches the meeting title or the reference code.
+         */
+        get: operations["list_tickets_api_v1_it_tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/tickets/{ticket_id}/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign IT Staff
+         * @description T10. IT Lead only. `version` is the booking's. The booking must be in IT setup and the
+         *     ticket not Ready (409 INVALID_TRANSITION). Every user must be active IT Staff (409
+         *     INACTIVE_REFERENCE). The list replaces the earlier one.
+         */
+        put: operations["assign_staff_api_v1_it_tickets__ticket_id__staff_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/tickets/{ticket_id}/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark the setup ready
+         * @description T11. IT Lead only. `version` is the booking's. Needs at least one active assigned IT
+         *     Staff (409 INVALID_TRANSITION). The booking becomes CONFIRMED with a door pass.
+         */
+        post: operations["mark_ready_api_v1_it_tickets__ticket_id__ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pitika/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings in my province
+         * @description Bookings of rooms in the province of your office, earliest first start first. `q`
+         *     matches the title, the reference code or the requester's name. With no province you
+         *     get an empty list.
+         */
+        get: operations["list_pitika_bookings_api_v1_pitika_bookings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pitika/bookings/{booking_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a booking
+         * @description T3, T4, T5. The booking must wait for Pitika (409 INVALID_TRANSITION otherwise) and
+         *     its first session must not have started (409 TIME_PASSED). The notes go to the review and
+         *     to the food order. A private-room booking goes on to the room owner; one with IT goes to
+         *     IT setup; any other is confirmed with a door pass.
+         */
+        post: operations["approve_booking_api_v1_pitika_bookings__booking_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pitika/bookings/{booking_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a booking
+         * @description T6. The reason (5 to 1000 characters) is shown to the booker. Allowed even after the
+         *     meeting started.
+         */
+        post: operations["reject_booking_api_v1_pitika_bookings__booking_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings in my private rooms
+         * @description Bookings in the private rooms you own now, earliest first start first. When a room
+         *     gets a new owner, its bookings move to the new owner's list. `q` matches the title, the
+         *     reference code or the requester's name.
+         */
+        get: operations["list_owner_bookings_api_v1_owner_bookings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings/{booking_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a booking
+         * @description T7, T8. The booking must wait for the room owner (409 INVALID_TRANSITION otherwise)
+         *     and its first session must not have started (409 TIME_PASSED). A booking with IT goes to
+         *     IT setup; any other is confirmed with a door pass.
+         */
+        post: operations["approve_booking_api_v1_owner_bookings__booking_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings/{booking_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a booking
+         * @description T9. The reason (5 to 1000 characters) is shown to the booker. Allowed even after the
+         *     meeting started.
+         */
+        post: operations["reject_booking_api_v1_owner_bookings__booking_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pitika/catering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See the day's food list
+         * @description Food for bookings in IT setup or confirmed whose first session is on that day, by
+         *     delivery time and room name. A Pitika sees their province; Admin sees every province.
+         *     Servings are the current attendees.
+         */
+        get: operations["list_food_orders_api_v1_pitika_catering_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public-holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List public holidays
+         * @description Sorted by date. `year` keeps one year only.
+         */
+        get: operations["list_holidays_api_v1_public_holidays_get"];
+        put?: never;
+        /** Add a holiday */
+        post: operations["create_holiday_api_v1_public_holidays_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public-holidays/{holiday_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a holiday */
+        delete: operations["delete_holiday_api_v1_public_holidays__holiday_id__delete"];
+        options?: never;
+        head?: never;
+        /** Change a holiday */
+        patch: operations["update_holiday_api_v1_public_holidays__holiday_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/bookings/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check a booking before sending
+         * @description Gives the route, the steps and the first problem. A rule problem is part of the
+         *     answer (status 200), not an error. Saves nothing.
+         */
+        post: operations["check_booking_api_v1_bookings_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all bookings (Admin)
+         * @description B-32. Bookings in every province, earliest first start first. `q` matches the title,
+         *     the reference code or the booker's name. Read only: the Admin cannot approve, reject,
+         *     cancel or edit.
+         */
+        get: operations["list_all_bookings_api_v1_bookings_get"];
+        put?: never;
+        /**
+         * Send a booking
+         * @description T1, T2. The server picks the route. A booking of your own private room with no food
+         *     and no IT (R3) is confirmed at once, with a door pass; every other booking waits for
+         *     Pitika. Warnings (public holiday, more attendees than seats) do not stop it.
+         */
+        post: operations["create_booking_api_v1_bookings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my bookings
+         * @description Newest first. `q` matches the title or the reference code. CONFIRMED means confirmed
+         *     and not yet ended; COMPLETED means confirmed and ended.
+         */
+        get: operations["list_my_bookings_api_v1_bookings_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See one booking
+         * @description For the booker, Admin, the room owner, a Pitika of the room's province and the IT
+         *     users of a forwarded ticket. Anyone else gets 404.
+         */
+        get: operations["get_booking_api_v1_bookings__booking_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a booking a little
+         * @description T13. Only the booker, and only before the first session starts. You can change the
+         *     title, type, purpose, attendees, participant emails, the food remarks and the IT
+         *     requirements. The room, dates, times and the choice of packages or services cannot change
+         *     (422 FIELD_NOT_EDITABLE): cancel and book again. The status does not change. A body with
+         *     only `version` changes nothing.
+         */
+        patch: operations["update_booking_api_v1_bookings__booking_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/door-pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See the door pass
+         * @description For the booker, Admin, the room owner and a Pitika of the room's province, once the
+         *     booking is CONFIRMED. Before that: 404. IT users get 403. Never cached (no-store).
+         */
+        get: operations["get_door_pass_api_v1_bookings__booking_id__door_pass_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the calendar file
+         * @description A calendar file with one event per session. Same visibility as the booking. It never
+         *     holds the door pass.
+         */
+        get: operations["get_booking_ics_api_v1_bookings__booking_id__ics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a booking
+         * @description T12. Only the booker, while the booking is not final and its last session has not
+         *     ended. The reason is optional (5 to 500 characters). The room is free again.
+         */
+        post: operations["cancel_booking_api_v1_bookings__booking_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApproveBody
+         * @description `version` is the booking version the person saw (B-04). The notes go to the review and,
+         *     when the booking has food, to the food order.
+         */
+        ApproveBody: {
+            /** Notes */
+            notes?: string | null;
+            /** Version */
+            version: number;
+        };
+        /**
+         * AssignStaffBody
+         * @description `version` is the booking's version (B-19). The staff list replaces the old one.
+         */
+        AssignStaffBody: {
+            /** User Ids */
+            user_ids: number[];
+            /** Technician Notes */
+            technician_notes?: string | null;
+            /** Version */
+            version: number;
+        };
         /** Body_set_avatar_api_v1_users__user_id__avatar_put */
         Body_set_avatar_api_v1_users__user_id__avatar_put: {
             /** File */
@@ -825,6 +1373,254 @@ export interface components {
         Body_upload_photo_api_v1_rooms__room_id__photos_post: {
             /** File */
             file: string;
+        };
+        /** BookingCheck */
+        BookingCheck: {
+            /** Room Id */
+            room_id: number;
+            /** Sessions */
+            sessions: components["schemas"]["SessionIn"][];
+            /**
+             * Has Catering
+             * @default false
+             */
+            has_catering: boolean;
+            /**
+             * Has It
+             * @default false
+             */
+            has_it: boolean;
+        };
+        /** BookingCheckResult */
+        BookingCheckResult: {
+            route: components["schemas"]["BookingRoute"] | null;
+            first_status: components["schemas"]["BookingStatus"] | null;
+            /** Steps */
+            steps: components["schemas"]["BookingStep"][] | null;
+            problem: components["schemas"]["Problem"] | null;
+            /** Warnings */
+            warnings: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * BookingCreate
+         * @description The body of POST /bookings. The server picks the route; limits that are settings
+         *     (attendees, emails, sessions) are checked by the service.
+         */
+        BookingCreate: {
+            /** Room Id */
+            room_id: number;
+            /** Sessions */
+            sessions: components["schemas"]["SessionIn"][];
+            /** Meeting Title */
+            meeting_title: string;
+            meeting_type: components["schemas"]["MeetingType"];
+            /** Meeting Purpose */
+            meeting_purpose?: string | null;
+            /** Attendees */
+            attendees: number;
+            /** Participant Emails */
+            participant_emails?: string[];
+            /** Private Justification */
+            private_justification?: string | null;
+            catering?: components["schemas"]["CateringIn"] | null;
+            it?: components["schemas"]["ITIn"] | null;
+        };
+        /** BookingDetail */
+        BookingDetail: {
+            /** Id */
+            id: number;
+            /** Reference Code */
+            reference_code: string;
+            room: components["schemas"]["BookingRoomRef"];
+            /** Meeting Title */
+            meeting_title: string;
+            meeting_type: components["schemas"]["MeetingType"];
+            route: components["schemas"]["BookingRoute"];
+            status: components["schemas"]["BookingStatus"];
+            display_status: components["schemas"]["DisplayStatus"];
+            requester: components["schemas"]["NamedRef"];
+            first_session: components["schemas"]["SessionOut"];
+            /** Session Count */
+            session_count: number;
+            /** Attendees */
+            attendees: number;
+            /** Has Catering */
+            has_catering: boolean;
+            /** Has It */
+            has_it: boolean;
+            /** Created At */
+            created_at: string;
+            /** Version */
+            version: number;
+            /** Requester Info */
+            requester_info: {
+                [key: string]: unknown;
+            };
+            /** Meeting Purpose */
+            meeting_purpose: string | null;
+            /** Private Justification */
+            private_justification: string | null;
+            /** Participant Emails */
+            participant_emails: string[];
+            /** Sessions */
+            sessions: components["schemas"]["SessionOut"][];
+            last_end: components["schemas"]["LocalMoment"];
+            catering: components["schemas"]["CateringOut"] | null;
+            it: components["schemas"]["ITOut"] | null;
+            /** Reviews */
+            reviews: components["schemas"]["ReviewOut"][];
+            rejection: components["schemas"]["RejectionOut"] | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** BookingListItem */
+        BookingListItem: {
+            /** Id */
+            id: number;
+            /** Reference Code */
+            reference_code: string;
+            room: components["schemas"]["BookingRoomRef"];
+            /** Meeting Title */
+            meeting_title: string;
+            meeting_type: components["schemas"]["MeetingType"];
+            route: components["schemas"]["BookingRoute"];
+            status: components["schemas"]["BookingStatus"];
+            display_status: components["schemas"]["DisplayStatus"];
+            requester: components["schemas"]["NamedRef"];
+            first_session: components["schemas"]["SessionOut"];
+            /** Session Count */
+            session_count: number;
+            /** Attendees */
+            attendees: number;
+            /** Has Catering */
+            has_catering: boolean;
+            /** Has It */
+            has_it: boolean;
+            /** Created At */
+            created_at: string;
+            /** Version */
+            version: number;
+        };
+        /** BookingRoomRef */
+        BookingRoomRef: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
+            /** Name Kh */
+            name_kh: string;
+            /** Is Private */
+            is_private: boolean;
+            location: components["schemas"]["NamedRef"];
+            province: components["schemas"]["ProvinceRef"];
+        };
+        /**
+         * BookingRoute
+         * @enum {string}
+         */
+        BookingRoute: "R1" | "R2" | "R3" | "R4";
+        /**
+         * BookingSaved
+         * @description The answer of create and edit: the booking plus things to tell the booker.
+         */
+        BookingSaved: {
+            /** Id */
+            id: number;
+            /** Reference Code */
+            reference_code: string;
+            room: components["schemas"]["BookingRoomRef"];
+            /** Meeting Title */
+            meeting_title: string;
+            meeting_type: components["schemas"]["MeetingType"];
+            route: components["schemas"]["BookingRoute"];
+            status: components["schemas"]["BookingStatus"];
+            display_status: components["schemas"]["DisplayStatus"];
+            requester: components["schemas"]["NamedRef"];
+            first_session: components["schemas"]["SessionOut"];
+            /** Session Count */
+            session_count: number;
+            /** Attendees */
+            attendees: number;
+            /** Has Catering */
+            has_catering: boolean;
+            /** Has It */
+            has_it: boolean;
+            /** Created At */
+            created_at: string;
+            /** Version */
+            version: number;
+            /** Requester Info */
+            requester_info: {
+                [key: string]: unknown;
+            };
+            /** Meeting Purpose */
+            meeting_purpose: string | null;
+            /** Private Justification */
+            private_justification: string | null;
+            /** Participant Emails */
+            participant_emails: string[];
+            /** Sessions */
+            sessions: components["schemas"]["SessionOut"][];
+            last_end: components["schemas"]["LocalMoment"];
+            catering: components["schemas"]["CateringOut"] | null;
+            it: components["schemas"]["ITOut"] | null;
+            /** Reviews */
+            reviews: components["schemas"]["ReviewOut"][];
+            rejection: components["schemas"]["RejectionOut"] | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Updated At */
+            updated_at: string;
+            /** Warnings */
+            warnings: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * BookingStatus
+         * @enum {string}
+         */
+        BookingStatus: "PENDING_PITIKA" | "PENDING_OWNER" | "SETUP_IN_PROGRESS" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+        /**
+         * BookingStep
+         * @description The steps in the answer of the check endpoint.
+         * @enum {string}
+         */
+        BookingStep: "PITIKA" | "OWNER" | "IT_SETUP" | "CONFIRMED";
+        /**
+         * BookingUpdate
+         * @description The body of PATCH /bookings/{id} (T13): small edits only. A field left out keeps its
+         *     value; read what was sent with `model_fields_set`. `room_id`, `sessions` and
+         *     `private_justification` are declared so the service can refuse them (BR-EDT-03).
+         */
+        BookingUpdate: {
+            /** Version */
+            version: number;
+            /** Meeting Title */
+            meeting_title?: string;
+            meeting_type?: components["schemas"]["MeetingType"];
+            /** Meeting Purpose */
+            meeting_purpose?: string | null;
+            /** Attendees */
+            attendees?: number;
+            /** Participant Emails */
+            participant_emails?: string[];
+            catering?: components["schemas"]["CateringUpdate"] | null;
+            it?: components["schemas"]["ITUpdate"] | null;
+            /** Room Id */
+            room_id?: unknown;
+            /** Sessions */
+            sessions?: unknown;
+            /** Private Justification */
+            private_justification?: unknown;
         };
         /** BuildingCreate */
         BuildingCreate: {
@@ -916,6 +1712,13 @@ export interface components {
             /** Is Active */
             is_active?: boolean;
         };
+        /** CancelBody */
+        CancelBody: {
+            /** Reason */
+            reason?: string | null;
+            /** Version */
+            version: number;
+        };
         /** CategoryCreate */
         CategoryCreate: {
             /** Name En */
@@ -958,6 +1761,127 @@ export interface components {
             sort_order?: number;
             /** Is Active */
             is_active?: boolean;
+        };
+        /** CateringIn */
+        CateringIn: {
+            /** Package Ids */
+            package_ids: number[];
+            /** Remarks */
+            remarks?: string | null;
+        };
+        /** CateringOrderItem */
+        CateringOrderItem: {
+            /** Booking Id */
+            booking_id: number;
+            /** Reference Code */
+            reference_code: string;
+            booking_status: components["schemas"]["BookingStatus"];
+            room: components["schemas"]["BookingRoomRef"];
+            /** Meeting Title */
+            meeting_title: string;
+            /**
+             * Delivery Date
+             * Format: date
+             */
+            delivery_date: string;
+            /** Delivery Time */
+            delivery_time: string;
+            /** Servings */
+            servings: number;
+            /** Packages */
+            packages: {
+                [key: string]: unknown;
+            }[];
+            /** Remarks */
+            remarks: string | null;
+            /** Approver Notes */
+            approver_notes: string | null;
+        };
+        /** CateringOut */
+        CateringOut: {
+            /** Packages */
+            packages: {
+                [key: string]: unknown;
+            }[];
+            /** Remarks */
+            remarks: string | null;
+            /** Servings */
+            servings: number;
+            /**
+             * Delivery Date
+             * Format: date
+             */
+            delivery_date: string;
+            /** Delivery Time */
+            delivery_time: string;
+            /** Approver Notes */
+            approver_notes: string | null;
+            decided_by: components["schemas"]["PersonRef"] | null;
+            /** Decided At */
+            decided_at: string | null;
+        };
+        /** CateringPackageCreate */
+        CateringPackageCreate: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** CateringPackageOut */
+        CateringPackageOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Version */
+            version: number;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * CateringPackageUpdate
+         * @description PATCH: the fields of CateringPackageCreate, all optional, plus the required `version`.
+         */
+        CateringPackageUpdate: {
+            /** Version */
+            version: number;
+            /** Name */
+            name?: string;
+            /** Description */
+            description?: string | null;
+            /** Sort Order */
+            sort_order?: number;
+            /** Is Active */
+            is_active?: boolean;
+        };
+        /**
+         * CateringUpdate
+         * @description Food: only the remarks can change. `package_ids` is declared so the service can
+         *     refuse it with FIELD_NOT_EDITABLE (B-15).
+         */
+        CateringUpdate: {
+            /** Remarks */
+            remarks?: string | null;
+            /** Package Ids */
+            package_ids?: unknown;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -1026,6 +1950,12 @@ export interface components {
             /** Is Active */
             is_active?: boolean;
         };
+        /**
+         * DisplayStatus
+         * @description What a reader sees: the six statuses, plus COMPLETED for a confirmed booking that ended.
+         * @enum {string}
+         */
+        DisplayStatus: "PENDING_PITIKA" | "PENDING_OWNER" | "SETUP_IN_PROGRESS" | "CONFIRMED" | "REJECTED" | "CANCELLED" | "COMPLETED";
         /** DivisionCreate */
         DivisionCreate: {
             /** Department Id */
@@ -1087,6 +2017,15 @@ export interface components {
             room_id: number;
             /** Door Code */
             door_code: string | null;
+        };
+        /** DoorPassOut */
+        DoorPassOut: {
+            /** Passcode */
+            passcode: string;
+            /** Expires At */
+            expires_at: string;
+            /** Expired */
+            expired: boolean;
         };
         /** EquipmentCreate */
         EquipmentCreate: {
@@ -1206,6 +2145,162 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** ITIn */
+        ITIn: {
+            /** Service Ids */
+            service_ids: number[];
+            /** Special Requirements */
+            special_requirements?: string | null;
+        };
+        /** ITOut */
+        ITOut: {
+            /** Ticket Id */
+            ticket_id: number;
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Special Requirements */
+            special_requirements: string | null;
+            status: components["schemas"]["ITStatus"];
+            /** Technician Notes */
+            technician_notes: string | null;
+            /** Staff */
+            staff: components["schemas"]["NamedRef"][];
+            /**
+             * Setup Date
+             * Format: date
+             */
+            setup_date: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Forwarded At */
+            forwarded_at: string | null;
+            /** Assigned At */
+            assigned_at: string | null;
+            /** Ready At */
+            ready_at: string | null;
+        };
+        /** ITServiceCreate */
+        ITServiceCreate: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** ITServiceOut */
+        ITServiceOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Version */
+            version: number;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * ITServiceUpdate
+         * @description PATCH: the fields of ITServiceCreate, all optional, plus the required `version`.
+         */
+        ITServiceUpdate: {
+            /** Version */
+            version: number;
+            /** Name */
+            name?: string;
+            /** Description */
+            description?: string | null;
+            /** Sort Order */
+            sort_order?: number;
+            /** Is Active */
+            is_active?: boolean;
+        };
+        /**
+         * ITStaffOut
+         * @description An assigned user. `is_active` is false when the user was turned off later (B-22).
+         */
+        ITStaffOut: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
+            /** Name Kh */
+            name_kh: string;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /**
+         * ITStatus
+         * @enum {string}
+         */
+        ITStatus: "RECEIVED" | "ASSIGNED" | "READY";
+        /** ITTicketItem */
+        ITTicketItem: {
+            /** Id */
+            id: number;
+            status: components["schemas"]["ITStatus"];
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Special Requirements */
+            special_requirements: string | null;
+            /** Technician Notes */
+            technician_notes: string | null;
+            /** Staff */
+            staff: components["schemas"]["ITStaffOut"][];
+            /**
+             * Setup Date
+             * Format: date
+             */
+            setup_date: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Forwarded At */
+            forwarded_at: string | null;
+            /** Assigned At */
+            assigned_at: string | null;
+            /** Ready At */
+            ready_at: string | null;
+            /** Review Notes */
+            review_notes: string[];
+            booking: components["schemas"]["BookingListItem"];
+        };
+        /**
+         * ITUpdate
+         * @description IT: only the special requirements can change. `service_ids` is declared to be refused.
+         */
+        ITUpdate: {
+            /** Special Requirements */
+            special_requirements?: string | null;
+            /** Service Ids */
+            service_ids?: unknown;
+        };
+        /** ItemList[CateringOrderItem] */
+        ItemList_CateringOrderItem_: {
+            /** Items */
+            items: components["schemas"]["CateringOrderItem"][];
+            /** Total */
+            total: number;
+        };
         /** ItemList[EquipmentOut] */
         ItemList_EquipmentOut_: {
             /** Items */
@@ -1233,6 +2328,26 @@ export interface components {
             items: components["schemas"]["RoleOut"][];
             /** Total */
             total: number;
+        };
+        /** ItemList[ScheduleItem] */
+        ItemList_ScheduleItem_: {
+            /** Items */
+            items: components["schemas"]["ScheduleItem"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * LocalMoment
+         * @description A local date and time, e.g. the end of the last session.
+         */
+        LocalMoment: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Time */
+            time: string;
         };
         /** LocationCreate */
         LocationCreate: {
@@ -1316,6 +2431,11 @@ export interface components {
             /** Email Notifications */
             email_notifications?: boolean;
         };
+        /**
+         * MeetingType
+         * @enum {string}
+         */
+        MeetingType: "INTERNAL" | "EXTERNAL" | "INTERNAL_WITH_GOVERNOR" | "EXTERNAL_WITH_GOVERNOR";
         /** NamedRef */
         NamedRef: {
             /** Id */
@@ -1324,6 +2444,17 @@ export interface components {
             name_en: string;
             /** Name Kh */
             name_kh: string;
+        };
+        /** Page[BookingListItem] */
+        Page_BookingListItem_: {
+            /** Items */
+            items: components["schemas"]["BookingListItem"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
         };
         /** Page[BuildingOut] */
         Page_BuildingOut_: {
@@ -1340,6 +2471,17 @@ export interface components {
         Page_CategoryOut_: {
             /** Items */
             items: components["schemas"]["CategoryOut"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[CateringPackageOut] */
+        Page_CateringPackageOut_: {
+            /** Items */
+            items: components["schemas"]["CateringPackageOut"][];
             /** Page */
             page: number;
             /** Size */
@@ -1391,6 +2533,28 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[ITServiceOut] */
+        Page_ITServiceOut_: {
+            /** Items */
+            items: components["schemas"]["ITServiceOut"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[ITTicketItem] */
+        Page_ITTicketItem_: {
+            /** Items */
+            items: components["schemas"]["ITTicketItem"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[LocationOut] */
         Page_LocationOut_: {
             /** Items */
@@ -1406,6 +2570,17 @@ export interface components {
         Page_PositionOut_: {
             /** Items */
             items: components["schemas"]["PositionOut"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[PublicHolidayOut] */
+        Page_PublicHolidayOut_: {
+            /** Items */
+            items: components["schemas"]["PublicHolidayOut"][];
             /** Page */
             page: number;
             /** Size */
@@ -1434,6 +2609,16 @@ export interface components {
             size: number;
             /** Total */
             total: number;
+        };
+        /**
+         * PersonRef
+         * @description A user who acted on the booking: a reviewer, the food approver.
+         */
+        PersonRef: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
         };
         /**
          * PhotoOrderRequest
@@ -1503,6 +2688,17 @@ export interface components {
             /** Is Active */
             is_active?: boolean;
         };
+        /** Problem */
+        Problem: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Fields */
+            fields?: {
+                [key: string]: string;
+            };
+        };
         /** ProvinceRef */
         ProvinceRef: {
             /** Code */
@@ -1512,16 +2708,116 @@ export interface components {
             /** Name Kh */
             name_kh: string;
         };
+        /** PublicHolidayCreate */
+        PublicHolidayCreate: {
+            /**
+             * Holiday Date
+             * Format: date
+             */
+            holiday_date: string;
+            /** Name Km */
+            name_km: string;
+            /** Name En */
+            name_en?: string | null;
+            /** Remarks */
+            remarks?: string | null;
+        };
+        /** PublicHolidayOut */
+        PublicHolidayOut: {
+            /** Id */
+            id: number;
+            /**
+             * Holiday Date
+             * Format: date
+             */
+            holiday_date: string;
+            /** Name Km */
+            name_km: string;
+            /** Name En */
+            name_en: string | null;
+            /** Remarks */
+            remarks: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * PublicHolidayUpdate
+         * @description PATCH: the fields of PublicHolidayCreate, all optional.
+         */
+        PublicHolidayUpdate: {
+            /**
+             * Holiday Date
+             * Format: date
+             */
+            holiday_date?: string;
+            /** Name Km */
+            name_km?: string;
+            /** Name En */
+            name_en?: string | null;
+            /** Remarks */
+            remarks?: string | null;
+        };
+        /**
+         * ReadyBody
+         * @description `version` is the booking's version (B-19).
+         */
+        ReadyBody: {
+            /** Version */
+            version: number;
+        };
         /** RefreshRequest */
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /** RejectBody */
+        RejectBody: {
+            /** Reason */
+            reason: string;
+            /** Version */
+            version: number;
+        };
+        /**
+         * RejectedBy
+         * @enum {string}
+         */
+        RejectedBy: "PITIKA" | "OWNER" | "SYSTEM";
+        /** RejectionOut */
+        RejectionOut: {
+            rejected_by: components["schemas"]["RejectedBy"];
+            actor: components["schemas"]["PersonRef"] | null;
+            /** Reason */
+            reason: string;
+            /** Decided At */
+            decided_at: string;
         };
         /** ResetPasswordRequest */
         ResetPasswordRequest: {
             /** Temporary Password */
             temporary_password: string;
         };
+        /**
+         * ReviewDecision
+         * @enum {string}
+         */
+        ReviewDecision: "APPROVED" | "REJECTED" | "NOT_REQUIRED";
+        /** ReviewOut */
+        ReviewOut: {
+            stage: components["schemas"]["ReviewStage"];
+            decision: components["schemas"]["ReviewDecision"];
+            reviewer: components["schemas"]["PersonRef"] | null;
+            /** Notes */
+            notes: string | null;
+            /** Reviewed At */
+            reviewed_at: string;
+        };
+        /**
+         * ReviewStage
+         * @enum {string}
+         */
+        ReviewStage: "PITIKA" | "OWNER";
         /** RoleOut */
         RoleOut: {
             /** Id */
@@ -1720,6 +3016,69 @@ export interface components {
             is_active?: boolean;
         };
         /**
+         * ScheduleItem
+         * @description One blocking session of a room. A private booking the viewer may not see is masked:
+         *     no booking id, reference code or requester, and a fixed title.
+         */
+        ScheduleItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Start Time */
+            start_time: string;
+            /** End Time */
+            end_time: string;
+            /** Booking Id */
+            booking_id: number | null;
+            /** Reference Code */
+            reference_code: string | null;
+            /** Title */
+            title: string;
+            /** Requester Name */
+            requester_name: string | null;
+            /** Status */
+            status: string;
+            /** Is Masked */
+            is_masked: boolean;
+        };
+        /**
+         * SessionIn
+         * @description One meeting session, Phnom Penh local time.
+         */
+        SessionIn: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time: string;
+            /**
+             * End Time
+             * Format: time
+             */
+            end_time: string;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /** Id */
+            id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Start Time */
+            start_time: string;
+            /** End Time */
+            end_time: string;
+        };
+        /**
          * SetRolesRequest
          * @description PUT /users/{id}/roles: replaces every role. Repeats are saved once; [] removes all.
          */
@@ -1747,7 +3106,8 @@ export interface components {
         /**
          * UserChanged
          * @description PATCH /users/{id} and PUT /users/{id}/roles: the user, plus the rooms whose owner
-         *     was cleared by this change (R9). Empty when nothing was cleared.
+         *     was cleared by this change (R9) and the bookings cancelled because the user was turned
+         *     off (B-27). Each is empty when nothing changed.
          */
         UserChanged: {
             /** Id */
@@ -1792,6 +3152,8 @@ export interface components {
             updated_at: string;
             /** Rooms Unassigned */
             rooms_unassigned: number[];
+            /** Bookings Cancelled */
+            bookings_cancelled: number[];
         };
         /**
          * UserCreate
@@ -4210,6 +5572,42 @@ export interface operations {
             };
         };
     };
+    get_schedule_api_v1_rooms__room_id__schedule_get: {
+        parameters: {
+            query?: {
+                /** @description First day; default today */
+                from?: string | null;
+                /** @description Last day; default 6 days after from */
+                to?: string | null;
+            };
+            header?: never;
+            path: {
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_ScheduleItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_room_equipment_api_v1_rooms__room_id__equipment_get: {
         parameters: {
             query?: never;
@@ -4263,6 +5661,998 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemList_EquipmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_catering_packages_api_v1_catering_packages_get: {
+        parameters: {
+            query?: {
+                is_active?: boolean | null;
+                search?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CateringPackageOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_catering_package_api_v1_catering_packages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CateringPackageCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CateringPackageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_catering_package_api_v1_catering_packages__package_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                package_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CateringPackageUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CateringPackageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_it_services_api_v1_it_services_get: {
+        parameters: {
+            query?: {
+                is_active?: boolean | null;
+                search?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ITServiceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_it_service_api_v1_it_services_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ITServiceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITServiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_it_service_api_v1_it_services__service_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                service_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ITServiceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITServiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tickets_api_v1_it_tickets_get: {
+        parameters: {
+            query?: {
+                /** @description RECEIVED, ASSIGNED or READY */
+                status?: string | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ITTicketItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_staff_api_v1_it_tickets__ticket_id__staff_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignStaffBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITTicketItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_ready_api_v1_it_tickets__ticket_id__ready_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITTicketItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pitika_bookings_api_v1_pitika_bookings_get: {
+        parameters: {
+            query?: {
+                /** @description A display status, e.g. PENDING_PITIKA */
+                status?: string | null;
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BookingListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_booking_api_v1_pitika_bookings__booking_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_booking_api_v1_pitika_bookings__booking_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_owner_bookings_api_v1_owner_bookings_get: {
+        parameters: {
+            query?: {
+                /** @description A display status, e.g. PENDING_OWNER */
+                status?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BookingListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_booking_api_v1_owner_bookings__booking_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_booking_api_v1_owner_bookings__booking_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_food_orders_api_v1_pitika_catering_get: {
+        parameters: {
+            query?: {
+                /** @description Default today */
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_CateringOrderItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_holidays_api_v1_public_holidays_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PublicHolidayOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_holiday_api_v1_public_holidays_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicHolidayCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicHolidayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_holiday_api_v1_public_holidays__holiday_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holiday_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_holiday_api_v1_public_holidays__holiday_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holiday_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicHolidayUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicHolidayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_booking_api_v1_bookings_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingCheck"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingCheckResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_bookings_api_v1_bookings_get: {
+        parameters: {
+            query?: {
+                /** @description A display status, e.g. PENDING_PITIKA or COMPLETED */
+                status?: string | null;
+                province?: string | null;
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BookingListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_booking_api_v1_bookings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingSaved"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_bookings_api_v1_bookings_mine_get: {
+        parameters: {
+            query?: {
+                /** @description A display status, e.g. CONFIRMED or COMPLETED */
+                status?: string | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BookingListItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_booking_api_v1_bookings__booking_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_booking_api_v1_bookings__booking_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingSaved"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_door_pass_api_v1_bookings__booking_id__door_pass_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoorPassOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_booking_ics_api_v1_bookings__booking_id__ics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_booking_api_v1_bookings__booking_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
                 };
             };
             /** @description Validation Error */

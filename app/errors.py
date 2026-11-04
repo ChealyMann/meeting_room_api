@@ -7,7 +7,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class ErrorCode(StrEnum):
-    """The complete list of error codes (spec section 17). Do not add others."""
+    """The complete list of error codes: section 17 of the admin dashboard spec and section 11
+    of the room booking design spec (docs/superpowers/specs). Do not add others."""
 
     WRONG_PASSWORD = "WRONG_PASSWORD"
     UNAUTHORIZED = "UNAUTHORIZED"
@@ -29,6 +30,20 @@ class ErrorCode(StrEnum):
     INVALID_IMAGE = "INVALID_IMAGE"
     RATE_LIMITED = "RATE_LIMITED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+
+    # Room bookings
+    SCHEDULE_CONFLICT = "SCHEDULE_CONFLICT"
+    TIME_PASSED = "TIME_PASSED"
+    OUTSIDE_ROOM_HOURS = "OUTSIDE_ROOM_HOURS"
+    ROOM_NOT_BOOKABLE = "ROOM_NOT_BOOKABLE"
+    NO_REVIEWER = "NO_REVIEWER"
+    INVALID_TRANSITION = "INVALID_TRANSITION"
+    STALE_VERSION = "STALE_VERSION"
+    FIELD_NOT_EDITABLE = "FIELD_NOT_EDITABLE"
+    OWNER_REQUIRED = "OWNER_REQUIRED"
+    OWNER_HAS_PRIVATE_ROOMS = "OWNER_HAS_PRIVATE_ROOMS"
+    HAS_FUTURE_BOOKINGS = "HAS_FUTURE_BOOKINGS"
+    HAS_PENDING_OWNER_BOOKINGS = "HAS_PENDING_OWNER_BOOKINGS"
 
 
 class AppError(Exception):

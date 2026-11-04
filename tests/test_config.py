@@ -56,3 +56,23 @@ def test_reads_values_from_environment(monkeypatch):
 def test_cors_origins_are_comma_separated():
     settings = make_settings(cors_origins=" https://a.com , https://b.com,, ")
     assert settings.cors_origin_list == ["https://a.com", "https://b.com"]
+
+
+def test_booking_setting_defaults(settings):
+    assert (
+        settings.booking_min_minutes,
+        settings.booking_max_sessions,
+        settings.booking_max_days_ahead,
+        settings.booking_max_attendees,
+        settings.booking_max_participants,
+        settings.schedule_max_days,
+        settings.it_setup_lead_minutes,
+        settings.expiry_interval_seconds,
+    ) == (15, 20, 90, 100, 50, 31, 30, 60)
+    assert settings.expiry_job_enabled is False  # the test fixture turns the job off
+    assert make_settings().expiry_job_enabled is True
+
+
+def test_booking_settings_must_be_at_least_1():
+    with pytest.raises(ValidationError, match="booking_min_minutes"):
+        make_settings(booking_min_minutes=0)

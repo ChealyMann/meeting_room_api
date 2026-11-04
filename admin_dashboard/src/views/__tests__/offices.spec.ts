@@ -6,7 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
-import { confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
+import { answerConfirm, confirmDialog, mountConfirmHost } from '../../test-utils/confirm'
 import { choosePicker } from '../../test-utils/picker'
 import OfficesView from '../OfficesView.vue'
 
@@ -248,6 +248,30 @@ describe('OfficesView', () => {
 
     expect(roomCalls).toEqual(['?location_id=3&is_active=true&page=1&size=1'])
     expect(confirmDialog()?.textContent).toContain('No rooms are affected.')
+  })
+
+  it('shows future bookings under Province when the province changes', async () => {
+    const message = 'This office has 2 future bookings. Move it after they end.'
+    saveAnswer = () => json({ error: { code: 'HAS_FUTURE_BOOKINGS', message, fields: { province: message } } }, 409)
+    await mountAt('/offices?id=3')
+
+    await choosePicker('province', 'Siem Reap')
+    await submitPanel()
+
+    expect(inPanel('#province-error')?.textContent).toContain(message)
+  })
+
+  it('stays active when future bookings stop it from turning off', async () => {
+    const message = 'This office has 2 future bookings. Ask the bookers to cancel first.'
+    saveAnswer = () => json({ error: { code: 'HAS_FUTURE_BOOKINGS', message, fields: { is_active: message } } }, 409)
+    await mountAt('/offices?id=3')
+
+    ;panel()!.querySelector<HTMLElement>('.panel-foot [role="switch"]')!.click()
+    await flushPromises()
+    await answerConfirm('Make inactive')
+
+    expect(panel()?.querySelector('.panel-foot [role="alert"]')?.textContent).toContain(message)
+    expect(panel()?.querySelector('.panel-foot [role="switch"]')?.getAttribute('aria-checked')).toBe('true')
   })
 
   it('is a real page in the sidebar', () => {

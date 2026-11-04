@@ -96,10 +96,16 @@ make_floor = _factory_fixture("make_floor")
 make_category = _factory_fixture("make_category")
 make_room = _factory_fixture("make_room")
 make_equipment = _factory_fixture("make_equipment")
+make_catering_package = _factory_fixture("make_catering_package")
+make_it_service = _factory_fixture("make_it_service")
+make_holiday = _factory_fixture("make_holiday")
 make_department = _factory_fixture("make_department")
 make_division = _factory_fixture("make_division")
 make_position = _factory_fixture("make_position")
 make_user = _factory_fixture("make_user")
+make_pitika = _factory_fixture("make_pitika")
+make_bookable_room = _factory_fixture("make_bookable_room")
+make_booking = _factory_fixture("make_booking")
 
 
 @pytest.fixture
@@ -134,7 +140,31 @@ def settings(tmp_path):
         signature_dir=tmp_path / "signatures",
         avatar_dir=tmp_path / "avatars",
         cors_origins="https://rooms.company.com",
+        expiry_job_enabled=False,
     )
+
+
+@pytest.fixture
+def freeze_now(monkeypatch):
+    """`freeze_now(datetime(2026, 11, 9, 8, 0))` sets the local time (UTC+7) the app sees."""
+    from datetime import UTC
+
+    from app.services import clock
+
+    def freeze(local):
+        monkeypatch.setattr(
+            clock, "_source", lambda: (local - clock.LOCAL_OFFSET).replace(tzinfo=UTC)
+        )
+
+    return freeze
+
+
+@pytest.fixture
+def frozen(freeze_now):
+    """Time frozen at tests.booking_helpers.NOW: a Monday, 08:00 local."""
+    from tests.booking_helpers import NOW
+
+    freeze_now(NOW)
 
 
 @pytest.fixture

@@ -5,6 +5,7 @@ Request models
     (`id`, `created_at`, `password_hash`, ...) are refused too.
     - `Text(100)`: required text, trimmed, 1 to 100 characters.
     - `OptionalText(200)`: trimmed; empty after trimming is saved as `None`.
+    - `BookingText(200)` / `OptionalBookingText(500)`: the same, but HTML tags are refused.
     - `Password`: 8 to 128 characters, never trimmed.
     - `SortOrder`: whole number 0 to 9999.
 
@@ -53,6 +54,34 @@ def Text(max_length: int) -> Any:  # noqa: N802 - used like a type: `name_en: Te
 def OptionalText(max_length: int) -> Any:  # noqa: N802
     """Optional text: trimmed; empty becomes None; at most `max_length` characters."""
     limited = Annotated[str, Field(max_length=max_length)]
+    return Annotated[limited | None, BeforeValidator(_strip_to_none)]
+
+
+def _check_no_html(value: str) -> str:
+    if re.search(r"<[A-Za-z/!]", value):
+        raise ValueError("HTML is not allowed.")
+    return value
+
+
+# Refuses text that looks like an HTML tag or comment. A bare "<" as in "a < b" is fine.
+# Use as `Annotated[str, NoHtml]`.
+NoHtml = AfterValidator(_check_no_html)
+
+
+def BookingText(max_length: int, min_length: int = 1) -> Any:  # noqa: N802
+    """Like `Text`, plus no HTML; `min_length` counts characters after trimming."""
+    limited = Annotated[
+        str, Field(min_length=min_length, max_length=max_length), NoHtml
+    ]
+    return Annotated[limited, BeforeValidator(_strip)]
+
+
+def OptionalBookingText(max_length: int, min_length: int | None = None) -> Any:  # noqa: N802
+    """Like `OptionalText`, plus no HTML. Empty is still saved as None; other text shorter
+    than `min_length` (after trimming) is refused."""
+    limited = Annotated[
+        str, Field(min_length=min_length, max_length=max_length), NoHtml
+    ]
     return Annotated[limited | None, BeforeValidator(_strip_to_none)]
 
 

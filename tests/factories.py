@@ -4,28 +4,38 @@ Parents are created when not given: `make_room()` builds a whole active
 location -> building -> floor chain plus a category.
 """
 
-from datetime import time
+from datetime import date, datetime, time
 from itertools import count
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.constants.booking import FINAL, BookingRoute, BookingStatus, ITStatus, MeetingType
 from app.constants.roles import RoleCode
 from app.models import (
+    Booking,
+    BookingDoorPass,
+    BookingSession,
     Building,
     Category,
+    CateringOrder,
+    CateringPackage,
     Department,
     Division,
     Equipment,
     Floor,
+    ITService,
+    ITTicket,
     Location,
     Position,
+    PublicHoliday,
     Role,
     Room,
     User,
     user_roles,
 )
 from app.security import hash_password
+from app.services import booking_codes, booking_scheduling, clock
 
 DEFAULT_PASSWORD = "Password@123"
 
@@ -109,6 +119,22 @@ def make_equipment(session: Session, **fields) -> Equipment:
     return _save(session, Equipment(**{"name": f"Equipment {_next()}", **fields}))
 
 
+# --- Booking catalogs ------------------------------------------------------------------
+
+
+def make_catering_package(session: Session, **fields) -> CateringPackage:
+    return _save(session, CateringPackage(**{"name": f"Package {_next()}", **fields}))
+
+
+def make_it_service(session: Session, **fields) -> ITService:
+    return _save(session, ITService(**{"name": f"IT service {_next()}", **fields}))
+
+
+def make_holiday(session: Session, holiday_date: date, **fields) -> PublicHoliday:
+    values = {"holiday_date": holiday_date, "name_km": f"Holiday {_next()}"}
+    return _save(session, PublicHoliday(**{**values, **fields}))
+
+
 # --- Organisation ----------------------------------------------------------------------
 
 
@@ -179,3 +205,121 @@ def set_roles(session: Session, user: User, roles) -> None:
     for code in dict.fromkeys(roles):
         session.execute(user_roles.insert().values(user_id=user.id, role_id=role_ids[code]))
     session.flush()
+
+
+def make_pitika(session: Session, province: str = "PHNOM_PENH", **fields) -> User:
+    """An active Pitika working in an office of `province`."""
+    division = make_division(
+        session, make_department(session, make_location(session, province=province))
+    )
+    return make_user(session, roles=[RoleCode.PITIKA], division=division, **fields)
+
+
+# --- Bookings --------------------------------------------------------------------------
+
+
+def make_bookable_room(
+    session: Session,
+    province: str = "PHNOM_PENH",
+    private: bool = False,
+    owner: User | None = None,
+    **fields,
+) -> Room:
+    """A room that can be booked (active chain in `province`), open 08:00-18:00 with 10 seats.
+    A private room with no `owner` gets a new ROOM_OWNER user."""
+    floor = make_floor(session, make_building(session, make_location(session, province=province)))
+    if private and owner is None:
+        owner = make_user(session, roles=[RoleCode.ROOM_OWNER])
+    return make_room(session, floor, owner=owner, is_private=private, **fields)
+
+
+def _requester_info(user: User) -> dict:
+    return {
+        "name_en": user.name_en,
+        "name_kh": user.name_kh,
+        "staff_id": user.staff_id,
+        "position": None,
+        "division": None,
+        "department": None,
+        "office": None,
+        "email": user.email,
+        "phone": None,
+    }
+
+
+def make_booking(
+    session: Session,
+    room: Room,
+    requester: User,
+    *,
+    status: BookingStatus,
+    route: BookingRoute | None = None,
+    sessions=((date(2026, 11, 10), time(9), time(10)),),
+    catering: bool = False,
+    it: bool = False,
+    forwarded: bool = False,
+    assigned_staff=(),
+    food_approved_by: User | None = None,
+    version: int = 1,
+    **fields,
+) -> Booking:
+    """A booking in any status, saved directly (no rules run).
+
+    `sessions` are (date, start, end) tuples; they block the room unless the status is
+    REJECTED or CANCELLED. A CONFIRMED booking gets a door pass that ends with its last session.
+    """
+    n = _next()
+    route = route or booking_scheduling.pick_route(room, requester.id, catering, it)
+    values = {
+        "reference_code": booking_codes.new_reference_code(session, clock.now_local()),
+        "requester_id": requester.id,
+        "room_id": room.id,
+        "requester_info": _requester_info(requester),
+        "meeting_title": f"Meeting {n}",
+        "meeting_type": MeetingType.INTERNAL,
+        "attendees": 5,
+        "route": route,
+        "status": status,
+        "version": version,
+    }
+    booking = _save(session, Booking(**{**values, **fields}))
+
+    blocking = status not in FINAL
+    for day, start, end in sessions:
+        session.add(
+            BookingSession(
+                booking_id=booking.id,
+                room_id=room.id,
+                date=day,
+                start_time=start,
+                end_time=end,
+                is_blocking=blocking,
+            )
+        )
+    if catering:
+        order = CateringOrder(booking_id=booking.id, packages=[])
+        if food_approved_by is not None:
+            order.decided_by = food_approved_by.id
+            order.decided_at = clock.now_utc()
+        session.add(order)
+    if it:
+        ticket = ITTicket(
+            booking_id=booking.id,
+            requested_items=[],
+            status=ITStatus.ASSIGNED if assigned_staff else ITStatus.RECEIVED,
+            forwarded_at=clock.now_utc() if forwarded else None,
+        )
+        _save(session, ticket)
+        ticket.staff.extend(assigned_staff)
+    if status == BookingStatus.CONFIRMED:
+        last_end = max(datetime.combine(day, end) for day, _start, end in sessions)
+        session.add(
+            BookingDoorPass(
+                booking_id=booking.id,
+                passcode=booking_codes.new_door_pass_code(session, booking.reference_code),
+                expires_at=clock.local_to_utc(last_end),
+            )
+        )
+    session.flush()
+    session.refresh(booking)
+    return booking

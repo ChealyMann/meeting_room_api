@@ -67,7 +67,7 @@ const roomId = computed(() => (/^\d+$/.test(roomParam.value ?? '') ? Number(room
 const editing = computed(() => roomId.value !== null && one(route.query.edit) === '1')
 const step = computed(() => {
   const value = one(route.query.step)
-  return value === 'photos' || value === 'equipment' ? (value as RoomStep) : undefined
+  return value === 'photos' || value === 'equipment' || value === 'schedule' ? (value as RoomStep) : undefined
 })
 
 function panelQuery(changes: Record<string, string | undefined>) {
@@ -171,6 +171,7 @@ const SKELETON_COLUMNS = ['72px', '1.6fr', '1fr', '1.2fr', '48px', '96px', '1fr'
       <template v-else-if="result && !result.items.length">
         <EmptyState
           v-if="filtered"
+          filtered
           title="No rooms match"
           :text="`Nothing matches ${summary.join(', ')}.`"
         >

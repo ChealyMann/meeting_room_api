@@ -13,11 +13,11 @@ const SPEC: FilterSpec = {
   has_owner: 'bool',
 }
 
-async function setup(start: string) {
+async function setup(start: string, spec: FilterSpec = SPEC, options?: { activeFilter?: boolean }) {
   let list!: ReturnType<typeof useListQuery>
   const Host = defineComponent({
     setup() {
-      list = useListQuery(SPEC)
+      list = useListQuery(spec, options)
       return () => h('div')
     },
   })
@@ -34,6 +34,17 @@ async function setup(start: string) {
 const query = (router: Router) => router.currentRoute.value.query
 
 describe('useListQuery', () => {
+  it('can leave out the Active filter, so "status" is a plain filter', async () => {
+    const { list, router } = await setup('/?status=CONFIRMED&page=2', { status: 'string', q: 'string' }, { activeFilter: false })
+
+    expect(list.filters.value).toEqual({ status: 'CONFIRMED' })
+    expect(list.apiParams.value).toEqual({ status: 'CONFIRMED', page: 2, size: 20 })
+
+    list.set({ q: 'budget' })
+    await flushPromises()
+    expect(query(router)).toEqual({ status: 'CONFIRMED', q: 'budget' })
+  })
+
   it('reads filters, page and status from the address', async () => {
     const { list } = await setup('/?search=board&location_id=3&page=2')
 

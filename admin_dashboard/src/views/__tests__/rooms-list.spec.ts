@@ -1,4 +1,5 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { DoorOpen, SearchX } from 'lucide-vue-next'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -177,6 +178,7 @@ describe('RoomsView list', () => {
 
     expect(wrapper.text()).toContain('No rooms yet')
     expect(wrapper.text()).not.toContain('Clear filters')
+    expect(wrapper.findComponent(DoorOpen).exists()).toBe(true)
   })
 
   it('names the filters when nothing matches, and clears them', async () => {
@@ -186,6 +188,7 @@ describe('RoomsView list', () => {
     expect(wrapper.text()).toContain('No rooms match')
     expect(wrapper.text()).toContain('Head Office')
     expect(wrapper.text()).toContain('“board”')
+    expect(wrapper.get('.empty').findComponent(SearchX).exists()).toBe(true)
 
     await wrapper.findAll('button').find((b) => b.text() === 'Clear filters')!.trigger('click')
     await flushPromises()

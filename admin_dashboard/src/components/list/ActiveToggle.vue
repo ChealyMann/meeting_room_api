@@ -13,7 +13,19 @@ import { useConfirm } from '../../composables/useConfirm'
 const props = defineProps<{
   active: boolean
   name: string
-  kind: 'room' | 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
+  kind:
+    | 'room'
+    | 'office'
+    | 'building'
+    | 'floor'
+    | 'room type'
+    | 'equipment'
+    | 'catering package'
+    | 'IT service'
+    | 'department'
+    | 'division'
+    | 'position'
+    | 'user'
   /** How many active rooms or users it touches (the warning's number); a room has none to count. */
   count?: () => Promise<number>
   /** The page's PATCH of is_active; throws ApiError when the API refuses. */
@@ -39,10 +51,15 @@ function warning(count: number | null): string {
   const rooms = one ? '1 room' : `${count} rooms`
   const users = one ? '1 user' : `${count} users`
   if (props.kind === 'room') return `People can no longer book it. ${AGAIN}`
+  // Bookings keep a copy of the package or service they chose (the API saves names).
+  if (props.kind === 'catering package' || props.kind === 'IT service') {
+    return `Bookings that have it keep it, but it cannot be chosen for new bookings. ${AGAIN}`
+  }
   if (props.kind === 'user') {
-    // The count is the rooms they own: turning them off clears the owner (R9).
-    if (!count) return 'They cannot sign in until you make them active again.'
-    return `They cannot sign in, and ${rooms} ${one ? 'loses its' : 'lose their'} owner. You can make them active again.`
+    // Turning them off cancels their open bookings (B-27). The count is the rooms they own:
+    // shared ones lose their owner (R9); the API refuses while they own a private one.
+    if (!count) return 'They cannot sign in, and their bookings that have not ended are cancelled. You can make them active again.'
+    return `They cannot sign in, their bookings that have not ended are cancelled, and ${rooms} ${one ? 'loses its' : 'lose their'} owner. You can make them active again.`
   }
   if (props.kind === 'department') {
     // Its divisions stay active and still take new users (the API checks only the division).
