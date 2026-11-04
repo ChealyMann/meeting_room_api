@@ -75,7 +75,7 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 
 ## Bookings
 
-- Read only for the Admin: the Admin cannot approve, reject, cancel or edit (the API refuses it, spec B-32).
+- The Admin can cancel any open booking, and approve or reject as a backup reviewer (spec B-33, B-34): the panel asks `GET /admin/bookings/{id}/actions` which buttons to show, and each opens a confirm step with an optional reason. Editing a booking stays with the booker.
 - Bookings (`/bookings`) lists every booking (`GET /bookings`). Filters in the address: `status` (a display status), `province`, `room_id`, `from`, `to`, `q`. There is no Active filter, so the list uses `useResourceList(..., { activeFilter: false })`.
 - `?id=12` opens a booking: Details (with the door pass, shown only after the eye button and only for a confirmed booking), Sessions, Services, History, and "Calendar file" (the `.ics`).
 - The Food list (`/food-list?date=2026-11-04`) is the day's food orders (`GET /pitika/catering`, every province for the Admin). No date means today in Phnom Penh.

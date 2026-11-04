@@ -27,7 +27,7 @@ Later, a Room owner may manage only their own rooms (the API already supports th
 
 ## 4. Not in this version
 
-- Approvals and IT support pages. Bookings are read only for the Admin (Phase 7, added 4 Nov 2026): the Admin cannot approve, reject, cancel or edit.
+- Approval queues and IT support pages. The Admin can cancel a booking and approve or reject as a backup (DSH-B07, added 4 Nov 2026), but cannot edit one.
 - Reports and charts.
 - Screens for roles other than Admin.
 - A phone app. (The dashboard must still work on a tablet.)
@@ -174,6 +174,7 @@ DSH-A01 to DSH-A09, the sidebar, the top bar with the user's name and sign out.
 | DSH-B04 | Calendar file download. | `GET /bookings/{id}/ics` |
 | DSH-B05 | Catering packages and IT services: list, create, edit, turn off/on (with `version`). | `/catering-packages`, `/it-services` |
 | DSH-B06 | Room schedule tab (one week) and the day's food list, read only. | `GET /rooms/{id}/schedule`, `GET /pitika/catering` |
+| DSH-B07 | Admin actions on the booking panel (decisions D-32 to D-40): Cancel booking, and Approve / Reject as a backup (for Pitika only when the office has no active Pitika; for the room owner always). Each opens a confirm step with an optional reason. The buttons follow what the API allows; the history names who acted. | `GET /admin/bookings/{id}/actions`, `POST /admin/bookings/{id}/cancel`, `…/approve`, `…/reject` |
 
 ## 11. Done means
 
