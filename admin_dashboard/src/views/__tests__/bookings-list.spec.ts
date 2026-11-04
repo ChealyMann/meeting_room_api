@@ -5,37 +5,11 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
+import { listItem } from '../../test-utils/bookings'
 import { pickerLabel } from '../../test-utils/picker'
 import BookingsView from '../BookingsView.vue'
 
 enableAutoUnmount(afterEach)
-
-export const listItem = (id: number, changes: Record<string, unknown> = {}) => ({
-  id,
-  reference_code: 'NBC-26-48213',
-  room: {
-    id: 12,
-    name_en: 'Mekong Room',
-    name_kh: 'បន្ទប់មេគង្គ',
-    is_private: false,
-    location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
-    province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
-  },
-  meeting_title: 'Budget review',
-  meeting_type: 'INTERNAL',
-  route: 'R1',
-  status: 'PENDING_PITIKA',
-  display_status: 'PENDING_PITIKA',
-  requester: { id: 4, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' },
-  first_session: { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' },
-  session_count: 3,
-  attendees: 10,
-  has_catering: true,
-  has_it: false,
-  created_at: '2026-11-03T02:00:00Z',
-  version: 1,
-  ...changes,
-})
 
 const listCalls: string[] = []
 let listAnswer: () => Response
@@ -57,6 +31,7 @@ beforeEach(() => {
         listCalls.push(url.search)
         return listAnswer()
       }
+      if (url.pathname.startsWith('/api/v1/bookings/')) return json({ error: { code: 'NOT_FOUND', message: 'Not found.', fields: {} } }, 404)
       if (url.pathname === '/api/v1/provinces') return json({ items: [{ code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' }], total: 1 })
       return json({ items: [], page: 1, size: 100, total: 0 })
     }),

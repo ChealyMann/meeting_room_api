@@ -1,7 +1,7 @@
 // Bookings, read only for the Admin: the list of all bookings, a room's schedule and the day's food list.
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { BookingListItem, CateringOrderItem, ItemList, Page, ScheduleItem } from './types'
+import type { BookingDetail, BookingListItem, CateringOrderItem, DoorPassOut, ItemList, Page, ScheduleItem } from './types'
 
 /** The blocking sessions of one room, `from`..`to` (Phnom Penh days, at most 31). */
 export function getRoomSchedule(client: ApiClient, roomId: number, from: string, to: string): Promise<ItemList<ScheduleItem>> {
@@ -27,4 +27,18 @@ export interface BookingFilters {
 
 export function listBookingPage(client: ApiClient, f: BookingFilters): Promise<Page<BookingListItem>> {
   return client.request<Page<BookingListItem>>('GET', '/api/v1/bookings' + toQuery({ ...f }))
+}
+
+export function getBooking(client: ApiClient, id: number): Promise<BookingDetail> {
+  return client.request<BookingDetail>('GET', `/api/v1/bookings/${id}`)
+}
+
+/** Only for a confirmed booking (else 404); never shown unless the Admin asks. */
+export function getDoorPass(client: ApiClient, id: number): Promise<DoorPassOut> {
+  return client.request<DoorPassOut>('GET', `/api/v1/bookings/${id}/door-pass`)
+}
+
+/** The calendar file (text/calendar), one event per session. */
+export function getBookingIcs(client: ApiClient, id: number): Promise<Blob> {
+  return client.requestBlob(`/api/v1/bookings/${id}/ics`)
 }

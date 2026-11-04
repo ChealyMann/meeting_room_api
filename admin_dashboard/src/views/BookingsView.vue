@@ -1,21 +1,23 @@
 <script setup lang="ts">
 // Bookings (DSH-B01, B-32): every booking, read only for the Admin. A filtered, paged list; the
 // open booking lives in the address (?id=12), so a reload keeps its panel open.
-import { CircleAlert, Ellipsis, Monitor, Utensils } from 'lucide-vue-next'
+import { CircleAlert, Ellipsis, LoaderCircle, Monitor, Utensils } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import { api } from '../api'
-import { listBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
+import { getBooking, listBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
 import type { BookingListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
+import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
 import { MEETING_TYPE_LABELS, statusLabel } from '../utils/bookingLabels'
 import { formatDay } from '../utils/time'
 import BookingFilters from './bookings/BookingFilters.vue'
+import BookingPanel from './bookings/BookingPanel.vue'
 import { BOOKING_FILTERS } from './bookings/bookingFilters'
 
 const { list, result, loading, error, errorFields, filtered, load } = useResourceList<BookingListItem>(
@@ -24,6 +26,10 @@ const { list, result, loading, error, errorFields, filtered, load } = useResourc
   { activeFilter: false },
 )
 const panel = usePanelParam()
+// The booking is loaded before its panel opens (see usePanelRecord), so a reload on ?id=… works too.
+const { record: openBooking, error: openError, openingId, load: loadOpen } = usePanelRecord(panel.id, (id) =>
+  getBooking(api, id),
+)
 
 const total = computed(() => result.value?.total ?? 0)
 const count = computed(() => `${String(total.value).padStart(3, '0')} ${total.value === 1 ? 'booking' : 'bookings'}`)
@@ -43,6 +49,15 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
     </div>
 
     <BookingFilters @summary="words = $event" />
+
+    <div v-if="openError" class="summary open-error" role="alert">
+      <CircleAlert aria-hidden="true" />
+      <div>
+        <b>Booking {{ panel.id.value }}: {{ openError }}</b>
+        <BaseButton variant="quiet" @click="loadOpen">Try again</BaseButton>
+        <BaseButton variant="quiet" @click="panel.close">Close</BaseButton>
+      </div>
+    </div>
 
     <div class="sheet">
       <div v-if="error" class="summary load-error" role="alert">
@@ -80,6 +95,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
             <tr
               v-for="booking in result.items"
               :key="booking.id"
+              :aria-busy="booking.id === openingId || undefined"
               tabindex="0"
               @click="panel.open(booking.id)"
               @keydown.enter="panel.open(booking.id)"
@@ -114,7 +130,8 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
                   :aria-label="`Open ${booking.reference_code}`"
                   @click.stop="panel.open(booking.id)"
                 >
-                  <Ellipsis aria-hidden="true" />
+                  <LoaderCircle v-if="booking.id === openingId" class="spin" aria-hidden="true" />
+                  <Ellipsis v-else aria-hidden="true" />
                 </button>
               </td>
             </tr>
@@ -122,6 +139,8 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
         </table>
       </div>
     </div>
+
+    <BookingPanel v-if="openBooking" :key="`booking-${openBooking.id}`" :booking="openBooking" @close="panel.close" />
 
     <PagingFoot
       v-if="result && total > 0"
