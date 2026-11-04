@@ -105,6 +105,51 @@ describe('AppShell', () => {
   })
 })
 
+describe('AppShell sidebar groups', () => {
+  const linkLabels = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper']) =>
+    wrapper.findAll('aside .nav a[href]').map((a) => a.text())
+  const fold = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper'], name: string) =>
+    wrapper.findAll('aside .nav button.fold').find((b) => b.text().includes(name))!
+
+  it('puts the daily pages first: Bookings, Food list, Rooms', async () => {
+    const { wrapper } = await mountShell('/')
+
+    expect(wrapper.get('aside .nav h2').text()).toBe('Daily')
+    expect(linkLabels(wrapper).slice(0, 3)).toEqual(['Bookings', 'Food list', 'Rooms'])
+  })
+
+  it('folds the setup groups, except the one holding the current page', async () => {
+    const { wrapper } = await mountShell('/offices')
+
+    expect(fold(wrapper, 'Places').attributes('aria-expanded')).toBe('true')
+    expect(fold(wrapper, 'Catalog').attributes('aria-expanded')).toBe('false')
+    expect(linkLabels(wrapper)).toContain('Offices')
+    expect(linkLabels(wrapper)).not.toContain('Room types')
+    expect(fold(wrapper, 'Catalog').text()).toContain('5')
+  })
+
+  it('opens and closes a setup group', async () => {
+    const { wrapper } = await mountShell('/')
+
+    await fold(wrapper, 'Catalog').trigger('click')
+    expect(fold(wrapper, 'Catalog').attributes('aria-expanded')).toBe('true')
+    expect(linkLabels(wrapper)).toContain('Room types')
+
+    await fold(wrapper, 'Catalog').trigger('click')
+    expect(linkLabels(wrapper)).not.toContain('Room types')
+  })
+
+  it('opens the group of a page reached later', async () => {
+    const { wrapper, router } = await mountShell('/')
+
+    await router.push('/users')
+    await flushPromises()
+
+    expect(fold(wrapper, 'People').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('a[aria-current="page"]').text()).toContain('Users')
+  })
+})
+
 describe('AppShell photo', () => {
   it('shows the user photo in the rail instead of initials', async () => {
     URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:photo')

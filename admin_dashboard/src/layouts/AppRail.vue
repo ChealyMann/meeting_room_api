@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { LogOut, X } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ChevronDown, ChevronRight, LogOut, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
-import { NAV_GROUPS, NAV_ICONS as ICONS } from './nav'
+import { NAV_GROUPS, NAV_ICONS as ICONS, type NavGroup } from './nav'
 
 defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -15,6 +15,24 @@ const LOGO = '/nbc-logo.png'
 
 const session = useSessionStore()
 const router = useRouter()
+const route = useRoute()
+
+// Setup groups fold; the one holding the current page opens by itself, the others keep what
+// the Admin chose. The folded (icon-only) rail shows every link, with no group headers.
+const SETUP_AT = NAV_GROUPS.findIndex((group) => group.foldable)
+const opened = ref<Record<string, boolean>>({})
+const isOpen = (group: NavGroup) => !!opened.value[group.title ?? '']
+function toggle(group: NavGroup) {
+  opened.value = { ...opened.value, [group.title ?? '']: !isOpen(group) }
+}
+watch(
+  () => route.name,
+  (name) => {
+    const holder = NAV_GROUPS.find((group) => group.foldable && group.items.some((item) => item.route === name))
+    if (holder && !isOpen(holder)) toggle(holder)
+  },
+  { immediate: true },
+)
 
 // The user's photo, when they have one; otherwise the initials show.
 const { imageUrl: photo } = usePrivateImage(
@@ -55,8 +73,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </div>
 
     <nav class="nav">
-      <template v-for="group in NAV_GROUPS" :key="group.title ?? 'top'">
-        <h2 v-if="group.title">{{ group.title }}</h2>
+      <template v-for="(group, index) in NAV_GROUPS" :key="group.title ?? 'top'">
+        <h2 v-if="index === SETUP_AT">Setup</h2>
+        <h2 v-if="group.title && !group.foldable">{{ group.title }}</h2>
+        <button
+          v-if="group.foldable"
+          type="button"
+          class="fold"
+          :aria-expanded="isOpen(group) ? 'true' : 'false'"
+          :title="group.title ?? ''"
+          @click="toggle(group)"
+        >
+          <component :is="ICONS[group.icon ?? '']" aria-hidden="true" />
+          <span class="label">{{ group.title }}</span>
+          <span class="count">{{ group.items.length }}</span>
+          <ChevronDown v-if="isOpen(group)" class="chevron" aria-hidden="true" />
+          <ChevronRight v-else class="chevron" aria-hidden="true" />
+        </button>
+        <div v-if="!group.foldable || isOpen(group) || compact" :class="{ sub: group.foldable }">
         <template v-for="item in group.items" :key="item.label">
           <RouterLink
             v-if="item.route"
@@ -79,6 +113,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span class="label">{{ item.label }}</span>
           </a>
         </template>
+        </div>
       </template>
     </nav>
 
@@ -168,6 +203,53 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .nav a svg.lucide {
   color: var(--color-rail-muted);
+}
+/* A setup group's header: the same row as a link, with its count and a chevron. */
+.fold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px 7px 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-rail-ink);
+  font: inherit;
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.fold:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.fold svg.lucide {
+  color: var(--color-rail-muted);
+}
+.fold .label {
+  flex: 1;
+}
+.fold .count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-rail-muted);
+}
+.fold .chevron {
+  width: 14px;
+  height: 14px;
+}
+/* An open group's links sit under its header, on a thin rail line. */
+.sub {
+  margin: 2px 0 6px 23px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-rail-line);
+}
+.sub a {
+  padding-left: 12px;
+  font-size: 13px;
 }
 .nav a[href]:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -283,6 +365,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 /* Folded rail (toggle, or always on tablets): icons only. Icons keep their place; text
    fades out fast (no delay) and stays in the accessibility tree, so links keep their names. */
+/* Folded: no group headers; every link shows as an icon, in place. */
+.compact .fold {
+  display: none;
+}
+.compact .sub {
+  margin: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+.compact .sub a {
+  padding-left: 16px;
+}
 .compact .brand-text,
 .compact .nav h2,
 .compact .nav .label {

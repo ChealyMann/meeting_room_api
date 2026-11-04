@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openGroup } from './rail'
+
 import { pick } from './picker'
 
 // Needs the API running (run.bat), an Admin whose password is already changed, and at least one active position.
@@ -20,6 +22,7 @@ test('add a user, give them Staff, set a temporary password; you cannot make you
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.locator('.count')).toBeVisible()
 
+  await openGroup(page, 'People')
   await page.getByRole('link', { name: 'Users' }).click()
   await page.getByRole('button', { name: 'New user' }).first().click()
   await panel.locator('#staff_id').fill(`E2E-${String(stamp).slice(-8)}`)
@@ -55,6 +58,7 @@ test('add a user, give them Staff, set a temporary password; you cannot make you
   await expect(panel.locator('.panel-foot').getByRole('switch', { name: 'Active' })).toHaveAttribute('aria-disabled', 'true')
   await expect(panel).toContainText('You cannot make yourself inactive.')
 
+  await openGroup(page, 'People')
   await page.getByRole('link', { name: 'Roles' }).click()
   await expect(page.locator('tbody tr')).toHaveCount(6)
 })

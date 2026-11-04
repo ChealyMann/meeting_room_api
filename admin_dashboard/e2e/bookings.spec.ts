@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { openGroup } from './rail'
+
 // Needs the API running (run.bat) and an Admin whose password is already changed.
 const email = process.env.E2E_ADMIN_EMAIL
 const password = process.env.E2E_ADMIN_PASSWORD
@@ -17,6 +19,7 @@ test('add a catering package, then open the bookings list and a booking', async 
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.locator('.count')).toBeVisible()
 
+  await openGroup(page, 'Catalog')
   await page.getByRole('link', { name: 'Catering packages' }).click()
   await page.getByRole('button', { name: 'New package' }).first().click()
   await panel.locator('#name').fill(name)
