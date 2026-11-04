@@ -5,12 +5,14 @@ import {
   DoorOpen,
   GitFork,
   Landmark,
+  MonitorCog,
   Layers,
   Network,
   Projector,
   ShieldCheck,
   Tags,
   Users,
+  Utensils,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -42,6 +44,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Room types', icon: 'tags', route: 'room-types' },
       { label: 'Equipment', icon: 'projector', route: 'equipment' },
+      { label: 'Catering packages', icon: 'utensils', route: 'catering-packages' },
+      { label: 'IT services', icon: 'monitor-cog', route: 'it-services' },
       { label: 'Public holidays', icon: 'calendar-days', route: 'public-holidays' },
     ],
   },
@@ -70,6 +74,8 @@ export const NAV_ICONS: Record<string, Component> = {
   layers: Layers,
   tags: Tags,
   projector: Projector,
+  utensils: Utensils,
+  'monitor-cog': MonitorCog,
   'calendar-days': CalendarDays,
   network: Network,
   'git-fork': GitFork,

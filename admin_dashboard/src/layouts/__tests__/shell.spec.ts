@@ -27,6 +27,8 @@ function makeRouter() {
           { path: 'floors', name: 'floors', component: Page, meta: { title: 'Floors' } },
           { path: 'room-types', name: 'room-types', component: Page, meta: { title: 'Room types' } },
           { path: 'equipment', name: 'equipment', component: Page, meta: { title: 'Equipment' } },
+          { path: 'catering-packages', name: 'catering-packages', component: Page, meta: { title: 'Catering packages' } },
+          { path: 'it-services', name: 'it-services', component: Page, meta: { title: 'IT services' } },
           { path: 'public-holidays', name: 'public-holidays', component: Page, meta: { title: 'Public holidays' } },
           { path: 'departments', name: 'departments', component: Page, meta: { title: 'Departments' } },
           { path: 'divisions', name: 'divisions', component: Page, meta: { title: 'Divisions' } },

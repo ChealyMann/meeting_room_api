@@ -81,6 +81,20 @@ const router = createRouter({
           meta: { title: 'Public holidays' },
         },
         {
+          path: 'catering-packages',
+          name: 'catering-packages',
+          component: () => import('../views/ServiceCatalogView.vue'),
+          props: { kind: 'catering' },
+          meta: { title: 'Catering packages' },
+        },
+        {
+          path: 'it-services',
+          name: 'it-services',
+          component: () => import('../views/ServiceCatalogView.vue'),
+          props: { kind: 'it' },
+          meta: { title: 'IT services' },
+        },
+        {
           path: 'departments',
           name: 'departments',
           component: () => import('../views/DepartmentsView.vue'),

@@ -8,7 +8,18 @@ import ActiveToggle from '../ActiveToggle.vue'
 
 enableAutoUnmount(afterEach)
 
-type Kind = 'office' | 'building' | 'floor' | 'room type' | 'equipment' | 'department' | 'division' | 'position' | 'user'
+type Kind =
+  | 'office'
+  | 'building'
+  | 'floor'
+  | 'room type'
+  | 'equipment'
+  | 'catering package'
+  | 'IT service'
+  | 'department'
+  | 'division'
+  | 'position'
+  | 'user'
 type Count = () => Promise<number>
 
 const counted = (total: number) => vi.fn<Count>(async () => total)
@@ -102,6 +113,12 @@ describe('ActiveToggle', () => {
     expect(await warningFor('equipment', failing())).toContain(
       'Rooms that have it keep it, but it cannot be added to other rooms.',
     )
+  })
+
+  it('says bookings keep a catering package or an IT service', async () => {
+    const text = 'Bookings that have it keep it, but it cannot be chosen for new bookings. You can make it active again.'
+    expect(await warningFor('catering package', counted(0))).toContain(text)
+    expect(await warningFor('IT service', failing())).toContain(text)
   })
 
   it('counts users for departments, divisions and positions', async () => {

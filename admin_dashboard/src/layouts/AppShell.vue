@@ -31,7 +31,8 @@ watch(
     <div class="work">
       <AppTopbar :menu-open="railOpen" @toggle-menu="railOpen = !railOpen" />
       <main id="main" tabindex="-1" class="page">
-        <RouterView />
+        <!-- Keyed by page: catering packages and IT services share one view and must not share its state. -->
+        <RouterView :key="String($route.name)" />
       </main>
     </div>
     <AppToast />
