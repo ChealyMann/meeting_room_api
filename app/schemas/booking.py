@@ -196,6 +196,7 @@ class ReviewOut(ResponseModel):
     reviewer: PersonRef | None
     notes: str | None
     reviewed_at: UtcDateTime
+    by_admin: bool  # the Admin decided as a backup for this stage (B-34)
 
 
 class RejectionOut(ResponseModel):
@@ -203,6 +204,7 @@ class RejectionOut(ResponseModel):
     actor: PersonRef | None
     reason: str
     decided_at: UtcDateTime
+    by_admin: bool
 
 
 class BookingListItem(ResponseModel):
@@ -237,6 +239,7 @@ class BookingDetail(BookingListItem):
     rejection: RejectionOut | None
     cancelled_at: UtcDateTime | None
     cancel_reason: str | None
+    cancelled_by: PersonRef | None  # null: the system cancelled it (B-27)
     updated_at: UtcDateTime
 
 

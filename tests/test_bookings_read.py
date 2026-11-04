@@ -85,7 +85,7 @@ def test_detail_shape(client, frozen, make_user, make_bookable_room, make_bookin
         "display_status", "requester", "first_session", "session_count", "attendees",
         "has_catering", "has_it", "created_at", "version", "requester_info", "meeting_purpose",
         "private_justification", "participant_emails", "sessions", "last_end", "catering", "it",
-        "reviews", "rejection", "cancelled_at", "cancel_reason", "updated_at",
+        "reviews", "rejection", "cancelled_at", "cancel_reason", "cancelled_by", "updated_at",
     }  # fmt: skip
     location = room.floor.building.location
     assert data["room"] == {

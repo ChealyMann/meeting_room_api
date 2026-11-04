@@ -406,7 +406,7 @@ def cancel_booking(
         raise transitions.invalid_transition(booking)
     if transitions.has_ended(booking):
         raise transitions.invalid_transition(booking, ENDED_MESSAGE)
-    transitions.cancel(session, booking, version, reason)
+    transitions.cancel(session, booking, version, reason, current.id)
     session.commit()
     return booking
 

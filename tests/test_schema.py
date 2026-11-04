@@ -150,6 +150,7 @@ EXPECTED_COLUMNS = {
         "status": ("varchar(20)", False),
         "cancelled_at": ("datetime", True),
         "cancel_reason": ("varchar(500)", True),
+        "cancelled_by": ("int unsigned", True),
         "version": ("int unsigned", False),
     },
     "booking_sessions": {
@@ -169,6 +170,7 @@ EXPECTED_COLUMNS = {
         "reviewer_id": ("int unsigned", True),
         "notes": ("varchar(1000)", True),
         "reviewed_at": ("datetime", False),
+        "by_admin": ("tinyint(1)", False),
     },
     "booking_rejections": {
         "id": ("int unsigned", False),
@@ -177,6 +179,7 @@ EXPECTED_COLUMNS = {
         "actor_user_id": ("int unsigned", True),
         "reason": ("varchar(1000)", False),
         "decided_at": ("datetime", False),
+        "by_admin": ("tinyint(1)", False),
     },
     "booking_door_passes": {
         "id": ("int unsigned", False),
@@ -264,6 +267,7 @@ EXPECTED_FOREIGN_KEYS = {
     ("user_roles", "user_id", "users"),
     ("user_roles", "role_id", "roles"),
     ("bookings", "requester_id", "users"),
+    ("bookings", "cancelled_by", "users"),
     ("bookings", "room_id", "rooms"),
     ("booking_sessions", "booking_id", "bookings"),
     ("booking_sessions", "room_id", "rooms"),

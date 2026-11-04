@@ -132,7 +132,7 @@ def build_booking_detail(session: Session, booking: Booking, settings: Settings)
     users = _users_by_id(
         session,
         {review.reviewer_id for review in booking.reviews}
-        | {rejection.actor_user_id if rejection else None},
+        | {rejection.actor_user_id if rejection else None, booking.cancelled_by},
     )
     end = transitions.last_end(booking)
     return BookingDetail(
@@ -152,6 +152,7 @@ def build_booking_detail(session: Session, booking: Booking, settings: Settings)
                 reviewer=_person(users.get(review.reviewer_id)),
                 notes=review.notes,
                 reviewed_at=review.reviewed_at,
+                by_admin=review.by_admin,
             )
             for review in booking.reviews
         ],
@@ -160,10 +161,12 @@ def build_booking_detail(session: Session, booking: Booking, settings: Settings)
             actor=_person(users.get(rejection.actor_user_id)),
             reason=rejection.reason,
             decided_at=rejection.decided_at,
+            by_admin=rejection.by_admin,
         )
         if rejection
         else None,
         cancelled_at=booking.cancelled_at,
         cancel_reason=booking.cancel_reason,
+        cancelled_by=_person(users.get(booking.cancelled_by)),
         updated_at=booking.updated_at,
     )

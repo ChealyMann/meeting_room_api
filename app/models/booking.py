@@ -48,10 +48,14 @@ class Booking(IdMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(20), index=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
     cancel_reason: Mapped[str | None] = mapped_column(String(500))
+    # Who cancelled: the booker or an Admin (B-35); null for the system (B-27).
+    cancelled_by: Mapped[int | None] = mapped_column(
+        UnsignedInt, ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT")
+    )
     version: Mapped[int] = mapped_column(UnsignedInt, default=1)  # optimistic lock (B-04)
 
     room: Mapped["Room"] = relationship()
-    requester: Mapped["User"] = relationship()
+    requester: Mapped["User"] = relationship(foreign_keys=[requester_id])
     sessions: Mapped[list["BookingSession"]] = relationship(
         order_by="(BookingSession.date, BookingSession.start_time)"
     )

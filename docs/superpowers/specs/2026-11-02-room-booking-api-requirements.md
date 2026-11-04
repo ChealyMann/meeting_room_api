@@ -26,7 +26,7 @@ The rules come from three sources: the booking ERD (Booking (4).drawio), the cli
 - Office closures and room repair dates. Only public holidays, and they only warn.
 - A backup approver for room owners.
 - Changing the room, date, time, food or IT of a sent booking. The booker cancels and books again.
-- Cancelling another person's booking. If a confirmed booking must stop, the Pitika or Admin asks the booker to cancel it.
+- Cancelling another person's booking, except by the Admin (changed Nov 4, 2026: see the build spec, B-33 and B-34).
 - Reports, charts and an audit log.
 
 ## 2. Glossary

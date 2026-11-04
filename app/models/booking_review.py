@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.constants.booking import ReviewDecision, ReviewStage
@@ -30,3 +30,5 @@ class BookingReview(IdMixin, Base):
     )
     notes: Mapped[str | None] = mapped_column(String(1000))
     reviewed_at: Mapped[datetime] = mapped_column(DateTime)
+    # The Admin decided as a backup for this stage (B-34); reviewer_id is the Admin.
+    by_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
