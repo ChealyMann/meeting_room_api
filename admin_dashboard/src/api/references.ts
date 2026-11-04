@@ -14,6 +14,7 @@ import type {
   PositionOut,
   Page,
   ProvinceRef,
+  RoomListItem,
   UserListItem,
 } from './types'
 
@@ -78,4 +79,9 @@ export async function listProvinces(client: ApiClient): Promise<ProvinceRef[]> {
 /** Users who may own a room: active, with the Room owner role. */
 export function listRoomOwners(client: ApiClient): Promise<UserListItem[]> {
   return listAll<UserListItem>(client, '/api/v1/users', { role: 'ROOM_OWNER', is_active: true })
+}
+
+/** Every room, any status: the Bookings room filter. */
+export function listAllRooms(client: ApiClient): Promise<RoomListItem[]> {
+  return listAll<RoomListItem>(client, '/api/v1/rooms')
 }

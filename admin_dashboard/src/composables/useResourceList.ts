@@ -4,16 +4,19 @@ import { computed, ref, watch, type Ref } from 'vue'
 
 import { ApiError } from '../api/errors'
 import type { Page } from '../api/types'
-import { useListQuery, type FilterSpec } from './useListQuery'
+import { useListQuery, type FilterSpec, type ListQueryOptions } from './useListQuery'
 
 export function useResourceList<T>(
   spec: FilterSpec,
   fetchPage: (params: Record<string, unknown>) => Promise<Page<T>>,
+  options: ListQueryOptions = {},
 ) {
-  const list = useListQuery(spec)
+  const list = useListQuery(spec, options)
   const result = ref<Page<T> | null>(null) as Ref<Page<T> | null>
   const loading = ref(true)
   const error = ref('')
+  /** The API's field messages of the last failed load (e.g. a filter it refused). */
+  const errorFields = ref<Record<string, string>>({})
   const savedId = ref<number | null>(null)
   let latest = 0
 
@@ -21,6 +24,7 @@ export function useResourceList<T>(
     const request = ++latest
     loading.value = true
     error.value = ''
+    errorFields.value = {}
     try {
       const page = await fetchPage(list.apiParams.value)
       if (request !== latest) return
@@ -32,7 +36,9 @@ export function useResourceList<T>(
       }
       result.value = page
     } catch (err) {
-      if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
+      if (request !== latest) return
+      error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
+      errorFields.value = err instanceof ApiError ? err.fields : {}
     } finally {
       if (request === latest) loading.value = false
     }
@@ -41,7 +47,9 @@ export function useResourceList<T>(
   watch(() => JSON.stringify(list.apiParams.value), load, { immediate: true })
 
   const filtered = computed(
-    () => Object.keys(list.filters.value).length > 0 || list.status.value !== 'active',
+    () =>
+      Object.keys(list.filters.value).length > 0 ||
+      (options.activeFilter !== false && list.status.value !== 'active'),
   )
 
   /** After a save: reload and tint the saved row. */
@@ -50,5 +58,5 @@ export function useResourceList<T>(
     await load()
   }
 
-  return { list, result, loading, error, filtered, savedId, load, refresh }
+  return { list, result, loading, error, errorFields, filtered, savedId, load, refresh }
 }

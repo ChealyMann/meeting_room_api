@@ -22,6 +22,7 @@ function makeRouter() {
         children: [
           { path: '', name: 'home', component: Page, meta: { title: 'Rooms' } },
           { path: 'profile', name: 'profile', component: Page, meta: { title: 'My profile' } },
+          { path: 'bookings', name: 'bookings', component: Page, meta: { title: 'Bookings' } },
           { path: 'food-list', name: 'food-list', component: Page, meta: { title: 'Food list' } },
           { path: 'offices', name: 'offices', component: Page, meta: { title: 'Offices' } },
           { path: 'buildings', name: 'buildings', component: Page, meta: { title: 'Buildings' } },

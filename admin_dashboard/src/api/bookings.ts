@@ -1,7 +1,7 @@
-// Bookings, read only for the Admin: a room's schedule and the day's food list.
+// Bookings, read only for the Admin: the list of all bookings, a room's schedule and the day's food list.
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { CateringOrderItem, ItemList, ScheduleItem } from './types'
+import type { BookingListItem, CateringOrderItem, ItemList, Page, ScheduleItem } from './types'
 
 /** The blocking sessions of one room, `from`..`to` (Phnom Penh days, at most 31). */
 export function getRoomSchedule(client: ApiClient, roomId: number, from: string, to: string): Promise<ItemList<ScheduleItem>> {
@@ -11,4 +11,20 @@ export function getRoomSchedule(client: ApiClient, roomId: number, from: string,
 /** Food orders of bookings whose first session is on `day`; the Admin sees every province. */
 export function getFoodList(client: ApiClient, day: string): Promise<ItemList<CateringOrderItem>> {
   return client.request<ItemList<CateringOrderItem>>('GET', '/api/v1/pitika/catering' + toQuery({ date: day }))
+}
+
+/** The API's filters for the Admin list (B-32). `status` is a display status; days are Phnom Penh days. */
+export interface BookingFilters {
+  status?: string
+  province?: string
+  room_id?: number
+  from?: string
+  to?: string
+  q?: string
+  page?: number
+  size?: number
+}
+
+export function listBookingPage(client: ApiClient, f: BookingFilters): Promise<Page<BookingListItem>> {
+  return client.request<Page<BookingListItem>>('GET', '/api/v1/bookings' + toQuery({ ...f }))
 }

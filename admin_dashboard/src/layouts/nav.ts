@@ -1,6 +1,7 @@
 import {
   Briefcase,
   Building2,
+  CalendarCheck,
   CalendarDays,
   DoorOpen,
   GitFork,
@@ -34,7 +35,10 @@ export const NAV_GROUPS: NavGroup[] = [
   { title: null, items: [{ label: 'Rooms', icon: 'door-open', route: 'home' }] },
   {
     title: 'Bookings',
-    items: [{ label: 'Food list', icon: 'utensils-crossed', route: 'food-list' }],
+    items: [
+      { label: 'Bookings', icon: 'calendar-check', route: 'bookings' },
+      { label: 'Food list', icon: 'utensils-crossed', route: 'food-list' },
+    ],
   },
   {
     title: 'Places',
@@ -82,6 +86,7 @@ export const NAV_ICONS: Record<string, Component> = {
   utensils: Utensils,
   'utensils-crossed': UtensilsCrossed,
   'monitor-cog': MonitorCog,
+  'calendar-check': CalendarCheck,
   'calendar-days': CalendarDays,
   network: Network,
   'git-fork': GitFork,
