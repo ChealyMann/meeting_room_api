@@ -123,12 +123,15 @@ function cancel() {
 }
 
 // Turning a user off or taking Room owner away clears the rooms they own: the last answer's
-// rooms show here, each linked to its panel on the Rooms page.
+// rooms show here, each linked to its panel on the Rooms page. Turning off also cancels their
+// open bookings (B-27): the last answer's bookings show too.
 const unassigned = ref<number[]>([])
+const cancelled = ref<number[]>([])
 /** Turning off clears every room they own: the turn-off warning's number. */
 const ownedRooms = () => Promise.resolve(props.user.owned_room_ids.length)
 function changed(user: UserChanged) {
   unassigned.value = user.rooms_unassigned
+  cancelled.value = user.bookings_cancelled
   emit('saved', user)
 }
 
@@ -188,6 +191,15 @@ async function turn(active: boolean) {
           <RouterLink v-for="id in unassigned" :key="id" class="serial" :to="{ name: 'home', query: { room: String(id) } }">
             {{ serial('RM', id) }}
           </RouterLink>
+        </span>
+      </div>
+    </div>
+    <div v-if="cancelled.length" class="unassigned cancelled" role="status">
+      <CircleAlert aria-hidden="true" />
+      <div>
+        <b>These bookings were cancelled:</b>
+        <span class="rooms">
+          <span v-for="id in cancelled" :key="id" class="serial">#{{ id }}</span>
         </span>
       </div>
     </div>

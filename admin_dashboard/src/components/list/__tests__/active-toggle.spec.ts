@@ -139,10 +139,14 @@ describe('ActiveToggle', () => {
     )
   })
 
-  it('says what turning a user off does to their rooms', async () => {
-    expect(await warningFor('user', counted(3))).toContain('They cannot sign in, and 3 rooms lose their owner. You can make them active again.')
-    expect(await warningFor('user', counted(1))).toContain('They cannot sign in, and 1 room loses its owner.')
-    expect(await warningFor('user', counted(0))).toContain('They cannot sign in until you make them active again.')
+  it('says what turning a user off does to their bookings and rooms', async () => {
+    expect(await warningFor('user', counted(3))).toContain(
+      'They cannot sign in, their bookings that have not ended are cancelled, and 3 rooms lose their owner. You can make them active again.',
+    )
+    expect(await warningFor('user', counted(1))).toContain('and 1 room loses its owner.')
+    expect(await warningFor('user', counted(0))).toContain(
+      'They cannot sign in, and their bookings that have not ended are cancelled. You can make them active again.',
+    )
   })
 
   it('can be locked: the switch looks off-limits, and a click says why instead of turning', async () => {

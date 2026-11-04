@@ -28,11 +28,13 @@ export function getUser(client: ApiClient, id: number): Promise<UserDetail> {
 export function createUser(client: ApiClient, body: UserCreate): Promise<UserDetail> {
   return client.request<UserDetail>('POST', USERS, { json: body })
 }
-/** Turning a user off clears the rooms they own: `rooms_unassigned` lists them. */
+/** Turning a user off clears the shared rooms they own (`rooms_unassigned`) and cancels their open
+ * bookings (`bookings_cancelled`). It is refused while they own a private room. */
 export function updateUser(client: ApiClient, id: number, changes: UserUpdate): Promise<UserChanged> {
   return client.request<UserChanged>('PATCH', `${USERS}/${id}`, { json: changes })
 }
-/** Replaces every role. Removing Room owner clears the rooms they own (`rooms_unassigned`). */
+/** Replaces every role. Removing Room owner clears the shared rooms they own (`rooms_unassigned`);
+ * it is refused while they own a private room. */
 export function setUserRoles(client: ApiClient, id: number, codes: string[]): Promise<UserChanged> {
   return client.request<UserChanged>('PUT', `${USERS}/${id}/roles`, { json: { role_codes: codes } })
 }

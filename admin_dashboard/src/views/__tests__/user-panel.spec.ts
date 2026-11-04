@@ -28,6 +28,7 @@ const role = (code: string) => {
 let detail: Record<string, unknown>
 const calls: Array<{ method: string; path: string; body: unknown }> = []
 let rolesAnswer: () => Response
+let patchAnswer: ((body: object) => Response) | null
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -62,7 +63,8 @@ beforeEach(() => {
     last_login_at: null,
     ...st,
   }
-  rolesAnswer = () => json({ ...detail, roles: [role('STAFF')], owned_room_ids: [], rooms_unassigned: [12, 13] })
+  patchAnswer = null
+  rolesAnswer = () => json({ ...detail, roles: [role('STAFF')], owned_room_ids: [], rooms_unassigned: [12, 13], bookings_cancelled: [] })
   URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
   URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
   vi.stubGlobal(
@@ -72,7 +74,8 @@ beforeEach(() => {
       const method = init?.method ?? 'GET'
       const body = init?.body instanceof FormData ? 'form' : init?.body ? JSON.parse(String(init.body)) : undefined
       if (method !== 'GET') calls.push({ method, path: url.pathname, body })
-      if (method === 'PATCH') return json({ ...detail, ...(body as object), rooms_unassigned: [] })
+      if (method === 'PATCH' && patchAnswer) return patchAnswer(body as object)
+      if (method === 'PATCH') return json({ ...detail, ...(body as object), rooms_unassigned: [], bookings_cancelled: [] })
       if (method === 'PUT' && url.pathname.endsWith('/roles')) return rolesAnswer()
       if (method === 'PUT' && url.pathname.endsWith('/signature')) return json({ ...detail, signature_url: '/api/v1/users/7/signature' })
       if (method === 'POST') return new Response(null, { status: 204 })
@@ -170,6 +173,40 @@ describe('UserPanel', () => {
       ['RM·0012', '/?room=12'],
       ['RM·0013', '/?room=13'],
     ])
+  })
+
+  it('lists the bookings cancelled and the rooms that lost their owner after turning off', async () => {
+    patchAnswer = (body) => json({ ...detail, ...body, rooms_unassigned: [4], bookings_cancelled: [12, 15] })
+    await mountAt('/users?id=7')
+
+    await click(panel().querySelector<HTMLElement>('.panel-foot [role="switch"]')!)
+    await answerConfirm('Make inactive')
+
+    expect(calls).toEqual([{ method: 'PATCH', path: '/api/v1/users/7', body: { is_active: false } }])
+    expect(panel().querySelector('.unassigned')?.textContent).toContain('RM·0004')
+    expect([...panel().querySelectorAll('.cancelled .serial')].map((s) => s.textContent?.trim())).toEqual(['#12', '#15'])
+  })
+
+  it('says to give private rooms a new owner before turning off', async () => {
+    const message = 'Assign a new owner for 2 private rooms first.'
+    patchAnswer = () => json({ error: { code: 'OWNER_HAS_PRIVATE_ROOMS', message, fields: { is_active: message } } }, 409)
+    await mountAt('/users?id=7')
+
+    await click(panel().querySelector<HTMLElement>('.panel-foot [role="switch"]')!)
+    await answerConfirm('Make inactive')
+
+    expect(panel().querySelector('.panel-foot [role="alert"]')?.textContent).toContain(message)
+  })
+
+  it('says to give private rooms a new owner before removing Room owner', async () => {
+    const message = 'Assign a new owner for 2 private rooms first.'
+    rolesAnswer = () => json({ error: { code: 'OWNER_HAS_PRIVATE_ROOMS', message, fields: { role_codes: message } } }, 409)
+    await mountAt('/users?id=7&tab=roles')
+
+    await click(box('Room owner'))
+    await click(button('Save roles'))
+
+    expect(panel().querySelector('#tabpanel-roles [role="alert"]')?.textContent).toContain(message)
   })
 
   it('keeps the signed-in Admin from turning themselves off or dropping their Admin role', async () => {
