@@ -6,7 +6,7 @@ import { CalendarArrowDown, CircleAlert } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../../api'
-import { adminApprove, adminCancel, adminReject, getAdminActions, getBookingIcs, getDoorPass } from '../../api/bookings'
+import { adminApprove, adminCancel, adminReject, getAdminActions, getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import type { AdminActionsOut, BookingDetail, DoorPassOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -134,7 +134,16 @@ async function confirmStep() {
     if (err instanceof ApiError) {
       fieldError.value = err.fields.reason ?? err.fields.notes ?? ''
       stepError.value = fieldError.value ? '' : err.message
-      if (err.status === 403 || err.status === 409) await loadActions()
+      // Someone else acted, or the booking moved on: show the booking as it is now, so a retry
+      // sends its new version, and offer only what is still allowed.
+      if (err.status === 403 || err.status === 409) {
+        try {
+          emit('changed', await getBooking(api, props.booking.id))
+        } catch {
+          // the message already says to reload
+        }
+        await loadActions()
+      }
     } else {
       stepError.value = 'Something went wrong.'
     }

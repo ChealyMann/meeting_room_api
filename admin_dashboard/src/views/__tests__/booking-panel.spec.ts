@@ -279,6 +279,32 @@ describe('BookingPanel Admin actions', () => {
     expect([...panel()!.querySelectorAll('.panel-foot button')].map((b) => b.textContent?.trim())).not.toContain('Cancel booking')
   })
 
+  it('reloads the booking after someone else changed it, so a retry sends the new version', async () => {
+    actions = { cancel: true, approve: false, reject: false, stage: null }
+    let stale = true
+    actionAnswer = () => {
+      if (stale) {
+        stale = false
+        current = { ...current, status: 'CONFIRMED', display_status: 'CONFIRMED', version: 2 }
+        return json({ error: { code: 'STALE_VERSION', message: 'This booking changed. Reload it.', fields: {} } }, 409)
+      }
+      current = { ...current, status: 'CANCELLED', display_status: 'CANCELLED', version: 3 }
+      return json(current)
+    }
+    await mountAt('/bookings?id=12')
+    const detailReads = () => calls.filter((c) => c === 'GET /api/v1/bookings/12').length
+    const before = detailReads()
+
+    await click(panelButton('Cancel booking'))
+    await click(step()!.querySelector<HTMLElement>('button.confirm')!)
+    expect(step()?.textContent).toContain('This booking changed. Reload it.')
+    expect(detailReads()).toBe(before + 1)
+
+    await click(step()!.querySelector<HTMLElement>('button.confirm')!)
+    expect(bodies).toEqual([JSON.stringify({ reason: null, version: 1 }), JSON.stringify({ reason: null, version: 2 })])
+    expect(panel()?.textContent).toContain('Cancelled')
+  })
+
   it('shows a 403 on approve and reloads the actions', async () => {
     actions = { cancel: true, approve: true, reject: true, stage: 'PITIKA' }
     actionAnswer = () => json({ error: { code: 'FORBIDDEN', message: 'This office has an active Pitika. Ask them to decide.', fields: {} } }, 403)
