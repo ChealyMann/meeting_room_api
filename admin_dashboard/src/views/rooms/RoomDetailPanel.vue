@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // One room in the side panel (DSH-R02, R04, R05): details, photos and equipment as tabs,
 // the Active switch in the foot (G07), and the door code only on request.
-import { CircleAlert, Eye } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { CircleAlert } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { ApiError } from '../../api/errors'
@@ -10,6 +10,7 @@ import { getDoorCode, getRoom, updateRoom } from '../../api/rooms'
 import type { RoomDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
+import SecretReveal from '../../components/SecretReveal.vue'
 import ActiveToggle from '../../components/list/ActiveToggle.vue'
 import StateMarks from '../../components/list/StateMarks.vue'
 import { serial } from '../../utils/serial'
@@ -34,17 +35,12 @@ watch(
   (step) => (tab.value = step ?? 'details'),
 )
 
-// The door code: undefined = hidden; null = asked, none set; string = shown.
-const doorCode = ref<string | null | undefined>(undefined)
-const doorBusy = ref(false)
-
 const actionError = ref('')
 
 const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : 'Something went wrong.')
 
 async function load() {
   loadError.value = ''
-  doorCode.value = undefined
   actionError.value = ''
   try {
     room.value = await getRoom(api, props.roomId)
@@ -53,18 +49,9 @@ async function load() {
   }
 }
 watch(() => props.roomId, load, { immediate: true })
-onBeforeUnmount(() => (doorCode.value = undefined))
-
-async function showDoorCode() {
-  doorBusy.value = true
-  actionError.value = ''
-  try {
-    doorCode.value = (await getDoorCode(api, props.roomId)).door_code ?? null
-  } catch (err) {
-    actionError.value = messageOf(err)
-  } finally {
-    doorBusy.value = false
-  }
+/** The door code, fetched only when the eye is pressed (DSH-R05); null = none set. */
+async function revealDoorCode(): Promise<string | null> {
+  return (await getDoorCode(api, props.roomId)).door_code ?? null
 }
 
 /** The Active switch's change; a refusal (e.g. "Turn on its floor first.") shows by the switch. */
@@ -151,21 +138,10 @@ defineExpose({ update, tab })
           <div><dt>Owner</dt><dd :class="{ none: !room.owner }">{{ room.owner?.name_en ?? 'No owner' }}</dd></div>
           <div><dt>Short description</dt><dd :class="{ none: !room.short_desc }">{{ room.short_desc || 'None' }}</dd></div>
           <div><dt>Description</dt><dd class="wrap" :class="{ none: !room.description }">{{ room.description || 'None' }}</dd></div>
-          <div>
+          <div class="secret-row">
             <dt>Door code</dt>
-            <dd class="door">
-              <template v-if="doorCode === undefined">
-                <span class="none">Hidden</span>
-                <BaseButton class="small" :busy="doorBusy" @click="showDoorCode">
-                  <Eye v-if="!doorBusy" aria-hidden="true" />
-                  Show door code
-                </BaseButton>
-              </template>
-              <template v-else>
-                <span v-if="doorCode === null" class="none">No door code set</span>
-                <span v-else class="mono door-code">{{ doorCode }}</span>
-                <BaseButton variant="quiet" class="small" @click="doorCode = undefined">Hide</BaseButton>
-              </template>
+            <dd>
+              <SecretReveal :key="room.id" label="door code" :reveal="revealDoorCode" empty-text="No door code set" />
             </dd>
           </div>
           <div><dt>Created</dt><dd class="mono">{{ formatPhnomPenh(room.created_at) }}</dd></div>
@@ -270,20 +246,9 @@ defineExpose({ update, tab })
 .none {
   color: var(--color-ink-off);
 }
-.door {
-  display: flex;
-  flex-wrap: wrap;
+.details > .secret-row {
   align-items: center;
-  gap: 4px 12px;
-}
-.door-code {
-  font-size: 14px;
-  letter-spacing: 0.06em;
-}
-.small {
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12.5px;
+  padding: 4px 0;
 }
 .action-error {
   margin-top: 16px;

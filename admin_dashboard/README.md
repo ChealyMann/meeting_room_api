@@ -53,7 +53,7 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 
 - The list's filters, page, page size and status live in the address (`/?location_id=3&search=board&page=2`), so a filtered list can be reloaded or shared.
 - The open room lives in the address too: `?room=12` (detail), `?room=12&edit=1` (edit), `?room=new` (create), `&step=photos|equipment` (the steps after creating a room).
-- The door code is never loaded with a room; "Show door code" asks the API for it.
+- The door code is never loaded with a room; the eye button ("Show door code") asks the API for it. The masked row is `SecretReveal` (`src/components/SecretReveal.vue`), shared with the booking door pass.
 - The real-API test for rooms (`e2e/rooms.spec.ts`) needs at least one active office with a building, a floor, a room type and an equipment item.
 
 ## Places
@@ -77,7 +77,7 @@ The test changes the account's phone, checks it after a reload, then puts it bac
 
 - Read only for the Admin: the Admin cannot approve, reject, cancel or edit (the API refuses it, spec B-32).
 - Bookings (`/bookings`) lists every booking (`GET /bookings`). Filters in the address: `status` (a display status), `province`, `room_id`, `from`, `to`, `q`. There is no Active filter, so the list uses `useResourceList(..., { activeFilter: false })`.
-- `?id=12` opens a booking: Details (with the door pass, shown only after "Show door pass" and only for a confirmed booking), Sessions, Services, History, and "Calendar file" (the `.ics`).
+- `?id=12` opens a booking: Details (with the door pass, shown only after the eye button and only for a confirmed booking), Sessions, Services, History, and "Calendar file" (the `.ics`).
 - The Food list (`/food-list?date=2026-11-04`) is the day's food orders (`GET /pitika/catering`, every province for the Admin). No date means today in Phnom Penh.
 - A room's panel has a Schedule tab: one week of its bookings (`GET /rooms/{id}/schedule`). A private session the viewer may not see shows as "Reserved (Private Session)" with a lock and no link.
 - Schedule rows, food orders and the bookings cancelled when a user is turned off link to `/bookings?id=…`.

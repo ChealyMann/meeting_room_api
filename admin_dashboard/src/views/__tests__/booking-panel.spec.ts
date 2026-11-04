@@ -90,6 +90,7 @@ async function mountAt(path: string) {
 }
 
 const panel = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null
+const eye = (label: string) => panel()?.querySelector<HTMLElement>(`button[aria-label="${label}"]`) ?? undefined
 const panelButton = (text: string) => [...(panel()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.trim() === text)
 async function click(el: HTMLElement | undefined) {
   el!.click()
@@ -163,18 +164,22 @@ describe('BookingPanel', () => {
     expect(panel()?.textContent).not.toContain('NBC-48213')
     expect(calls).not.toContain('GET /api/v1/bookings/12/door-pass')
 
-    await click(panelButton('Show door pass'))
+    await click(eye('Show door pass'))
 
     expect(calls).toContain('GET /api/v1/bookings/12/door-pass')
-    expect(panel()?.querySelector('.door-pass')?.textContent).toContain('NBC-48213')
+    expect(panel()?.querySelector('.door-pass .secret-code')?.textContent).toBe('NBC-48213')
+    expect(panel()?.querySelector('.door-pass')?.textContent).not.toContain('Valid until')
     expect(panel()?.querySelector('.door-pass')?.textContent).not.toContain('Expired')
+
+    await click(eye('Hide door pass'))
+    expect(panel()?.textContent).not.toContain('NBC-48213')
   })
 
   it('marks an expired door pass', async () => {
     doorPass = { ...doorPass, expired: true }
     await mountAt('/bookings?id=12')
 
-    await click(panelButton('Show door pass'))
+    await click(eye('Show door pass'))
 
     expect(panel()?.querySelector('.door-pass')?.textContent).toContain('Expired')
   })
@@ -183,7 +188,7 @@ describe('BookingPanel', () => {
     current = detail({ status: 'PENDING_PITIKA', display_status: 'PENDING_PITIKA' })
     await mountAt('/bookings?id=12')
 
-    expect(panelButton('Show door pass')).toBeUndefined()
+    expect(eye('Show door pass')).toBeUndefined()
   })
 
   it('downloads the calendar file', async () => {
