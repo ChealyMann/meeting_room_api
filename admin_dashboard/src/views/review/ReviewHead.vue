@@ -34,7 +34,7 @@ function move(from: number, step: number) {
 
 <template>
   <div class="review-head">
-    <div class="ring" :role="ringLabel ? 'img' : undefined" :aria-label="ringLabel">
+    <div class="today-ring" :role="ringLabel ? 'img' : undefined" :aria-label="ringLabel">
       <svg viewBox="0 0 60 60" aria-hidden="true">
         <circle class="track" cx="30" cy="30" r="25" />
         <circle class="arc approved" cx="30" cy="30" r="25" pathLength="100" :stroke-dasharray="approvedDash" />
@@ -54,7 +54,7 @@ function move(from: number, step: number) {
       <h1>To review</h1>
       <p v-if="summary" class="sub">{{ summaryLine(summary) }}</p>
     </div>
-    <div class="switch" role="tablist" aria-label="Bookings to show">
+    <div class="tab-switch" role="tablist" aria-label="Bookings to show">
       <button
         v-for="(t, k) in TABS"
         :key="t.key"
@@ -80,18 +80,18 @@ function move(from: number, step: number) {
   align-items: center;
   gap: 12px 18px;
 }
-.ring {
+.today-ring {
   position: relative;
   flex: none;
   width: 60px;
   height: 60px;
 }
-.ring svg {
+.today-ring svg {
   width: 60px;
   height: 60px;
   transform: rotate(-90deg);
 }
-.ring circle {
+.today-ring circle {
   fill: none;
   stroke-width: 7;
 }
@@ -133,14 +133,14 @@ h1 {
   font-size: 13px;
   color: var(--color-intaglio);
 }
-.switch {
+.tab-switch {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
   background: var(--color-field-disabled);
 }
-.switch button {
+.tab-switch button {
   padding: 6px 14px;
   border: 0;
   border-radius: 8px;
@@ -152,22 +152,22 @@ h1 {
   white-space: nowrap;
   cursor: pointer;
 }
-.switch button.on {
+.tab-switch button.on {
   background: var(--color-sheet);
   color: var(--color-ink);
   box-shadow: 0 1px 2px rgba(42, 28, 19, 0.08);
 }
-.switch button:focus-visible {
+.tab-switch button:focus-visible {
   outline: 2px solid var(--color-thread);
   outline-offset: 1px;
 }
-.switch em {
+.tab-switch em {
   margin-left: 6px;
   font-style: normal;
   font-size: 11px;
   color: var(--color-ink-off);
 }
-.switch button.on em {
+.tab-switch button.on em {
   color: var(--color-ink);
 }
 .mono {

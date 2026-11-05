@@ -13,8 +13,8 @@ describe('ReviewHead', () => {
     const wrapper = mount(ReviewHead, { props: { summary: SUMMARY, tab: 'approved' } })
 
     expect(wrapper.get('h1').text()).toBe('To review')
-    expect(wrapper.get('.ring').text()).toBe('6/9')
-    expect(wrapper.get('.ring').attributes('aria-label')).toBe('6 of 9 decided today')
+    expect(wrapper.get('.today-ring').text()).toBe('6/9')
+    expect(wrapper.get('.today-ring').attributes('aria-label')).toBe('6 of 9 decided today')
     expect(wrapper.get('.sub').text()).toBe('Today you decided 6 · 3 still waiting')
     expect(tabs(wrapper).map((t) => t.text())).toEqual(['Waiting3', 'Approved5', 'Rejected1'])
     expect(tabs(wrapper).map((t) => t.attributes('aria-selected'))).toEqual(['false', 'true', 'false'])
@@ -33,7 +33,7 @@ describe('ReviewHead', () => {
     const wrapper = mount(ReviewHead, { props: { summary: null, tab: 'waiting' } })
 
     expect(tabs(wrapper).map((t) => t.text())).toEqual(['Waiting', 'Approved', 'Rejected'])
-    expect(wrapper.get('.ring').text()).toBe('')
+    expect(wrapper.get('.today-ring').text()).toBe('')
     expect(wrapper.find('.sub').exists()).toBe(false)
   })
 })

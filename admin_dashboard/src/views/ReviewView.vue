@@ -30,6 +30,7 @@ import { FILTER_WORDS } from '../utils/pickerWords'
 import { formatDay } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
+import DecidedList from './review/DecidedList.vue'
 import ReviewHead from './review/ReviewHead.vue'
 
 // Filters in the address, like the other lists: room, a day range (any session in it), search.
@@ -129,7 +130,7 @@ const openDetail = computed(() => (panel.id.value !== null ? (details.value[pane
 watch(
   () => panel.id.value,
   async (id) => {
-    if (id === null || details.value[id]) return
+    if (id === null || tab.value !== 'waiting' || details.value[id]) return
     try {
       details.value = { ...details.value, [id]: await getBooking(api, id) }
     } catch {
@@ -319,6 +320,7 @@ async function decide() {
         </section>
       </template>
     </div>
+    <DecidedList v-else :decision="tab === 'approved' ? 'APPROVED' : 'REJECTED'" :covers="covers" />
 
     <ReviewPanel
       v-if="tab === 'waiting' && openItem && openDetail"
