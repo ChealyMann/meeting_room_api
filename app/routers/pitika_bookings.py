@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.constants.booking import ReviewDecision
+from app.constants.booking import ReviewDecision, ReviewStage
 from app.routers.common import AppSettings, DbSession, IdPath, IdQuery, PageParams, SearchQuery
 from app.schemas.booking import BookingDetail, BookingListItem
 from app.schemas.booking_review import ApproveBody, DecidedBookingItem, PitikaSummary, RejectBody
@@ -71,7 +71,7 @@ def list_decided_bookings(
         room_id,
         q,
     )
-    items = booking_view.build_decided_items(result["items"], current.id)
+    items = booking_view.build_decided_items(result["items"], current.id, ReviewStage.PITIKA)
     return Page[DecidedBookingItem](**{**result, "items": items})
 
 
