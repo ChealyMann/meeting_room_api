@@ -122,6 +122,11 @@ describe('DecidedList', () => {
     expect(card(wrapper, 32).get('.note').text()).toBe('Notes: “Fine”')
   })
 
+  it('lets a screen reader read the whole card, not only its number', async () => {
+    const { wrapper } = await mountList('APPROVED')
+    expect(card(wrapper, 31).attributes('aria-label')).toBeUndefined()
+  })
+
   it('shows a booking I approved that was rejected later with a crimson Rejected pill', async () => {
     const { wrapper } = await mountList('APPROVED')
 

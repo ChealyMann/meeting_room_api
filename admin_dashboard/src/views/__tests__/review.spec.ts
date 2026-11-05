@@ -38,6 +38,8 @@ const calls: string[] = []
 const bodies: string[] = []
 let items: Array<ReturnType<typeof listItem>>
 let decision: () => Response
+let decidedItems: unknown[] = []
+let holdRejected = false
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -51,6 +53,8 @@ beforeEach(() => {
   useSessionStore().user = { roles: [{ code: 'PITIKA' }], province: PP } as never
   calls.length = 0
   bodies.length = 0
+  decidedItems = []
+  holdRejected = false
   items = ITEMS
   decision = () => json({ ...ITEMS[0], status: 'SETUP_IN_PROGRESS' })
   vi.stubGlobal(
@@ -66,7 +70,10 @@ beforeEach(() => {
       }
       if (url.pathname === '/api/v1/pitika/bookings') return json({ items, page: 1, size: 100, total: items.length })
       if (url.pathname === '/api/v1/pitika/bookings/summary') return json({ waiting: items.length, approved_today: 5, rejected_today: 1 })
-      if (url.pathname === '/api/v1/pitika/bookings/decided') return json({ items: [], page: 1, size: 20, total: 0 })
+      if (url.pathname === '/api/v1/pitika/bookings/decided') {
+        if (url.searchParams.get('decision') === 'REJECTED' && holdRejected) return new Promise<Response>(() => {})
+        return json({ items: decidedItems, page: 1, size: 20, total: decidedItems.length })
+      }
       const detail = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
       if (detail) {
         const id = Number(detail[1])
@@ -358,6 +365,19 @@ describe('To review tabs', () => {
     await wrapper.findAll('[role="tab"]')[0]!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/review?q=board')
+  })
+
+  it('does not show the approved cards as rejections while the Rejected tab loads', async () => {
+    decidedItems = [{ ...listItem(51, { display_status: 'CONFIRMED' }), decided_at: '2026-11-05T02:00:00Z', decision_note: 'Fine' }]
+    holdRejected = true
+    const { wrapper } = await mountReview('/review?tab=approved')
+    expect(wrapper.find('[data-booking="51"] .mark.ok').exists()).toBe(true)
+
+    await wrapper.findAll('[role="tab"]')[2]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking="51"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Reason: “Fine”')
   })
 
   it('shows the decided list, not the queue, on the Approved tab, with the filters kept', async () => {

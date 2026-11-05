@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The To review head (spec 2026-11-05-pitika-decided-design, "Head"): today's ring, the title,
 // one calm line, and the Waiting / Approved / Rejected switch with today's numbers.
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { PitikaSummary } from '../../api/types'
 import { ringArcs, summaryLine, type Tab } from '../../utils/decided'
@@ -26,10 +26,23 @@ const approvedDash = computed(() => `${(arcs.value?.approved ?? 0) * 100} 100`)
 const rejectedDash = computed(() => `${(arcs.value?.rejected ?? 0) * 100} 100`)
 const rejectedOffset = computed(() => -(arcs.value?.approved ?? 0) * 100)
 
+// Arrow keys pick the next tab; the focus follows once the page shows it (roving tabindex).
+const buttons = ref<HTMLButtonElement[]>([])
+let moving = false
 function move(from: number, step: number) {
   const next = TABS[(from + step + TABS.length) % TABS.length]!
+  moving = true
   emit('select', next.key)
 }
+watch(
+  () => props.tab,
+  (tab) => {
+    if (!moving) return
+    moving = false
+    buttons.value[TABS.findIndex((t) => t.key === tab)]?.focus()
+  },
+  { flush: 'post' },
+)
 </script>
 
 <template>
@@ -58,6 +71,7 @@ function move(from: number, step: number) {
       <button
         v-for="(t, k) in TABS"
         :key="t.key"
+        ref="buttons"
         type="button"
         role="tab"
         :class="{ on: t.key === tab }"

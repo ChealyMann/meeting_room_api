@@ -320,7 +320,7 @@ async function decide() {
         </section>
       </template>
     </div>
-    <DecidedList v-else :decision="tab === 'approved' ? 'APPROVED' : 'REJECTED'" :covers="covers" />
+    <DecidedList v-else :key="tab" :decision="tab === 'approved' ? 'APPROVED' : 'REJECTED'" :covers="covers" />
 
     <ReviewPanel
       v-if="tab === 'waiting' && openItem && openDetail"

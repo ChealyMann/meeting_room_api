@@ -29,6 +29,20 @@ describe('ReviewHead', () => {
     expect(wrapper.emitted('select')).toEqual([['approved'], ['waiting']])
   })
 
+  it('moves the focus with the arrow keys, so every tab can be reached', async () => {
+    const wrapper = mount(ReviewHead, { props: { summary: SUMMARY, tab: 'waiting' }, attachTo: document.body })
+    ;(tabs(wrapper)[0]!.element as HTMLElement).focus()
+
+    await tabs(wrapper)[0]!.trigger('keydown', { key: 'ArrowRight' })
+    await wrapper.setProps({ tab: 'approved' })
+    expect(document.activeElement).toBe(tabs(wrapper)[1]!.element)
+
+    await tabs(wrapper)[1]!.trigger('keydown', { key: 'ArrowRight' })
+    await wrapper.setProps({ tab: 'rejected' })
+    expect(document.activeElement).toBe(tabs(wrapper)[2]!.element)
+    expect(wrapper.emitted('select')).toEqual([['approved'], ['rejected']])
+  })
+
   it('shows the tabs without numbers and no ring text before the summary loads', () => {
     const wrapper = mount(ReviewHead, { props: { summary: null, tab: 'waiting' } })
 

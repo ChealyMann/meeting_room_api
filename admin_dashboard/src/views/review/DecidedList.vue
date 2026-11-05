@@ -107,7 +107,6 @@ watch(
             role="listitem"
             tabindex="0"
             :data-booking="b.id"
-            :aria-label="`Open ${b.reference_code}`"
             @click="panel.open(b.id)"
             @keydown.enter.prevent="panel.open(b.id)"
           >
