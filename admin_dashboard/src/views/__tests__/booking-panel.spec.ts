@@ -235,7 +235,9 @@ describe('BookingPanel', () => {
     })
     await mountAt('/bookings?id=12')
 
-    await click(panelButton('Calendar file'))
+    // In the panel head, next to the X, so the foot keeps one row for the decisions.
+    expect([...panel()!.querySelectorAll('.panel-foot button')].map((b) => b.textContent?.trim())).not.toContain('Calendar file')
+    await click(panel()!.querySelector<HTMLButtonElement>('.panel-head button[aria-label="Calendar file"]')!)
 
     expect(calls).toContain('GET /api/v1/bookings/12/ics')
     expect(URL.createObjectURL).toHaveBeenCalled()
