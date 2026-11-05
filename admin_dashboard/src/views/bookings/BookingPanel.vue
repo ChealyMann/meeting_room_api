@@ -18,7 +18,8 @@ import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
 
-const props = defineProps<{ booking: BookingDetail }>()
+// `adminActions` false (a Pitika): no Admin actions are asked for or shown.
+const props = withDefaults(defineProps<{ booking: BookingDetail; adminActions?: boolean }>(), { adminActions: true })
 const emit = defineEmits<{ close: []; changed: [booking: BookingDetail] }>()
 
 type Tab = 'details' | 'sessions' | 'services' | 'history'
@@ -78,7 +79,9 @@ async function loadActions() {
     actions.value = null // no buttons; the booking still shows
   }
 }
-onMounted(loadActions)
+onMounted(() => {
+  if (props.adminActions) void loadActions()
+})
 
 const STEP_WORDS: Record<Action, { title: string; confirm: string; label: string; max: number; done: string }> = {
   cancel: { title: 'Cancel this booking?', confirm: 'Cancel booking', label: 'Reason (optional)', max: 500, done: 'cancelled' },

@@ -25,6 +25,8 @@ export const useSessionStore = defineStore('session', () => {
   /** The user's role codes (ADMIN, PITIKA, STAFF, …): routes and the menu follow them. */
   const roleCodes = computed(() => user.value?.roles.map((role) => role.code) ?? [])
   const isAdmin = computed(() => roleCodes.value.includes('ADMIN'))
+  /** A Pitika who is not also Admin: their pages use the Pitika endpoints (their province). */
+  const pitikaOnly = computed(() => roleCodes.value.includes('PITIKA') && !isAdmin.value)
   const mustChangePassword = computed(() => user.value?.must_change_password ?? false)
 
   function applyTokens(tokens: Tokens): void {
@@ -105,6 +107,7 @@ export const useSessionStore = defineStore('session', () => {
     signedIn,
     roleCodes,
     isAdmin,
+    pitikaOnly,
     mustChangePassword,
     applyTokens,
     loadMe,

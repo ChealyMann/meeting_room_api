@@ -28,8 +28,8 @@ beforeEach(() => {
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
-      if (url.pathname === '/api/v1/bookings') {
-        listCalls.push(url.search)
+      if (url.pathname === '/api/v1/bookings' || url.pathname === '/api/v1/pitika/bookings') {
+        listCalls.push(url.pathname === '/api/v1/bookings' ? url.search : `pitika${url.search}`)
         return listAnswer()
       }
       if (url.pathname.startsWith('/api/v1/bookings/')) return json({ error: { code: 'NOT_FOUND', message: 'Not found.', fields: {} } }, 404)
@@ -144,6 +144,23 @@ describe('BookingsView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.query.id).toBe('12')
+  })
+
+  it('lists the Pitika province for a Pitika, with no province filter', async () => {
+    useSessionStore().user = { roles: [{ code: 'PITIKA' }, { code: 'STAFF' }] } as never
+    await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['pitika?page=1&size=20'])
+    expect(document.querySelector('#filter-province')).toBeNull()
+    expect(document.querySelector('#filter-status')).not.toBeNull()
+  })
+
+  it('keeps the Admin list for an Admin who is also Pitika', async () => {
+    useSessionStore().user = { roles: [{ code: 'ADMIN' }, { code: 'PITIKA' }] } as never
+    await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['?page=1&size=20'])
+    expect(document.querySelector('#filter-province')).not.toBeNull()
   })
 
   it('is in the Daily group of the sidebar', () => {

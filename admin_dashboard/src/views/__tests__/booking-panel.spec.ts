@@ -383,6 +383,16 @@ describe('BookingPanel Admin actions', () => {
     expect(decide).toEqual(['Cancel booking', 'Reject', 'Approve'])
   })
 
+  it('shows a Pitika no Admin actions and does not ask for them', async () => {
+    useSessionStore().user = { roles: [{ code: 'PITIKA' }] } as never
+    actions = { cancel: true, approve: true, reject: true, stage: 'PITIKA' }
+    await mountAt('/bookings?id=12')
+
+    expect(calls.some((c) => c.endsWith('/actions'))).toBe(false)
+    expect(panelButton('Cancel booking')).toBeUndefined()
+    expect(panelButton('Approve')).toBeUndefined()
+  })
+
   it('names who acted in the history', async () => {
     current = detail({
       status: 'CANCELLED',
