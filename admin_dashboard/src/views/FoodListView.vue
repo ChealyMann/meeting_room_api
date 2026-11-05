@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The day's food list (GET /pitika/catering, spec B-12): every food order of bookings in IT setup
-// or confirmed whose first session is on that day. The Admin sees every province. Read only.
-// The day lives in the address (?date=2026-11-04); none means today in Phnom Penh.
+// or confirmed whose first session is on that day. The Admin sees every province; nothing is
+// changed here. The day lives in the address (?date=2026-11-04); none means today in Phnom Penh.
 import { ChevronLeft, ChevronRight, CircleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -11,22 +11,25 @@ import { getFoodList } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import type { CateringOrderItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
+import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
+import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { statusLabel } from '../utils/bookingLabels'
-import { addDays, formatDay, phnomPenhDate } from '../utils/time'
+import { addDays, formatDay } from '../utils/time'
 
 const route = useRoute()
 const router = useRouter()
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
-const today = phnomPenhDate(new Date())
+// Kept current: a list left open past midnight (with no ?date) moves to the new day.
+const today = usePhnomPenhToday()
 const day = computed(() => {
   const value = route.query.date
-  return typeof value === 'string' && DAY.test(value) ? value : today
+  return typeof value === 'string' && DAY.test(value) ? value : today.value
 })
 function go(next: string) {
-  void router.push({ query: next === today ? {} : { date: next } })
+  void router.push({ query: next === today.value ? {} : { date: next } })
 }
 
 const items = ref<CateringOrderItem[] | null>(null)
@@ -50,7 +53,7 @@ async function load() {
 watch(day, load, { immediate: true })
 
 const packages = (order: CateringOrderItem) => order.packages.map((p) => String(p.name)).join(', ')
-const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
+const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96px']
 </script>
 
 <template>
@@ -70,15 +73,9 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
         Next day
         <ChevronRight aria-hidden="true" />
       </BaseButton>
-      <label class="pick">
-        <span class="sr-only">Day</span>
-        <input
-          class="input mono"
-          type="date"
-          :value="day"
-          @change="DAY.test(($event.target as HTMLInputElement).value) && go(($event.target as HTMLInputElement).value)"
-        />
-      </label>
+      <div class="pick">
+        <DatePicker id="food-day" label="Day" :model-value="day" @update:model-value="$event && go($event)" />
+      </div>
     </div>
 
     <div class="sheet">
@@ -101,7 +98,8 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
               <th scope="col">Meeting</th>
               <th class="num" scope="col">Servings</th>
               <th scope="col">Packages</th>
-              <th scope="col">Notes</th>
+              <th scope="col">Remarks</th>
+              <th scope="col">Pitika notes</th>
               <th scope="col">Status</th>
             </tr>
           </thead>
@@ -121,10 +119,8 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
               </td>
               <td class="num mono">{{ order.servings }}</td>
               <td>{{ packages(order) }}</td>
-              <td class="notes">
-                <span v-if="order.remarks">{{ order.remarks }}</span>
-                <span v-if="order.approver_notes" class="sub">Pitika: {{ order.approver_notes }}</span>
-              </td>
+              <td class="notes" :class="{ none: !order.remarks }">{{ order.remarks || 'None' }}</td>
+              <td class="notes" :class="{ none: !order.approver_notes }">{{ order.approver_notes || 'None' }}</td>
               <td class="status">{{ statusLabel(order.booking_status) }}</td>
             </tr>
           </tbody>
@@ -144,8 +140,8 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '96px']
 .pick {
   margin-left: auto;
 }
-.pick .input {
-  width: 160px;
+.pick .date-picker {
+  width: 172px;
 }
 td .kh,
 td .en,
@@ -170,8 +166,12 @@ td .sub {
   color: var(--color-ink-off);
 }
 .notes {
-  max-width: 280px;
+  max-width: 240px;
   overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.notes.none {
+  color: var(--color-ink-off);
 }
 .status {
   white-space: nowrap;

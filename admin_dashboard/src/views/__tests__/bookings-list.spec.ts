@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { listItem } from '../../test-utils/bookings'
+import { clearDate, dateLabel, pickDate } from '../../test-utils/datePicker'
 import { pickerLabel } from '../../test-utils/picker'
 import BookingsView from '../BookingsView.vue'
 
@@ -85,6 +86,55 @@ describe('BookingsView', () => {
 
     expect(wrapper.get('.load-error').text()).toContain('Must be on or after from.')
     expect(wrapper.find('#filter-to').exists()).toBe(true)
+  })
+
+  it('hides the count and the paging while the list cannot load', async () => {
+    const { wrapper, router } = await mountAt('/bookings')
+    expect(wrapper.get('.count').text()).toBe('001 booking')
+
+    listAnswer = () =>
+      json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid request.', fields: { to: 'Must be on or after from.' } } }, 422)
+    await router.push('/bookings?from=2026-11-10&to=2026-11-01')
+    await flushPromises()
+
+    expect(wrapper.find('.load-error').exists()).toBe(true)
+    expect(wrapper.find('.count').exists()).toBe(false)
+    expect(wrapper.find('nav.pager').exists()).toBe(false)
+  })
+
+  it('offers Clear filters in the filter bar only when a filter is set', async () => {
+    const plain = await mountAt('/bookings')
+    expect(plain.wrapper.find('.filters .clear-filters').exists()).toBe(false)
+    plain.wrapper.unmount()
+
+    const { wrapper, router } = await mountAt('/bookings?status=CONFIRMED&q=budget')
+    await wrapper.get('.filters .clear-filters').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query).toEqual({})
+    expect(listCalls[listCalls.length - 1]).toBe('?page=1&size=20')
+    expect(wrapper.find('.filters .clear-filters').exists()).toBe(false)
+  })
+
+  it('sets the day range with the date pickers, and To cannot be before From', async () => {
+    const { router } = await mountAt('/bookings')
+    expect(dateLabel('filter-from')).toBe('Any day')
+
+    await pickDate('filter-from', '2026-11-10')
+    expect(router.currentRoute.value.query).toEqual({ from: '2026-11-10' })
+    expect(dateLabel('filter-from')).toBe('Tue 10 Nov 2026')
+
+    document.querySelector<HTMLButtonElement>('#filter-to')!.click()
+    await flushPromises()
+    const toPicker = document.querySelector('#filter-to')!.closest('.date-picker')!
+    const nine = [...toPicker.querySelectorAll<HTMLButtonElement>('.pop .day:not(.other)')].find((b) => b.textContent?.trim() === '9')
+    expect(nine?.disabled).toBe(true)
+    await pickDate('filter-to', '2026-11-12')
+    expect(router.currentRoute.value.query).toEqual({ from: '2026-11-10', to: '2026-11-12' })
+    expect(listCalls[listCalls.length - 1]).toBe('?from=2026-11-10&to=2026-11-12&page=1&size=20')
+
+    await clearDate('filter-from')
+    expect(router.currentRoute.value.query).toEqual({ to: '2026-11-12' })
   })
 
   it('opens a booking through the address', async () => {

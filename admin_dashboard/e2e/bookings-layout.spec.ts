@@ -221,3 +221,26 @@ for (const width of [1366, 390]) {
     await panel.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
   })
 }
+
+for (const width of [1366, 390]) {
+  test(`the date picker is a 7-day grid that fits at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/bookings')
+    await page.locator('#filter-from').click()
+    const pop = page.locator('.date-picker .pop')
+    await expect(pop).toBeVisible()
+    await pop.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
+
+    // Seven equal columns: every day cell as wide as the first, spread over the pop-up.
+    const cells = await pop.locator('.day').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width))
+    expect(cells).toHaveLength(42)
+    expect(Math.max(...cells) - Math.min(...cells)).toBeLessThan(1)
+    const box = (await pop.boundingBox())!
+    expect(cells[0]! * 7).toBeGreaterThan(box.width * 0.8)
+    const heads = await pop.locator('th').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width))
+    expect(Math.min(...heads)).toBeGreaterThan(24)
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(width)
+    expect(box.y + box.height).toBeLessThanOrEqual(800)
+  })
+}

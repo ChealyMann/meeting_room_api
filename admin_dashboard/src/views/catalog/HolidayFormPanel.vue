@@ -10,6 +10,7 @@ import { createHoliday, deleteHoliday, updateHoliday } from '../../api/holidays'
 import type { PublicHolidayOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BaseField from '../../components/base/BaseField.vue'
+import DatePicker from '../../components/base/DatePicker.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useConfirm } from '../../composables/useConfirm'
@@ -130,13 +131,14 @@ async function askDelete() {
         <h3 id="g-day">Day</h3>
         <BaseField id="holiday_date" label="Date" hint="One holiday per date" :error="errors.holiday_date">
           <template #default="{ describedBy, invalid }">
-            <input
+            <DatePicker
               id="holiday_date"
-              v-model="form.holiday_date"
-              type="date"
-              class="input mono date"
-              :aria-describedby="describedBy"
-              :aria-invalid="invalid || undefined"
+              class="date"
+              label="Date"
+              :model-value="form.holiday_date || null"
+              :described-by="describedBy"
+              :invalid="invalid"
+              @update:model-value="form.holiday_date = $event ?? ''"
             />
           </template>
         </BaseField>

@@ -7,6 +7,7 @@ import { useConfirm } from '../../composables/useConfirm'
 import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
+import { pickDate } from '../../test-utils/datePicker'
 import { mountConfirmHost } from '../../test-utils/confirm'
 import HolidaysView from '../HolidaysView.vue'
 
@@ -119,7 +120,7 @@ describe('HolidaysView', () => {
   it('adds a holiday with an empty English name sent as null', async () => {
     await mountAt('/public-holidays?id=new')
 
-    setValue('#holiday_date', '2027-01-07')
+    await pickDate('holiday_date', '2027-01-07')
     setValue('#name_km', 'ទិវាជ័យជម្នះ')
     await submitPanel()
 
@@ -147,7 +148,7 @@ describe('HolidaysView', () => {
       json({ error: { code: 'DUPLICATE', message: 'Taken.', fields: { holiday_date: 'This date already has a holiday.' } } }, 409)
     await mountAt('/public-holidays?id=new')
 
-    setValue('#holiday_date', '2026-11-09')
+    await pickDate('holiday_date', '2026-11-09')
     setValue('#name_km', 'ទិវាឯករាជ្យជាតិ')
     await submitPanel()
 

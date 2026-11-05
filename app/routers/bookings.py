@@ -73,8 +73,8 @@ def list_all_bookings(
     q: SearchQuery = None,
 ) -> Page[BookingListItem]:
     """B-32. Bookings in every province, earliest first start first. `q` matches the title,
-    the reference code or the booker's name. Read only: the Admin cannot approve, reject,
-    cancel or edit."""
+    the reference code or the booker's name. The Admin's actions on one booking are under
+    /admin/bookings (cancel, and approve or reject as backup reviewer, B-33/B-34)."""
     result = booking_review.list_admin_bookings(
         session, paging.page, paging.size, status, province, date_from, date_to, room_id, q
     )

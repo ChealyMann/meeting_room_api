@@ -143,6 +143,31 @@ def test_active_pitika_blocks_the_admin(client, frozen, admin, booking, make_pit
         )
 
 
+def test_active_pitika_403_before_stale_version(
+    client, frozen, admin, booking, make_pitika, auth_headers
+):
+    """Spec 8.5 order: the stage rule (403) is checked before the version (409)."""
+    make_pitika(province="SIEM_REAP")
+    b = booking(BookingStatus.PENDING_PITIKA)
+    for action in ("approve", "reject"):
+        response = client.post(
+            f"{BASE}/{b.id}/{action}", json={"version": b.version + 5}, headers=auth_headers(admin)
+        )
+        assert error(response) == (403, "FORBIDDEN")
+
+
+def test_inactive_pitika_lets_the_admin_decide(
+    client, frozen, admin, booking, make_pitika, auth_headers
+):
+    """Only an active Pitika covers the province (D-33): a turned-off one does not."""
+    make_pitika(province="SIEM_REAP", is_active=False)
+    b = booking(BookingStatus.PENDING_PITIKA)
+    assert actions(client, auth_headers(admin), b)["stage"] == "PITIKA"
+    data = post(client, auth_headers(admin), b, "approve").json()
+    assert data["status"] == "CONFIRMED"
+    assert data["reviews"][-1]["by_admin"] is True
+
+
 def test_approve_after_start_refused(client, frozen, admin, booking, auth_headers):
     b = booking(BookingStatus.PENDING_PITIKA, sessions=((NOW_DAY, time(7), time(9)),))
     assert error(post(client, auth_headers(admin), b, "approve")) == (409, "TIME_PASSED")
@@ -240,6 +265,18 @@ def test_actions_for_each_case(
     assert actions(client, h, covered) == {
         "cancel": True, "approve": False, "reject": False, "stage": None,
     }  # fmt: skip
+
+
+def test_actions_read_takes_no_row_lock(client, frozen, admin, booking, auth_headers, monkeypatch):
+    """The buttons only follow the booking; every action re-checks under the lock. So the read
+    must not lock the row (it would make a reviewer's write wait)."""
+    from app.services import booking_access
+
+    def locked(*_args, **_kwargs):
+        raise AssertionError("the actions read locked the booking row")
+
+    monkeypatch.setattr(booking_access, "load_booking_for_write", locked)
+    assert actions(client, auth_headers(admin), booking(BookingStatus.PENDING_PITIKA))["cancel"]
 
 
 # --- Access ------------------------------------------------------------------------------

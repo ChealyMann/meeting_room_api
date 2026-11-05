@@ -1,11 +1,14 @@
 <script setup lang="ts">
 // The bookings list's filters (DSH-B01), kept in the address: search, status, province, room,
 // and a day range (any session in it). Bookings have no Active filter.
+import { X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watchEffect } from 'vue'
 
 import { api } from '../../api'
 import { listAllRooms, listProvinces } from '../../api/references'
 import type { ProvinceRef, RoomListItem } from '../../api/types'
+import BaseButton from '../../components/base/BaseButton.vue'
+import DatePicker from '../../components/base/DatePicker.vue'
 import ListSearch from '../../components/list/ListSearch.vue'
 import SearchPicker, { type PickerItem } from '../../components/list/SearchPicker.vue'
 import { useListQuery } from '../../composables/useListQuery'
@@ -20,6 +23,8 @@ const emit = defineEmits<{ summary: [parts: string[]] }>()
 const list = useListQuery(BOOKING_FILTERS, { activeFilter: false })
 const f = computed(() => list.filters.value as Record<string, string | number | undefined>)
 const text = (key: string) => (f.value[key] as string | undefined) ?? null
+/** Any filter set: the bar then offers "Clear filters" at its end. */
+const anyFilter = computed(() => Object.keys(list.filters.value).length > 0)
 
 const provinces = ref<ProvinceRef[]>([])
 const rooms = ref<RoomListItem[]>([])
@@ -39,10 +44,8 @@ const roomItems = computed<PickerItem[]>(() =>
 )
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
-function chooseDay(key: 'from' | 'to', event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  list.set({ [key]: DAY.test(value) ? value : null })
-}
+/** A day filter from the address, or null when it is missing or not a date. */
+const dayOf = (key: 'from' | 'to') => (text(key) && DAY.test(text(key)!) ? text(key) : null)
 
 watchEffect(() => {
   const day = (key: string) => (text(key) && DAY.test(text(key)!) ? formatDay(text(key)!) : text(key))
@@ -90,14 +93,34 @@ watchEffect(() => {
       :model-value="(f.room_id as number | undefined) ?? null"
       @update:model-value="list.set({ room_id: $event })"
     />
-    <label class="day">
-      <span class="label">From</span>
-      <input id="filter-from" class="input mono" type="date" :value="text('from') ?? ''" @change="chooseDay('from', $event)" />
-    </label>
-    <label class="day">
-      <span class="label">To</span>
-      <input id="filter-to" class="input mono" type="date" :value="text('to') ?? ''" @change="chooseDay('to', $event)" />
-    </label>
+    <div class="day">
+      <span class="label" aria-hidden="true">From</span>
+      <DatePicker
+        id="filter-from"
+        label="From"
+        placeholder="Any day"
+        clearable
+        :max="dayOf('to')"
+        :model-value="dayOf('from')"
+        @update:model-value="list.set({ from: $event })"
+      />
+    </div>
+    <div class="day">
+      <span class="label" aria-hidden="true">To</span>
+      <DatePicker
+        id="filter-to"
+        label="To"
+        placeholder="Any day"
+        clearable
+        :min="dayOf('from')"
+        :model-value="dayOf('to')"
+        @update:model-value="list.set({ to: $event })"
+      />
+    </div>
+    <BaseButton v-if="anyFilter" variant="quiet" class="clear-filters" @click="list.reset()">
+      <X aria-hidden="true" />
+      Clear filters
+    </BaseButton>
   </div>
 </template>
 
@@ -119,7 +142,10 @@ watchEffect(() => {
   font-size: 12.5px;
   color: var(--color-ink-off);
 }
-.day .input {
-  width: 150px;
+.day .date-picker {
+  width: 164px;
+}
+.clear-filters {
+  color: var(--color-crimson);
 }
 </style>

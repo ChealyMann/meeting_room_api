@@ -175,11 +175,21 @@ def test_two_admins_one_wins(committed, migrated_engine):
     )
 
     assert sorted(results) == ["STALE_VERSION", "ok"]
+    approve_won = results[0] == "ok"  # results follow [first (approves), second (cancels)]
     with _new_session(migrated_engine) as session:
         saved = session.get(Booking, booking_id)
+        owner_reviews = [r for r in saved.reviews if r.stage == "OWNER"]
         assert saved.version == 2
-        assert saved.status in (BookingStatus.CONFIRMED, BookingStatus.CANCELLED)
-        assert len([r for r in saved.reviews if r.stage == "OWNER"]) <= 1
+        if approve_won:
+            # Only the approve wrote: confirmed, one owner review by the first Admin, no cancel.
+            assert saved.status == BookingStatus.CONFIRMED
+            assert [(r.reviewer_id, r.by_admin) for r in owner_reviews] == [(first.id, True)]
+            assert saved.cancelled_at is None
+        else:
+            # Only the cancel wrote: cancelled by the second Admin, no owner review.
+            assert saved.status == BookingStatus.CANCELLED
+            assert owner_reviews == []
+            assert saved.cancelled_by == second.id
 
 
 def test_two_creates_one_wins(committed, migrated_engine, settings):

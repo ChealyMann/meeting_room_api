@@ -12,6 +12,7 @@ from app.services import booking_access, booking_review
 from app.services import booking_transitions as transitions
 from app.services.booking import ENDED_MESSAGE
 from app.services.booking_scheduling import active_pitika_count
+from app.services.records import not_found
 
 COVERED_MESSAGE = "This office has an active Pitika. Ask them to decide."
 ADMIN_REJECT_REASON = "Rejected by the Admin."
@@ -40,7 +41,13 @@ def allowed_actions(session: Session, booking: Booking) -> dict:
 
 
 def get_actions(session: Session, booking_id: int) -> dict:
-    return allowed_actions(session, booking_access.load_booking_for_write(session, booking_id))
+    """A plain read, with no row lock: the answer only decides which buttons show, and every
+    action re-checks the booking under the lock (B-31). A lock here would make a reviewer's
+    write wait behind the Admin opening the panel."""
+    booking = session.get(Booking, booking_id)
+    if booking is None:
+        raise not_found()
+    return allowed_actions(session, booking)
 
 
 def admin_cancel(
