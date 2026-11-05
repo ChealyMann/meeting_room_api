@@ -62,6 +62,15 @@ const detail = (item: (typeof ITEMS)[number]) => ({
   updated_at: '2026-11-03T02:00:00Z',
 })
 
+// Decided today and yesterday, with long titles; where each is now differs.
+const DECIDED = ITEMS.map((item, i) => ({
+  ...item,
+  status: ['PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'][i],
+  display_status: ['PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'][i],
+  decided_at: new Date(Date.now() - i * 20 * 3600_000).toISOString(),
+  decision_note: i === 0 ? 'Fine, but please keep the room tidy after the meeting ends today' : null,
+}))
+
 async function signedIn(page: Page, path: string) {
   await page.addInitScript(() => sessionStorage.setItem('nbc.admin.refresh', 'R0'))
   await page.route('**/api/v1/**', (route) => {
@@ -71,6 +80,8 @@ async function signedIn(page: Page, path: string) {
     }
     if (url.pathname === '/api/v1/me') return route.fulfill({ json: ME })
     if (url.pathname === '/api/v1/pitika/bookings') return route.fulfill({ json: { items: ITEMS, page: 1, size: 100, total: ITEMS.length } })
+    if (url.pathname === '/api/v1/pitika/bookings/summary') return route.fulfill({ json: { waiting: 3, approved_today: 5, rejected_today: 1 } })
+    if (url.pathname === '/api/v1/pitika/bookings/decided') return route.fulfill({ json: { items: DECIDED, page: 1, size: 20, total: DECIDED.length } })
     const one = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
     if (one) return route.fulfill({ json: detail(ITEMS.find((i) => i.id === Number(one[1]))!) })
     return route.fulfill({ json: { items: [], page: 1, size: 100, total: 0 } })
@@ -130,3 +141,55 @@ for (const width of [1366, 900, 390]) {
     expect(await sideways(page)).toBe(0)
   })
 }
+
+for (const width of [1366, 900, 390]) {
+  test(`the Approved tab fits at ${width}px: head, tabs and every card`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/review?tab=approved')
+
+    await expect(page.locator('.card')).toHaveCount(3)
+    expect(await sideways(page)).toBe(0)
+
+    // The head: the ring has no outline from a global class, the tabs fit the page.
+    const ring = page.locator('.today-ring')
+    await expect(ring).toHaveText('6/9')
+    expect(await ring.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
+    const tabs = (await page.getByRole('tablist').boundingBox())!
+    expect(tabs.width).toBeGreaterThan(200)
+    expect(tabs.x + tabs.width).toBeLessThanOrEqual(width)
+    await expect(page.getByRole('tab', { name: /Approved/ })).toHaveAttribute('aria-selected', 'true')
+
+    for (const card of await page.locator('.card').all()) {
+      const c = (await card.boundingBox())!
+      for (const part of ['.now', '.time']) {
+        const b = (await card.locator(part).boundingBox())!
+        expect(b.x).toBeGreaterThanOrEqual(c.x)
+        expect(b.x + b.width).toBeLessThanOrEqual(c.x + c.width + 0.5)
+      }
+    }
+  })
+
+  test(`a decided card opens read only at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/review?tab=approved')
+
+    await page.locator('.card').first().click()
+    const panel = page.getByRole('dialog')
+    await expect(panel).toContainText('Plan the budget')
+    const foot = panel.locator('.panel-foot')
+    await expect(foot.getByRole('button')).toHaveText(['Close'])
+    expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+    expect(await sideways(page)).toBe(0)
+  })
+}
+
+test('on a phone the ring sits beside the title and the tabs wrap under them', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  await signedIn(page, '/review?tab=approved')
+
+  const ring = (await page.locator('.today-ring').boundingBox())!
+  const title = (await page.locator('.review-head h1').boundingBox())!
+  const tabs = (await page.getByRole('tablist').boundingBox())!
+  expect(Math.abs(ring.y + ring.height / 2 - (title.y + title.height / 2))).toBeLessThan(24)
+  expect(tabs.y).toBeGreaterThan(ring.y + ring.height - 1)
+})
