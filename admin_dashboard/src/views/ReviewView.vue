@@ -2,11 +2,12 @@
 // The Pitika's queue (spec docs/superpowers/specs/2026-11-05-pitika-review-design.md): the
 // bookings of their province waiting for them, grouped by urgency, each with the room's photo,
 // what to check and the row bar ("gap is you"). Details are loaded per booking for the labels.
-import { CalendarDays, CircleAlert, Monitor, TriangleAlert, User, Users, Utensils, EyeOff } from 'lucide-vue-next'
+import { CalendarDays, Check, CircleAlert, EyeOff, Monitor, TriangleAlert, User, Users, Utensils } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { api } from '../api'
-import { getBooking, listPitikaBookingPage } from '../api/bookings'
+import { getBooking, listPitikaBookingPage, pitikaApprove, pitikaReject } from '../api/bookings'
+import { ApiError } from '../api/errors'
 import { listAllRooms } from '../api/references'
 import type { BookingDetail, BookingListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
@@ -15,10 +16,14 @@ import ListSearch from '../components/list/ListSearch.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import ProcessBar from '../components/ProcessBar.vue'
 import RoomPhoto from '../components/RoomPhoto.vue'
+import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useResourceList } from '../composables/useResourceList'
-import { checkLabels, groupByUrgency, rowSteps, startsIn } from '../utils/reviewQueue'
+import { useToast } from '../composables/useToast'
+import { checkLabels, groupByUrgency, nextStepText, rowSteps, startsIn } from '../utils/reviewQueue'
 import { formatDay } from '../utils/time'
+import BookingActionDialog from './bookings/BookingActionDialog.vue'
+import ReviewPanel from './bookings/ReviewPanel.vue'
 
 const { list, result, loading, error, load } = useResourceList<BookingListItem>(
   { q: 'string' },
@@ -63,6 +68,79 @@ const count = computed(() => `${String(items.value.length).padStart(3, '0')} wai
 
 const hhmm = (time: string) => time.slice(0, 5)
 const whenText = (b: BookingListItem) => (b.first_session.date === today.value ? `Today, ${formatDay(b.first_session.date)}` : formatDay(b.first_session.date))
+
+// --- The panel (the open booking lives in the address, ?id=12) ------------------------------
+const panel = usePanelParam()
+const openItem = computed(() => items.value.find((b) => b.id === panel.id.value) ?? null)
+const openDetail = computed(() => (panel.id.value !== null ? (details.value[panel.id.value] ?? null) : null))
+watch(
+  () => panel.id.value,
+  async (id) => {
+    if (id === null || details.value[id]) return
+    try {
+      details.value = { ...details.value, [id]: await getBooking(api, id) }
+    } catch {
+      panel.close() // gone, or not this Pitika's: nothing to show
+    }
+  },
+  { immediate: true },
+)
+
+// --- Approve and reject (the Ledger pop-up) ------------------------------------------------
+type Decision = 'approve' | 'reject'
+const asking = ref<{ action: Decision; booking: BookingListItem } | null>(null)
+const askText = ref('')
+const askBusy = ref(false)
+const askError = ref('')
+const askFieldError = ref('')
+const toast = useToast()
+
+function ask(action: Decision, booking: BookingListItem) {
+  asking.value = { action, booking }
+  askText.value = ''
+  askError.value = ''
+  askFieldError.value = ''
+}
+const askDetail = computed(() => (asking.value ? (details.value[asking.value.booking.id] ?? null) : null))
+const askEffect = computed(() => {
+  if (!asking.value) return ''
+  if (asking.value.action === 'reject') return 'The booking stops and the room is free again. The booker sees your reason.'
+  return askDetail.value ? nextStepText(askDetail.value) : ''
+})
+const askTimes = computed(() => {
+  const b = asking.value?.booking
+  if (!b) return ''
+  const more = b.session_count - 1
+  return `${hhmm(b.first_session.start_time)}–${hhmm(b.first_session.end_time)}${more > 0 ? ` +${more} more` : ''}`
+})
+
+async function decide() {
+  if (!asking.value) return
+  const { action, booking } = asking.value
+  const text = askText.value.trim()
+  askBusy.value = true
+  askError.value = ''
+  askFieldError.value = ''
+  try {
+    if (action === 'approve') await pitikaApprove(api, booking.id, { notes: text || null, version: booking.version })
+    else await pitikaReject(api, booking.id, { reason: text, version: booking.version })
+    toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
+    asking.value = null
+    if (panel.id.value === booking.id) panel.close()
+    await load()
+  } catch (err) {
+    if (err instanceof ApiError) {
+      askFieldError.value = err.fields.reason ?? err.fields.notes ?? ''
+      askError.value = askFieldError.value ? '' : err.message
+      // Decided by someone else, started, or changed: show the queue as it is now.
+      if (err.status === 409 || err.status === 403 || err.status === 404) await load()
+    } else {
+      askError.value = 'Something went wrong.'
+    }
+  } finally {
+    askBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -110,7 +188,16 @@ const whenText = (b: BookingListItem) => (b.first_session.date === today.value ?
             <p v-if="group.hint">{{ group.hint }}</p>
           </div>
           <ul class="rows">
-            <li v-for="b in group.items" :key="b.id" class="row" :data-booking="b.id">
+            <li
+              v-for="b in group.items"
+              :key="b.id"
+              class="row"
+              :class="{ current: panel.id.value === b.id }"
+              :data-booking="b.id"
+              tabindex="0"
+              @click="panel.open(b.id)"
+              @keydown.enter.self="panel.open(b.id)"
+            >
               <RoomPhoto class="thumb" :path="covers[b.room.id]?.thumbnail_url ?? null" :alt="b.room.name_en" />
               <div class="info">
                 <span class="ref mono"><span class="prefix">{{ b.reference_code.slice(0, 3) }}</span>{{ b.reference_code.slice(3) }}</span>
@@ -139,12 +226,49 @@ const whenText = (b: BookingListItem) => (b.first_session.date === today.value ?
               <div class="side">
                 <span v-if="group.key === 'today'" class="soon"><TriangleAlert aria-hidden="true" />{{ startsIn(b, now) }}</span>
                 <ProcessBar :steps="rowSteps(b)" />
+                <div class="acts">
+                  <BaseButton variant="danger" @click.stop="ask('reject', b)">Reject</BaseButton>
+                  <BaseButton variant="primary" @click.stop="ask('approve', b)"><Check aria-hidden="true" />Approve</BaseButton>
+                </div>
               </div>
             </li>
           </ul>
         </section>
       </template>
     </div>
+
+    <ReviewPanel
+      v-if="openItem && openDetail"
+      :key="`review-${openItem.id}`"
+      :booking="openDetail"
+      :photo-path="covers[openItem.room.id]?.url ?? null"
+      :starts-in="openItem.first_session.date <= today ? startsIn(openItem, now) : null"
+      @close="panel.close"
+      @approve="ask('approve', openItem)"
+      @reject="ask('reject', openItem)"
+    />
+
+    <BookingActionDialog
+      v-if="asking"
+      v-model="askText"
+      :action="asking.action"
+      :title="asking.action === 'approve' ? 'Approve this booking?' : 'Reject this booking?'"
+      :confirm-label="asking.action === 'approve' ? 'Approve' : 'Reject'"
+      :field-label="asking.action === 'approve' ? 'Notes (optional)' : 'Reason'"
+      :max="1000"
+      :min-length="asking.action === 'reject' ? 5 : 0"
+      :meeting="asking.booking.meeting_title"
+      :reference="asking.booking.reference_code"
+      :day="formatDay(asking.booking.first_session.date)"
+      :times="askTimes"
+      :effect="askEffect"
+      :busy="askBusy"
+      :allowed="true"
+      :error="askError"
+      :field-error="askFieldError"
+      @back="asking = null"
+      @confirm="decide"
+    />
   </div>
 </template>
 
@@ -216,8 +340,28 @@ const whenText = (b: BookingListItem) => (b.first_session.date === today.value ?
   border-bottom: 1px solid var(--color-rule);
   transition: background-color 150ms ease;
 }
+.row {
+  cursor: pointer;
+}
 .row:hover {
   background: var(--color-row-hover);
+}
+.row.current {
+  background: var(--color-crimson-wash);
+}
+.row:focus-visible {
+  outline: 2px solid var(--color-crimson);
+  outline-offset: -2px;
+}
+.acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.acts :deep(.btn) {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 .thumb {
   width: 168px;
@@ -343,6 +487,9 @@ const whenText = (b: BookingListItem) => (b.first_session.date === today.value ?
   }
   .soon {
     justify-self: start;
+  }
+  .acts {
+    justify-content: flex-start;
   }
 }
 @media (max-width: 560px) {

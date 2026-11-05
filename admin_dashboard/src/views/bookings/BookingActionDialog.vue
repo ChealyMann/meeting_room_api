@@ -5,7 +5,7 @@
 // the side panel, the icon tile beside the question, and the booking as a small table
 // so the Admin sees exactly which meeting they act on.
 import { CalendarX2, CircleCheck, CircleX } from 'lucide-vue-next'
-import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 
 import BaseButton from '../../components/base/BaseButton.vue'
 
@@ -29,9 +29,14 @@ const props = defineProps<{
   allowed: boolean
   error?: string
   fieldError?: string
+  /** A required reason's shortest length (Pitika reject: 5); 0 when the box is optional. */
+  minLength?: number
 }>()
 const text = defineModel<string>({ required: true })
 const emit = defineEmits<{ back: []; confirm: [] }>()
+
+/** Too short to send yet (only when a minimum is set). */
+const short = computed(() => !!props.minLength && [...text.value.trim()].length < props.minLength)
 
 const titleId = useId()
 const effectId = useId()
@@ -137,6 +142,7 @@ onBeforeUnmount(() => {
             />
             <div class="field-foot">
               <span v-if="fieldError" class="field-error" role="alert">{{ fieldError }}</span>
+              <span v-else-if="short" class="field-hint">At least {{ minLength }} characters.</span>
               <span class="count">{{ [...text].length }}/{{ max }}</span>
             </div>
             <p v-if="error" class="step-error" role="alert">{{ error }}</p>
@@ -144,7 +150,7 @@ onBeforeUnmount(() => {
 
           <div class="foot">
             <BaseButton class="back" :disabled="busy" @click="back">Back</BaseButton>
-            <BaseButton variant="primary" class="confirm" :busy="busy" :disabled="!allowed" @click="emit('confirm')">
+            <BaseButton variant="primary" class="confirm" :busy="busy" :disabled="!allowed || short" @click="emit('confirm')">
               {{ confirmLabel }}
             </BaseButton>
           </div>
@@ -286,7 +292,8 @@ h2 {
   display: flex;
   gap: 12px;
 }
-.field-error {
+.field-error,
+.field-hint {
   font-size: 12.5px;
   color: var(--color-crimson);
 }
