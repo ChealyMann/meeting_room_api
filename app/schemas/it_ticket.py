@@ -52,5 +52,18 @@ class ITTicketItem(ResponseModel):
     forwarded_at: UtcDateTime | None
     assigned_at: UtcDateTime | None
     ready_at: UtcDateTime | None
+    # Not Ready and the meeting started: it can no longer change (shown on Ready as missed).
+    missed: bool
     review_notes: list[str]
     booking: BookingListItem
+
+
+class ITSummary(ResponseModel):
+    """The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
+    ready today, today's setups and how many of them are ready."""
+
+    to_assign: int
+    in_progress: int
+    ready_today: int
+    due_today: int
+    due_today_ready: int

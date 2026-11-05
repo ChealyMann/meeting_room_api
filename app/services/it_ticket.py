@@ -5,7 +5,9 @@ A ticket is visible once it was forwarded and its booking is not REJECTED or CAN
 assigned to. The `version` in a request is the booking's (B-19).
 """
 
-from sqlalchemy import select
+from datetime import date, datetime, time, timedelta
+
+from sqlalchemy import Select, and_, func, literal_column, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
@@ -16,12 +18,12 @@ from app.constants.booking import (
 )
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
-from app.models import Booking, ITTicket, User, it_ticket_staff
+from app.models import Booking, ITTicket, Role, User, it_ticket_staff, user_roles
 from app.schemas.it_ticket import ITStaffOut, ITTicketItem
 from app.security import CurrentUser, load_role_codes
 from app.services import booking_access, booking_view
 from app.services import booking_transitions as transitions
-from app.services.clock import now_utc
+from app.services.clock import local_to_utc, now_local, now_utc
 from app.services.listing import apply_search, paginate
 from app.services.records import not_found
 
@@ -57,10 +59,50 @@ def _load_visible(session: Session, current: CurrentUser, ticket_id: int) -> ITT
 # --- Read ------------------------------------------------------------------------------
 
 
+STATES = ("to_assign", "in_progress", "done")
+
+
+def _missed_sql():
+    """Not Ready and the meeting has started (spec Part B, "Missed setup"): the ticket can no
+    longer change (T17 confirms the booking at the start)."""
+    return and_(
+        ITTicket.status != ITStatus.READY.value,
+        transitions.first_start_sql() <= now_local(),
+    )
+
+
+def _in_state(query: Select, state: str) -> Select:
+    """The dashboard tabs: to assign, in progress (both without missed ones), and done (Ready
+    or missed)."""
+    if state == "to_assign":
+        return query.where(ITTicket.status == ITStatus.RECEIVED.value, ~_missed_sql())
+    if state == "in_progress":
+        return query.where(ITTicket.status == ITStatus.ASSIGNED.value, ~_missed_sql())
+    return query.where(or_(ITTicket.status == ITStatus.READY.value, _missed_sql()))
+
+
+def _mine(query: Select, current: CurrentUser) -> Select:
+    assigned = select(it_ticket_staff.c.ticket_id).where(it_ticket_staff.c.user_id == current.id)
+    return query.where(ITTicket.id.in_(assigned))
+
+
 def list_tickets(
-    session: Session, current: CurrentUser, page: int, size: int, status: str | None, q: str | None
+    session: Session,
+    current: CurrentUser,
+    page: int,
+    size: int,
+    status: str | None,
+    q: str | None,
+    state: str | None = None,
+    mine: bool = False,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict:
-    """Visible tickets, earliest first start first."""
+    """Visible tickets, earliest first start first; `state="done"` newest first (made ready,
+    or the meeting start of a missed one). `date_from` / `date_to`: the first session's day
+    (the setup day). `mine`: only tickets assigned to me."""
+    if date_from is not None and date_to is not None and date_to < date_from:
+        raise _invalid("to", "Must be on or after from.")
     query = (
         select(ITTicket)
         .join(Booking, ITTicket.booking_id == Booking.id)
@@ -80,9 +122,64 @@ def list_tickets(
         except ValueError:
             choices = ", ".join(ITStatus)
             raise _invalid("status", f"Must be one of {choices}.") from None
+    if state is not None:
+        if state not in STATES:
+            raise _invalid("state", f"Must be one of {', '.join(STATES)}.")
+        query = _in_state(query, state)
+    if mine:
+        query = _mine(query, current)
+    first_day = transitions.first_day_sql()
+    if date_from is not None:
+        query = query.where(first_day >= date_from)
+    if date_to is not None:
+        query = query.where(first_day <= date_to)
     query = apply_search(query, q, [Booking.meeting_title, Booking.reference_code])
-    query = query.order_by(transitions.first_start_sql(), ITTicket.id)
+    if state == "done":
+        # Newest first: when it was made ready, or (missed) when the meeting started, both as
+        # Phnom Penh time (ready_at is UTC).
+        ready_local = func.timestampadd(literal_column("HOUR"), 7, ITTicket.ready_at)
+        moment = func.coalesce(ready_local, transitions.first_start_sql())
+        query = query.order_by(moment.desc(), ITTicket.id.desc())
+    else:
+        query = query.order_by(transitions.first_start_sql(), ITTicket.id)
     return paginate(session, query, page, size)
+
+
+def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
+    """The IT Lead's day: to assign and in progress now (missed left out), made ready today,
+    and today's setups (first session today, Phnom Penh) with how many are ready."""
+    base = select(func.count(ITTicket.id)).join(Booking, ITTicket.booking_id == Booking.id)
+    base = _visible(base, current)
+
+    def count(query) -> int:
+        return session.scalar(query) or 0
+
+    today = now_local().date()
+    start = local_to_utc(datetime.combine(today, time()))
+    first_day = transitions.first_day_sql()
+    return {
+        "to_assign": count(_in_state(base, "to_assign")),
+        "in_progress": count(_in_state(base, "in_progress")),
+        "ready_today": count(
+            base.where(ITTicket.ready_at >= start, ITTicket.ready_at < start + timedelta(days=1))
+        ),
+        "due_today": count(base.where(first_day == today)),
+        "due_today_ready": count(
+            base.where(first_day == today, ITTicket.status == ITStatus.READY.value)
+        ),
+    }
+
+
+def list_it_staff(session: Session) -> list[User]:
+    """Active users with the IT_STAFF role, by English name (the assign picker)."""
+    query = (
+        select(User)
+        .join(user_roles, user_roles.c.user_id == User.id)
+        .join(Role, Role.id == user_roles.c.role_id)
+        .where(User.is_active, Role.code == RoleCode.IT_STAFF.value)
+        .order_by(User.name_en, User.id)
+    )
+    return list(session.scalars(query).unique())
 
 
 def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTicketItem]:
@@ -105,6 +202,7 @@ def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTi
                 forwarded_at=ticket.forwarded_at,
                 assigned_at=ticket.assigned_at,
                 ready_at=ticket.ready_at,
+                missed=ticket.status != ITStatus.READY and transitions.has_started(booking),
                 review_notes=[
                     review.notes
                     for review in booking.reviews

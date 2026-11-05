@@ -1,0 +1,199 @@
+"""IT setup queue for the dashboard: states (missed on done), setup-day range, mine, the
+summary and the IT staff list (spec docs/superpowers/specs/2026-11-05-owner-and-it-pages-design.md,
+Part B)."""
+
+from datetime import date, datetime, time, timedelta
+
+import pytest
+from sqlalchemy import event
+
+from app.constants.booking import BookingStatus, ITStatus
+from tests.booking_helpers import DAY, NOW
+
+URL = "/api/v1/it/tickets"
+SUMMARY = f"{URL}/summary"
+STAFF = "/api/v1/it/staff"
+
+
+@pytest.fixture
+def lead(make_user):
+    return make_user(roles=["IT_LEAD"])
+
+
+@pytest.fixture
+def staff(make_user):
+    return make_user(roles=["IT_STAFF"], name_en="Sok Pisey")
+
+
+@pytest.fixture
+def setup(make_user, make_bookable_room, make_booking, db_session):
+    """`build(state="RECEIVED", day=DAY, start=9, staff=(), ready_at=None, **options)`: a booking
+    in IT setup whose ticket is in `state`."""
+
+    def build(state=ITStatus.RECEIVED, day=DAY, start=9, staff=(), ready_at=None, **options):
+        options.setdefault("status", BookingStatus.SETUP_IN_PROGRESS)
+        booking = make_booking(
+            make_bookable_room(), make_user(roles=["STAFF"]), it=True, forwarded=True,
+            sessions=((day, time(start), time(start + 1)),), **options,
+        )  # fmt: skip
+        ticket = booking.it_ticket
+        ticket.status = state
+        ticket.staff.extend(staff)
+        if state != ITStatus.RECEIVED:
+            ticket.assigned_at = datetime(2026, 11, 8, 1, 0)
+        ticket.ready_at = ready_at
+        db_session.commit()
+        return booking
+
+    return build
+
+
+def listed(client, headers, **params):
+    response = client.get(URL, params=params, headers=headers)
+    assert response.status_code == 200, response.json()
+    return response.json()
+
+
+def ids(data):
+    return [item["booking"]["id"] for item in data["items"]]
+
+
+# --- States ------------------------------------------------------------------------------
+
+
+def test_states_split_the_tickets(client, frozen, lead, staff, setup, auth_headers):
+    headers = auth_headers(lead)
+    received = setup()
+    assigned = setup(ITStatus.ASSIGNED, staff=[staff])
+    done = setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 0, 30),
+                 status=BookingStatus.CONFIRMED)  # fmt: skip
+    assert ids(listed(client, headers, state="to_assign")) == [received.id]
+    assert ids(listed(client, headers, state="in_progress")) == [assigned.id]
+    assert ids(listed(client, headers, state="done")) == [done.id]
+
+
+def test_missed_moves_to_done(client, frozen, freeze_now, lead, staff, setup, auth_headers):
+    headers = auth_headers(lead)
+    today = NOW.date()
+    late = setup(day=today, start=9)  # still SETUP_IN_PROGRESS: the expiry job has not run
+    confirmed = setup(ITStatus.ASSIGNED, day=today, start=9, staff=[staff],
+                      status=BookingStatus.CONFIRMED)  # fmt: skip
+    future = setup(day=DAY)
+    freeze_now(datetime(2026, 11, 9, 9, 15))
+
+    assert ids(listed(client, headers, state="to_assign")) == [future.id]
+    assert listed(client, headers, state="in_progress")["items"] == []
+    done = listed(client, headers, state="done")
+    assert set(ids(done)) == {late.id, confirmed.id}
+    assert all(item["missed"] for item in done["items"])
+    assert listed(client, headers, state="to_assign")["items"][0]["missed"] is False
+
+
+def test_done_newest_first(client, frozen, freeze_now, lead, staff, setup, auth_headers):
+    headers = auth_headers(lead)
+    today = NOW.date()
+    older = setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 0, 0),
+                  status=BookingStatus.CONFIRMED)  # fmt: skip
+    newer = setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 3, 0),
+                  status=BookingStatus.CONFIRMED)  # fmt: skip
+    missed = setup(day=today, start=8)  # started 08:00 local = 01:00 UTC
+    freeze_now(datetime(2026, 11, 9, 12, 0))
+    assert ids(listed(client, headers, state="done")) == [newer.id, missed.id, older.id]
+
+
+def test_mine_only_my_tickets(client, frozen, make_user, staff, setup, auth_headers):
+    both = make_user(roles=["IT_LEAD", "IT_STAFF"])
+    mine = setup(ITStatus.ASSIGNED, staff=[both])
+    other = setup(ITStatus.ASSIGNED, staff=[staff])
+    headers = auth_headers(both)
+    assert ids(listed(client, headers, state="in_progress", mine="true")) == [mine.id]
+    assert set(ids(listed(client, headers, state="in_progress"))) == {mine.id, other.id}
+
+
+def test_from_to_by_first_day(client, frozen, lead, setup, auth_headers):
+    headers = auth_headers(lead)
+    near = setup(day=DAY)
+    far = setup(day=DAY + timedelta(days=3))
+    assert ids(listed(client, headers, **{"from": str(DAY + timedelta(days=1))})) == [far.id]
+    assert ids(listed(client, headers, to=str(DAY))) == [near.id]
+    params = {"from": str(DAY), "to": str(DAY - timedelta(days=1))}
+    response = client.get(URL, params=params, headers=headers)
+    assert response.status_code == 422
+    assert "to" in response.json()["error"]["fields"]
+
+
+def test_bad_state_is_422(client, frozen, lead, auth_headers):
+    response = client.get(URL, params={"state": "later"}, headers=auth_headers(lead))
+    assert response.status_code == 422
+
+
+def test_query_count_does_not_grow(
+    client, frozen, conn, db_session, lead, staff, setup, auth_headers
+):
+    headers = auth_headers(lead)
+
+    def add(n):
+        for k in range(n):
+            setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 0, k),
+                  status=BookingStatus.CONFIRMED)  # fmt: skip
+        db_session.expire_all()
+
+    def statements():
+        seen = []
+
+        def remember(*_args):
+            seen.append(1)
+
+        event.listen(conn, "before_cursor_execute", remember)
+        try:
+            data = listed(client, headers, state="done")
+        finally:
+            event.remove(conn, "before_cursor_execute", remember)
+        return len(seen), data["total"]
+
+    add(1)
+    few = statements()
+    add(4)
+    many = statements()
+    assert (few[1], many[1]) == (1, 5)
+    assert many[0] == few[0]
+
+
+# --- Summary -----------------------------------------------------------------------------
+
+
+def test_summary_counts(client, frozen, freeze_now, lead, staff, setup, auth_headers):
+    today = date(2026, 11, 9)
+    setup(day=today, start=15)  # to assign, due today
+    setup(day=DAY)  # to assign, tomorrow
+    setup(day=today, start=8)  # missed by 09:00: not "to assign", still due today
+    setup(ITStatus.ASSIGNED, day=DAY, staff=[staff])  # in progress
+    setup(ITStatus.READY, day=today, start=16, staff=[staff], ready_at=datetime(2026, 11, 9, 1, 30),
+          status=BookingStatus.CONFIRMED)  # fmt: skip
+    setup(ITStatus.READY, day=DAY, staff=[staff], ready_at=datetime(2026, 11, 8, 3, 0),
+          status=BookingStatus.CONFIRMED)  # fmt: skip
+    freeze_now(datetime(2026, 11, 9, 9, 0))
+    response = client.get(SUMMARY, headers=auth_headers(lead))
+    assert response.json() == {
+        "to_assign": 2,
+        "in_progress": 1,
+        "ready_today": 1,
+        "due_today": 3,
+        "due_today_ready": 1,
+    }
+
+
+def test_summary_and_staff_lead_only(client, frozen, staff, as_staff, auth_headers):
+    for headers in (auth_headers(staff), as_staff):
+        assert client.get(SUMMARY, headers=headers).status_code == 403
+        assert client.get(STAFF, headers=headers).status_code == 403
+
+
+def test_staff_list_active_it_staff_by_name(client, frozen, lead, make_user, auth_headers):
+    make_user(roles=["IT_STAFF"], name_en="Vann Dara")
+    make_user(roles=["IT_STAFF"], name_en="Chan Bopha")
+    make_user(roles=["IT_STAFF"], name_en="Gone User", is_active=False)
+    make_user(roles=["STAFF"], name_en="Not IT")
+    data = client.get(STAFF, headers=auth_headers(lead)).json()
+    assert [user["name_en"] for user in data["items"]] == ["Chan Bopha", "Vann Dara"]
+    assert all(user["is_active"] for user in data["items"])
