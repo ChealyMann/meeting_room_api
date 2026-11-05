@@ -31,6 +31,8 @@ const props = defineProps<{
   fieldError?: string
   /** A required reason's shortest length (Pitika reject: 5); 0 when the box is optional. */
   minLength?: number
+  /** No text box (IT: Mark ready). A default slot can add content above the box (IT: the staff). */
+  noField?: boolean
 }>()
 const text = defineModel<string>({ required: true })
 const emit = defineEmits<{ back: []; confirm: [] }>()
@@ -63,7 +65,7 @@ function onKey(event: KeyboardEvent) {
     return
   }
   if (event.key !== 'Tab' || !card.value) return
-  const stops = [...card.value.querySelectorAll<HTMLElement>('textarea, button:not([disabled])')]
+  const stops = [...card.value.querySelectorAll<HTMLElement>('input, textarea, button:not([disabled])')]
   const first = stops[0]
   const last = stops[stops.length - 1]
   if (!first || !last) return
@@ -80,7 +82,8 @@ onMounted(async () => {
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   document.addEventListener('keydown', onKey, true)
   await nextTick()
-  field.value?.focus()
+  if (field.value) field.value.focus()
+  else card.value?.querySelector<HTMLElement>('input, button.confirm')?.focus()
 })
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKey, true)
@@ -129,7 +132,10 @@ onBeforeUnmount(() => {
             </div>
           </dl>
 
-          <div class="field">
+          <slot />
+
+          <p v-if="noField && error" class="step-error" role="alert">{{ error }}</p>
+          <div v-if="!noField" class="field">
             <label :for="fieldId">{{ fieldLabel }}</label>
             <textarea
               :id="fieldId"
