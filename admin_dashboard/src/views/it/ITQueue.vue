@@ -342,7 +342,8 @@ async function save() {
 .staff-pick {
   display: grid;
   gap: 8px;
-  margin: 12px 0 4px;
+  /* Inside the pop-up's 24px sides, like the booking table and the notes box. */
+  margin: 16px 24px 0;
 }
 .staff-search {
   display: flex;
