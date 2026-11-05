@@ -2,13 +2,21 @@
 // Create, edit and detail open here, over the list (DSH-G03, DESIGN.md "Side Panel").
 // The list stays visible beside it; Escape and the scrim close it.
 import { X } from 'lucide-vue-next'
-import { nextTick, onBeforeUnmount, onUnmounted, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onUnmounted, ref, useId, watch } from 'vue'
 
 import { useConfirm } from '../../composables/useConfirm'
 import { noteLeaving, panelIn, panelOut, scrimIn, scrimOut, slideOutRemoved } from './panelMotion'
 
 const props = defineProps<{ open: boolean; title: string; subtitle?: string; serial?: string }>()
 const emit = defineEmits<{ close: [] }>()
+
+// A serial's prefix is crimson: "RM" in "RM·0058", "NBC" in a booking's "NBC-26-48213".
+const serialParts = computed<[string, string] | null>(() => {
+  const serial = props.serial
+  if (!serial) return null
+  const cut = serial.search(/[·-]/)
+  return cut < 0 ? [serial, ''] : [serial.slice(0, cut), serial.slice(cut)]
+})
 
 const titleId = useId()
 const panel = ref<HTMLElement | null>(null)
@@ -91,8 +99,8 @@ defineExpose({ focusFirst })
             <span v-if="subtitle || serial" class="subtitle">
               <template v-if="subtitle">{{ subtitle }}</template>
               <template v-if="subtitle && serial"> · </template>
-              <span v-if="serial" class="serial">
-                <span class="prefix">{{ serial.split('·')[0] }}</span>·{{ serial.split('·')[1] }}
+              <span v-if="serialParts" class="serial">
+                <span class="prefix">{{ serialParts[0] }}</span>{{ serialParts[1] }}
               </span>
             </span>
           </div>

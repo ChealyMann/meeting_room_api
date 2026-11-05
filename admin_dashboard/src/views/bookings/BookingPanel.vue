@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// One booking, read only (DSH-B02 to B04): details, sessions, services and history. The Admin
-// cannot approve, reject, cancel or edit, so there is no form. The door pass shows only when
-// the Admin asks, and only for a confirmed booking (the API's own rule).
+// One booking (DSH-B02 to B04): details, sessions, services and history. There is no form; the
+// Admin's only changes are the actions the API allows (cancel, and approve or reject as backup
+// reviewer). The door pass shows only when the Admin asks, and only for a confirmed booking.
 import { CalendarArrowDown, CircleAlert } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
@@ -12,6 +12,8 @@ import type { AdminActionsOut, BookingDetail, DoorPassOut } from '../../api/type
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
+import BookingActionDialog, { type BookingAction } from './BookingActionDialog.vue'
+import BookingHistory from './BookingHistory.vue'
 import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
@@ -47,17 +49,6 @@ const booker = computed(() =>
   INFO_LABELS.map(([key, label]) => ({ label, value: props.booking.requester_info[key] as string | null | undefined })),
 )
 
-const STAGES: Record<string, string> = { PITIKA: 'Pitika', OWNER: 'Room owner' }
-const DECISIONS: Record<string, string> = { APPROVED: 'approved', REJECTED: 'rejected', NOT_REQUIRED: 'not needed' }
-const REJECTED_BY: Record<string, string> = {
-  PITIKA: 'Rejected by Pitika',
-  OWNER: 'Rejected by the room owner',
-  SYSTEM: 'Rejected by the system',
-}
-// The API writes a rejection twice: as a REJECTED review and as `rejection`. Show it once.
-const reviews = computed(() =>
-  props.booking.rejection ? props.booking.reviews.filter((r) => r.decision !== 'REJECTED') : props.booking.reviews,
-)
 const IT_STATUS: Record<string, string> = { RECEIVED: 'Received', ASSIGNED: 'Staff assigned', READY: 'Ready' }
 
 // The door pass, fetched only when the eye is pressed; an expired one gets a small tag. Its end
@@ -69,8 +60,9 @@ async function revealDoorPass(): Promise<string> {
 }
 
 // The Admin's actions (B-33, B-34): the buttons follow what the API allows now, and each
-// opens a confirm step with an optional reason (D-35) before anything is sent.
-type Action = 'cancel' | 'approve' | 'reject'
+// opens a confirm pop-up (BookingActionDialog) with an optional reason (D-35) before anything
+// is sent.
+type Action = BookingAction
 const actions = ref<AdminActionsOut | null>(null)
 const step = ref<Action | null>(null)
 const stepText = ref('')
@@ -102,6 +94,13 @@ const stepEffect = computed(() => {
   if (step.value === 'reject') return 'The booking stops and the room is free again.'
   if (actions.value?.stage === 'PITIKA' && props.booking.route === 'R2') return 'It goes to the room owner next.'
   return props.booking.has_it ? 'It goes to IT setup next.' : 'It is confirmed, with a door pass.'
+})
+
+// The first session's times, and how many more there are: "14:00–15:30 +2 more".
+const stepTimes = computed(() => {
+  const first = props.booking.first_session
+  const more = props.booking.session_count - 1
+  return `${hhmm(first.start_time)}–${hhmm(first.end_time)}${more > 0 ? ` +${more} more` : ''}`
 })
 
 function openStep(action: Action) {
@@ -290,49 +289,7 @@ async function downloadIcs() {
     </section>
 
     <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
-      <ol class="history">
-        <li>
-          <b>Sent</b>
-          <span>{{ booking.requester.name_en }}</span>
-          <span class="mono">{{ formatPhnomPenh(booking.created_at) }}</span>
-        </li>
-        <li v-for="(r, i) in reviews" :key="i">
-          <b>{{ STAGES[r.stage] ?? r.stage }} {{ DECISIONS[r.decision] ?? r.decision }}</b>
-          <span v-if="r.reviewer">{{ r.reviewer.name_en }}{{ r.by_admin ? ` (Admin, for ${r.stage === 'PITIKA' ? 'Pitika' : 'the owner'})` : '' }}</span>
-          <span class="mono">{{ formatPhnomPenh(r.reviewed_at) }}</span>
-          <span v-if="r.notes" class="note">{{ r.notes }}</span>
-        </li>
-        <li v-if="booking.rejection">
-          <b>{{ REJECTED_BY[booking.rejection.rejected_by] ?? booking.rejection.rejected_by }}</b>
-          <span v-if="booking.rejection.actor">{{ booking.rejection.actor.name_en }}{{ booking.rejection.by_admin ? ` (Admin, for ${booking.rejection.rejected_by === 'PITIKA' ? 'Pitika' : 'the owner'})` : '' }}</span>
-          <span class="mono">{{ formatPhnomPenh(booking.rejection.decided_at) }}</span>
-          <span class="note">{{ booking.rejection.reason }}</span>
-        </li>
-        <li v-if="booking.cancelled_at">
-          <b>{{ booking.cancelled_by ? `Cancelled by ${booking.cancelled_by.name_en}` : 'Cancelled' }}</b>
-          <span class="mono">{{ formatPhnomPenh(booking.cancelled_at) }}</span>
-          <span v-if="booking.cancel_reason" class="note">{{ booking.cancel_reason }}</span>
-        </li>
-      </ol>
-    </section>
-
-    <section v-if="step && stepWords" class="action-step" aria-labelledby="action-step-title">
-      <h3 id="action-step-title">{{ stepWords.title }}</h3>
-      <p v-if="step !== 'cancel' && actingFor" class="acting">{{ actingFor }}</p>
-      <p class="effect">{{ stepEffect }}</p>
-      <label class="step-field">
-        <span>{{ stepWords.label }}</span>
-        <textarea id="action-step-text" v-model="stepText" rows="3" :maxlength="stepWords.max" :aria-invalid="!!fieldError || undefined" />
-        <span class="count">{{ [...stepText].length }}/{{ stepWords.max }}</span>
-      </label>
-      <p v-if="fieldError" class="field-error" role="alert">{{ fieldError }}</p>
-      <p v-if="stepError" class="step-error" role="alert">{{ stepError }}</p>
-      <div class="step-buttons">
-        <BaseButton variant="quiet" @click="step = null">Back</BaseButton>
-        <BaseButton :variant="step === 'approve' ? 'primary' : 'danger'" class="confirm" :busy="stepBusy" :disabled="!actions?.[step]" @click="confirmStep">
-          {{ stepWords.confirm }}
-        </BaseButton>
-      </div>
+      <BookingHistory :booking="booking" />
     </section>
 
     <div v-if="icsError" class="summary" role="alert">
@@ -341,18 +298,46 @@ async function downloadIcs() {
     </div>
 
     <template #foot>
-      <BaseButton variant="quiet" class="close" @click="emit('close')">Close</BaseButton>
-      <template v-if="actions && !step">
-        <BaseButton v-if="actions.cancel" variant="quiet" class="danger" @click="openStep('cancel')">Cancel booking</BaseButton>
-        <BaseButton v-if="actions.reject" @click="openStep('reject')">Reject</BaseButton>
-        <BaseButton v-if="actions.approve" variant="primary" @click="openStep('approve')">Approve</BaseButton>
-      </template>
-      <BaseButton :busy="icsBusy" @click="downloadIcs">
-        <CalendarArrowDown v-if="!icsBusy" aria-hidden="true" />
-        Calendar file
-      </BaseButton>
+      <!-- Two groups that share one row when they fit; on a narrow panel the decisions move
+           to their own row above, so no button is ever pushed out of the panel. -->
+      <div class="booking-foot">
+        <div class="foot-group">
+          <BaseButton variant="quiet" @click="emit('close')">Close</BaseButton>
+          <BaseButton :busy="icsBusy" @click="downloadIcs">
+            <CalendarArrowDown v-if="!icsBusy" aria-hidden="true" />
+            Calendar file
+          </BaseButton>
+        </div>
+        <div v-if="actions && (actions.cancel || actions.reject || actions.approve)" class="foot-group decide">
+          <BaseButton v-if="actions.cancel" variant="quiet" class="danger" @click="openStep('cancel')">Cancel booking</BaseButton>
+          <BaseButton v-if="actions.reject" @click="openStep('reject')">Reject</BaseButton>
+          <BaseButton v-if="actions.approve" variant="primary" @click="openStep('approve')">Approve</BaseButton>
+        </div>
+      </div>
     </template>
   </SidePanel>
+
+  <BookingActionDialog
+    v-if="step && stepWords"
+    v-model="stepText"
+    :action="step"
+    :title="stepWords.title"
+    :confirm-label="stepWords.confirm"
+    :field-label="stepWords.label"
+    :max="stepWords.max"
+    :meeting="booking.meeting_title"
+    :reference="booking.reference_code"
+    :day="formatDay(booking.first_session.date)"
+    :times="stepTimes"
+    :acting-for="step !== 'cancel' ? actingFor : ''"
+    :effect="stepEffect"
+    :busy="stepBusy"
+    :allowed="!!actions?.[step]"
+    :error="stepError"
+    :field-error="fieldError"
+    @back="step = null"
+    @confirm="confirmStep"
+  />
 </template>
 
 <style scoped>
@@ -446,8 +431,7 @@ section > h3:first-child {
   font-size: 11px;
   font-weight: 500;
 }
-.sessions,
-.history {
+.sessions {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -466,88 +450,21 @@ section > h3:first-child {
   font-size: 12.5px;
   color: var(--color-intaglio);
 }
-.history li {
+.booking-foot {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-rule);
-  font-size: 13px;
+  flex: 1;
+  flex-wrap: wrap-reverse;
+  gap: 8px;
+  min-width: 0;
 }
-.history b {
-  font-weight: 500;
+.foot-group {
+  display: flex;
+  gap: 8px;
 }
-.history .mono {
-  color: var(--color-intaglio);
-  font-size: 12px;
-}
-.history .note {
-  flex-basis: 100%;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-.close {
-  margin-right: auto;
+.foot-group.decide {
+  margin-left: auto;
 }
 .danger {
   color: var(--color-crimson);
-}
-.action-step {
-  display: grid;
-  gap: 8px;
-  margin-top: 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 10px;
-  background: var(--color-paper);
-}
-.action-step h3 {
-  margin: 0;
-}
-.acting {
-  margin: 0;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-crimson);
-}
-.effect {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-intaglio);
-}
-.step-field {
-  display: grid;
-  gap: 4px;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.step-field textarea {
-  font: 13.5px/1.5 var(--font-sans);
-  color: var(--color-ink);
-  background: var(--color-sheet);
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 8px;
-  padding: 8px 10px;
-  resize: vertical;
-}
-.step-field textarea:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-halo);
-}
-.count {
-  justify-self: end;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-}
-.field-error,
-.step-error {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--color-crimson);
-}
-.step-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 </style>
