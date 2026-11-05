@@ -2,7 +2,7 @@
 // the IT Staff to assign, and the two actions (T10 assign, T11 ready). `version` is the booking's.
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { ITSummary, ITTicketItem, Page } from './types'
+import type { ITStaffOut, ITSummary, ITTicketItem, ItemList, Page } from './types'
 
 const TICKETS = '/api/v1/it/tickets'
 
@@ -26,4 +26,23 @@ export function listTicketPage(client: ApiClient, f: TicketFilters): Promise<Pag
 
 export function getItSummary(client: ApiClient): Promise<ITSummary> {
   return client.request<ITSummary>('GET', `${TICKETS}/summary`)
+}
+
+/** Active IT Staff, by name (IT Lead only). */
+export function listItStaff(client: ApiClient): Promise<ItemList<ITStaffOut>> {
+  return client.request<ItemList<ITStaffOut>>('GET', '/api/v1/it/staff')
+}
+
+/** T10: the list replaces the earlier staff. */
+export function assignStaff(
+  client: ApiClient,
+  id: number,
+  body: { user_ids: number[]; technician_notes: string | null; version: number },
+): Promise<ITTicketItem> {
+  return client.request<ITTicketItem>('PUT', `${TICKETS}/${id}/staff`, { json: body })
+}
+
+/** T11: the booking is confirmed, with a door pass. */
+export function markReady(client: ApiClient, id: number, body: { version: number }): Promise<ITTicketItem> {
+  return client.request<ITTicketItem>('POST', `${TICKETS}/${id}/ready`, { json: body })
 }
