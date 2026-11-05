@@ -990,6 +990,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pitika/bookings/decided": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings I decided
+         * @description Bookings you approved or rejected (`decision`), newest decision first, in rooms of
+         *     your current province. Each has `decided_at` and `decision_note` (your notes on an
+         *     approval, your reason on a rejection). Decisions the Admin made as a backup are not
+         *     listed. `q` matches the title, the reference code or the requester's name.
+         */
+        get: operations["list_decided_bookings_api_v1_pitika_bookings_decided_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pitika/bookings/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See my day in numbers
+         * @description `waiting`: bookings in your province waiting for Pitika now. `approved_today` and
+         *     `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted).
+         *     With no province, all are 0.
+         */
+        get: operations["pitika_summary_api_v1_pitika_bookings_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pitika/bookings/{booking_id}/approve": {
         parameters: {
             query?: never;
@@ -2009,6 +2054,41 @@ export interface components {
             /** Thumbnail Url */
             thumbnail_url: string;
         };
+        /**
+         * DecidedBookingItem
+         * @description A booking this Pitika approved or rejected, with when and what they wrote.
+         */
+        DecidedBookingItem: {
+            /** Id */
+            id: number;
+            /** Reference Code */
+            reference_code: string;
+            room: components["schemas"]["BookingRoomRef"];
+            /** Meeting Title */
+            meeting_title: string;
+            meeting_type: components["schemas"]["MeetingType"];
+            route: components["schemas"]["BookingRoute"];
+            status: components["schemas"]["BookingStatus"];
+            display_status: components["schemas"]["DisplayStatus"];
+            requester: components["schemas"]["NamedRef"];
+            first_session: components["schemas"]["SessionOut"];
+            /** Session Count */
+            session_count: number;
+            /** Attendees */
+            attendees: number;
+            /** Has Catering */
+            has_catering: boolean;
+            /** Has It */
+            has_it: boolean;
+            /** Created At */
+            created_at: string;
+            /** Version */
+            version: number;
+            /** Decided At */
+            decided_at: string;
+            /** Decision Note */
+            decision_note: string | null;
+        };
         /** DepartmentCreate */
         DepartmentCreate: {
             /** Location Id */
@@ -2598,6 +2678,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[DecidedBookingItem] */
+        Page_DecidedBookingItem_: {
+            /** Items */
+            items: components["schemas"]["DecidedBookingItem"][];
+            /** Page */
+            page: number;
+            /** Size */
+            size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[DepartmentOut] */
         Page_DepartmentOut_: {
             /** Items */
@@ -2753,6 +2844,18 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * PitikaSummary
+         * @description Bookings waiting in my province now, and my decisions today (Phnom Penh day).
+         */
+        PitikaSummary: {
+            /** Waiting */
+            waiting: number;
+            /** Approved Today */
+            approved_today: number;
+            /** Rejected Today */
+            rejected_today: number;
         };
         /** PositionCreate */
         PositionCreate: {
@@ -6132,6 +6235,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_decided_bookings_api_v1_pitika_bookings_decided_get: {
+        parameters: {
+            query: {
+                /** @description APPROVED or REJECTED */
+                decision: "APPROVED" | "REJECTED";
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DecidedBookingItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pitika_summary_api_v1_pitika_bookings_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PitikaSummary"];
                 };
             };
         };

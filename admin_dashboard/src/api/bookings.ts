@@ -2,7 +2,18 @@
 // Admin's actions on one booking (cancel, and approve or reject as backup reviewer).
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { AdminActionsOut, BookingDetail, BookingListItem, CateringOrderItem, DoorPassOut, ItemList, Page, ScheduleItem } from './types'
+import type {
+  AdminActionsOut,
+  BookingDetail,
+  BookingListItem,
+  CateringOrderItem,
+  DecidedBookingItem,
+  DoorPassOut,
+  ItemList,
+  Page,
+  PitikaSummary,
+  ScheduleItem,
+} from './types'
 
 /** The blocking sessions of one room, `from`..`to` (Phnom Penh days, at most 31). */
 export function getRoomSchedule(client: ApiClient, roomId: number, from: string, to: string): Promise<ItemList<ScheduleItem>> {
@@ -43,6 +54,19 @@ export function pitikaApprove(client: ApiClient, id: number, body: { notes: stri
 }
 export function pitikaReject(client: ApiClient, id: number, body: { reason: string; version: number }): Promise<BookingDetail> {
   return client.request<BookingDetail>('POST', `${PITIKA}/${id}/reject`, { json: body })
+}
+
+/** The bookings this Pitika approved or rejected, newest decision first (their province only). */
+export function listPitikaDecidedPage(
+  client: ApiClient,
+  f: Omit<BookingFilters, 'status' | 'province'> & { decision: 'APPROVED' | 'REJECTED' },
+): Promise<Page<DecidedBookingItem>> {
+  return client.request<Page<DecidedBookingItem>>('GET', `${PITIKA}/decided` + toQuery({ ...f }))
+}
+
+/** Waiting in the province now, and this Pitika's approvals and rejections today. */
+export function getPitikaSummary(client: ApiClient): Promise<PitikaSummary> {
+  return client.request<PitikaSummary>('GET', `${PITIKA}/summary`)
 }
 
 export function getBooking(client: ApiClient, id: number): Promise<BookingDetail> {
