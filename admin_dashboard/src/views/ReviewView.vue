@@ -4,12 +4,13 @@
 // what to check and the row bar ("gap is you"). Details are loaded per booking for the labels.
 import { CalendarDays, Check, CircleAlert, EyeOff, Monitor, TriangleAlert, User, Users, Utensils, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../api'
-import { getBooking, listPitikaBookingPage, pitikaApprove, pitikaReject } from '../api/bookings'
+import { getBooking, getPitikaSummary, listPitikaBookingPage, pitikaApprove, pitikaReject } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import { listAllRooms } from '../api/references'
-import type { BookingDetail, BookingListItem, RoomListItem } from '../api/types'
+import type { BookingDetail, BookingListItem, PitikaSummary, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
@@ -23,11 +24,13 @@ import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
 import { useSessionStore } from '../stores/session'
+import { tabFrom, type Tab } from '../utils/decided'
 import { checkLabels, groupByUrgency, nextStepText, rowSteps, startsIn } from '../utils/reviewQueue'
 import { FILTER_WORDS } from '../utils/pickerWords'
 import { formatDay } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
+import ReviewHead from './review/ReviewHead.vue'
 
 // Filters in the address, like the other lists: room, a day range (any session in it), search.
 const { list, result, loading, error, load } = useResourceList<BookingListItem>(
@@ -92,7 +95,29 @@ onMounted(() => (tick = setInterval(() => (now.value = new Date()), 60_000)))
 onBeforeUnmount(() => clearInterval(tick))
 
 const groups = computed(() => groupByUrgency(items.value, today.value))
-const count = computed(() => `${String(items.value.length).padStart(3, '0')} waiting`)
+
+// --- Today's summary and the tabs (spec 2026-11-05-pitika-decided-design) -----------------
+const summary = ref<PitikaSummary | null>(null)
+async function loadSummary() {
+  try {
+    summary.value = await getPitikaSummary(api)
+  } catch {
+    // no ring and no numbers: the lists still work
+  }
+}
+onMounted(loadSummary)
+watch(today, loadSummary)
+
+const route = useRoute()
+const router = useRouter()
+const tab = computed<Tab>(() => tabFrom(route.query.tab))
+/** Another tab: the filters stay; the page and the open booking do not. */
+function selectTab(next: Tab) {
+  const query = { ...route.query }
+  for (const key of ['tab', 'page', 'id']) delete query[key]
+  if (next !== 'waiting') query.tab = next
+  void router.replace({ query })
+}
 
 const hhmm = (time: string) => time.slice(0, 5)
 const whenText = (b: BookingListItem) => (b.first_session.date === today.value ? `Today, ${formatDay(b.first_session.date)}` : formatDay(b.first_session.date))
@@ -155,13 +180,13 @@ async function decide() {
     toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
     asking.value = null
     if (panel.id.value === booking.id) panel.close()
-    await load()
+    await Promise.all([load(), loadSummary()])
   } catch (err) {
     if (err instanceof ApiError) {
       askFieldError.value = err.fields.reason ?? err.fields.notes ?? ''
       askError.value = askFieldError.value ? '' : err.message
       // Decided by someone else, started, or changed: show the queue as it is now.
-      if (err.status === 409 || err.status === 403 || err.status === 404) await load()
+      if (err.status === 409 || err.status === 403 || err.status === 404) await Promise.all([load(), loadSummary()])
     } else {
       askError.value = 'Something went wrong.'
     }
@@ -173,11 +198,7 @@ async function decide() {
 
 <template>
   <div class="places-page review">
-    <div class="page-head">
-      <h1>To review</h1>
-      <span v-if="result" class="mono count">{{ count }}</span>
-    </div>
-    <p class="sub">Bookings in your province waiting for your decision.</p>
+    <ReviewHead :summary="summary" :tab="tab" @select="selectTab" />
 
     <div class="filters" role="search">
       <ListSearch
@@ -225,7 +246,7 @@ async function decide() {
       </BaseButton>
     </div>
 
-    <div class="queue">
+    <div v-if="tab === 'waiting'" class="queue">
       <div v-if="error" class="summary load-error" role="alert">
         <CircleAlert aria-hidden="true" />
         <div>
@@ -300,7 +321,7 @@ async function decide() {
     </div>
 
     <ReviewPanel
-      v-if="openItem && openDetail"
+      v-if="tab === 'waiting' && openItem && openDetail"
       :key="`review-${openItem.id}`"
       :booking="openDetail"
       :photo-path="covers[openItem.room.id]?.url ?? null"
@@ -337,11 +358,6 @@ async function decide() {
 <style scoped src="./listPage.css"></style>
 
 <style scoped>
-.sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--color-intaglio);
-}
 .filters > .narrow {
   width: 184px;
 }
