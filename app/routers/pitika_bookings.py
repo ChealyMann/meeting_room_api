@@ -1,11 +1,12 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
+from app.constants.booking import ReviewDecision
 from app.routers.common import AppSettings, DbSession, IdPath, IdQuery, PageParams, SearchQuery
 from app.schemas.booking import BookingDetail, BookingListItem
-from app.schemas.booking_review import ApproveBody, RejectBody
+from app.schemas.booking_review import ApproveBody, DecidedBookingItem, RejectBody
 from app.schemas.common import Page
 from app.security import PitikaUser
 from app.services import booking_review, booking_view
@@ -38,6 +39,44 @@ def list_pitika_bookings(
     )
     items = booking_view.build_booking_list_items(result["items"])
     return Page[BookingListItem](**{**result, "items": items})
+
+
+@router.get(
+    "/decided", response_model=Page[DecidedBookingItem], summary="List bookings I decided"
+)
+def list_decided_bookings(
+    current: PitikaUser,
+    session: DbSession,
+    paging: Annotated[PageParams, Depends()],
+    decision: Annotated[
+        Literal["APPROVED", "REJECTED"], Query(description="APPROVED or REJECTED")
+    ],
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Any session on or after this day")
+    ] = None,
+    date_to: Annotated[
+        date | None, Query(alias="to", description="Any session on or before this day")
+    ] = None,
+    room_id: IdQuery = None,
+    q: SearchQuery = None,
+) -> Page[DecidedBookingItem]:
+    """Bookings you approved or rejected (`decision`), newest decision first, in rooms of
+    your current province. Each has `decided_at` and `decision_note` (your notes on an
+    approval, your reason on a rejection). Decisions the Admin made as a backup are not
+    listed. `q` matches the title, the reference code or the requester's name."""
+    result = booking_review.list_pitika_decided(
+        session,
+        current,
+        paging.page,
+        paging.size,
+        ReviewDecision(decision),
+        date_from,
+        date_to,
+        room_id,
+        q,
+    )
+    items = booking_view.build_decided_items(result["items"], current.id)
+    return Page[DecidedBookingItem](**{**result, "items": items})
 
 
 @router.post("/{booking_id}/approve", response_model=BookingDetail, summary="Approve a booking")

@@ -1,6 +1,15 @@
-"""Pitika approve and reject bodies (spec 9.11)."""
+"""Pitika approve and reject bodies (spec 9.11), and the Pitika's decided list."""
 
-from app.schemas.common import BookingText, OptionalBookingText, RequestModel
+from app.schemas.booking import BookingListItem
+from app.schemas.common import BookingText, OptionalBookingText, RequestModel, UtcDateTime
+
+
+class DecidedBookingItem(BookingListItem):
+    """A booking this Pitika approved or rejected, with when and what they wrote."""
+
+    decided_at: UtcDateTime
+    # The review's notes on an approval; the rejection's reason on a rejection.
+    decision_note: str | None
 
 
 class ApproveBody(RequestModel):
