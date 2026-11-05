@@ -100,7 +100,9 @@ def build_decided_items(bookings: list[Booking], reviewer_id: int) -> list[Decid
         else:
             note = review.notes
         fields = _list_item_fields(booking)
-        items.append(DecidedBookingItem(**fields, decided_at=review.reviewed_at, decision_note=note))
+        items.append(
+            DecidedBookingItem(**fields, decided_at=review.reviewed_at, decision_note=note)
+        )
     return items
 
 

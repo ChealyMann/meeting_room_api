@@ -41,16 +41,12 @@ def list_pitika_bookings(
     return Page[BookingListItem](**{**result, "items": items})
 
 
-@router.get(
-    "/decided", response_model=Page[DecidedBookingItem], summary="List bookings I decided"
-)
+@router.get("/decided", response_model=Page[DecidedBookingItem], summary="List bookings I decided")
 def list_decided_bookings(
     current: PitikaUser,
     session: DbSession,
     paging: Annotated[PageParams, Depends()],
-    decision: Annotated[
-        Literal["APPROVED", "REJECTED"], Query(description="APPROVED or REJECTED")
-    ],
+    decision: Annotated[Literal["APPROVED", "REJECTED"], Query(description="APPROVED or REJECTED")],
     date_from: Annotated[
         date | None, Query(alias="from", description="Any session on or after this day")
     ] = None,

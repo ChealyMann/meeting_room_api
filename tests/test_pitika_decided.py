@@ -57,9 +57,7 @@ def ids(data):
 # --- List --------------------------------------------------------------------------------
 
 
-def test_lists_my_approvals_newest_first(
-    client, frozen, freeze_now, pitika, pending, auth_headers
-):
+def test_lists_my_approvals_newest_first(client, frozen, freeze_now, pitika, pending, auth_headers):
     headers = auth_headers(pitika)
     first, second = pending(), pending(sessions=((DAY, time(14), time(15)),))
     approve(client, headers, first, notes="Fine")
@@ -197,8 +195,13 @@ def test_query_count_does_not_grow(
 
     def add(n):
         for _ in range(n):
-            booking = make_booking(make_bookable_room(), booker,
-                                   status=BookingStatus.PENDING_PITIKA, catering=True, it=True)  # fmt: skip
+            booking = make_booking(
+                make_bookable_room(),
+                booker,
+                status=BookingStatus.PENDING_PITIKA,
+                catering=True,
+                it=True,
+            )
             approve(client, headers, booking, notes="Fine")
         db_session.expire_all()
 
