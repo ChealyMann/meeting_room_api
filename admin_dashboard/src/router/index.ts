@@ -61,6 +61,18 @@ const router = createRouter({
           meta: { title: 'To review', roles: ['ROOM_OWNER'] },
         },
         {
+          path: 'it-setup',
+          name: 'it-setup',
+          component: () => import('../views/ITSetupView.vue'),
+          meta: { title: 'IT setup', roles: ['IT_LEAD'] },
+        },
+        {
+          path: 'my-tasks',
+          name: 'my-tasks',
+          component: () => import('../views/MyTasksView.vue'),
+          meta: { title: 'My tasks', roles: ['IT_STAFF'] },
+        },
+        {
           path: 'bookings',
           name: 'bookings',
           component: () => import('../views/BookingsView.vue'),

@@ -27,9 +27,11 @@ beforeEach(() => {
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
-      calls.push(url.pathname)
+      calls.push(url.pathname === '/api/v1/it/tickets' ? url.pathname + url.search : url.pathname)
       const who = url.pathname.match(/^\/api\/v1\/(pitika|owner)\/bookings\/summary$/)?.[1]
       if (who) return json({ waiting: waiting[who], approved_today: 0, rejected_today: 0 })
+      if (url.pathname === '/api/v1/it/tickets/summary') return json({ to_assign: 2, in_progress: 1, ready_today: 0, due_today: 0, due_today_ready: 0 })
+      if (url.pathname === '/api/v1/it/tickets') return json({ items: [], page: 1, size: 1, total: 3 })
       return json({ error: { code: 'NOT_FOUND', message: 'Not found.', fields: {} } }, 404)
     }),
   )
@@ -98,6 +100,12 @@ describe('waiting counts in the menu', () => {
     release()
     await flushPromises()
     expect(count(wrapper, 'review')).toBe('1')
+  })
+
+  it('counts setups to assign for the IT Lead and my tasks for IT Staff', async () => {
+    const wrapper = await mountRail(['IT_LEAD', 'IT_STAFF'])
+    expect([count(wrapper, 'it-setup'), count(wrapper, 'my-tasks')]).toEqual(['2', '3'])
+    expect(calls).toContain('/api/v1/it/tickets?state=in_progress&mine=true&page=1&size=1')
   })
 
   it('asks for nothing when the user reviews nothing', async () => {

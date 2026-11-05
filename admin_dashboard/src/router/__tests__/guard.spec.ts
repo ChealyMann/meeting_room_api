@@ -9,6 +9,8 @@ const HOME = nav('home', '/', { roles: ADMIN_ONLY })
 const OFFICES = nav('offices', '/offices', { roles: ADMIN_ONLY })
 const BOOKINGS = nav('bookings', '/bookings', { roles: ['ADMIN', 'PITIKA', 'ROOM_OWNER'] })
 const OWNER_REVIEW = nav('owner-review', '/owner-review', { roles: ['ROOM_OWNER'] })
+const IT_SETUP = nav('it-setup', '/it-setup', { roles: ['IT_LEAD'] })
+const MY_TASKS = nav('my-tasks', '/my-tasks', { roles: ['IT_STAFF'] })
 const REVIEW = nav('review', '/review', { roles: ['PITIKA'] })
 const PROFILE = nav('profile', '/profile')
 const SIGN_IN = nav('sign-in', '/sign-in', { public: true })
@@ -22,6 +24,25 @@ const admin = { signedIn: true, mustChangePassword: false, roles: ['ADMIN'] }
 const pitika = { signedIn: true, mustChangePassword: false, roles: ['PITIKA', 'STAFF'] }
 const both = { signedIn: true, mustChangePassword: false, roles: ['ADMIN', 'PITIKA'] }
 const owner = { signedIn: true, mustChangePassword: false, roles: ['ROOM_OWNER', 'STAFF'] }
+
+describe('IT', () => {
+  const lead = { signedIn: true, mustChangePassword: false, roles: ['IT_LEAD'] }
+  const itStaff = { signedIn: true, mustChangePassword: false, roles: ['IT_STAFF', 'STAFF'] }
+
+  it('sends the IT Lead to IT setup and IT Staff to My tasks', () => {
+    expect(homeFor(['IT_LEAD'])).toBe('it-setup')
+    expect(homeFor(['IT_STAFF'])).toBe('my-tasks')
+    expect(homeFor(['IT_LEAD', 'IT_STAFF'])).toBe('it-setup')
+    expect(resolveNavigation(IT_SETUP, lead)).toBe(true)
+    expect(resolveNavigation(MY_TASKS, itStaff)).toBe(true)
+  })
+
+  it('keeps them out of other pages', () => {
+    expect(resolveNavigation(OFFICES, lead)).toEqual({ name: 'it-setup' })
+    expect(resolveNavigation(IT_SETUP, itStaff)).toEqual({ name: 'my-tasks' })
+    expect(resolveNavigation(BOOKINGS, itStaff)).toEqual({ name: 'my-tasks' })
+  })
+})
 
 describe('Room owner', () => {
   it('lands on the owner To review and may open Bookings', () => {

@@ -38,6 +38,13 @@ describe('navFor', () => {
     expect(mine).toMatchObject({ label: 'My rooms', icon: 'door-open' })
   })
 
+  it('gives the IT Lead IT setup and IT Staff My tasks', () => {
+    expect(shape(['IT_LEAD'])).toEqual([{ title: 'Daily', items: ['it-setup'] }])
+    expect(shape(['IT_STAFF'])).toEqual([{ title: 'Daily', items: ['my-tasks'] }])
+    expect(shape(['IT_LEAD', 'IT_STAFF'])).toEqual([{ title: 'Daily', items: ['it-setup', 'my-tasks'] }])
+    for (const item of navFor(['IT_LEAD', 'IT_STAFF'])[0]!.items) expect(NAV_ICONS[item.icon]).toBeDefined()
+  })
+
   it('gives anyone else nothing', () => {
     expect(navFor(['STAFF'])).toEqual([])
   })
@@ -48,6 +55,8 @@ describe('roleTitle', () => {
     expect(roleTitle(['ADMIN', 'ROOM_OWNER'])).toBe('Admin')
     expect(roleTitle(['PITIKA', 'ROOM_OWNER'])).toBe('Pitika')
     expect(roleTitle(['ROOM_OWNER', 'STAFF'])).toBe('Room owner')
+    expect(roleTitle(['IT_LEAD', 'IT_STAFF'])).toBe('IT Lead')
+    expect(roleTitle(['IT_STAFF'])).toBe('IT Staff')
   })
 })
 

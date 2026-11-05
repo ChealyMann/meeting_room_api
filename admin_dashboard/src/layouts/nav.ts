@@ -9,6 +9,7 @@ import {
   Landmark,
   MonitorCog,
   Layers,
+  ListChecks,
   Network,
   Projector,
   ShieldCheck,
@@ -16,6 +17,7 @@ import {
   Users,
   Utensils,
   UtensilsCrossed,
+  Wrench,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -44,6 +46,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'To review', icon: 'inbox', route: 'review', roles: ['PITIKA'] },
       { label: 'To review', icon: 'inbox', route: 'owner-review', roles: ['ROOM_OWNER'] },
+      { label: 'IT setup', icon: 'wrench', route: 'it-setup', roles: ['IT_LEAD'] },
+      { label: 'My tasks', icon: 'list-checks', route: 'my-tasks', roles: ['IT_STAFF'] },
       { label: 'Bookings', icon: 'calendar-check', route: 'bookings', roles: ['ADMIN', 'PITIKA', 'ROOM_OWNER'] },
       { label: 'Food list', icon: 'utensils-crossed', route: 'food-list', roles: ['ADMIN', 'PITIKA'] },
       { label: 'Rooms', icon: 'door-open', route: 'home' },
@@ -108,6 +112,8 @@ export const NAV_ICONS: Record<string, Component> = {
   network: Network,
   'git-fork': GitFork,
   inbox: Inbox,
+  wrench: Wrench,
+  'list-checks': ListChecks,
   briefcase: Briefcase,
   users: Users,
   'shield-check': ShieldCheck,
@@ -127,6 +133,8 @@ export function roleTitle(roles: string[]): string {
   if (roles.includes('ADMIN')) return 'Admin'
   if (roles.includes('PITIKA')) return 'Pitika'
   if (roles.includes('ROOM_OWNER')) return 'Room owner'
+  if (roles.includes('IT_LEAD')) return 'IT Lead'
+  if (roles.includes('IT_STAFF')) return 'IT Staff'
   return ''
 }
 

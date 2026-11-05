@@ -914,9 +914,32 @@ export interface paths {
          * List IT tickets
          * @description Tickets sent to IT, earliest first start first. The IT Lead sees all of them; IT Staff
          *     see the tickets they are assigned to. Rejected and cancelled bookings are left out. `q`
-         *     matches the meeting title or the reference code.
+         *     matches the meeting title or the reference code. A ticket is `missed` when it is not
+         *     Ready and its meeting has started: it leaves to_assign / in_progress for done, which is
+         *     sorted newest first.
          */
         get: operations["list_tickets_api_v1_it_tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/tickets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See the IT day in numbers
+         * @description IT Lead only. To assign and in progress now (missed left out), made ready today, and
+         *     today's setups (Phnom Penh day) with how many are ready.
+         */
+        get: operations["ticket_summary_api_v1_it_tickets_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -962,6 +985,26 @@ export interface paths {
          *     Staff (409 INVALID_TRANSITION). The booking becomes CONFIRMED with a door pass.
          */
         post: operations["mark_ready_api_v1_it_tickets__ticket_id__ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List IT Staff
+         * @description IT Lead only: active users with the IT Staff role, by name, to assign to a setup.
+         */
+        get: operations["list_it_staff_api_v1_it_staff_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2484,6 +2527,23 @@ export interface components {
          * @enum {string}
          */
         ITStatus: "RECEIVED" | "ASSIGNED" | "READY";
+        /**
+         * ITSummary
+         * @description The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
+         *     ready today, today's setups and how many of them are ready.
+         */
+        ITSummary: {
+            /** To Assign */
+            to_assign: number;
+            /** In Progress */
+            in_progress: number;
+            /** Ready Today */
+            ready_today: number;
+            /** Due Today */
+            due_today: number;
+            /** Due Today Ready */
+            due_today_ready: number;
+        };
         /** ITTicketItem */
         ITTicketItem: {
             /** Id */
@@ -2512,6 +2572,8 @@ export interface components {
             assigned_at: string | null;
             /** Ready At */
             ready_at: string | null;
+            /** Missed */
+            missed: boolean;
             /** Review Notes */
             review_notes: string[];
             booking: components["schemas"]["BookingListItem"];
@@ -2537,6 +2599,13 @@ export interface components {
         ItemList_EquipmentOut_: {
             /** Items */
             items: components["schemas"]["EquipmentOut"][];
+            /** Total */
+            total: number;
+        };
+        /** ItemList[ITStaffOut] */
+        ItemList_ITStaffOut_: {
+            /** Items */
+            items: components["schemas"]["ITStaffOut"][];
             /** Total */
             total: number;
         };
@@ -6143,6 +6212,14 @@ export interface operations {
                 /** @description RECEIVED, ASSIGNED or READY */
                 status?: string | null;
                 q?: string | null;
+                /** @description A dashboard tab: to_assign, in_progress or done (Ready or missed) */
+                state?: ("to_assign" | "in_progress" | "done") | null;
+                /** @description Only the tickets I am assigned to */
+                mine?: boolean;
+                /** @description Setup (first session) on or after this day */
+                from?: string | null;
+                /** @description Setup (first session) on or before this day */
+                to?: string | null;
                 page?: number;
                 size?: number;
             };
@@ -6168,6 +6245,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ticket_summary_api_v1_it_tickets_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITSummary"];
                 };
             };
         };
@@ -6238,6 +6335,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_it_staff_api_v1_it_staff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_ITStaffOut_"];
                 };
             };
         };

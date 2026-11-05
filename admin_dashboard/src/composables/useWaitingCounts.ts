@@ -6,7 +6,7 @@ import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 
 import { api } from '../api'
 import { getOwnerSummary, getPitikaSummary } from '../api/bookings'
-import type { ReviewSummary } from '../api/types'
+import { getItSummary, listTicketPage } from '../api/it'
 import { useSessionStore } from '../stores/session'
 
 export const REVIEW_SUMMARY_EVENT = 'review:summary'
@@ -16,9 +16,16 @@ export function reportWaiting(route: string, waiting: number): void {
   window.dispatchEvent(new CustomEvent(REVIEW_SUMMARY_EVENT, { detail: { route, waiting } }))
 }
 
-const SOURCES: Array<{ role: string; route: string; load: () => Promise<ReviewSummary> }> = [
-  { role: 'PITIKA', route: 'review', load: () => getPitikaSummary(api) },
-  { role: 'ROOM_OWNER', route: 'owner-review', load: () => getOwnerSummary(api) },
+// What waits for me: bookings to decide; for the IT Lead, setups to assign; for IT Staff, my tasks.
+const SOURCES: Array<{ role: string; route: string; load: () => Promise<number> }> = [
+  { role: 'PITIKA', route: 'review', load: async () => (await getPitikaSummary(api)).waiting },
+  { role: 'ROOM_OWNER', route: 'owner-review', load: async () => (await getOwnerSummary(api)).waiting },
+  { role: 'IT_LEAD', route: 'it-setup', load: async () => (await getItSummary(api)).to_assign },
+  {
+    role: 'IT_STAFF',
+    route: 'my-tasks',
+    load: async () => (await listTicketPage(api, { state: 'in_progress', mine: true, page: 1, size: 1 })).total,
+  },
 ]
 
 /** Route name → bookings waiting. A failed load leaves its key out (no number shown). */
@@ -40,7 +47,7 @@ export function useWaitingCounts(): Ref<Record<string, number>> {
     const next = { ...counts.value }
     answers.forEach((a, k) => {
       const route = mine[k]!.route
-      if (a.status === 'fulfilled' && !reported.has(route)) next[route] = a.value.waiting
+      if (a.status === 'fulfilled' && !reported.has(route)) next[route] = a.value
     })
     counts.value = next
   }
