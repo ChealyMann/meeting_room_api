@@ -47,7 +47,7 @@ watch(
 
 <template>
   <div class="review-head">
-    <div class="today-ring" :role="ringLabel ? 'img' : undefined" :aria-label="ringLabel">
+    <div class="today-ring" :class="{ empty: arcs?.label === '0/0' }" :role="ringLabel ? 'img' : undefined" :aria-label="ringLabel">
       <svg viewBox="0 0 60 60" aria-hidden="true">
         <circle class="track" cx="30" cy="30" r="25" />
         <circle class="arc approved" cx="30" cy="30" r="25" pathLength="100" :stroke-dasharray="approvedDash" />
@@ -130,6 +130,9 @@ watch(
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-ink);
+}
+.today-ring.empty .ring-text {
+  color: var(--color-ink-disabled);
 }
 .title {
   flex: 1;

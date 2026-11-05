@@ -380,6 +380,17 @@ describe('To review tabs', () => {
     expect(wrapper.text()).not.toContain('Reason: “Fine”')
   })
 
+  it('turning a page on the Approved tab does not reload the waiting list', async () => {
+    const { router } = await mountReview('/review?tab=approved')
+    const waitingCalls = () => calls.filter((c) => c.startsWith('GET /api/v1/pitika/bookings?')).length
+    const before = waitingCalls()
+
+    await router.replace('/review?tab=approved&page=2')
+    await flushPromises()
+
+    expect(waitingCalls()).toBe(before)
+  })
+
   it('shows the decided list, not the queue, on the Approved tab, with the filters kept', async () => {
     const { wrapper } = await mountReview('/review?tab=approved')
 

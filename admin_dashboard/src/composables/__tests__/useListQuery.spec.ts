@@ -13,7 +13,7 @@ const SPEC: FilterSpec = {
   has_owner: 'bool',
 }
 
-async function setup(start: string, spec: FilterSpec = SPEC, options?: { activeFilter?: boolean }) {
+async function setup(start: string, spec: FilterSpec = SPEC, options?: { activeFilter?: boolean; paged?: boolean }) {
   let list!: ReturnType<typeof useListQuery>
   const Host = defineComponent({
     setup() {
@@ -34,6 +34,16 @@ async function setup(start: string, spec: FilterSpec = SPEC, options?: { activeF
 const query = (router: Router) => router.currentRoute.value.query
 
 describe('useListQuery', () => {
+  it('can leave the page out of the API call, but still owns it in the address', async () => {
+    const { list, router } = await setup('/?q=board&page=3', { q: 'string' }, { activeFilter: false, paged: false })
+
+    expect(list.apiParams.value).toEqual({ q: 'board' })
+
+    list.set({ q: 'audit' })
+    await flushPromises()
+    expect(query(router)).toEqual({ q: 'audit' })
+  })
+
   it('can leave out the Active filter, so "status" is a plain filter', async () => {
     const { list, router } = await setup('/?status=CONFIRMED&page=2', { status: 'string', q: 'string' }, { activeFilter: false })
 

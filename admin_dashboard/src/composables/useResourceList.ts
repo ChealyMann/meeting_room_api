@@ -30,7 +30,7 @@ export function useResourceList<T>(
       if (request !== latest) return
       // A page past the end (after turning off its last record, or an old link): go to the last page.
       const last = Math.ceil(page.total / list.size.value)
-      if (!page.items.length && page.total > 0 && list.page.value > last) {
+      if (options.paged !== false && !page.items.length && page.total > 0 && list.page.value > last) {
         list.page.value = last
         return
       }

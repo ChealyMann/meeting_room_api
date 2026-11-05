@@ -60,15 +60,18 @@ const note = (b: DecidedBookingItem) =>
 // --- The read-only panel (the open booking lives in the address, ?id=12) ---------------------
 const panel = usePanelParam()
 const detail = ref<BookingDetail | null>(null)
+let latest = 0
 watch(
   () => panel.id.value,
   async (id) => {
+    const request = ++latest
     detail.value = null
     if (id === null) return
     try {
-      detail.value = await getBooking(api, id)
+      const answer = await getBooking(api, id)
+      if (request === latest) detail.value = answer // an older answer that comes late is dropped
     } catch {
-      panel.close() // gone, or not this Pitika's: nothing to show
+      if (request === latest) panel.close() // gone, or not this Pitika's: nothing to show
     }
   },
   { immediate: true },
