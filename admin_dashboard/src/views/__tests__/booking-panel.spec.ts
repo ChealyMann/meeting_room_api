@@ -108,6 +108,26 @@ async function mountAt(path: string) {
 const panel = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null
 const eye = (label: string) => panel()?.querySelector<HTMLElement>(`button[aria-label="${label}"]`) ?? undefined
 const panelButton = (text: string) => [...(panel()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.trim() === text)
+/** The process bar as "label state" pairs. */
+const steps = () =>
+  [...panel()!.querySelectorAll('#tabpanel-history .steps li')].map(
+    (li) => `${li.querySelector('.n')!.textContent} ${[...li.classList].find((c) => c !== 'step')}`,
+  )
+/** One timeline row, found by its label: who acted, their role, and the note. */
+function historyRow(label: string) {
+  const li = [...panel()!.querySelectorAll('#tabpanel-history .timeline li')].find(
+    (row) => row.querySelector('.label')?.textContent === label,
+  )
+  if (!li) return undefined
+  const roles = [...li.querySelectorAll('.role')]
+  return {
+    who: li.querySelector('.name')?.textContent ?? null,
+    role: roles[0]?.textContent?.trim() ?? null,
+    admin: roles[0]?.classList.contains('admin') ?? false,
+    forRole: roles[1]?.textContent?.trim() ?? null,
+    note: li.querySelector('.note')?.textContent ?? null,
+  }
+}
 async function click(el: HTMLElement | undefined) {
   el!.click()
   await flushPromises()
@@ -121,6 +141,8 @@ describe('BookingPanel', () => {
     expect(panel()?.textContent).toContain('Budget review')
     expect(panel()?.textContent).toContain('NBC-26-48213')
     expect(panel()?.textContent).toContain('Private room, owner approves')
+    // A booking reference has no "·": the head must not add a stray one after it.
+    expect(panel()!.querySelector('.subtitle')!.textContent!.trim()).toMatch(/NBC-26-48213$/)
     expect(panel()?.textContent).toContain('NBC0042')
   })
 
@@ -149,11 +171,10 @@ describe('BookingPanel', () => {
     })
     await mountAt('/bookings?id=12')
 
-    const history = panel()!.querySelector('#tabpanel-history')!.textContent
-    expect(history).toContain('Pitika approved')
-    expect(history).toContain('Chan Pitika')
-    expect(history).toContain('Rejected by the room owner')
-    expect(history).toContain('Room is closed that day.')
+    // The bar: sent, Pitika approved, the owner stopped it, never confirmed.
+    expect(steps()).toEqual(['Sent done', 'Pitika done', 'Room owner stop', 'Confirmed todo'])
+    expect(historyRow('Approved')).toMatchObject({ who: 'Chan Pitika', role: 'Pitika' })
+    expect(historyRow('Rejected')).toMatchObject({ who: 'Keo Owner', role: 'Room owner', note: 'Room is closed that day.' })
   })
 
   it('shows a rejection once, though the API also sends it as a review', async () => {
@@ -170,9 +191,9 @@ describe('BookingPanel', () => {
     await mountAt('/bookings?id=12')
 
     const history = panel()!.querySelector('#tabpanel-history')!
-    expect(history.querySelectorAll('li')).toHaveLength(3)
+    expect(history.querySelectorAll('.timeline li')).toHaveLength(3)
     expect(history.textContent!.split(reason)).toHaveLength(2)
-    expect(history.textContent).toContain('Rejected by the room owner')
+    expect(historyRow('Rejected')).toMatchObject({ who: 'Keo Owner', role: 'Room owner' })
   })
 
   it('shows the door pass only when asked', async () => {
@@ -235,7 +256,8 @@ describe('BookingPanel', () => {
 })
 
 describe('BookingPanel Admin actions', () => {
-  const step = () => panel()!.querySelector('.action-step') as HTMLElement | null
+  // The confirm is a pop-up over the panel (BookingActionDialog), not part of the panel.
+  const step = () => document.body.querySelector('.action-dialog') as HTMLElement | null
   const reason = () => step()!.querySelector('textarea') as HTMLTextAreaElement
 
   it('shows only the actions the API allows', async () => {
@@ -275,7 +297,8 @@ describe('BookingPanel Admin actions', () => {
     expect(step()?.textContent).toContain('This booking has ended.')
     expect(calls.filter((c) => c.endsWith('/actions'))).toHaveLength(2)
     expect(step()!.querySelector<HTMLButtonElement>('button.confirm')!.disabled).toBe(true)
-    await click(panelButton('Back'))
+    await click([...step()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Back'))
+    expect(step()).toBeNull()
     expect([...panel()!.querySelectorAll('.panel-foot button')].map((b) => b.textContent?.trim())).not.toContain('Cancel booking')
   })
 
@@ -333,6 +356,33 @@ describe('BookingPanel Admin actions', () => {
     expect(step()?.querySelector('.field-error')?.textContent).toBe('HTML is not allowed.')
   })
 
+  it('asks in a pop-up that names the booking, and Escape closes only the pop-up', async () => {
+    actions = { cancel: true, approve: true, reject: true, stage: null }
+    await mountAt('/bookings?id=12')
+
+    await click(panelButton('Cancel booking'))
+    const dialog = step()!
+    expect(dialog.getAttribute('role')).toBe('alertdialog')
+    expect(dialog.textContent).toContain('Budget review')
+    expect(dialog.textContent).toContain('NBC-26-48213')
+    expect(document.activeElement).toBe(dialog.querySelector('textarea'))
+
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await flushPromises()
+
+    expect(step()).toBeNull()
+    expect(panel()).not.toBeNull()
+    expect(calls.some((c) => c.startsWith('POST'))).toBe(false)
+  })
+
+  it('keeps the decisions in their own group in the foot', async () => {
+    actions = { cancel: true, approve: true, reject: true, stage: 'PITIKA' }
+    await mountAt('/bookings?id=12')
+
+    const decide = [...panel()!.querySelectorAll('.panel-foot .decide button')].map((b) => b.textContent?.trim())
+    expect(decide).toEqual(['Cancel booking', 'Reject', 'Approve'])
+  })
+
   it('names who acted in the history', async () => {
     current = detail({
       status: 'CANCELLED',
@@ -346,8 +396,7 @@ describe('BookingPanel Admin actions', () => {
     })
     await mountAt('/bookings?id=12')
 
-    const history = panel()!.querySelector('#tabpanel-history')!.textContent
-    expect(history).toContain('Chan Admin (Admin, for Pitika)')
-    expect(history).toContain('Cancelled by Chan Admin')
+    expect(historyRow('Approved')).toMatchObject({ who: 'Chan Admin', role: 'Admin', admin: true, forRole: 'Pitika' })
+    expect(historyRow('Cancelled')).toMatchObject({ who: 'Chan Admin', role: 'Admin', admin: true, note: 'Room closed.' })
   })
 })

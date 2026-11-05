@@ -5,10 +5,10 @@ NOT for production. Run it by hand on a dev database, after `python -m scripts.s
 
     python -m scripts.seed_bookings_demo
 
-It needs one active office with a floor and a division (any). Demo users sign in with the
-password DEMO_PASSWORD. Safe to run many times: users, rooms and catalog rows are matched by
-email or name and only added when missing; the bookings are added only when no demo user has
-one yet. Rows are written directly (no booking rules run), like the test factories.
+It needs one active floor in an active building and office, and a division (any). Demo users
+sign in with the password DEMO_PASSWORD. Safe to run many times: users, rooms and catalog rows
+are matched by email or name and only added when missing; the bookings are added only when no
+demo user has one yet. Rows are written directly (no booking rules run), like the test factories.
 """
 
 import sys
@@ -37,6 +37,7 @@ from app.models import (
     BookingRejection,
     BookingReview,
     BookingSession,
+    Building,
     Category,
     CateringOrder,
     CateringPackage,
@@ -44,6 +45,7 @@ from app.models import (
     Floor,
     ITService,
     ITTicket,
+    Location,
     Position,
     PublicHoliday,
     Role,
@@ -464,14 +466,21 @@ def _bookings(
 
 def seed_bookings_demo(session: Session) -> None:
     division = session.scalars(select(Division).where(Division.is_active)).first()
-    floor = session.scalars(select(Floor).where(Floor.is_active)).first()
+    # A room is bookable only when its floor, building and office are all active (R12).
+    floor = session.scalars(
+        select(Floor)
+        .join(Floor.building)
+        .join(Building.location)
+        .where(Floor.is_active, Building.is_active, Location.is_active)
+        .order_by(Floor.id)
+    ).first()
     category = session.scalars(select(Category).where(Category.is_active)).first()
     position = session.scalars(select(Position).where(Position.is_active)).first()
     missing = [
         n
         for n, v in [
             ("division", division),
-            ("floor", floor),
+            ("floor (in an active building and office)", floor),
             ("room type", category),
             ("position", position),
         ]

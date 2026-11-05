@@ -152,20 +152,72 @@ for (const width of [1366, 390]) {
   })
 }
 
-for (const width of [1366, 390]) {
-  test(`the Admin action buttons and confirm step fit at ${width}px`, async ({ page }) => {
+for (const width of [1366, 900, 390]) {
+  test(`the Admin action buttons stay inside the panel and the confirm pops up at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/bookings?id=100')
     const panel = page.getByRole('dialog')
-    for (const name of ['Cancel booking', 'Reject', 'Approve']) {
-      await expect(panel.locator('.panel-foot').getByRole('button', { name })).toBeVisible()
+    await expect(panel).toContainText('NBC0042')
+    // Measure after the panel has slid in.
+    await panel.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
+    const box = (await panel.boundingBox())!
+    // Buttons pushed out to the left add no page scroll, so check each one against the panel.
+    for (const name of ['Close', 'Calendar file', 'Cancel booking', 'Reject', 'Approve']) {
+      const button = panel.locator('.panel-foot').getByRole('button', { name, exact: true })
+      await expect(button).toBeVisible()
+      const b = (await button.boundingBox())!
+      expect(b.x).toBeGreaterThanOrEqual(box.x)
+      expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width)
     }
 
     await panel.locator('.panel-foot').getByRole('button', { name: 'Cancel booking' }).click()
-    await expect(panel.locator('.action-step')).toBeVisible()
-    await expect(panel.locator('.action-step textarea')).toBeVisible()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog).toContainText('Cancel this booking?')
+    await expect(dialog).toContainText('NBC-26-10000')
+    await expect(dialog.locator('textarea')).toBeFocused()
+    const d = (await dialog.boundingBox())!
+    expect(d.x).toBeGreaterThanOrEqual(0)
+    expect(d.x + d.width).toBeLessThanOrEqual(width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0)
 
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(panel).toBeVisible()
+
+    await panel.locator('.panel-foot').getByRole('button', { name: 'Approve' }).click()
+    await expect(page.getByRole('alertdialog')).toContainText('You act for the room owner.')
+  })
+}
+
+for (const width of [1366, 390]) {
+  test(`the History tab fits at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    // A private room the Admin approved for the owner, then cancelled.
+    const detail = {
+      ...DETAIL,
+      route: 'R2',
+      has_it: false,
+      status: 'CANCELLED',
+      display_status: 'CANCELLED',
+      reviews: [
+        { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 9, name_en: 'Chan Sophea' }, notes: 'Looks fine.', reviewed_at: '2026-11-04T01:36:00Z', by_admin: false },
+        { stage: 'OWNER', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Mann Chealy' }, notes: null, reviewed_at: '2026-11-05T00:49:00Z', by_admin: true },
+      ],
+      cancelled_at: '2026-11-05T00:49:00Z',
+      cancel_reason: null,
+      cancelled_by: { id: 3, name_en: 'Mann Chealy' },
+    }
+    await signedIn(page, '/bookings?id=100')
+    // Added after signedIn's catch-all, so this answer wins; reload to use it.
+    await page.route('**/api/v1/bookings/100', (route) => route.fulfill({ json: detail }))
+    await page.reload()
+    const panel = page.getByRole('dialog')
+    await panel.getByRole('tab', { name: 'History' }).click()
+
+    await expect(panel.locator('.steps li')).toHaveCount(5)
+    await expect(panel.locator('.timeline li')).toHaveCount(5)
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0)
+    await panel.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
   })
 }
