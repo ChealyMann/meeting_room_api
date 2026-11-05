@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from app.constants.booking import ReviewDecision
 from app.routers.common import AppSettings, DbSession, IdPath, IdQuery, PageParams, SearchQuery
 from app.schemas.booking import BookingDetail, BookingListItem
-from app.schemas.booking_review import ApproveBody, DecidedBookingItem, RejectBody
+from app.schemas.booking_review import ApproveBody, DecidedBookingItem, PitikaSummary, RejectBody
 from app.schemas.common import Page
 from app.security import PitikaUser
 from app.services import booking_review, booking_view
@@ -73,6 +73,14 @@ def list_decided_bookings(
     )
     items = booking_view.build_decided_items(result["items"], current.id)
     return Page[DecidedBookingItem](**{**result, "items": items})
+
+
+@router.get("/summary", response_model=PitikaSummary, summary="See my day in numbers")
+def pitika_summary(current: PitikaUser, session: DbSession) -> PitikaSummary:
+    """`waiting`: bookings in your province waiting for Pitika now. `approved_today` and
+    `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted).
+    With no province, all are 0."""
+    return PitikaSummary(**booking_review.pitika_summary(session, current))
 
 
 @router.post("/{booking_id}/approve", response_model=BookingDetail, summary="Approve a booking")

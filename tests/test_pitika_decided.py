@@ -224,3 +224,77 @@ def test_query_count_does_not_grow(
     many = statements()
     assert (few[1], many[1]) == (1, 5)
     assert many[0] == few[0]
+
+
+# --- Summary -----------------------------------------------------------------------------
+
+SUMMARY = f"{LIST}/summary"
+
+
+def summary(client, headers):
+    response = client.get(SUMMARY, headers=headers)
+    assert response.status_code == 200, response.json()
+    return response.json()
+
+
+def test_summary_counts_today(
+    client, frozen, freeze_now, pitika, pending, make_bookable_room, auth_headers
+):
+    headers = auth_headers(pitika)
+    waiting = [pending() for _ in range(6)]
+    pending(make_bookable_room(province="SIEM_REAP"))
+    freeze_now(NOW - timedelta(days=1))
+    approve(client, headers, waiting[0])
+    freeze_now(NOW)
+    approve(client, headers, waiting[1])
+    approve(client, headers, waiting[2])
+    reject(client, headers, waiting[3])
+    assert summary(client, headers) == {"waiting": 2, "approved_today": 2, "rejected_today": 1}
+
+
+def test_summary_day_is_phnom_penh(client, frozen, freeze_now, pitika, pending, auth_headers):
+    headers = auth_headers(pitika)
+    late, early = pending(), pending()
+    freeze_now(datetime(2026, 11, 9, 23, 50))  # 16:50 UTC, still the 9th in Phnom Penh
+    approve(client, headers, late)
+    freeze_now(datetime(2026, 11, 10, 0, 30))  # 17:30 UTC on the 9th, but the 10th here
+    assert summary(client, headers)["approved_today"] == 0
+    approve(client, headers, early)
+    assert summary(client, headers)["approved_today"] == 1
+
+
+def test_summary_skips_admin_backup_and_other_pitika(
+    client, frozen, db_session, pitika, pending, make_pitika, auth_headers
+):
+    approve(client, auth_headers(make_pitika(province="PHNOM_PENH")), pending())
+    backup = pending(status=BookingStatus.CONFIRMED)
+    db_session.add(
+        BookingReview(
+            booking_id=backup.id,
+            stage=ReviewStage.PITIKA,
+            decision=ReviewDecision.APPROVED,
+            reviewer_id=pitika.id,
+            reviewed_at=datetime(2026, 11, 9, 1, 0),
+            by_admin=True,
+        )
+    )
+    db_session.commit()
+    assert summary(client, auth_headers(pitika)) == {
+        "waiting": 0,
+        "approved_today": 0,
+        "rejected_today": 0,
+    }
+
+
+def test_summary_without_province_is_zero(client, frozen, make_user, pending, auth_headers):
+    pending()
+    nobody = make_user(roles=["PITIKA"])
+    assert summary(client, auth_headers(nobody)) == {
+        "waiting": 0,
+        "approved_today": 0,
+        "rejected_today": 0,
+    }
+
+
+def test_summary_forbidden_for_staff(client, frozen, as_staff):
+    assert client.get(SUMMARY, headers=as_staff).status_code == 403

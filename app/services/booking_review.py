@@ -2,9 +2,9 @@
 (spec 9.13: T7, T8, T9): list, approve and reject. Also the Admin's read-only list of
 every booking (B-32), which shares the list query."""
 
-from datetime import date
+from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import Select, and_, exists, select
+from sqlalchemy import Select, and_, exists, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.constants.booking import (
@@ -20,7 +20,7 @@ from app.security import CurrentUser
 from app.services import booking_access
 from app.services import booking_transitions as transitions
 from app.services.booking_view import booking_load_options
-from app.services.clock import now_utc
+from app.services.clock import local_to_utc, now_local, now_utc
 from app.services.listing import apply_search, paginate
 from app.services.province import check_province_code
 from app.services.records import not_found
@@ -206,6 +206,35 @@ def list_pitika_decided(
     query = _apply_list_filters(query, date_from, date_to, room_id, q)
     query = query.order_by(BookingReview.reviewed_at.desc(), Booking.id.desc())
     return paginate(session, query, page, size)
+
+
+def pitika_summary(session: Session, current: CurrentUser) -> dict[str, int]:
+    """Waiting bookings in the Pitika's province now, and their own approvals and rejections
+    today (the Phnom Penh day; Admin backups not counted). No province: all 0."""
+    province = booking_access.pitika_province(current)
+    rooms = booking_access.room_ids_in_province(province)
+    waiting = session.scalar(
+        select(func.count(Booking.id)).where(
+            Booking.room_id.in_(rooms), Booking.status == BookingStatus.PENDING_PITIKA
+        )
+    )
+    start = local_to_utc(datetime.combine(now_local().date(), time()))
+    rows = session.execute(
+        select(BookingReview.decision, func.count(BookingReview.id))
+        .join(Booking, _my_pitika_review(current))
+        .where(
+            Booking.room_id.in_(rooms),
+            BookingReview.reviewed_at >= start,
+            BookingReview.reviewed_at < start + timedelta(days=1),
+        )
+        .group_by(BookingReview.decision)
+    ).all()
+    counts = dict(rows)
+    return {
+        "waiting": waiting or 0,
+        "approved_today": counts.get(ReviewDecision.APPROVED, 0),
+        "rejected_today": counts.get(ReviewDecision.REJECTED, 0),
+    }
 
 
 def _load_in_province(session: Session, current: CurrentUser, booking_id: int) -> Booking:
