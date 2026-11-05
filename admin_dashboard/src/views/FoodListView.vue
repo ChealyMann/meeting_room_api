@@ -11,6 +11,7 @@ import { getFoodList } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import type { CateringOrderItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
+import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
@@ -72,15 +73,9 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
         Next day
         <ChevronRight aria-hidden="true" />
       </BaseButton>
-      <label class="pick">
-        <span class="sr-only">Day</span>
-        <input
-          class="input mono"
-          type="date"
-          :value="day"
-          @change="DAY.test(($event.target as HTMLInputElement).value) && go(($event.target as HTMLInputElement).value)"
-        />
-      </label>
+      <div class="pick">
+        <DatePicker id="food-day" label="Day" :model-value="day" @update:model-value="$event && go($event)" />
+      </div>
     </div>
 
     <div class="sheet">
@@ -145,8 +140,8 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
 .pick {
   margin-left: auto;
 }
-.pick .input {
-  width: 160px;
+.pick .date-picker {
+  width: 172px;
 }
 td .kh,
 td .en,

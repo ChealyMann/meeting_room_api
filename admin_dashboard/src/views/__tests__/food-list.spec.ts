@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
+import { pickDate } from '../../test-utils/datePicker'
 import FoodListView from '../FoodListView.vue'
 
 enableAutoUnmount(afterEach)
@@ -97,6 +98,15 @@ describe('FoodListView', () => {
 
     expect(router.currentRoute.value.query).toEqual({ date: '2026-11-05' })
     expect(calls[calls.length - 1]).toBe('?date=2026-11-05')
+  })
+
+  it('jumps to a day picked in the date picker', async () => {
+    const { router } = await mountAt('/food-list')
+
+    await pickDate('food-day', '2026-11-20')
+
+    expect(router.currentRoute.value.query).toEqual({ date: '2026-11-20' })
+    expect(calls[calls.length - 1]).toBe('?date=2026-11-20')
   })
 
   it('shows each order', async () => {
