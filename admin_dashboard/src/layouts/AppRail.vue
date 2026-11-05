@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
+import { useWaitingCounts } from '../composables/useWaitingCounts'
 import { NAV_ICONS as ICONS, navFor, roleTitle, type NavGroup } from './nav'
 
 const props = defineProps<{ open: boolean; compact: boolean }>()
@@ -24,6 +25,8 @@ const groups = computed(() => navFor(session.roleCodes))
 const setupAt = computed(() => groups.value.findIndex((group) => group.foldable))
 /** The rail's subtitle: the dashboard role the user works as. */
 const roleName = computed(() => roleTitle(session.roleCodes))
+/** Bookings waiting for me, by route name (To review items). */
+const waiting = useWaitingCounts()
 const opened = ref<Record<string, boolean>>({})
 const isOpen = (group: NavGroup) => !!opened.value[group.title ?? '']
 function toggle(group: NavGroup) {
@@ -157,6 +160,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             >
               <component :is="ICONS[item.icon]" aria-hidden="true" />
               <span class="label">{{ item.label }}</span>
+              <span v-if="waiting[item.route]" class="wait mono" :aria-label="`${waiting[item.route]} waiting`">
+                {{ waiting[item.route] }}
+              </span>
             </a>
           </RouterLink>
           <a v-else role="link" aria-disabled="true" title="Coming soon">
@@ -616,5 +622,30 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     transform: translateX(-24px);
     opacity: 0;
   }
+}
+/* Bookings waiting for me (To review items): a small crimson count after the label; on the
+   folded rail, a dot on the icon. */
+.wait {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--color-crimson);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+.compact .wait {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
 }
 </style>

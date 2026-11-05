@@ -23,6 +23,7 @@ import ProcessBar from '../components/ProcessBar.vue'
 import RoomPhoto from '../components/RoomPhoto.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
+import { REVIEW_DECIDED_EVENT } from '../composables/useWaitingCounts'
 import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
 import { useSessionStore } from '../stores/session'
@@ -190,6 +191,7 @@ async function decide() {
     toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
     asking.value = null
     if (panel.id.value === booking.id) panel.close()
+    window.dispatchEvent(new Event(REVIEW_DECIDED_EVENT)) // the menu's waiting count
     await Promise.all([load(), loadSummary()])
   } catch (err) {
     if (err instanceof ApiError) {

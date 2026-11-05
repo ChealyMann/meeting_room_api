@@ -6,7 +6,13 @@ import { CircleAlert, Ellipsis, LoaderCircle, Monitor, Utensils } from 'lucide-v
 import { computed, ref } from 'vue'
 
 import { api } from '../api'
-import { getBooking, listBookingPage, listPitikaBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
+import {
+  getBooking,
+  listBookingPage,
+  listOwnerBookingPage,
+  listPitikaBookingPage,
+  type BookingFilters as BookingFilterParams,
+} from '../api/bookings'
 import type { BookingDetail, BookingListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
@@ -22,11 +28,14 @@ import BookingFilters from './bookings/BookingFilters.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
 import { BOOKING_FILTERS } from './bookings/bookingFilters'
 
-// A Pitika (not also Admin) sees the bookings of their province, read only.
-const pitikaOnly = useSessionStore().pitikaOnly
+// The Admin sees every booking; a Pitika (not also Admin) those of their province; a room owner
+// (neither) those of the private rooms they own. Only the Admin has actions.
+const source = useSessionStore().bookingsSource
+const isAdminList = source === 'admin'
+const LISTS = { admin: listBookingPage, pitika: listPitikaBookingPage, owner: listOwnerBookingPage }
 const { list, result, loading, error, errorFields, filtered, load, refresh } = useResourceList<BookingListItem>(
   BOOKING_FILTERS,
-  (params) => (pitikaOnly ? listPitikaBookingPage : listBookingPage)(api, params as BookingFilterParams),
+  (params) => LISTS[source](api, params as BookingFilterParams),
   { activeFilter: false },
 )
 const panel = usePanelParam()
@@ -58,7 +67,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       <span v-if="result" class="mono count">{{ count }}</span>
     </div>
 
-    <BookingFilters :province-filter="!pitikaOnly" @summary="words = $event" />
+    <BookingFilters :province-filter="isAdminList" :rooms-of="source === 'owner' ? 'owned' : 'all'" @summary="words = $event" />
 
     <div v-if="openError" class="summary open-error" role="alert">
       <CircleAlert aria-hidden="true" />
@@ -154,7 +163,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       v-if="openBooking"
       :key="`booking-${openBooking.id}`"
       :booking="openBooking"
-      :admin-actions="!pitikaOnly"
+      :admin-actions="isAdminList"
       @close="panel.close"
       @changed="onChanged"
     />
