@@ -34,6 +34,7 @@ const REJECTED = [{ ...decided(41, '2026-11-05T03:12:00Z', { display_status: 'RE
 
 const calls: string[] = []
 let answer: { items: unknown[]; total: number }
+let slow: Record<number, Promise<void>> = {}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -46,6 +47,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   calls.length = 0
   answer = { items: APPROVED, total: APPROVED.length }
+  slow = {}
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
@@ -54,6 +56,7 @@ beforeEach(() => {
       if (url.pathname === '/api/v1/pitika/bookings/decided') return json({ ...answer, page: 1, size: 20 })
       const one = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
       if (one) {
+        await slow[Number(one[1])]
         const base = [...APPROVED, ...REJECTED].find((b) => b.id === Number(one[1]))!
         return json({
           ...base,
@@ -179,6 +182,23 @@ describe('DecidedList', () => {
     expect(buttons).not.toContain('Approve')
     expect(buttons).not.toContain('Reject')
     expect(buttons).toContain('Close')
+  })
+
+  it('shows the booking opened last, even when an earlier one answers later', async () => {
+    let release!: () => void
+    slow[31] = new Promise<void>((done) => (release = done))
+    const { wrapper, router } = await mountList('APPROVED')
+
+    await card(wrapper, 31).trigger('click')
+    await flushPromises()
+    await card(wrapper, 32).trigger('click')
+    await flushPromises()
+    release()
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.id).toBe('32')
+    expect(panel()?.textContent).toContain('NBC-26-57305')
+    expect(panel()?.textContent).not.toContain('Board risk review')
   })
 
   it('pages after 20', async () => {

@@ -47,7 +47,8 @@ const { list, result, loading, error, load } = useResourceList<BookingListItem>(
       page: 1,
       size: 100,
     }),
-  { activeFilter: false },
+  // Not paged: turning a page on the Approved or Rejected tab does not reload this list.
+  { activeFilter: false, paged: false },
 )
 const f = computed(() => list.filters.value as Record<string, string | number | undefined>)
 const anyFilter = computed(() => Object.keys(list.filters.value).length > 0)

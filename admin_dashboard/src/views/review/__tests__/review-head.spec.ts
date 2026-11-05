@@ -43,6 +43,15 @@ describe('ReviewHead', () => {
     expect(wrapper.emitted('select')).toEqual([['approved'], ['rejected']])
   })
 
+  it('shows 0/0 in light colours when there is nothing today', () => {
+    const empty = mount(ReviewHead, { props: { summary: { waiting: 0, approved_today: 0, rejected_today: 0 }, tab: 'waiting' } })
+    const busy = mount(ReviewHead, { props: { summary: SUMMARY, tab: 'waiting' } })
+
+    expect(empty.get('.today-ring').text()).toBe('0/0')
+    expect(empty.get('.today-ring').classes()).toContain('empty')
+    expect(busy.get('.today-ring').classes()).not.toContain('empty')
+  })
+
   it('shows the tabs without numbers and no ring text before the summary loads', () => {
     const wrapper = mount(ReviewHead, { props: { summary: null, tab: 'waiting' } })
 
