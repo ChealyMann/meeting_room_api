@@ -22,7 +22,9 @@ export const useSessionStore = defineStore('session', () => {
   const ready = ref(false)
 
   const signedIn = computed(() => accessToken.value !== null && user.value !== null)
-  const isAdmin = computed(() => user.value?.roles.some((role) => role.code === 'ADMIN') ?? false)
+  /** The user's role codes (ADMIN, PITIKA, STAFF, …): routes and the menu follow them. */
+  const roleCodes = computed(() => user.value?.roles.map((role) => role.code) ?? [])
+  const isAdmin = computed(() => roleCodes.value.includes('ADMIN'))
   const mustChangePassword = computed(() => user.value?.must_change_password ?? false)
 
   function applyTokens(tokens: Tokens): void {
@@ -101,6 +103,7 @@ export const useSessionStore = defineStore('session', () => {
     user,
     ready,
     signedIn,
+    roleCodes,
     isAdmin,
     mustChangePassword,
     applyTokens,

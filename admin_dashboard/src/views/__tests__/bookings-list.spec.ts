@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
-import { NAV_GROUPS } from '../../layouts/nav'
+import { navFor } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { listItem } from '../../test-utils/bookings'
 import { clearDate, dateLabel, pickDate } from '../../test-utils/datePicker'
@@ -147,7 +147,7 @@ describe('BookingsView', () => {
   })
 
   it('is in the Daily group of the sidebar', () => {
-    const group = NAV_GROUPS.find((g) => g.title === 'Daily')
+    const group = navFor(['ADMIN']).find((g) => g.title === 'Daily')
     expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list', 'home'])
   })
 })
