@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
-import { NAV_GROUPS, NAV_ICONS as ICONS, type NavGroup } from './nav'
+import { NAV_ICONS as ICONS, navFor, type NavGroup } from './nav'
 
 const props = defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -19,7 +19,11 @@ const route = useRoute()
 
 // Setup groups fold; the one holding the current page opens by itself, the others keep what
 // the Admin chose. The folded (icon-only) rail shows every link, with no group headers.
-const SETUP_AT = NAV_GROUPS.findIndex((group) => group.foldable)
+// The menu follows the user's roles: an Admin gets the setup groups, a Pitika only Daily.
+const groups = computed(() => navFor(session.roleCodes))
+const setupAt = computed(() => groups.value.findIndex((group) => group.foldable))
+/** The rail's subtitle: the dashboard role the user works as. */
+const roleName = computed(() => (session.isAdmin ? 'Admin' : 'Pitika'))
 const opened = ref<Record<string, boolean>>({})
 const isOpen = (group: NavGroup) => !!opened.value[group.title ?? '']
 function toggle(group: NavGroup) {
@@ -28,7 +32,7 @@ function toggle(group: NavGroup) {
 watch(
   () => route.name,
   (name) => {
-    const holder = NAV_GROUPS.find((group) => group.foldable && group.items.some((item) => item.route === name))
+    const holder = groups.value.find((group) => group.foldable && group.items.some((item) => item.route === name))
     if (holder && !isOpen(holder)) toggle(holder)
   },
   { immediate: true },
@@ -39,7 +43,7 @@ watch(
 const holds = (group: NavGroup) => group.items.some((item) => item.route === route.name)
 // The open menu, by group title (a stored group object would come back wrapped by Vue).
 const menuTitle = ref<string | null>(null)
-const menuGroup = computed(() => NAV_GROUPS.find((group) => group.title === menuTitle.value) ?? null)
+const menuGroup = computed(() => groups.value.find((group) => group.title === menuTitle.value) ?? null)
 const menuAt = ref({ top: 0, left: 0, pointer: 0 })
 const menuEl = ref<HTMLElement | null>(null)
 function toggleMenu(group: NavGroup, event: MouseEvent) {
@@ -99,16 +103,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <aside class="rail" :class="{ open, compact }" aria-label="Main">
     <div class="brand">
       <img :src="LOGO" alt="National Bank of Cambodia" width="36" height="36" />
-      <div class="brand-text"><b>Meeting Rooms</b><span>Admin</span></div>
+      <div class="brand-text"><b>Meeting Rooms</b><span>{{ roleName }}</span></div>
       <button type="button" class="close" aria-label="Close menu" @click="emit('close')">
         <X aria-hidden="true" />
       </button>
     </div>
 
     <nav class="nav">
-      <template v-for="(group, index) in NAV_GROUPS" :key="group.title ?? 'top'">
-        <h2 v-if="index === SETUP_AT && !compact">Setup</h2>
-        <span v-if="index === SETUP_AT && compact" class="divider" aria-hidden="true" />
+      <template v-for="(group, index) in groups" :key="group.title ?? 'top'">
+        <h2 v-if="index === setupAt && !compact">Setup</h2>
+        <span v-if="index === setupAt && compact" class="divider" aria-hidden="true" />
         <h2 v-if="group.title && !group.foldable && !compact">{{ group.title }}</h2>
         <button
           v-if="group.foldable && compact"

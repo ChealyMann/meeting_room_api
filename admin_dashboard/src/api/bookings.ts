@@ -30,6 +30,21 @@ export function listBookingPage(client: ApiClient, f: BookingFilters): Promise<P
   return client.request<Page<BookingListItem>>('GET', '/api/v1/bookings' + toQuery({ ...f }))
 }
 
+/** The Pitika's list: bookings of rooms in their province (no province filter; empty with none). */
+export function listPitikaBookingPage(client: ApiClient, f: BookingFilters): Promise<Page<BookingListItem>> {
+  const { province: _province, ...rest } = f
+  return client.request<Page<BookingListItem>>('GET', '/api/v1/pitika/bookings' + toQuery({ ...rest }))
+}
+
+// The Pitika's decisions (T3 to T6): notes are optional; a reason is 5 to 1000 characters.
+const PITIKA = '/api/v1/pitika/bookings'
+export function pitikaApprove(client: ApiClient, id: number, body: { notes: string | null; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${PITIKA}/${id}/approve`, { json: body })
+}
+export function pitikaReject(client: ApiClient, id: number, body: { reason: string; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${PITIKA}/${id}/reject`, { json: body })
+}
+
 export function getBooking(client: ApiClient, id: number): Promise<BookingDetail> {
   return client.request<BookingDetail>('GET', `/api/v1/bookings/${id}`)
 }

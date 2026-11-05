@@ -9,6 +9,8 @@ declare module 'vue-router' {
     public?: boolean
     /** Shown in the top bar breadcrumb. */
     title?: string
+    /** The roles that may open the page; none means every dashboard role. */
+    roles?: string[]
   }
 }
 
@@ -42,99 +44,105 @@ const router = createRouter({
           path: '',
           name: 'home',
           component: () => import('../views/RoomsView.vue'),
-          meta: { title: 'Rooms' },
+          meta: { title: 'Rooms', roles: ['ADMIN'] },
+        },
+        {
+          path: 'review',
+          name: 'review',
+          component: () => import('../views/ReviewView.vue'),
+          meta: { title: 'To review', roles: ['PITIKA'] },
         },
         {
           path: 'bookings',
           name: 'bookings',
           component: () => import('../views/BookingsView.vue'),
-          meta: { title: 'Bookings' },
+          meta: { title: 'Bookings', roles: ['ADMIN', 'PITIKA'] },
         },
         {
           path: 'food-list',
           name: 'food-list',
           component: () => import('../views/FoodListView.vue'),
-          meta: { title: 'Food list' },
+          meta: { title: 'Food list', roles: ['ADMIN', 'PITIKA'] },
         },
         {
           path: 'offices',
           name: 'offices',
           component: () => import('../views/OfficesView.vue'),
-          meta: { title: 'Offices' },
+          meta: { title: 'Offices', roles: ['ADMIN'] },
         },
         {
           path: 'buildings',
           name: 'buildings',
           component: () => import('../views/BuildingsView.vue'),
-          meta: { title: 'Buildings' },
+          meta: { title: 'Buildings', roles: ['ADMIN'] },
         },
         {
           path: 'floors',
           name: 'floors',
           component: () => import('../views/FloorsView.vue'),
-          meta: { title: 'Floors' },
+          meta: { title: 'Floors', roles: ['ADMIN'] },
         },
         {
           path: 'room-types',
           name: 'room-types',
           component: () => import('../views/RoomTypesView.vue'),
-          meta: { title: 'Room types' },
+          meta: { title: 'Room types', roles: ['ADMIN'] },
         },
         {
           path: 'equipment',
           name: 'equipment',
           component: () => import('../views/EquipmentView.vue'),
-          meta: { title: 'Equipment' },
+          meta: { title: 'Equipment', roles: ['ADMIN'] },
         },
         {
           path: 'public-holidays',
           name: 'public-holidays',
           component: () => import('../views/HolidaysView.vue'),
-          meta: { title: 'Public holidays' },
+          meta: { title: 'Public holidays', roles: ['ADMIN'] },
         },
         {
           path: 'catering-packages',
           name: 'catering-packages',
           component: () => import('../views/ServiceCatalogView.vue'),
           props: { kind: 'catering' },
-          meta: { title: 'Catering packages' },
+          meta: { title: 'Catering packages', roles: ['ADMIN'] },
         },
         {
           path: 'it-services',
           name: 'it-services',
           component: () => import('../views/ServiceCatalogView.vue'),
           props: { kind: 'it' },
-          meta: { title: 'IT services' },
+          meta: { title: 'IT services', roles: ['ADMIN'] },
         },
         {
           path: 'departments',
           name: 'departments',
           component: () => import('../views/DepartmentsView.vue'),
-          meta: { title: 'Departments' },
+          meta: { title: 'Departments', roles: ['ADMIN'] },
         },
         {
           path: 'divisions',
           name: 'divisions',
           component: () => import('../views/DivisionsView.vue'),
-          meta: { title: 'Divisions' },
+          meta: { title: 'Divisions', roles: ['ADMIN'] },
         },
         {
           path: 'positions',
           name: 'positions',
           component: () => import('../views/PositionsView.vue'),
-          meta: { title: 'Positions' },
+          meta: { title: 'Positions', roles: ['ADMIN'] },
         },
         {
           path: 'users',
           name: 'users',
           component: () => import('../views/UsersView.vue'),
-          meta: { title: 'Users' },
+          meta: { title: 'Users', roles: ['ADMIN'] },
         },
         {
           path: 'roles',
           name: 'roles',
           component: () => import('../views/RolesView.vue'),
-          meta: { title: 'Roles' },
+          meta: { title: 'Roles', roles: ['ADMIN'] },
         },
         {
           path: 'profile',
@@ -165,7 +173,10 @@ router.beforeEach(async (to) => {
     })
   }
   await restoring
-  return resolveNavigation({ name: String(to.name ?? ''), fullPath: to.fullPath, meta: to.meta }, session)
+  return resolveNavigation(
+    { name: String(to.name ?? ''), fullPath: to.fullPath, meta: to.meta },
+    { signedIn: session.signedIn, mustChangePassword: session.mustChangePassword, roles: session.roleCodes },
+  )
 })
 
 export default router

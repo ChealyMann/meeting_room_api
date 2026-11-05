@@ -18,6 +18,7 @@ import { formatDay } from '../../utils/time'
 import { BOOKING_FILTERS } from './bookingFilters'
 
 /** Words for the active filters, for the "nothing matches" sentence. */
+const props = withDefaults(defineProps<{ provinceFilter?: boolean }>(), { provinceFilter: true })
 const emit = defineEmits<{ summary: [parts: string[]] }>()
 
 const list = useListQuery(BOOKING_FILTERS, { activeFilter: false })
@@ -78,6 +79,7 @@ watchEffect(() => {
       @update:model-value="list.set({ status: $event })"
     />
     <SearchPicker
+      v-if="props.provinceFilter"
       id="filter-province"
       class="narrow"
       :items="provinceItems"
@@ -88,6 +90,7 @@ watchEffect(() => {
     <SearchPicker
       id="filter-room"
       class="narrow"
+      searchable
       :items="roomItems"
       :words="FILTER_WORDS.room"
       :model-value="(f.room_id as number | undefined) ?? null"

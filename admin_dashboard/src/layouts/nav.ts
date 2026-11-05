@@ -5,6 +5,7 @@ import {
   CalendarDays,
   DoorOpen,
   GitFork,
+  Inbox,
   Landmark,
   MonitorCog,
   Layers,
@@ -24,6 +25,8 @@ export interface NavItem {
   icon: string
   /** Route name; items without one are not built yet. */
   route?: string
+  /** The roles that see the item; none means the Admin only. */
+  roles?: string[]
 }
 
 export interface NavGroup {
@@ -39,8 +42,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Daily',
     items: [
-      { label: 'Bookings', icon: 'calendar-check', route: 'bookings' },
-      { label: 'Food list', icon: 'utensils-crossed', route: 'food-list' },
+      { label: 'To review', icon: 'inbox', route: 'review', roles: ['PITIKA'] },
+      { label: 'Bookings', icon: 'calendar-check', route: 'bookings', roles: ['ADMIN', 'PITIKA'] },
+      { label: 'Food list', icon: 'utensils-crossed', route: 'food-list', roles: ['ADMIN', 'PITIKA'] },
       { label: 'Rooms', icon: 'door-open', route: 'home' },
     ],
   },
@@ -102,9 +106,16 @@ export const NAV_ICONS: Record<string, Component> = {
   'calendar-days': CalendarDays,
   network: Network,
   'git-fork': GitFork,
+  inbox: Inbox,
   briefcase: Briefcase,
   users: Users,
   'shield-check': ShieldCheck,
+}
+
+/** The menu for these role codes: items the roles may see, and groups that keep any. */
+export function navFor(roles: string[]): NavGroup[] {
+  const sees = (item: NavItem) => (item.roles ?? ['ADMIN']).some((role) => roles.includes(role))
+  return NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(sees) })).filter((group) => group.items.length > 0)
 }
 
 /** The menu icon of the page with this route name, if the menu has it. */

@@ -6,7 +6,7 @@ import { CircleAlert, Ellipsis, LoaderCircle, Monitor, Utensils } from 'lucide-v
 import { computed, ref } from 'vue'
 
 import { api } from '../api'
-import { getBooking, listBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
+import { getBooking, listBookingPage, listPitikaBookingPage, type BookingFilters as BookingFilterParams } from '../api/bookings'
 import type { BookingDetail, BookingListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
@@ -15,15 +15,18 @@ import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
+import { useSessionStore } from '../stores/session'
 import { MEETING_TYPE_LABELS, statusLabel } from '../utils/bookingLabels'
 import { formatDay } from '../utils/time'
 import BookingFilters from './bookings/BookingFilters.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
 import { BOOKING_FILTERS } from './bookings/bookingFilters'
 
+// A Pitika (not also Admin) sees the bookings of their province, read only.
+const pitikaOnly = useSessionStore().pitikaOnly
 const { list, result, loading, error, errorFields, filtered, load, refresh } = useResourceList<BookingListItem>(
   BOOKING_FILTERS,
-  (params) => listBookingPage(api, params as BookingFilterParams),
+  (params) => (pitikaOnly ? listPitikaBookingPage : listBookingPage)(api, params as BookingFilterParams),
   { activeFilter: false },
 )
 const panel = usePanelParam()
@@ -55,7 +58,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       <span v-if="result" class="mono count">{{ count }}</span>
     </div>
 
-    <BookingFilters @summary="words = $event" />
+    <BookingFilters :province-filter="!pitikaOnly" @summary="words = $event" />
 
     <div v-if="openError" class="summary open-error" role="alert">
       <CircleAlert aria-hidden="true" />
@@ -151,6 +154,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       v-if="openBooking"
       :key="`booking-${openBooking.id}`"
       :booking="openBooking"
+      :admin-actions="!pitikaOnly"
       @close="panel.close"
       @changed="onChanged"
     />

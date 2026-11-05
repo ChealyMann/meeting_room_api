@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
-import { NAV_GROUPS } from '../../layouts/nav'
+import { navFor } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { listItem } from '../../test-utils/bookings'
 import { clearDate, dateLabel, pickDate } from '../../test-utils/datePicker'
@@ -28,8 +28,8 @@ beforeEach(() => {
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
-      if (url.pathname === '/api/v1/bookings') {
-        listCalls.push(url.search)
+      if (url.pathname === '/api/v1/bookings' || url.pathname === '/api/v1/pitika/bookings') {
+        listCalls.push(url.pathname === '/api/v1/bookings' ? url.search : `pitika${url.search}`)
         return listAnswer()
       }
       if (url.pathname.startsWith('/api/v1/bookings/')) return json({ error: { code: 'NOT_FOUND', message: 'Not found.', fields: {} } }, 404)
@@ -137,6 +137,16 @@ describe('BookingsView', () => {
     expect(router.currentRoute.value.query).toEqual({ to: '2026-11-12' })
   })
 
+  it('lets you search the rooms, however few there are', async () => {
+    await mountAt('/bookings')
+    const searchBoxes = () => document.querySelectorAll('input[type="search"]').length
+    const before = searchBoxes()
+    document.querySelector<HTMLButtonElement>('#filter-room')!.click()
+    await flushPromises()
+
+    expect(searchBoxes()).toBe(before + 1)
+  })
+
   it('opens a booking through the address', async () => {
     const { wrapper, router } = await mountAt('/bookings')
 
@@ -146,8 +156,25 @@ describe('BookingsView', () => {
     expect(router.currentRoute.value.query.id).toBe('12')
   })
 
+  it('lists the Pitika province for a Pitika, with no province filter', async () => {
+    useSessionStore().user = { roles: [{ code: 'PITIKA' }, { code: 'STAFF' }] } as never
+    await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['pitika?page=1&size=20'])
+    expect(document.querySelector('#filter-province')).toBeNull()
+    expect(document.querySelector('#filter-status')).not.toBeNull()
+  })
+
+  it('keeps the Admin list for an Admin who is also Pitika', async () => {
+    useSessionStore().user = { roles: [{ code: 'ADMIN' }, { code: 'PITIKA' }] } as never
+    await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['?page=1&size=20'])
+    expect(document.querySelector('#filter-province')).not.toBeNull()
+  })
+
   it('is in the Daily group of the sidebar', () => {
-    const group = NAV_GROUPS.find((g) => g.title === 'Daily')
+    const group = navFor(['ADMIN']).find((g) => g.title === 'Daily')
     expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list', 'home'])
   })
 })

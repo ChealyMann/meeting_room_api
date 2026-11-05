@@ -1,31 +1,30 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveNavigation, type Nav } from '../guard'
+import { homeFor, resolveNavigation, type Nav } from '../guard'
 
-const nav = (name: string, fullPath: string, isPublic = false): Nav => ({
-  name,
-  fullPath,
-  meta: isPublic ? { public: true } : {},
-})
+const nav = (name: string, fullPath: string, meta: Nav['meta'] = {}): Nav => ({ name, fullPath, meta })
 
-const HOME = nav('home', '/')
+const ADMIN_ONLY = ['ADMIN']
+const HOME = nav('home', '/', { roles: ADMIN_ONLY })
+const OFFICES = nav('offices', '/offices', { roles: ADMIN_ONLY })
+const BOOKINGS = nav('bookings', '/bookings', { roles: ['ADMIN', 'PITIKA'] })
+const REVIEW = nav('review', '/review', { roles: ['PITIKA'] })
 const PROFILE = nav('profile', '/profile')
-const SIGN_IN = nav('sign-in', '/sign-in', true)
+const SIGN_IN = nav('sign-in', '/sign-in', { public: true })
 const CHANGE = nav('change-password', '/change-password')
 const NO_ACCESS = nav('no-access', '/no-access')
 
-const signedOut = { signedIn: false, mustChangePassword: false, isAdmin: false }
-const mustChange = { signedIn: true, mustChangePassword: true, isAdmin: true }
-const staff = { signedIn: true, mustChangePassword: false, isAdmin: false }
-const admin = { signedIn: true, mustChangePassword: false, isAdmin: true }
+const signedOut = { signedIn: false, mustChangePassword: false, roles: [] }
+const mustChange = { signedIn: true, mustChangePassword: true, roles: ['ADMIN'] }
+const staff = { signedIn: true, mustChangePassword: false, roles: ['STAFF'] }
+const admin = { signedIn: true, mustChangePassword: false, roles: ['ADMIN'] }
+const pitika = { signedIn: true, mustChangePassword: false, roles: ['PITIKA', 'STAFF'] }
+const both = { signedIn: true, mustChangePassword: false, roles: ['ADMIN', 'PITIKA'] }
 
 describe('resolveNavigation', () => {
   it('sends a signed-out user to sign-in and remembers the page', () => {
     expect(resolveNavigation(HOME, signedOut)).toEqual({ name: 'sign-in', query: { redirect: '/' } })
-    expect(resolveNavigation(PROFILE, signedOut)).toEqual({
-      name: 'sign-in',
-      query: { redirect: '/profile' },
-    })
+    expect(resolveNavigation(PROFILE, signedOut)).toEqual({ name: 'sign-in', query: { redirect: '/profile' } })
   })
 
   it('lets a signed-out user open public pages', () => {
@@ -39,13 +38,11 @@ describe('resolveNavigation', () => {
     expect(resolveNavigation(CHANGE, mustChange)).toBe(true)
   })
 
-  it('checks the password before the Admin role', () => {
-    expect(resolveNavigation(HOME, { ...mustChange, isAdmin: false })).toEqual({
-      name: 'change-password',
-    })
+  it('checks the password before the roles', () => {
+    expect(resolveNavigation(HOME, { ...mustChange, roles: ['STAFF'] })).toEqual({ name: 'change-password' })
   })
 
-  it('sends a user without the Admin role to no-access', () => {
+  it('sends a user with no dashboard role to no-access', () => {
     expect(resolveNavigation(HOME, staff)).toEqual({ name: 'no-access' })
     expect(resolveNavigation(SIGN_IN, staff)).toEqual({ name: 'no-access' })
     expect(resolveNavigation(NO_ACCESS, staff)).toBe(true)
@@ -56,9 +53,35 @@ describe('resolveNavigation', () => {
     expect(resolveNavigation(NO_ACCESS, admin)).toEqual({ name: 'home' })
   })
 
-  it('lets an admin open app pages', () => {
+  it('lets an admin open the Admin pages, but not the Pitika queue', () => {
     expect(resolveNavigation(PROFILE, admin)).toBe(true)
     expect(resolveNavigation(HOME, admin)).toBe(true)
     expect(resolveNavigation(CHANGE, admin)).toBe(true)
+    expect(resolveNavigation(REVIEW, admin)).toEqual({ name: 'home' })
+  })
+
+  it('lets a Pitika open their pages and sends them home from Admin pages', () => {
+    expect(resolveNavigation(REVIEW, pitika)).toBe(true)
+    expect(resolveNavigation(BOOKINGS, pitika)).toBe(true)
+    expect(resolveNavigation(PROFILE, pitika)).toBe(true)
+    expect(resolveNavigation(OFFICES, pitika)).toEqual({ name: 'review' })
+    expect(resolveNavigation(HOME, pitika)).toEqual({ name: 'review' })
+    expect(resolveNavigation(SIGN_IN, pitika)).toEqual({ name: 'review' })
+    expect(resolveNavigation(NO_ACCESS, pitika)).toEqual({ name: 'review' })
+  })
+
+  it('opens both sets of pages for an Admin who is also Pitika, home staying Rooms', () => {
+    expect(resolveNavigation(HOME, both)).toBe(true)
+    expect(resolveNavigation(REVIEW, both)).toBe(true)
+    expect(resolveNavigation(SIGN_IN, both)).toEqual({ name: 'home' })
+  })
+})
+
+describe('homeFor', () => {
+  it('is Rooms for an Admin, To review for a Pitika, and no-access otherwise', () => {
+    expect(homeFor(['ADMIN'])).toBe('home')
+    expect(homeFor(['PITIKA'])).toBe('review')
+    expect(homeFor(['PITIKA', 'ADMIN'])).toBe('home')
+    expect(homeFor(['STAFF'])).toBe('no-access')
   })
 })
