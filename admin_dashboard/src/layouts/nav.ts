@@ -130,8 +130,19 @@ export function roleTitle(roles: string[]): string {
   return ''
 }
 
+/** The menu item of this route for these roles (with "My rooms" applied), or null. */
+function itemFor(route: unknown, roles: string[]): NavItem | null {
+  const all = roles.length ? navFor(roles) : NAV_GROUPS
+  return all.flatMap((group) => group.items).find((i) => i.route === route) ?? null
+}
+
+/** The page's name as the menu shows it ("My rooms"), or null for a page outside the menu. */
+export function pageLabel(route: unknown, roles: string[]): string | null {
+  return itemFor(route, roles)?.label ?? null
+}
+
 /** The menu icon of the page with this route name, if the menu has it. */
-export function navIcon(route: unknown): Component | undefined {
-  const item = NAV_GROUPS.flatMap((group) => group.items).find((i) => i.route === route)
-  return item && NAV_ICONS[item.icon]
+export function navIcon(route: unknown, roles: string[] = []): Component | undefined {
+  const item = itemFor(route, roles)
+  return item ? NAV_ICONS[item.icon] : undefined
 }

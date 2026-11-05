@@ -4,10 +4,12 @@
 // When filters hide every record the seal shows a search icon instead, so the two cases
 // never look the same.
 import { Inbox, SearchX } from 'lucide-vue-next'
+import { getActivePinia } from 'pinia'
 import { computed, inject } from 'vue'
 import { routeLocationKey } from 'vue-router'
 
 import { navIcon } from '../../layouts/nav'
+import { useSessionStore } from '../../stores/session'
 
 const props = withDefaults(defineProps<{ title: string; text: string; filtered?: boolean }>(), {
   filtered: false,
@@ -15,7 +17,9 @@ const props = withDefaults(defineProps<{ title: string; text: string; filtered?:
 
 // Injected with a default, so the component also works outside a router (tests, previews).
 const route = inject(routeLocationKey, null)
-const icon = computed(() => (props.filtered ? SearchX : (navIcon(route?.name) ?? Inbox)))
+// The roles name the page as the menu does ("My rooms"); without a store (tests, previews), none.
+const roles = getActivePinia() ? useSessionStore().roleCodes : []
+const icon = computed(() => (props.filtered ? SearchX : (navIcon(route?.name, roles) ?? Inbox)))
 </script>
 
 <template>

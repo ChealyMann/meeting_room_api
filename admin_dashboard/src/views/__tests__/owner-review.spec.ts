@@ -183,3 +183,16 @@ describe('Owner To review', () => {
     expect(await pickerOptions('filter-room')).toEqual(['All rooms', 'Governor Room', 'Board Room'])
   })
 })
+
+describe('Owner To review for a Pitika who owns a room', () => {
+  it('is called My rooms, not a second To review', async () => {
+    useSessionStore().user = { id: 7, roles: [{ code: 'PITIKA' }, { code: 'ROOM_OWNER' }], province: PP } as never
+    const { wrapper } = await mountOwner()
+    expect(wrapper.get('h1').text()).toBe('My rooms')
+  })
+
+  it('is To review for an owner only', async () => {
+    const { wrapper } = await mountOwner()
+    expect(wrapper.get('h1').text()).toBe('To review')
+  })
+})

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import { REVIEW_DECIDED_EVENT } from '../../composables/useWaitingCounts'
+import { REVIEW_SUMMARY_EVENT, reportWaiting } from '../../composables/useWaitingCounts'
 import { useSessionStore } from '../../stores/session'
 import AppRail from '../AppRail.vue'
 import { NAV_GROUPS } from '../nav'
@@ -75,12 +75,29 @@ describe('waiting counts in the menu', () => {
     expect([count(wrapper, 'review'), count(wrapper, 'owner-review')]).toEqual(['3', '2'])
   })
 
-  it('asks again after a decision', async () => {
+  it('takes the newest number from the page, so the menu and the ring agree', async () => {
     const wrapper = await mountRail(['PITIKA'])
-    waiting = { pitika: 2, owner: 0 }
-    window.dispatchEvent(new Event(REVIEW_DECIDED_EVENT))
+    reportWaiting('review', 2)
     await flushPromises()
     expect(count(wrapper, 'review')).toBe('2')
+    expect(calls).toEqual(['/api/v1/pitika/bookings/summary'])
+    expect(REVIEW_SUMMARY_EVENT).toBe('review:summary')
+  })
+
+  it('keeps the page number when the first load answers later', async () => {
+    let release!: () => void
+    const late = new Promise<void>((done) => (release = done))
+    const real = globalThis.fetch
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input, init) => {
+      await late
+      return real(input, init)
+    }))
+    const wrapper = await mountRail(['PITIKA'])
+    reportWaiting('review', 1)
+    await flushPromises()
+    release()
+    await flushPromises()
+    expect(count(wrapper, 'review')).toBe('1')
   })
 
   it('asks for nothing when the user reviews nothing', async () => {

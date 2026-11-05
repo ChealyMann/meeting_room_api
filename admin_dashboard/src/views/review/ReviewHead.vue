@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue'
 import type { PitikaSummary } from '../../api/types'
 import { ringArcs, summaryLine, type Tab } from '../../utils/decided'
 
-const props = defineProps<{ summary: PitikaSummary | null; tab: Tab }>()
+const props = withDefaults(defineProps<{ summary: PitikaSummary | null; tab: Tab; title?: string }>(), { title: 'To review' })
 const emit = defineEmits<{ select: [Tab] }>()
 
 const TABS: Array<{ key: Tab; label: string; count: (s: PitikaSummary) => number }> = [
@@ -64,7 +64,7 @@ watch(
       <span class="ring-text mono" aria-hidden="true">{{ arcs?.label ?? '' }}</span>
     </div>
     <div class="title">
-      <h1>To review</h1>
+      <h1>{{ title }}</h1>
       <p v-if="summary" class="sub">{{ summaryLine(summary) }}</p>
     </div>
     <div class="tab-switch" role="tablist" aria-label="Bookings to show">

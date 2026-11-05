@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { NAV_ICONS, navFor, roleTitle } from '../nav'
+import { NAV_ICONS, navFor, navIcon, pageLabel, roleTitle } from '../nav'
 
 const shape = (roles: string[]) =>
   navFor(roles).map((group) => ({ title: group.title, items: group.items.map((item) => item.route) }))
@@ -48,5 +48,19 @@ describe('roleTitle', () => {
     expect(roleTitle(['ADMIN', 'ROOM_OWNER'])).toBe('Admin')
     expect(roleTitle(['PITIKA', 'ROOM_OWNER'])).toBe('Pitika')
     expect(roleTitle(['ROOM_OWNER', 'STAFF'])).toBe('Room owner')
+  })
+})
+
+describe('pageLabel and navIcon', () => {
+  it('name the owner page My rooms for a Pitika who owns a room, everywhere', () => {
+    expect(pageLabel('owner-review', ['PITIKA', 'ROOM_OWNER'])).toBe('My rooms')
+    expect(pageLabel('owner-review', ['ROOM_OWNER'])).toBe('To review')
+    expect(navIcon('owner-review', ['PITIKA', 'ROOM_OWNER'])).toBe(NAV_ICONS['door-open'])
+    expect(navIcon('owner-review', ['ROOM_OWNER'])).toBe(NAV_ICONS.inbox)
+  })
+
+  it('know nothing of a page outside the menu', () => {
+    expect(pageLabel('profile', ['ADMIN'])).toBeNull()
+    expect(navIcon('profile', ['ADMIN'])).toBeUndefined()
   })
 })

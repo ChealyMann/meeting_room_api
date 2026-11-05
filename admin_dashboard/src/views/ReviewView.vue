@@ -23,7 +23,8 @@ import ProcessBar from '../components/ProcessBar.vue'
 import RoomPhoto from '../components/RoomPhoto.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
-import { REVIEW_DECIDED_EVENT } from '../composables/useWaitingCounts'
+import { reportWaiting } from '../composables/useWaitingCounts'
+import { pageLabel } from '../layouts/nav'
 import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
 import { useSessionStore } from '../stores/session'
@@ -112,6 +113,7 @@ const summary = ref<ReviewSummary | null>(null)
 async function loadSummary() {
   try {
     summary.value = await R.value.summary()
+    reportWaiting(R.value.key === 'owner' ? 'owner-review' : 'review', summary.value.waiting) // the menu agrees
   } catch {
     // no ring and no numbers: the lists still work
   }
@@ -121,6 +123,8 @@ watch(today, loadSummary)
 
 const route = useRoute()
 const router = useRouter()
+/** "My rooms" for a Pitika who also owns a room, as in the menu; else "To review". */
+const pageTitle = computed(() => pageLabel(route.name, session.roleCodes) ?? 'To review')
 const tab = computed<Tab>(() => tabFrom(route.query.tab))
 /** Another tab: the filters stay; the page and the open booking do not. */
 function selectTab(next: Tab) {
@@ -191,7 +195,6 @@ async function decide() {
     toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
     asking.value = null
     if (panel.id.value === booking.id) panel.close()
-    window.dispatchEvent(new Event(REVIEW_DECIDED_EVENT)) // the menu's waiting count
     await Promise.all([load(), loadSummary()])
   } catch (err) {
     if (err instanceof ApiError) {
@@ -210,7 +213,7 @@ async function decide() {
 
 <template>
   <div class="places-page review">
-    <ReviewHead :summary="summary" :tab="tab" @select="selectTab" />
+    <ReviewHead :summary="summary" :tab="tab" :title="pageTitle" @select="selectTab" />
 
     <div class="filters" role="search">
       <ListSearch

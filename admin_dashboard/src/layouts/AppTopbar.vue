@@ -3,7 +3,9 @@ import { ChevronRight, Clock, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { useSessionStore } from '../stores/session'
 import { useUiStore } from '../stores/ui'
+import { pageLabel } from './nav'
 import { phnomPenhClock } from '../utils/time'
 
 defineProps<{ menuOpen: boolean }>()
@@ -11,7 +13,9 @@ const emit = defineEmits<{ 'toggle-menu': [] }>()
 
 const route = useRoute()
 const ui = useUiStore()
-const title = computed(() => route.meta.title ?? '')
+const session = useSessionStore()
+// The menu's name for the page when it has one ("My rooms"), else the route's title.
+const title = computed(() => pageLabel(route.name, session.roleCodes) ?? route.meta.title ?? '')
 
 const now = ref(phnomPenhClock(new Date()))
 let timer: ReturnType<typeof setInterval> | undefined
