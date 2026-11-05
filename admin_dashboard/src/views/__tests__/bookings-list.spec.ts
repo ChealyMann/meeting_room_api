@@ -137,6 +137,16 @@ describe('BookingsView', () => {
     expect(router.currentRoute.value.query).toEqual({ to: '2026-11-12' })
   })
 
+  it('lets you search the rooms, however few there are', async () => {
+    await mountAt('/bookings')
+    const searchBoxes = () => document.querySelectorAll('input[type="search"]').length
+    const before = searchBoxes()
+    document.querySelector<HTMLButtonElement>('#filter-room')!.click()
+    await flushPromises()
+
+    expect(searchBoxes()).toBe(before + 1)
+  })
+
   it('opens a booking through the address', async () => {
     const { wrapper, router } = await mountAt('/bookings')
 

@@ -2,17 +2,19 @@
 // The Pitika's queue (spec docs/superpowers/specs/2026-11-05-pitika-review-design.md): the
 // bookings of their province waiting for them, grouped by urgency, each with the room's photo,
 // what to check and the row bar ("gap is you"). Details are loaded per booking for the labels.
-import { CalendarDays, Check, CircleAlert, EyeOff, Monitor, TriangleAlert, User, Users, Utensils } from 'lucide-vue-next'
+import { CalendarDays, Check, CircleAlert, EyeOff, Monitor, TriangleAlert, User, Users, Utensils, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { api } from '../api'
 import { getBooking, listPitikaBookingPage, pitikaApprove, pitikaReject } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import { listAllRooms } from '../api/references'
-import type { BookingDetail, BookingListItem } from '../api/types'
+import type { BookingDetail, BookingListItem, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
+import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import ListSearch from '../components/list/ListSearch.vue'
+import SearchPicker, { type PickerItem } from '../components/list/SearchPicker.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import ProcessBar from '../components/ProcessBar.vue'
 import RoomPhoto from '../components/RoomPhoto.vue'
@@ -20,17 +22,36 @@ import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
+import { useSessionStore } from '../stores/session'
 import { checkLabels, groupByUrgency, nextStepText, rowSteps, startsIn } from '../utils/reviewQueue'
+import { FILTER_WORDS } from '../utils/pickerWords'
 import { formatDay } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
 
+// Filters in the address, like the other lists: room, a day range (any session in it), search.
 const { list, result, loading, error, load } = useResourceList<BookingListItem>(
-  { q: 'string' },
+  { room_id: 'int', from: 'string', to: 'string', q: 'string' },
   // Every waiting booking on one page: the queue is short, and it is grouped, not paged.
-  (params) => listPitikaBookingPage(api, { status: 'PENDING_PITIKA', q: params.q as string | undefined, page: 1, size: 100 }),
+  (params) =>
+    listPitikaBookingPage(api, {
+      status: 'PENDING_PITIKA',
+      room_id: params.room_id as number | undefined,
+      from: params.from as string | undefined,
+      to: params.to as string | undefined,
+      q: params.q as string | undefined,
+      page: 1,
+      size: 100,
+    }),
   { activeFilter: false },
 )
+const f = computed(() => list.filters.value as Record<string, string | number | undefined>)
+const anyFilter = computed(() => Object.keys(list.filters.value).length > 0)
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+const dayOf = (key: 'from' | 'to') => {
+  const value = f.value[key]
+  return typeof value === 'string' && DAY.test(value) ? value : null
+}
 const items = computed(() => result.value?.items ?? [])
 
 // The details give the labels (food, IT, private reason); a failed one leaves its labels out.
@@ -45,14 +66,21 @@ watch(items, async (list) => {
   details.value = next
 })
 
-// Room cover photos, by room id (rooms are loaded once).
-const covers = ref<Record<number, { url: string; thumbnail_url: string } | null>>({})
+// Rooms, loaded once: their cover photos, and the room filter (only the Pitika's province).
+const rooms = ref<RoomListItem[]>([])
+const covers = computed(() => Object.fromEntries(rooms.value.map((r) => [r.id, r.cover_photo ?? null])))
+const session = useSessionStore()
+const roomItems = computed<PickerItem[]>(() => {
+  const province = session.user?.province?.code
+  return rooms.value
+    .filter((r) => !province || r.province.code === province)
+    .map((r) => ({ value: r.id, label: r.name_en, keywords: `${r.name_kh} ${r.location.name_en}` }))
+})
 onMounted(async () => {
   try {
-    const rooms = await listAllRooms(api)
-    covers.value = Object.fromEntries(rooms.map((r) => [r.id, r.cover_photo ?? null]))
+    rooms.value = await listAllRooms(api)
   } catch {
-    // no photos: the rows show the plain tile
+    // no photos and no room filter: the rows show the plain tile
   }
 })
 
@@ -149,18 +177,52 @@ async function decide() {
       <h1>To review</h1>
       <span v-if="result" class="mono count">{{ count }}</span>
     </div>
-    <p class="sub">
-      Bookings of rooms in your province waiting for your decision, the most urgent first. Approving also approves the food
-      and IT.
-    </p>
+    <p class="sub">Bookings in your province waiting for your decision.</p>
 
     <div class="filters" role="search">
       <ListSearch
-        :value="(list.filters.value.q as string | undefined) ?? ''"
+        :value="(f.q as string | undefined) ?? ''"
         label="Search bookings"
         placeholder="Search title, reference or booker"
         @search="list.set({ q: $event })"
       />
+      <SearchPicker
+        id="filter-room"
+        searchable
+        class="narrow"
+        :items="roomItems"
+        :words="FILTER_WORDS.room"
+        :model-value="(f.room_id as number | undefined) ?? null"
+        @update:model-value="list.set({ room_id: $event })"
+      />
+      <div class="day">
+        <span class="label" aria-hidden="true">From</span>
+        <DatePicker
+          id="filter-from"
+          label="From"
+          placeholder="Any day"
+          clearable
+          :max="dayOf('to')"
+          :model-value="dayOf('from')"
+          @update:model-value="list.set({ from: $event })"
+        />
+      </div>
+      <div class="day">
+        <span class="label" aria-hidden="true">To</span>
+        <DatePicker
+          id="filter-to"
+          label="To"
+          placeholder="Any day"
+          clearable
+          :min="dayOf('from')"
+          :model-value="dayOf('to')"
+          @update:model-value="list.set({ to: $event })"
+        />
+      </div>
+      <BaseButton v-if="anyFilter" variant="quiet" class="clear-filters" @click="list.reset()">
+        <X aria-hidden="true" />
+        Clear filters
+      </BaseButton>
     </div>
 
     <div class="queue">
@@ -174,11 +236,11 @@ async function decide() {
       <TableSkeleton v-else-if="loading && !result" :columns="['168px', '2fr', '220px']" />
       <EmptyState
         v-else-if="result && !items.length"
-        :filtered="!!list.filters.value.q"
-        :title="list.filters.value.q ? 'No bookings match' : 'Nothing to review'"
-        :text="list.filters.value.q ? `Nothing waiting matches “${list.filters.value.q}”.` : 'New bookings in your province show here.'"
+        :filtered="anyFilter"
+        :title="anyFilter ? 'No bookings match' : 'Nothing to review'"
+        :text="anyFilter ? 'Nothing waiting matches these filters.' : 'New bookings in your province show here.'"
       >
-        <BaseButton v-if="list.filters.value.q" @click="list.reset()">Clear search</BaseButton>
+        <BaseButton v-if="anyFilter" @click="list.reset()">Clear filters</BaseButton>
       </EmptyState>
       <template v-else-if="result">
         <section v-for="group in groups" :key="group.key" :aria-labelledby="`group-${group.key}`">
@@ -277,9 +339,24 @@ async function decide() {
 <style scoped>
 .sub {
   margin: 4px 0 0;
-  max-width: 75ch;
   font-size: 13px;
   color: var(--color-intaglio);
+}
+.filters > .narrow {
+  width: 184px;
+}
+.day {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-ink-off);
+}
+.day .date-picker {
+  width: 164px;
+}
+.clear-filters {
+  color: var(--color-crimson);
 }
 .queue {
   flex: 1;

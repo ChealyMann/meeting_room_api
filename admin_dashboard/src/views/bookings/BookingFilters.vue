@@ -90,6 +90,7 @@ watchEffect(() => {
     <SearchPicker
       id="filter-room"
       class="narrow"
+      searchable
       :items="roomItems"
       :words="FILTER_WORDS.room"
       :model-value="(f.room_id as number | undefined) ?? null"

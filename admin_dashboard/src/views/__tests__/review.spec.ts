@@ -6,6 +6,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import { useSessionStore } from '../../stores/session'
 import { listItem } from '../../test-utils/bookings'
+import { clearDate, pickDate } from '../../test-utils/datePicker'
+import { choosePicker, pickerOptions } from '../../test-utils/picker'
 import ReviewView from '../ReviewView.vue'
 
 enableAutoUnmount(afterEach)
@@ -24,9 +26,12 @@ const DETAILS: Record<number, Record<string, unknown>> = {
   22: { private_justification: "The Governor's team asked." },
   23: {},
 }
+const PP = { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' }
+const SR = { code: 'SIEM_REAP', name_en: 'Siem Reap', name_kh: 'សៀមរាប' }
 const ROOMS = [
-  { id: 12, cover_photo: { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_t.jpg' } },
-  { id: 13, cover_photo: null },
+  { id: 12, name_en: 'Mekong Room', name_kh: 'បន្ទប់មេគង្គ', location: { name_en: 'Head Office' }, province: PP, cover_photo: { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_t.jpg' } },
+  { id: 13, name_en: 'Governor Room', name_kh: 'បន្ទប់ទេសាភិបាល', location: { name_en: 'Head Office' }, province: PP, cover_photo: null },
+  { id: 40, name_en: 'Angkor Room', name_kh: 'បន្ទប់អង្គរ', location: { name_en: 'Siem Reap Branch' }, province: SR, cover_photo: null },
 ]
 
 const calls: string[] = []
@@ -43,6 +48,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-11-05T02:20:00Z'))
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
+  useSessionStore().user = { roles: [{ code: 'PITIKA' }], province: PP } as never
   calls.length = 0
   bodies.length = 0
   items = ITEMS
@@ -278,5 +284,48 @@ describe('Review panel and decisions', () => {
 
     expect(bodies).toHaveLength(1)
     expect(router.currentRoute.value.query.id).toBeUndefined()
+  })
+})
+
+describe('To review filters', () => {
+  const lists = () => calls.filter((c) => c.startsWith('GET /api/v1/pitika/bookings?'))
+
+  it('says what the page is in one short line', async () => {
+    const { wrapper } = await mountReview()
+    expect(wrapper.get('.sub').text()).toBe('Bookings in your province waiting for your decision.')
+  })
+
+  it('filters by a room of the Pitika province only', async () => {
+    await mountReview()
+
+    expect(await pickerOptions('filter-room')).toEqual(['All rooms', 'Mekong Room', 'Governor Room'])
+    await choosePicker('filter-room', 'Mekong Room')
+    expect(lists().at(-1)).toBe('GET /api/v1/pitika/bookings?status=PENDING_PITIKA&room_id=12&page=1&size=100')
+  })
+
+  it('lets you search the rooms, however few there are', async () => {
+    await mountReview()
+    const searchBoxes = () => document.querySelectorAll('input[type="search"]').length
+    const before = searchBoxes()
+    document.querySelector<HTMLButtonElement>('#filter-room')!.click()
+    await flushPromises()
+
+    expect(searchBoxes()).toBe(before + 1)
+  })
+
+  it('filters by a day range, and Clear filters empties every filter', async () => {
+    const { wrapper } = await mountReview()
+    expect(wrapper.find('.clear-filters').exists()).toBe(false)
+
+    await pickDate('filter-from', '2026-11-06')
+    await pickDate('filter-to', '2026-11-12')
+    expect(lists().at(-1)).toBe('GET /api/v1/pitika/bookings?status=PENDING_PITIKA&from=2026-11-06&to=2026-11-12&page=1&size=100')
+
+    await clearDate('filter-to')
+    expect(lists().at(-1)).toBe('GET /api/v1/pitika/bookings?status=PENDING_PITIKA&from=2026-11-06&page=1&size=100')
+
+    await wrapper.get('.clear-filters').trigger('click')
+    await flushPromises()
+    expect(lists().at(-1)).toBe('GET /api/v1/pitika/bookings?status=PENDING_PITIKA&page=1&size=100')
   })
 })
