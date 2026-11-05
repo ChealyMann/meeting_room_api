@@ -6,7 +6,7 @@ import { Check, CircleAlert, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import { api } from '../../api'
-import { getBooking, listPitikaDecidedPage } from '../../api/bookings'
+import { getBooking } from '../../api/bookings'
 import type { BookingDetail, DecidedBookingItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import EmptyState from '../../components/list/EmptyState.vue'
@@ -18,8 +18,11 @@ import { useResourceList } from '../../composables/useResourceList'
 import { decidedTime, groupByDecisionDay, nowPill } from '../../utils/decided'
 import { formatDay } from '../../utils/time'
 import ReviewPanel from '../bookings/ReviewPanel.vue'
+import { REVIEWERS, type Reviewer } from './reviewers'
 
 const props = defineProps<{
+  /** Whose decisions: the Pitika's or the room owner's (defaults to the Pitika). */
+  reviewer?: Reviewer
   decision: 'APPROVED' | 'REJECTED'
   /** Room id → its cover photo (full size), for the panel's header. */
   covers: Record<number, { url: string } | null>
@@ -29,7 +32,7 @@ const props = defineProps<{
 const { list, result, loading, error, filtered, load } = useResourceList<DecidedBookingItem>(
   { room_id: 'int', from: 'string', to: 'string', q: 'string' },
   (params) =>
-    listPitikaDecidedPage(api, {
+    (props.reviewer ?? REVIEWERS.pitika).decided({
       decision: props.decision,
       room_id: params.room_id as number | undefined,
       from: params.from as string | undefined,
@@ -143,6 +146,7 @@ watch(
       :booking="detail"
       :photo-path="covers[detail.room.id]?.url ?? null"
       :starts-in="null"
+      :note="(reviewer ?? REVIEWERS.pitika).panelNote(detail)"
       read-only
       @close="panel.close"
     />

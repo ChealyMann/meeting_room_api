@@ -1,16 +1,18 @@
 <script setup lang="ts">
-// The Pitika's queue (spec docs/superpowers/specs/2026-11-05-pitika-review-design.md): the
-// bookings of their province waiting for them, grouped by urgency, each with the room's photo,
-// what to check and the row bar ("gap is you"). Details are loaded per booking for the labels.
-import { CalendarDays, Check, CircleAlert, EyeOff, Monitor, TriangleAlert, User, Users, Utensils, X } from 'lucide-vue-next'
+// A reviewer's queue (spec docs/superpowers/specs/2026-11-05-pitika-review-design.md; the room
+// owner's is the same page, 2026-11-05-owner-and-it-pages-design.md Part A): the bookings
+// waiting for them, grouped by urgency, each with the room's photo, what to check and the row
+// bar ("gap is you"). Details are loaded per booking for the labels. What differs between the
+// Pitika and the owner comes from `REVIEWERS`.
+import { CalendarDays, Check, CircleAlert, ClipboardCheck, EyeOff, Landmark, Monitor, TriangleAlert, User, Users, Utensils, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../api'
-import { getBooking, getPitikaSummary, listPitikaBookingPage, pitikaApprove, pitikaReject } from '../api/bookings'
+import { getBooking } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import { listAllRooms } from '../api/references'
-import type { BookingDetail, BookingListItem, PitikaSummary, RoomListItem } from '../api/types'
+import type { BookingDetail, BookingListItem, ReviewSummary, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
@@ -25,24 +27,26 @@ import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
 import { useSessionStore } from '../stores/session'
 import { tabFrom, type Tab } from '../utils/decided'
-import { checkLabels, groupByUrgency, nextStepText, rowSteps, startsIn } from '../utils/reviewQueue'
+import { groupByUrgency, startsIn } from '../utils/reviewQueue'
 import { FILTER_WORDS } from '../utils/pickerWords'
 import { formatDay } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
 import DecidedList from './review/DecidedList.vue'
 import ReviewHead from './review/ReviewHead.vue'
+import { REVIEWERS, type ReviewerKey } from './review/reviewers'
 
-/** Whose queue this page is: the Pitika's, or the room owner's (Task 4 uses it). */
-withDefaults(defineProps<{ reviewer?: 'pitika' | 'owner' }>(), { reviewer: 'pitika' })
+/** Whose queue this page is: the Pitika's, or the room owner's. */
+const props = withDefaults(defineProps<{ reviewer?: ReviewerKey }>(), { reviewer: 'pitika' })
+const R = computed(() => REVIEWERS[props.reviewer])
 
 // Filters in the address, like the other lists: room, a day range (any session in it), search.
 const { list, result, loading, error, load } = useResourceList<BookingListItem>(
   { room_id: 'int', from: 'string', to: 'string', q: 'string' },
   // Every waiting booking on one page: the queue is short, and it is grouped, not paged.
   (params) =>
-    listPitikaBookingPage(api, {
-      status: 'PENDING_PITIKA',
+    R.value.list({
+      status: R.value.waitingStatus,
       room_id: params.room_id as number | undefined,
       from: params.from as string | undefined,
       to: params.to as string | undefined,
@@ -73,16 +77,18 @@ watch(items, async (list) => {
   details.value = next
 })
 
-// Rooms, loaded once: their cover photos, and the room filter (only the Pitika's province).
+// Rooms, loaded once: their cover photos and seats, and the room filter (the reviewer's rooms).
 const rooms = ref<RoomListItem[]>([])
 const covers = computed(() => Object.fromEntries(rooms.value.map((r) => [r.id, r.cover_photo ?? null])))
 const session = useSessionStore()
-const roomItems = computed<PickerItem[]>(() => {
-  const province = session.user?.province?.code
-  return rooms.value
-    .filter((r) => !province || r.province.code === province)
-    .map((r) => ({ value: r.id, label: r.name_en, keywords: `${r.name_kh} ${r.location.name_en}` }))
-})
+const roomItems = computed<PickerItem[]>(() =>
+  R.value
+    .rooms(rooms.value, session.user)
+    .map((r) => ({ value: r.id, label: r.name_en, keywords: `${r.name_kh} ${r.location.name_en}` })),
+)
+/** The room's seats, or null when the rooms list did not load or misses it. */
+const seats = (roomId: number) => rooms.value.find((r) => r.id === roomId)?.capacity ?? null
+const labelsOf = (b: BookingListItem) => (details.value[b.id] ? R.value.labels(details.value[b.id]!, seats(b.room.id)) : [])
 onMounted(async () => {
   try {
     rooms.value = await listAllRooms(api)
@@ -101,10 +107,10 @@ onBeforeUnmount(() => clearInterval(tick))
 const groups = computed(() => groupByUrgency(items.value, today.value))
 
 // --- Today's summary and the tabs (spec 2026-11-05-pitika-decided-design) -----------------
-const summary = ref<PitikaSummary | null>(null)
+const summary = ref<ReviewSummary | null>(null)
 async function loadSummary() {
   try {
-    summary.value = await getPitikaSummary(api)
+    summary.value = await R.value.summary()
   } catch {
     // no ring and no numbers: the lists still work
   }
@@ -137,7 +143,7 @@ watch(
     try {
       details.value = { ...details.value, [id]: await getBooking(api, id) }
     } catch {
-      panel.close() // gone, or not this Pitika's: nothing to show
+      panel.close() // gone, or not this reviewer's: nothing to show
     }
   },
   { immediate: true },
@@ -162,7 +168,7 @@ const askDetail = computed(() => (asking.value ? (details.value[asking.value.boo
 const askEffect = computed(() => {
   if (!asking.value) return ''
   if (asking.value.action === 'reject') return 'The booking stops and the room is free again. The booker sees your reason.'
-  return askDetail.value ? nextStepText(askDetail.value) : ''
+  return askDetail.value ? R.value.nextStepText(askDetail.value) : ''
 })
 const askTimes = computed(() => {
   const b = asking.value?.booking
@@ -179,8 +185,8 @@ async function decide() {
   askError.value = ''
   askFieldError.value = ''
   try {
-    if (action === 'approve') await pitikaApprove(api, booking.id, { notes: text || null, version: booking.version })
-    else await pitikaReject(api, booking.id, { reason: text, version: booking.version })
+    if (action === 'approve') await R.value.approve(booking.id, { notes: text || null, version: booking.version })
+    else await R.value.reject(booking.id, { reason: text, version: booking.version })
     toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
     asking.value = null
     if (panel.id.value === booking.id) panel.close()
@@ -263,7 +269,7 @@ async function decide() {
         v-else-if="result && !items.length"
         :filtered="anyFilter"
         :title="anyFilter ? 'No bookings match' : 'Nothing to review'"
-        :text="anyFilter ? 'Nothing waiting matches these filters.' : 'New bookings in your province show here.'"
+        :text="anyFilter ? 'Nothing waiting matches these filters.' : R.emptyText"
       >
         <BaseButton v-if="anyFilter" @click="list.reset()">Clear filters</BaseButton>
       </EmptyState>
@@ -299,11 +305,14 @@ async function decide() {
                   <span><User aria-hidden="true" />{{ b.requester.name_en }}</span>
                   <span><Users aria-hidden="true" />{{ b.attendees }} people</span>
                 </div>
-                <div v-if="details[b.id] && checkLabels(details[b.id]!).length" class="checks">
-                  <span v-for="c in checkLabels(details[b.id]!)" :key="c.kind" class="chk" :class="c.kind">
+                <div v-if="labelsOf(b).length" class="checks">
+                  <span v-for="c in labelsOf(b)" :key="c.kind" class="chk" :class="[c.kind, { over: c.over }]">
                     <EyeOff v-if="c.kind === 'private'" aria-hidden="true" />
                     <Utensils v-else-if="c.kind === 'food'" aria-hidden="true" />
                     <Monitor v-else-if="c.kind === 'it'" aria-hidden="true" />
+                    <Landmark v-else-if="c.kind === 'governor'" aria-hidden="true" />
+                    <Users v-else-if="c.kind === 'seats'" aria-hidden="true" />
+                    <ClipboardCheck v-else-if="c.kind === 'pitika-notes'" aria-hidden="true" />
                     <TriangleAlert v-else aria-hidden="true" />
                     <b>{{ c.text }}</b>
                     <span v-if="c.count" class="mono">×{{ c.count }}</span>
@@ -312,7 +321,7 @@ async function decide() {
               </div>
               <div class="side">
                 <span v-if="group.key === 'today'" class="soon"><TriangleAlert aria-hidden="true" />{{ startsIn(b, now) }}</span>
-                <ProcessBar :steps="rowSteps(b)" />
+                <ProcessBar :steps="R.rowSteps(b)" />
                 <div class="acts">
                   <BaseButton variant="danger" @click.stop="ask('reject', b)">Reject</BaseButton>
                   <BaseButton variant="primary" @click.stop="ask('approve', b)"><Check aria-hidden="true" />Approve</BaseButton>
@@ -323,7 +332,7 @@ async function decide() {
         </section>
       </template>
     </div>
-    <DecidedList v-else :key="tab" :decision="tab === 'approved' ? 'APPROVED' : 'REJECTED'" :covers="covers" />
+    <DecidedList v-else :key="tab" :reviewer="R" :decision="tab === 'approved' ? 'APPROVED' : 'REJECTED'" :covers="covers" />
 
     <ReviewPanel
       v-if="tab === 'waiting' && openItem && openDetail"
@@ -331,6 +340,8 @@ async function decide() {
       :booking="openDetail"
       :photo-path="covers[openItem.room.id]?.url ?? null"
       :starts-in="openItem.first_session.date <= today ? startsIn(openItem, now) : null"
+      :waiting-label="R.waitingLabel"
+      :note="R.panelNote(openDetail)"
       @close="panel.close"
       @approve="ask('approve', openItem)"
       @reject="ask('reject', openItem)"
@@ -549,6 +560,15 @@ async function decide() {
   color: var(--color-crimson);
 }
 .chk.private :deep(svg.lucide) {
+  color: var(--color-crimson);
+}
+/* The owner's checks: more people than seats is the only red one. */
+.chk.seats.over {
+  border-color: var(--color-danger-line);
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+}
+.chk.seats.over :deep(svg.lucide) {
   color: var(--color-crimson);
 }
 .side {

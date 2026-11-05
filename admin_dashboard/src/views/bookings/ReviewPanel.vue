@@ -22,6 +22,10 @@ const props = defineProps<{
   startsIn: string | null
   /** A booking already decided: where it is now, and only Close (spec 2026-11-05-pitika-decided). */
   readOnly?: boolean
+  /** The subtitle while it waits ("Waiting for Pitika", "Waiting for room owner"). */
+  waitingLabel?: string
+  /** One note for the reviewer on amber wash (the R4 note, the Pitika's notes), or null. */
+  note?: string | null
 }>()
 const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 
@@ -36,7 +40,7 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
   <SidePanel
     :open="true"
     :title="booking.meeting_title"
-    :subtitle="readOnly ? statusLabel(booking.display_status) : 'Waiting for Pitika'"
+    :subtitle="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')"
     :serial="booking.reference_code"
     @close="emit('close')"
   >
@@ -55,9 +59,9 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
         <TriangleAlert aria-hidden="true" />
         <span>{{ startsIn }}. If nobody decides before it starts, it is rejected by the system.</span>
       </p>
-      <p v-if="booking.route === 'R4'" class="note">
+      <p v-if="note" class="note">
         <TriangleAlert aria-hidden="true" />
-        <span>The owner books their own room: you check the food and IT only.</span>
+        <span>{{ note }}</span>
       </p>
 
       <h3>Meeting</h3>
