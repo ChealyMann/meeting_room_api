@@ -96,8 +96,8 @@ test('a Pitika lands on To review and sees only their menu', async ({ page }) =>
   await signedIn(page, '/')
 
   await expect(page).toHaveURL(/\/review$/)
-  const links = page.locator('nav a')
-  await expect(links).toHaveText(['To review', 'Bookings', 'Food list'])
+  await expect(page.locator('nav a .label')).toHaveText(['To review', 'Bookings', 'Food list'])
+  await expect(page.locator('nav a[href="/review"] .wait')).toHaveText('3')
 })
 
 for (const width of [1366, 900, 390]) {
