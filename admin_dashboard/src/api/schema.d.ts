@@ -1101,6 +1101,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/owner/bookings/decided": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings I decided
+         * @description Bookings you approved or rejected as room owner (`decision`), newest decision first, in
+         *     the private rooms you own now. Each has `decided_at` and `decision_note`. Decisions the
+         *     Admin made as a backup are not listed.
+         */
+        get: operations["list_decided_bookings_api_v1_owner_bookings_decided_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See my day in numbers
+         * @description `waiting`: bookings of your private rooms waiting for you now. `approved_today` and
+         *     `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted).
+         */
+        get: operations["owner_summary_api_v1_owner_bookings_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/owner/bookings/{booking_id}/approve": {
         parameters: {
             query?: never;
@@ -2845,18 +2888,6 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
-        /**
-         * PitikaSummary
-         * @description Bookings waiting in my province now, and my decisions today (Phnom Penh day).
-         */
-        PitikaSummary: {
-            /** Waiting */
-            waiting: number;
-            /** Approved Today */
-            approved_today: number;
-            /** Rejected Today */
-            rejected_today: number;
-        };
         /** PositionCreate */
         PositionCreate: {
             /** Name En */
@@ -3034,6 +3065,18 @@ export interface components {
          * @enum {string}
          */
         ReviewStage: "PITIKA" | "OWNER";
+        /**
+         * ReviewSummary
+         * @description Bookings waiting for me now, and my decisions today (Phnom Penh day).
+         */
+        ReviewSummary: {
+            /** Waiting */
+            waiting: number;
+            /** Approved Today */
+            approved_today: number;
+            /** Rejected Today */
+            rejected_today: number;
+        };
         /** RoleOut */
         RoleOut: {
             /** Id */
@@ -6294,7 +6337,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PitikaSummary"];
+                    "application/json": components["schemas"]["ReviewSummary"];
                 };
             };
         };
@@ -6374,6 +6417,10 @@ export interface operations {
             query?: {
                 /** @description A display status, e.g. PENDING_OWNER */
                 status?: string | null;
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
                 room_id?: number | null;
                 q?: string | null;
                 page?: number;
@@ -6401,6 +6448,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_decided_bookings_api_v1_owner_bookings_decided_get: {
+        parameters: {
+            query: {
+                /** @description APPROVED or REJECTED */
+                decision: "APPROVED" | "REJECTED";
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DecidedBookingItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_summary_api_v1_owner_bookings_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSummary"];
                 };
             };
         };
