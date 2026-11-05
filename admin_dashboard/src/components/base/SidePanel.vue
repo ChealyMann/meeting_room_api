@@ -104,9 +104,12 @@ defineExpose({ focusFirst })
               </span>
             </span>
           </div>
-          <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')">
-            <X aria-hidden="true" />
-          </button>
+          <div class="head-actions">
+            <slot name="actions" />
+            <button type="button" class="icon-btn" aria-label="Close" @click="emit('close')">
+              <X aria-hidden="true" />
+            </button>
+          </div>
         </header>
         <div class="panel-body">
           <slot />
@@ -165,7 +168,11 @@ h2 {
   font-size: 12.5px;
   color: var(--color-intaglio);
 }
-.panel-head .icon-btn {
+/* Small buttons beside the X (e.g. a booking's calendar file), then the X itself. */
+.head-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
   margin-left: auto;
 }
 .panel-body {

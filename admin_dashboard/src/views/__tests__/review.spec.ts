@@ -38,6 +38,8 @@ const calls: string[] = []
 const bodies: string[] = []
 let items: Array<ReturnType<typeof listItem>>
 let decision: () => Response
+let decidedItems: unknown[] = []
+let holdRejected = false
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -51,6 +53,8 @@ beforeEach(() => {
   useSessionStore().user = { roles: [{ code: 'PITIKA' }], province: PP } as never
   calls.length = 0
   bodies.length = 0
+  decidedItems = []
+  holdRejected = false
   items = ITEMS
   decision = () => json({ ...ITEMS[0], status: 'SETUP_IN_PROGRESS' })
   vi.stubGlobal(
@@ -65,6 +69,11 @@ beforeEach(() => {
         return answer
       }
       if (url.pathname === '/api/v1/pitika/bookings') return json({ items, page: 1, size: 100, total: items.length })
+      if (url.pathname === '/api/v1/pitika/bookings/summary') return json({ waiting: items.length, approved_today: 5, rejected_today: 1 })
+      if (url.pathname === '/api/v1/pitika/bookings/decided') {
+        if (url.searchParams.get('decision') === 'REJECTED' && holdRejected) return new Promise<Response>(() => {})
+        return json({ items: decidedItems, page: 1, size: 20, total: decidedItems.length })
+      }
       const detail = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
       if (detail) {
         const id = Number(detail[1])
@@ -101,7 +110,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function mountReview() {
+async function mountReview(path = '/review') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -109,7 +118,7 @@ async function mountReview() {
       { path: '/bookings', name: 'bookings', component: ReviewView },
     ],
   })
-  await router.push('/review')
+  await router.push(path)
   const wrapper = mount(ReviewView, { global: { plugins: [router] }, attachTo: document.body })
   await flushPromises()
   return { wrapper, router }
@@ -133,7 +142,7 @@ describe('ReviewView', () => {
       ['Later', '1'],
     ])
     expect(wrapper.get('.group-head.today').text()).toContain('Decide before they start, or they expire')
-    expect(wrapper.get('.page-head .count').text()).toBe('003 waiting')
+    expect(wrapper.get('[role="tab"]').text()).toBe('Waiting3')
   })
 
   it('shows the booking, its room, its time, and what to check in each row', async () => {
@@ -175,7 +184,7 @@ describe('ReviewView', () => {
 
     expect(wrapper.text()).toContain('Nothing to review')
     expect(wrapper.text()).toContain('New bookings in your province show here.')
-    expect(wrapper.get('.page-head .count').text()).toBe('000 waiting')
+    expect(wrapper.get('[role="tab"]').text()).toBe('Waiting0')
   })
 })
 
@@ -290,9 +299,10 @@ describe('Review panel and decisions', () => {
 describe('To review filters', () => {
   const lists = () => calls.filter((c) => c.startsWith('GET /api/v1/pitika/bookings?'))
 
-  it('says what the page is in one short line', async () => {
+  it('says what today looks like in one short line', async () => {
     const { wrapper } = await mountReview()
-    expect(wrapper.get('.sub').text()).toBe('Bookings in your province waiting for your decision.')
+    expect(wrapper.get('.sub').text()).toBe('Today you decided 6 · 3 still waiting')
+    expect(wrapper.find('.page-head .count').exists()).toBe(false)
   })
 
   it('filters by a room of the Pitika province only', async () => {
@@ -327,5 +337,54 @@ describe('To review filters', () => {
     await wrapper.get('.clear-filters').trigger('click')
     await flushPromises()
     expect(lists().at(-1)).toBe('GET /api/v1/pitika/bookings?status=PENDING_PITIKA&page=1&size=100')
+  })
+})
+
+describe('To review tabs', () => {
+  const summaries = () => calls.filter((c) => c === 'GET /api/v1/pitika/bookings/summary')
+
+  it('loads today’s summary once on open, and again after a decision', async () => {
+    const { wrapper } = await mountReview()
+    expect(summaries()).toHaveLength(1)
+
+    ;[...row(wrapper, 21).element.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === 'Approve')!.click()
+    await flushPromises()
+    document.body.querySelector<HTMLElement>('.action-dialog button.confirm')!.click()
+    await flushPromises()
+
+    expect(summaries()).toHaveLength(2)
+  })
+
+  it('switching tab keeps the filters and drops the page and the open booking', async () => {
+    const { wrapper, router } = await mountReview('/review?page=3&id=21&q=board')
+
+    await wrapper.findAll('[role="tab"]')[1]!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/review?q=board&tab=approved')
+
+    await wrapper.findAll('[role="tab"]')[0]!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/review?q=board')
+  })
+
+  it('does not show the approved cards as rejections while the Rejected tab loads', async () => {
+    decidedItems = [{ ...listItem(51, { display_status: 'CONFIRMED' }), decided_at: '2026-11-05T02:00:00Z', decision_note: 'Fine' }]
+    holdRejected = true
+    const { wrapper } = await mountReview('/review?tab=approved')
+    expect(wrapper.find('[data-booking="51"] .mark.ok').exists()).toBe(true)
+
+    await wrapper.findAll('[role="tab"]')[2]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-booking="51"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Reason: “Fine”')
+  })
+
+  it('shows the decided list, not the queue, on the Approved tab, with the filters kept', async () => {
+    const { wrapper } = await mountReview('/review?tab=approved')
+
+    expect(wrapper.find('.queue').exists()).toBe(false)
+    expect(wrapper.find('.filters').exists()).toBe(true)
+    expect(wrapper.findAll('[role="tab"]')[1]!.attributes('aria-selected')).toBe('true')
   })
 })

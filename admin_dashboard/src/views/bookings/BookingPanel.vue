@@ -300,16 +300,27 @@ async function downloadIcs() {
       <b>{{ icsError }}</b>
     </div>
 
+    <template #actions>
+      <!-- Not a decision, so it sits by the X and the foot keeps one row (owner, 5 Nov 2026). -->
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Calendar file"
+        title="Download the calendar file"
+        :disabled="icsBusy"
+        :aria-busy="icsBusy ? 'true' : undefined"
+        @click="downloadIcs"
+      >
+        <CalendarArrowDown aria-hidden="true" />
+      </button>
+    </template>
+
     <template #foot>
       <!-- Two groups that share one row when they fit; on a narrow panel the decisions move
            to their own row above, so no button is ever pushed out of the panel. -->
       <div class="booking-foot">
         <div class="foot-group">
           <BaseButton variant="quiet" @click="emit('close')">Close</BaseButton>
-          <BaseButton :busy="icsBusy" @click="downloadIcs">
-            <CalendarArrowDown v-if="!icsBusy" aria-hidden="true" />
-            Calendar file
-          </BaseButton>
         </div>
         <div v-if="actions && (actions.cancel || actions.reject || actions.approve)" class="foot-group decide">
           <BaseButton v-if="actions.cancel" variant="quiet" class="danger" @click="openStep('cancel')">Cancel booking</BaseButton>

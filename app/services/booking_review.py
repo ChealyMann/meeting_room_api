@@ -2,10 +2,10 @@
 (spec 9.13: T7, T8, T9): list, approve and reject. Also the Admin's read-only list of
 every booking (B-32), which shares the list query."""
 
-from datetime import date
+from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import exists, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Select, and_, exists, func, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.constants.booking import (
     BookingRoute,
@@ -20,7 +20,7 @@ from app.security import CurrentUser
 from app.services import booking_access
 from app.services import booking_transitions as transitions
 from app.services.booking_view import booking_load_options
-from app.services.clock import now_utc
+from app.services.clock import local_to_utc, now_local, now_utc
 from app.services.listing import apply_search, paginate
 from app.services.province import check_province_code
 from app.services.records import not_found
@@ -39,12 +39,7 @@ def _list_in_rooms(
     room_id: int | None,
     q: str | None,
 ) -> dict:
-    """Bookings of the rooms in the `room_ids` subquery, earliest first start first.
-    `date_from` / `date_to` keep bookings with any session in the range; `to` before `from`
-    is 422, like the room schedule (spec 9.2)."""
-    if date_from is not None and date_to is not None and date_to < date_from:
-        message = "Must be on or after from."
-        raise AppError(ErrorCode.VALIDATION_ERROR, 422, "Invalid request.", {"to": message})
+    """Bookings of the rooms in the `room_ids` subquery, earliest first start first."""
     query = (
         select(Booking)
         .join(User, Booking.requester_id == User.id)
@@ -52,6 +47,20 @@ def _list_in_rooms(
         .options(*booking_load_options())
     )
     query = transitions.filter_display_status(query, status)
+    query = _apply_list_filters(query, date_from, date_to, room_id, q)
+    query = query.order_by(transitions.first_start_sql(), Booking.id)
+    return paginate(session, query, page, size)
+
+
+def _apply_list_filters(
+    query: Select, date_from: date | None, date_to: date | None, room_id: int | None, q: str | None
+) -> Select:
+    """The room, day range and search filters of the booking lists (query joins `User`).
+    `date_from` / `date_to` keep bookings with any session in the range; `to` before `from`
+    is 422, like the room schedule (spec 9.2)."""
+    if date_from is not None and date_to is not None and date_to < date_from:
+        message = "Must be on or after from."
+        raise AppError(ErrorCode.VALIDATION_ERROR, 422, "Invalid request.", {"to": message})
     if room_id is not None:
         query = query.where(Booking.room_id == room_id)
     if date_from is not None or date_to is not None:
@@ -61,11 +70,9 @@ def _list_in_rooms(
         if date_to is not None:
             in_range = in_range.where(BookingSession.date <= date_to)
         query = query.where(exists(in_range))
-    query = apply_search(
+    return apply_search(
         query, q, [Booking.meeting_title, Booking.reference_code, User.name_en, User.name_kh]
     )
-    query = query.order_by(transitions.first_start_sql(), Booking.id)
-    return paginate(session, query, page, size)
 
 
 def _check_waiting(booking: Booking, version: int, status: BookingStatus) -> None:
@@ -158,6 +165,76 @@ def list_pitika_bookings(
     province = booking_access.pitika_province(current)
     rooms = booking_access.room_ids_in_province(province)
     return _list_in_rooms(session, rooms, page, size, status, date_from, date_to, room_id, q)
+
+
+def _my_pitika_review(current: CurrentUser):
+    """The join condition for this Pitika's own review (not an Admin backup, B-34)."""
+    return and_(
+        BookingReview.booking_id == Booking.id,
+        BookingReview.stage == ReviewStage.PITIKA,
+        BookingReview.reviewer_id == current.id,
+        BookingReview.by_admin.is_(False),
+    )
+
+
+def list_pitika_decided(
+    session: Session,
+    current: CurrentUser,
+    page: int,
+    size: int,
+    decision: ReviewDecision,
+    date_from: date | None,
+    date_to: date | None,
+    room_id: int | None,
+    q: str | None,
+) -> dict:
+    """Bookings this Pitika approved or rejected (`decision`) in rooms of their current
+    province, newest decision first. No province means an empty list."""
+    province = booking_access.pitika_province(current)
+    rooms = booking_access.room_ids_in_province(province)
+    query = (
+        select(Booking)
+        .join(User, Booking.requester_id == User.id)
+        .join(BookingReview, _my_pitika_review(current))
+        .where(Booking.room_id.in_(rooms), BookingReview.decision == decision)
+        .options(
+            *booking_load_options(),
+            selectinload(Booking.reviews),
+            selectinload(Booking.rejection),
+        )
+    )
+    query = _apply_list_filters(query, date_from, date_to, room_id, q)
+    query = query.order_by(BookingReview.reviewed_at.desc(), Booking.id.desc())
+    return paginate(session, query, page, size)
+
+
+def pitika_summary(session: Session, current: CurrentUser) -> dict[str, int]:
+    """Waiting bookings in the Pitika's province now, and their own approvals and rejections
+    today (the Phnom Penh day; Admin backups not counted). No province: all 0."""
+    province = booking_access.pitika_province(current)
+    rooms = booking_access.room_ids_in_province(province)
+    waiting = session.scalar(
+        select(func.count(Booking.id)).where(
+            Booking.room_id.in_(rooms), Booking.status == BookingStatus.PENDING_PITIKA
+        )
+    )
+    start = local_to_utc(datetime.combine(now_local().date(), time()))
+    rows = session.execute(
+        select(BookingReview.decision, func.count(BookingReview.id))
+        .join(Booking, _my_pitika_review(current))
+        .where(
+            Booking.room_id.in_(rooms),
+            BookingReview.reviewed_at >= start,
+            BookingReview.reviewed_at < start + timedelta(days=1),
+        )
+        .group_by(BookingReview.decision)
+    ).all()
+    counts = dict(rows)
+    return {
+        "waiting": waiting or 0,
+        "approved_today": counts.get(ReviewDecision.APPROVED, 0),
+        "rejected_today": counts.get(ReviewDecision.REJECTED, 0),
+    }
 
 
 def _load_in_province(session: Session, current: CurrentUser, booking_id: int) -> Booking:

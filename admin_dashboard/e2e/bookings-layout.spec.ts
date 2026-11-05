@@ -152,6 +152,21 @@ for (const width of [1366, 390]) {
   })
 }
 
+for (const width of [1366, 900]) {
+  test(`the panel foot keeps Close and the decisions in one row, with Calendar file in the head, at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/bookings?id=100')
+    const panel = page.getByRole('dialog')
+    await expect(panel).toContainText('NBC0042')
+    await panel.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
+
+    const tops = await panel.locator('.panel-foot button').evaluateAll((all) => all.map((b) => Math.round(b.getBoundingClientRect().top)))
+    expect(tops).toHaveLength(4)
+    expect(new Set(tops).size).toBe(1)
+    await expect(panel.locator('.panel-head').getByRole('button', { name: 'Calendar file' })).toBeVisible()
+  })
+}
+
 for (const width of [1366, 900, 390]) {
   test(`the Admin action buttons stay inside the panel and the confirm pops up at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 })
@@ -162,7 +177,7 @@ for (const width of [1366, 900, 390]) {
     await panel.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
     const box = (await panel.boundingBox())!
     // Buttons pushed out to the left add no page scroll, so check each one against the panel.
-    for (const name of ['Close', 'Calendar file', 'Cancel booking', 'Reject', 'Approve']) {
+    for (const name of ['Close', 'Cancel booking', 'Reject', 'Approve']) {
       const button = panel.locator('.panel-foot').getByRole('button', { name, exact: true })
       await expect(button).toBeVisible()
       const b = (await button.boundingBox())!

@@ -10,7 +10,7 @@ import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import { MEETING_TYPE_LABELS, ROUTE_LABELS } from '../../utils/bookingLabels'
+import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
 import { formatDay } from '../../utils/time'
 
@@ -20,6 +20,8 @@ const props = defineProps<{
   photoPath: string | null
   /** "Starts in …" for a booking starting today, else null. */
   startsIn: string | null
+  /** A booking already decided: where it is now, and only Close (spec 2026-11-05-pitika-decided). */
+  readOnly?: boolean
 }>()
 const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 
@@ -34,7 +36,7 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
   <SidePanel
     :open="true"
     :title="booking.meeting_title"
-    subtitle="Waiting for Pitika"
+    :subtitle="readOnly ? statusLabel(booking.display_status) : 'Waiting for Pitika'"
     :serial="booking.reference_code"
     @close="emit('close')"
   >
@@ -49,7 +51,7 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
 
       <ProcessBar :steps="steps" size="large" />
 
-      <p v-if="startsIn" class="note">
+      <p v-if="startsIn && !readOnly" class="note">
         <TriangleAlert aria-hidden="true" />
         <span>{{ startsIn }}. If nobody decides before it starts, it is rejected by the system.</span>
       </p>
@@ -110,9 +112,11 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
     <template #foot>
       <div class="foot">
         <BaseButton variant="quiet" @click="emit('close')">Close</BaseButton>
-        <span class="spacer" />
-        <BaseButton variant="danger" @click="emit('reject')">Reject</BaseButton>
-        <BaseButton variant="primary" @click="emit('approve')"><Check aria-hidden="true" />Approve</BaseButton>
+        <template v-if="!readOnly">
+          <span class="spacer" />
+          <BaseButton variant="danger" @click="emit('reject')">Reject</BaseButton>
+          <BaseButton variant="primary" @click="emit('approve')"><Check aria-hidden="true" />Approve</BaseButton>
+        </template>
       </div>
     </template>
   </SidePanel>

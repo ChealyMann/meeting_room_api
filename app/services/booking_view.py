@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
+from app.constants.booking import ReviewDecision, ReviewStage
 from app.models import Booking, Building, Floor, Room, User
 from app.schemas.booking import (
     BookingDetail,
@@ -23,6 +24,7 @@ from app.schemas.booking import (
     ReviewOut,
     SessionOut,
 )
+from app.schemas.booking_review import DecidedBookingItem
 from app.schemas.refs import NamedRef, ProvinceRef
 from app.services import booking_transitions as transitions
 
@@ -81,6 +83,27 @@ def _list_item_fields(booking: Booking) -> dict[str, Any]:
 
 def build_booking_list_items(bookings: list[Booking]) -> list[BookingListItem]:
     return [BookingListItem(**_list_item_fields(booking)) for booking in bookings]
+
+
+def build_decided_items(bookings: list[Booking], reviewer_id: int) -> list[DecidedBookingItem]:
+    """List items with the Pitika's own decision: when, and the notes or the reason.
+    Reads the loaded `reviews` and `rejection` (no query per row)."""
+    items = []
+    for booking in bookings:
+        review = next(
+            r
+            for r in booking.reviews
+            if r.stage == ReviewStage.PITIKA and r.reviewer_id == reviewer_id and not r.by_admin
+        )
+        if review.decision == ReviewDecision.REJECTED and booking.rejection is not None:
+            note = booking.rejection.reason
+        else:
+            note = review.notes
+        fields = _list_item_fields(booking)
+        items.append(
+            DecidedBookingItem(**fields, decided_at=review.reviewed_at, decision_note=note)
+        )
+    return items
 
 
 def _catering_out(booking: Booking) -> CateringOut | None:
