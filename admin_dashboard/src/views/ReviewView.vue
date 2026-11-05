@@ -33,6 +33,9 @@ import ReviewPanel from './bookings/ReviewPanel.vue'
 import DecidedList from './review/DecidedList.vue'
 import ReviewHead from './review/ReviewHead.vue'
 
+/** Whose queue this page is: the Pitika's, or the room owner's (Task 4 uses it). */
+withDefaults(defineProps<{ reviewer?: 'pitika' | 'owner' }>(), { reviewer: 'pitika' })
+
 // Filters in the address, like the other lists: room, a day range (any session in it), search.
 const { list, result, loading, error, load } = useResourceList<BookingListItem>(
   { room_id: 'int', from: 'string', to: 'string', q: 'string' },

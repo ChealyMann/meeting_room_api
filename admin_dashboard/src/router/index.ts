@@ -50,13 +50,21 @@ const router = createRouter({
           path: 'review',
           name: 'review',
           component: () => import('../views/ReviewView.vue'),
+          props: { reviewer: 'pitika' },
           meta: { title: 'To review', roles: ['PITIKA'] },
+        },
+        {
+          path: 'owner-review',
+          name: 'owner-review',
+          component: () => import('../views/ReviewView.vue'),
+          props: { reviewer: 'owner' },
+          meta: { title: 'To review', roles: ['ROOM_OWNER'] },
         },
         {
           path: 'bookings',
           name: 'bookings',
           component: () => import('../views/BookingsView.vue'),
-          meta: { title: 'Bookings', roles: ['ADMIN', 'PITIKA'] },
+          meta: { title: 'Bookings', roles: ['ADMIN', 'PITIKA', 'ROOM_OWNER'] },
         },
         {
           path: 'food-list',

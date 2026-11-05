@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { NAV_ICONS, navFor } from '../nav'
+import { NAV_ICONS, navFor, roleTitle } from '../nav'
 
 const shape = (roles: string[]) =>
   navFor(roles).map((group) => ({ title: group.title, items: group.items.map((item) => item.route) }))
@@ -27,7 +27,26 @@ describe('navFor', () => {
     expect(shape(['ADMIN', 'PITIKA'])[0]).toEqual({ title: 'Daily', items: ['review', 'bookings', 'food-list', 'home'] })
   })
 
+  it('gives a Room owner To review and Bookings', () => {
+    expect(shape(['ROOM_OWNER', 'STAFF'])).toEqual([{ title: 'Daily', items: ['owner-review', 'bookings'] }])
+    expect(navFor(['ROOM_OWNER'])[0]!.items[0]).toMatchObject({ label: 'To review', icon: 'inbox' })
+  })
+
+  it('calls the owner page My rooms for a Pitika who also owns a room', () => {
+    expect(shape(['PITIKA', 'ROOM_OWNER'])).toEqual([{ title: 'Daily', items: ['review', 'owner-review', 'bookings', 'food-list'] }])
+    const mine = navFor(['PITIKA', 'ROOM_OWNER'])[0]!.items[1]!
+    expect(mine).toMatchObject({ label: 'My rooms', icon: 'door-open' })
+  })
+
   it('gives anyone else nothing', () => {
     expect(navFor(['STAFF'])).toEqual([])
+  })
+})
+
+describe('roleTitle', () => {
+  it('names the first dashboard role the user has', () => {
+    expect(roleTitle(['ADMIN', 'ROOM_OWNER'])).toBe('Admin')
+    expect(roleTitle(['PITIKA', 'ROOM_OWNER'])).toBe('Pitika')
+    expect(roleTitle(['ROOM_OWNER', 'STAFF'])).toBe('Room owner')
   })
 })

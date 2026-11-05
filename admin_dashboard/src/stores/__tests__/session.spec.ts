@@ -245,3 +245,18 @@ describe('useSessionStore and drafts', () => {
     expect(drafts.get('profile:1')).toEqual({ phone: '099' })
   })
 })
+
+describe('bookingsSource', () => {
+  it.each([
+    [['ROOM_OWNER'], 'owner'],
+    [['PITIKA', 'ROOM_OWNER'], 'pitika'],
+    [['ADMIN', 'ROOM_OWNER'], 'admin'],
+    [['PITIKA'], 'pitika'],
+  ])('%j reads the %s list', (codes, source) => {
+    setActivePinia(createPinia())
+    const session = useSessionStore()
+    session.user = { roles: codes.map((code) => ({ code })) } as never
+    expect(session.bookingsSource).toBe(source)
+    expect(session.pitikaOnly).toBe(source === 'pitika')
+  })
+})

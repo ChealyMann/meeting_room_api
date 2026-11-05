@@ -43,7 +43,8 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Daily',
     items: [
       { label: 'To review', icon: 'inbox', route: 'review', roles: ['PITIKA'] },
-      { label: 'Bookings', icon: 'calendar-check', route: 'bookings', roles: ['ADMIN', 'PITIKA'] },
+      { label: 'To review', icon: 'inbox', route: 'owner-review', roles: ['ROOM_OWNER'] },
+      { label: 'Bookings', icon: 'calendar-check', route: 'bookings', roles: ['ADMIN', 'PITIKA', 'ROOM_OWNER'] },
       { label: 'Food list', icon: 'utensils-crossed', route: 'food-list', roles: ['ADMIN', 'PITIKA'] },
       { label: 'Rooms', icon: 'door-open', route: 'home' },
     ],
@@ -112,10 +113,21 @@ export const NAV_ICONS: Record<string, Component> = {
   'shield-check': ShieldCheck,
 }
 
-/** The menu for these role codes: items the roles may see, and groups that keep any. */
+/** The menu for these role codes: items the roles may see, and groups that keep any. A Pitika
+ *  who also owns a room sees the owner page as "My rooms", so there are not two "To review". */
 export function navFor(roles: string[]): NavGroup[] {
   const sees = (item: NavItem) => (item.roles ?? ['ADMIN']).some((role) => roles.includes(role))
-  return NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(sees) })).filter((group) => group.items.length > 0)
+  const named = (item: NavItem): NavItem =>
+    item.route === 'owner-review' && roles.includes('PITIKA') ? { ...item, label: 'My rooms', icon: 'door-open' } : item
+  return NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter(sees).map(named) })).filter((group) => group.items.length > 0)
+}
+
+/** The rail's subtitle: the first dashboard role the user has, in the home order. */
+export function roleTitle(roles: string[]): string {
+  if (roles.includes('ADMIN')) return 'Admin'
+  if (roles.includes('PITIKA')) return 'Pitika'
+  if (roles.includes('ROOM_OWNER')) return 'Room owner'
+  return ''
 }
 
 /** The menu icon of the page with this route name, if the menu has it. */

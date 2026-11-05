@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
-import { NAV_ICONS as ICONS, navFor, type NavGroup } from './nav'
+import { NAV_ICONS as ICONS, navFor, roleTitle, type NavGroup } from './nav'
 
 const props = defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -23,7 +23,7 @@ const route = useRoute()
 const groups = computed(() => navFor(session.roleCodes))
 const setupAt = computed(() => groups.value.findIndex((group) => group.foldable))
 /** The rail's subtitle: the dashboard role the user works as. */
-const roleName = computed(() => (session.isAdmin ? 'Admin' : 'Pitika'))
+const roleName = computed(() => roleTitle(session.roleCodes))
 const opened = ref<Record<string, boolean>>({})
 const isOpen = (group: NavGroup) => !!opened.value[group.title ?? '']
 function toggle(group: NavGroup) {

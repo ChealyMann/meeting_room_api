@@ -15,12 +15,14 @@ export interface SessionState {
 export type NavResult = true | { name: string; query?: Record<string, string> }
 
 /** The roles that may use the dashboard. The others (Staff, …) see "No access". */
-export const DASHBOARD_ROLES = ['ADMIN', 'PITIKA']
+export const DASHBOARD_ROLES = ['ADMIN', 'PITIKA', 'ROOM_OWNER']
 
-/** Where a user lands: Rooms for an Admin, To review for a Pitika, else No access. */
+/** Where a user lands: Rooms for an Admin, To review for a Pitika, the owner To review for a
+ *  Room owner, else No access. */
 export function homeFor(roles: string[]): string {
   if (roles.includes('ADMIN')) return 'home'
   if (roles.includes('PITIKA')) return 'review'
+  if (roles.includes('ROOM_OWNER')) return 'owner-review'
   return 'no-access'
 }
 

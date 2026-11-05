@@ -7,7 +7,8 @@ const nav = (name: string, fullPath: string, meta: Nav['meta'] = {}): Nav => ({ 
 const ADMIN_ONLY = ['ADMIN']
 const HOME = nav('home', '/', { roles: ADMIN_ONLY })
 const OFFICES = nav('offices', '/offices', { roles: ADMIN_ONLY })
-const BOOKINGS = nav('bookings', '/bookings', { roles: ['ADMIN', 'PITIKA'] })
+const BOOKINGS = nav('bookings', '/bookings', { roles: ['ADMIN', 'PITIKA', 'ROOM_OWNER'] })
+const OWNER_REVIEW = nav('owner-review', '/owner-review', { roles: ['ROOM_OWNER'] })
 const REVIEW = nav('review', '/review', { roles: ['PITIKA'] })
 const PROFILE = nav('profile', '/profile')
 const SIGN_IN = nav('sign-in', '/sign-in', { public: true })
@@ -20,6 +21,26 @@ const staff = { signedIn: true, mustChangePassword: false, roles: ['STAFF'] }
 const admin = { signedIn: true, mustChangePassword: false, roles: ['ADMIN'] }
 const pitika = { signedIn: true, mustChangePassword: false, roles: ['PITIKA', 'STAFF'] }
 const both = { signedIn: true, mustChangePassword: false, roles: ['ADMIN', 'PITIKA'] }
+const owner = { signedIn: true, mustChangePassword: false, roles: ['ROOM_OWNER', 'STAFF'] }
+
+describe('Room owner', () => {
+  it('lands on the owner To review and may open Bookings', () => {
+    expect(homeFor(['ROOM_OWNER'])).toBe('owner-review')
+    expect(resolveNavigation(SIGN_IN, owner)).toEqual({ name: 'owner-review' })
+    expect(resolveNavigation(OWNER_REVIEW, owner)).toBe(true)
+    expect(resolveNavigation(BOOKINGS, owner)).toBe(true)
+  })
+
+  it('is sent home from Admin and Pitika pages', () => {
+    expect(resolveNavigation(OFFICES, owner)).toEqual({ name: 'owner-review' })
+    expect(resolveNavigation(REVIEW, owner)).toEqual({ name: 'owner-review' })
+  })
+
+  it('keeps the Pitika home for a Pitika who also owns a room', () => {
+    expect(homeFor(['PITIKA', 'ROOM_OWNER'])).toBe('review')
+    expect(homeFor(['STAFF'])).toBe('no-access')
+  })
+})
 
 describe('resolveNavigation', () => {
   it('sends a signed-out user to sign-in and remembers the page', () => {
