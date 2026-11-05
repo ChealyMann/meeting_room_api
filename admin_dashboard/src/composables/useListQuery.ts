@@ -44,12 +44,16 @@ function serialize(value: unknown): string {
 export interface ListQueryOptions {
   /** false: the list has no Active/Inactive/All filter, so `status` and `is_active` are not used. */
   activeFilter?: boolean
+  /** false: the list loads everything at once, so `page` and `size` stay out of the API call
+   *  (they are still owned here, so a filter change still resets another list's page). */
+  paged?: boolean
 }
 
 export function useListQuery(spec: FilterSpec, options: ListQueryOptions = {}) {
   const route = useRoute()
   const router = useRouter()
   const activeFilter = options.activeFilter ?? true
+  const paged = options.paged ?? true
   const managed = new Set([...Object.keys(spec), 'page', 'size', ...(activeFilter ? ['status'] : [])])
 
   const filters: ComputedRef<Record<string, unknown>> = computed(() => {
@@ -128,8 +132,10 @@ export function useListQuery(spec: FilterSpec, options: ListQueryOptions = {}) {
   const apiParams: ComputedRef<Record<string, unknown>> = computed(() => {
     const params: Record<string, unknown> = { ...filters.value }
     if (currentStatus.value !== 'all') params.is_active = currentStatus.value === 'active'
-    params.page = currentPage.value
-    params.size = currentSize.value
+    if (paged) {
+      params.page = currentPage.value
+      params.size = currentSize.value
+    }
     return params
   })
 

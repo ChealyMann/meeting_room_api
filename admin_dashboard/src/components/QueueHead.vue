@@ -138,6 +138,9 @@ watch(
   font-weight: 600;
   color: var(--color-ink);
 }
+.today-ring.empty .ring-text {
+  color: var(--color-ink-disabled);
+}
 .title {
   flex: 1;
   min-width: 180px;
