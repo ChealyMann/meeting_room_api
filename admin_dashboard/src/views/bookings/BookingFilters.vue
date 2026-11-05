@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // The bookings list's filters (DSH-B01), kept in the address: search, status, province, room,
 // and a day range (any session in it). Bookings have no Active filter.
+import { X } from 'lucide-vue-next'
 import { computed, onMounted, ref, watchEffect } from 'vue'
 
 import { api } from '../../api'
 import { listAllRooms, listProvinces } from '../../api/references'
 import type { ProvinceRef, RoomListItem } from '../../api/types'
+import BaseButton from '../../components/base/BaseButton.vue'
 import ListSearch from '../../components/list/ListSearch.vue'
 import SearchPicker, { type PickerItem } from '../../components/list/SearchPicker.vue'
 import { useListQuery } from '../../composables/useListQuery'
@@ -20,6 +22,8 @@ const emit = defineEmits<{ summary: [parts: string[]] }>()
 const list = useListQuery(BOOKING_FILTERS, { activeFilter: false })
 const f = computed(() => list.filters.value as Record<string, string | number | undefined>)
 const text = (key: string) => (f.value[key] as string | undefined) ?? null
+/** Any filter set: the bar then offers "Clear filters" at its end. */
+const anyFilter = computed(() => Object.keys(list.filters.value).length > 0)
 
 const provinces = ref<ProvinceRef[]>([])
 const rooms = ref<RoomListItem[]>([])
@@ -98,6 +102,10 @@ watchEffect(() => {
       <span class="label">To</span>
       <input id="filter-to" class="input mono" type="date" :value="text('to') ?? ''" @change="chooseDay('to', $event)" />
     </label>
+    <BaseButton v-if="anyFilter" variant="quiet" class="clear-filters" @click="list.reset()">
+      <X aria-hidden="true" />
+      Clear filters
+    </BaseButton>
   </div>
 </template>
 
@@ -121,5 +129,8 @@ watchEffect(() => {
 }
 .day .input {
   width: 150px;
+}
+.clear-filters {
+  color: var(--color-crimson);
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Bookings (DSH-B01, B-32): every booking, read only for the Admin. A filtered, paged list; the
-// open booking lives in the address (?id=12), so a reload keeps its panel open.
+// Bookings (DSH-B01, B-32): every booking. A filtered, paged list; the open booking lives in the
+// address (?id=12), so a reload keeps its panel open. The Admin's only changes are the actions
+// in the booking panel (cancel, and approve or reject as backup reviewer, B-33/B-34).
 import { CircleAlert, Ellipsis, LoaderCircle, Monitor, Utensils } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 

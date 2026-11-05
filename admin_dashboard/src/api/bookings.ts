@@ -1,4 +1,5 @@
-// Bookings, read only for the Admin: the list of all bookings, a room's schedule and the day's food list.
+// Bookings for the Admin: the list of all bookings, a room's schedule, the day's food list, and the
+// Admin's actions on one booking (cancel, and approve or reject as backup reviewer).
 import type { ApiClient } from './client'
 import { toQuery } from './query'
 import type { AdminActionsOut, BookingDetail, BookingListItem, CateringOrderItem, DoorPassOut, ItemList, Page, ScheduleItem } from './types'

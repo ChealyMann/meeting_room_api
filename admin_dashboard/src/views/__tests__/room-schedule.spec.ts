@@ -140,6 +140,24 @@ describe('RoomSchedule', () => {
     expect(scheduleCalls[scheduleCalls.length - 1]).toBe('?from=2026-11-04&to=2026-11-10')
   })
 
+  it('follows the new day when it shows this week past midnight, but keeps a chosen week', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-04T16:59:00Z')) // 23:59 in Phnom Penh
+    const wrapper = await mountPanel('schedule')
+    expect(scheduleCalls).toEqual(['?from=2026-11-04&to=2026-11-10'])
+
+    vi.setSystemTime(new Date('2026-11-04T17:01:00Z')) // 00:01 on 5 Nov
+    vi.advanceTimersByTime(60_000)
+    await flushPromises()
+    expect(scheduleCalls[scheduleCalls.length - 1]).toBe('?from=2026-11-05&to=2026-11-11')
+
+    await click(wrapper, 'Next week')
+    vi.setSystemTime(new Date('2026-11-05T17:01:00Z')) // 00:01 on 6 Nov
+    vi.advanceTimersByTime(60_000)
+    await flushPromises()
+    expect(scheduleCalls[scheduleCalls.length - 1]).toBe('?from=2026-11-12&to=2026-11-18')
+  })
+
   it('groups the sessions by day', async () => {
     const wrapper = await mountPanel('schedule')
 

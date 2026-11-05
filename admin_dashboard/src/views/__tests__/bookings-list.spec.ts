@@ -87,6 +87,34 @@ describe('BookingsView', () => {
     expect(wrapper.find('#filter-to').exists()).toBe(true)
   })
 
+  it('hides the count and the paging while the list cannot load', async () => {
+    const { wrapper, router } = await mountAt('/bookings')
+    expect(wrapper.get('.count').text()).toBe('001 booking')
+
+    listAnswer = () =>
+      json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid request.', fields: { to: 'Must be on or after from.' } } }, 422)
+    await router.push('/bookings?from=2026-11-10&to=2026-11-01')
+    await flushPromises()
+
+    expect(wrapper.find('.load-error').exists()).toBe(true)
+    expect(wrapper.find('.count').exists()).toBe(false)
+    expect(wrapper.find('nav.pager').exists()).toBe(false)
+  })
+
+  it('offers Clear filters in the filter bar only when a filter is set', async () => {
+    const plain = await mountAt('/bookings')
+    expect(plain.wrapper.find('.filters .clear-filters').exists()).toBe(false)
+    plain.wrapper.unmount()
+
+    const { wrapper, router } = await mountAt('/bookings?status=CONFIRMED&q=budget')
+    await wrapper.get('.filters .clear-filters').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query).toEqual({})
+    expect(listCalls[listCalls.length - 1]).toBe('?page=1&size=20')
+    expect(wrapper.find('.filters .clear-filters').exists()).toBe(false)
+  })
+
   it('opens a booking through the address', async () => {
     const { wrapper, router } = await mountAt('/bookings')
 

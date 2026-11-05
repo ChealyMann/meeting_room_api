@@ -10,13 +10,19 @@ import { getRoomSchedule } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import type { ScheduleItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { statusLabel } from '../../utils/bookingLabels'
-import { addDays, formatDay, phnomPenhDate } from '../../utils/time'
+import { addDays, formatDay } from '../../utils/time'
 
 const props = defineProps<{ roomId: number }>()
 
-const thisWeek = phnomPenhDate(new Date())
-const from = ref(thisWeek)
+// The week starts today. Kept current: a schedule showing this week when the day changes
+// moves with it; a week the Admin chose stays.
+const thisWeek = usePhnomPenhToday()
+const from = ref(thisWeek.value)
+watch(thisWeek, (now, before) => {
+  if (from.value === before) from.value = now
+})
 const to = computed(() => addDays(from.value, 6))
 
 const items = ref<ScheduleItem[] | null>(null)

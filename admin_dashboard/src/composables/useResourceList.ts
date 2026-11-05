@@ -37,6 +37,9 @@ export function useResourceList<T>(
       result.value = page
     } catch (err) {
       if (request !== latest) return
+      // The old page no longer matches the filters the API refused: drop it, so the count and
+      // the paging foot do not show numbers from before.
+      result.value = null
       error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
       errorFields.value = err instanceof ApiError ? err.fields : {}
     } finally {

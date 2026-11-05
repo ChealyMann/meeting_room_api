@@ -112,6 +112,44 @@ describe('FoodListView', () => {
     expect(row).toContain('Confirmed')
   })
 
+  it('shows the remarks and the Pitika notes in their own columns', async () => {
+    orders = [order(), order({ booking_id: 8, remarks: null, approver_notes: null })]
+    const { wrapper } = await mountAt('/food-list?date=2026-11-04')
+
+    const heads = wrapper.findAll('thead th').map((th) => th.text())
+    const cells = (row: number) => wrapper.findAll('tbody tr')[row]!.findAll('td').map((td) => td.text())
+    const remarks = heads.indexOf('Remarks')
+    const notes = heads.indexOf('Pitika notes')
+    expect([cells(0)[remarks], cells(0)[notes]]).toEqual(['No pork', 'Approved'])
+    expect([cells(1)[remarks], cells(1)[notes]]).toEqual(['None', 'None'])
+  })
+
+  it('moves to the new day when the list stays open past midnight', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-04T16:59:00Z')) // 23:59 in Phnom Penh
+    const { wrapper } = await mountAt('/food-list')
+    expect(calls).toEqual(['?date=2026-11-04'])
+
+    vi.setSystemTime(new Date('2026-11-04T17:01:00Z')) // 00:01 on 5 Nov
+    vi.advanceTimersByTime(60_000)
+    await flushPromises()
+
+    expect(calls[calls.length - 1]).toBe('?date=2026-11-05')
+    expect(wrapper.text()).toContain('Thu 5 Nov 2026')
+  })
+
+  it('keeps a chosen day when the date changes', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-04T16:59:00Z'))
+    await mountAt('/food-list?date=2026-11-02')
+
+    vi.setSystemTime(new Date('2026-11-04T17:01:00Z'))
+    vi.advanceTimersByTime(60_000)
+    await flushPromises()
+
+    expect(calls).toEqual(['?date=2026-11-02'])
+  })
+
   it('links each order to its booking', async () => {
     const { wrapper } = await mountAt('/food-list')
 

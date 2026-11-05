@@ -1191,8 +1191,8 @@ export interface paths {
         /**
          * List all bookings (Admin)
          * @description B-32. Bookings in every province, earliest first start first. `q` matches the title,
-         *     the reference code or the booker's name. Read only: the Admin cannot approve, reject,
-         *     cancel or edit.
+         *     the reference code or the booker's name. The Admin's actions on one booking are under
+         *     /admin/bookings (cancel, and approve or reject as backup reviewer, B-33/B-34).
          */
         get: operations["list_all_bookings_api_v1_bookings_get"];
         put?: never;
