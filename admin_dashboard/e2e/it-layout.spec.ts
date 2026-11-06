@@ -100,7 +100,9 @@ async function signedIn(page: Page, path: string, roles = ['IT_LEAD']) {
     if (url.pathname === '/api/v1/me') return route.fulfill({ json: meWith(roles) })
     if (url.pathname === '/api/v1/rooms') return route.fulfill({ json: { items: ROOMS, page: 1, size: 100, total: 1 } })
     if (url.pathname === '/api/v1/it/staff') {
-      const items = STAFF.map((x, i) => ({ ...x, setups_that_day: url.searchParams.get('day') ? [0, 3][i] : null }))
+      const asked = url.searchParams.get('ticket_id')
+      const busy = [[], [{ ticket_id: 5, room_name_en: 'Mekong Room with a fairly long English name', setup_time: '23:00', meeting_start: '23:30' }]]
+      const items = STAFF.map((x, i) => ({ ...x, setups_that_day: asked ? [0, 3][i] : null, busy: asked ? busy[i] : null }))
       return route.fulfill({ json: { items, total: items.length } })
     }
     if (url.pathname === '/api/v1/it/tickets/summary') {
@@ -163,12 +165,13 @@ for (const width of [1366, 900, 390]) {
     await expect(dialog).toContainText('Assign IT Staff')
     await expect(dialog.locator('input[type="checkbox"]')).toHaveCount(2)
     await expect(dialog.locator('.load')).toHaveText(['Free that day', '2 other setups that day'])
+    await expect(dialog.locator('.busy')).toHaveText(['Busy 23:00–23:30 · Mekong Room with a fairly long English name'])
     await expect(dialog.locator('.picked')).toHaveText('2 picked')
     await expect(dialog.locator('button.confirm')).toHaveText('Assign 2 staff')
     const d = (await dialog.boundingBox())!
     expect(d.x).toBeGreaterThanOrEqual(0)
     expect(d.x + d.width).toBeLessThanOrEqual(width)
-    for (const part of await dialog.locator('.staff-row, .room-box, .foot button').all()) {
+    for (const part of await dialog.locator('.staff-row, .busy, .room-box, .foot button').all()) {
       const box = (await part.boundingBox())!
       expect(box.x).toBeGreaterThanOrEqual(d.x)
       expect(box.x + box.width).toBeLessThanOrEqual(d.x + d.width + 0.5)

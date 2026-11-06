@@ -28,9 +28,10 @@ export function getItSummary(client: ApiClient): Promise<ITSummary> {
   return client.request<ITSummary>('GET', `${TICKETS}/summary`)
 }
 
-/** Active IT Staff, by name (IT Lead only). With `day`, each one's setups that day. */
-export function listItStaff(client: ApiClient, day?: string): Promise<ItemList<ITStaffPick>> {
-  return client.request<ItemList<ITStaffPick>>('GET', '/api/v1/it/staff' + toQuery({ day }))
+/** Active IT Staff, by name (IT Lead only). With the setup being assigned: each one's setups
+ *  that day, and their other setups at the same time (a warning, not a block). */
+export function listItStaff(client: ApiClient, ticketId?: number): Promise<ItemList<ITStaffPick>> {
+  return client.request<ItemList<ITStaffPick>>('GET', '/api/v1/it/staff' + toQuery({ ticket_id: ticketId }))
 }
 
 /** T10: the list replaces the earlier staff. */

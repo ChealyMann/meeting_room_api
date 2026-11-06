@@ -1001,7 +1001,9 @@ export interface paths {
         /**
          * List IT Staff
          * @description IT Lead only: active users with the IT Staff role, by name, to assign to a setup. With
-         *     `day`, `setups_that_day` counts the setups each one already has that day.
+         *     `day`, `setups_that_day` counts the setups each one already has that day. With `ticket_id`,
+         *     the day is that setup's, and `busy` lists each one's other setups at the same time (a
+         *     warning only: they can still be assigned).
          */
         get: operations["list_it_staff_api_v1_it_staff_get"];
         put?: never;
@@ -2421,6 +2423,20 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * ITBusy
+         * @description Another setup of the same person whose time (set-up to meeting start) overlaps.
+         */
+        ITBusy: {
+            /** Ticket Id */
+            ticket_id: number;
+            /** Room Name En */
+            room_name_en: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Meeting Start */
+            meeting_start: string;
+        };
         /** ITIn */
         ITIn: {
             /** Service Ids */
@@ -2528,7 +2544,8 @@ export interface components {
         /**
          * ITStaffPick
          * @description A row of the assign picker. `setups_that_day`: the setups they already have on the
-         *     asked day (null when no day was asked).
+         *     asked day (null when no day was asked). `busy`: their other setups at the same time as the
+         *     asked ticket (null when no ticket was asked).
          */
         ITStaffPick: {
             /** Id */
@@ -2543,6 +2560,8 @@ export interface components {
             avatar_url: string | null;
             /** Setups That Day */
             setups_that_day: number | null;
+            /** Busy */
+            busy: components["schemas"]["ITBusy"][] | null;
         };
         /**
          * ITStatus
@@ -6366,6 +6385,8 @@ export interface operations {
             query?: {
                 /** @description Count each person's setups on this day */
                 day?: string | null;
+                /** @description The setup being assigned: its day and time clashes */
+                ticket_id?: number | null;
             };
             header?: never;
             path?: never;

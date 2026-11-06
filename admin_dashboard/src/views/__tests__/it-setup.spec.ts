@@ -101,8 +101,12 @@ beforeEach(() => {
       }
       if (url.pathname === '/api/v1/it/tickets/summary') return json(summary)
       if (url.pathname === '/api/v1/it/staff') {
-        const day = url.searchParams.get('day')
-        return json({ items: STAFF.map((x, i) => ({ ...x, setups_that_day: day ? LOAD[i] : null })), total: STAFF.length })
+        const asked = url.searchParams.get('ticket_id')
+        const busy = [[], [{ ticket_id: 99, room_name_en: 'Board Room', setup_time: '07:30', meeting_start: '08:00' }]]
+        return json({
+          items: STAFF.map((x, i) => ({ ...x, setups_that_day: asked ? LOAD[i] : null, busy: asked ? busy[i] : null })),
+          total: STAFF.length,
+        })
       }
       if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: 1 })
       const one = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
@@ -312,10 +316,14 @@ describe('IT setup', () => {
     await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change')!.trigger('click')
     await flushPromises()
 
-    expect(calls).toContain('GET /api/v1/it/staff?day=2026-11-06')
+    expect(calls).toContain('GET /api/v1/it/staff?ticket_id=7')
     const load = [...dialog()!.querySelectorAll('.staff-row .load')].map((n) => n.textContent?.trim())
     // Sok Pisey has 2 that day, and one of them is this setup.
     expect(load).toEqual(['Free that day', '1 other setup that day'])
+    // A clash is a warning only: the person can still be picked.
+    const rows = [...dialog()!.querySelectorAll('.staff-row')]
+    expect(rows.map((r) => r.querySelector('.busy')?.textContent?.trim() ?? null)).toEqual([null, 'Busy 07:30–08:00 · Board Room'])
+    expect(rows[1]!.querySelector<HTMLInputElement>('input')!.disabled).toBe(false)
     expect(dialog()!.querySelector('.room-box')?.textContent).toContain('Training 7')
     expect(dialog()!.querySelector('.picked')?.textContent?.trim()).toBe('1 picked')
     expect(dialog()!.querySelector('button.confirm')?.textContent?.trim()).toBe('Assign 1 staff')

@@ -3,7 +3,7 @@
 // or IT Staff's My tasks (`mine`, read only). Rows are grouped by setup day (Ready: by the day it
 // was made ready), a row opens the panel, and the IT Lead assigns staff or marks a setup ready in
 // the Ledger pop-up. The filters live in the address (`from`, `to`, `q`), shared with the page.
-import { CircleAlert, Plus, Search, UserPlus } from 'lucide-vue-next'
+import { CircleAlert, Plus, Search, TriangleAlert, UserPlus } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { api } from '../../api'
@@ -137,10 +137,10 @@ async function ask(step: Step, ticket: ITTicketItem) {
   picked.value = ticket.staff.map((s) => s.id)
   staffSearch.value = ''
   if (step === 'assign') {
-    // Asked each time: how busy each person is depends on the setup's day.
+    // Asked each time: how busy each person is depends on the setup's day and time.
     staff.value = []
     try {
-      staff.value = (await listItStaff(api, ticket.booking.first_session.date)).items
+      staff.value = (await listItStaff(api, ticket.id)).items
     } catch (err) {
       askError.value = err instanceof ApiError ? err.message : 'Could not load the IT Staff.'
     }
@@ -152,6 +152,13 @@ function loadText(s: StaffPick): string | null {
   const others = s.setups_that_day - (asking.value.ticket.staff.some((x) => x.id === s.id) ? 1 : 0)
   if (others <= 0) return 'Free that day'
   return `${others} other ${others === 1 ? 'setup' : 'setups'} that day`
+}
+/** Owner decision, 6 Nov 2026: a clash is a warning, not a block (rooms may be next door). */
+function busyText(s: StaffPick): string | null {
+  const first = s.busy?.[0]
+  if (!first) return null
+  const more = (s.busy?.length ?? 0) > 1 ? ` +${s.busy!.length - 1}` : ''
+  return `Busy ${first.setup_time.slice(0, 5)}–${first.meeting_start.slice(0, 5)} · ${first.room_name_en}${more}`
 }
 const askNeeds = computed(() =>
   (asking.value?.ticket.items ?? []).map((item) => {
@@ -318,6 +325,9 @@ async function save() {
               <span class="names">
                 <span class="en">{{ s.name_en }}</span>
                 <span class="kh">{{ s.name_kh }}</span>
+                <span v-if="busyText(s)" class="busy" :title="busyText(s)!">
+                  <TriangleAlert aria-hidden="true" /><span class="busy-text">{{ busyText(s) }}</span>
+                </span>
               </span>
               <span v-if="loadText(s)" class="load" :class="{ free: loadText(s) === 'Free that day' }">{{ loadText(s) }}</span>
               <input type="checkbox" :checked="picked.includes(s.id)" :disabled="busy" @change="toggle(s.id)" />
@@ -525,6 +535,26 @@ async function save() {
   font-family: var(--font-kh);
   font-size: 12.5px;
   color: var(--color-intaglio);
+}
+.busy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 1px;
+  color: var(--color-warn);
+  font-size: 12px;
+  font-weight: 500;
+}
+.busy-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.busy :deep(svg.lucide) {
+  flex: none;
+  width: 13px;
+  height: 13px;
 }
 .load {
   flex: none;
