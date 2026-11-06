@@ -90,7 +90,7 @@ describe('AppShell', () => {
     expect(wrapper.text()).toContain('dara@company.com')
     expect(wrapper.text()).toContain('SD')
     expect(wrapper.get('header').text()).toContain('My profile')
-    expect(wrapper.get('header').text()).toMatch(/Phnom Penh \d\d:\d\d/)
+    expect(wrapper.get('header').text()).toMatch(/Phnom Penh \w{3} \d{1,2} \w{3} \d{4} \d\d:\d\d/)
   })
 
   it('signs out and goes to sign-in', async () => {

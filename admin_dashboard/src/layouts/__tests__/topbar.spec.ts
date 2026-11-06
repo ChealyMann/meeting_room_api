@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
@@ -27,5 +27,22 @@ describe('AppTopbar title', () => {
   it('keeps the page title otherwise', async () => {
     expect(await titleAt(['ROOM_OWNER'], 'owner-review', 'To review')).toContain('To review')
     expect(await titleAt(['ADMIN'], 'profile', 'My profile')).toContain('My profile')
+  })
+})
+
+describe('AppTopbar clock', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it("shows today's date and the time in Phnom Penh, and turns the day at midnight there", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-06T16:59:00Z')) // 23:59 on Fri 6 Nov in Phnom Penh
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/x', component: Page }] })
+    await router.push('/x')
+    const wrapper = mount(AppTopbar, { props: { menuOpen: false }, global: { plugins: [router] } })
+    expect(wrapper.find('.clock').text()).toBe('Phnom Penh Fri 6 Nov 2026 23:59')
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(wrapper.find('.clock').text()).toBe('Phnom Penh Sat 7 Nov 2026 00:00')
+    wrapper.unmount()
   })
 })
