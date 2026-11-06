@@ -147,7 +147,7 @@ for (const width of [1366, 900, 390]) {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/review?tab=approved')
 
-    await expect(page.locator('.card')).toHaveCount(3)
+    await expect(page.locator('.soft-row')).toHaveCount(3)
     expect(await sideways(page)).toBe(0)
 
     // The head: the ring has no outline from a global class, the tabs fit the page.
@@ -159,9 +159,9 @@ for (const width of [1366, 900, 390]) {
     expect(tabs.x + tabs.width).toBeLessThanOrEqual(width)
     await expect(page.getByRole('tab', { name: /Approved/ })).toHaveAttribute('aria-selected', 'true')
 
-    for (const card of await page.locator('.card').all()) {
+    for (const card of await page.locator('.soft-row').all()) {
       const c = (await card.boundingBox())!
-      for (const part of ['.now', '.time']) {
+      for (const part of ['.now', '.decided-at']) {
         const b = (await card.locator(part).boundingBox())!
         expect(b.x).toBeGreaterThanOrEqual(c.x)
         expect(b.x + b.width).toBeLessThanOrEqual(c.x + c.width + 0.5)
@@ -173,7 +173,7 @@ for (const width of [1366, 900, 390]) {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/review?tab=approved')
 
-    await page.locator('.card').first().click()
+    await page.locator('.soft-row').first().click()
     const panel = page.getByRole('dialog')
     await expect(panel).toContainText('Plan the budget')
     const foot = panel.locator('.panel-foot')

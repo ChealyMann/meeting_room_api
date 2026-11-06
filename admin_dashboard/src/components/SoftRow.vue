@@ -179,6 +179,11 @@ h3 {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* A text-only tag (a note) is a plain box, so a long one ends in "…" instead of being cut. */
+.tags :slotted(.soft-tag.note) {
+  display: inline-block;
+  line-height: 24px;
+}
 .tags :slotted(.soft-tag.warn) {
   background: var(--color-saved-tint);
   color: var(--color-warn);

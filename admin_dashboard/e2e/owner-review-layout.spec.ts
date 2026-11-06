@@ -174,7 +174,7 @@ for (const width of [1366, 900, 390]) {
     expect(d.x + d.width).toBeLessThanOrEqual(width)
 
     await page.goto('/owner-review?tab=approved')
-    await expect(page.locator('.card')).toHaveCount(3)
+    await expect(page.locator('.soft-row')).toHaveCount(3)
     expect(await sideways(page)).toBe(0)
   })
 }
