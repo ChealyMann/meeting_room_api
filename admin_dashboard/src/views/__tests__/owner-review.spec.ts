@@ -132,17 +132,16 @@ describe('Owner To review', () => {
 
   it('shows what an owner checks, and no food or IT labels', async () => {
     const { wrapper } = await mountOwner()
-    const checks = row(wrapper).findAll('.chk').map((c) => c.text())
+    const checks = row(wrapper).findAll('.soft-tag').map((c) => c.text())
     expect(checks).toEqual(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
-    expect(row(wrapper).get('.chk.seats').classes()).toContain('over')
-    expect(row(wrapper).find('.chk.food').exists()).toBe(false)
+    expect(row(wrapper).get('.soft-tag.seats').classes()).toContain('alert')
+    expect(row(wrapper).find('.soft-tag.food').exists()).toBe(false)
   })
 
-  it('draws the row bar with Pitika done and the gap for my decision', async () => {
+  it('says how soon a booking of today starts, in place of the next step', async () => {
     const { wrapper } = await mountOwner()
-    const steps = row(wrapper).findAll('.process-bar li.step .n').map((n) => n.text())
-    expect(steps).toEqual(['Sent', 'Pitika', 'IT setup', 'Confirmed'])
-    expect(row(wrapper).findAll('.process-bar li.step.gap')).toHaveLength(1)
+    expect(row(wrapper).get('.soon').text()).toContain('Starts in')
+    expect(row(wrapper).find('.next').exists()).toBe(false)
   })
 
   it('opens the panel with my waiting label and the Pitika notes', async () => {

@@ -149,9 +149,13 @@ describe('ReviewView', () => {
     const { wrapper } = await mountReview()
 
     const first = row(wrapper, 21).text()
-    for (const text of ['NBC-26-87467', 'Payment systems workshop', 'បន្ទប់មេគង្គ', 'Mekong Room', '14:00–15:30', 'Sok Dara', '10 people', 'Lunch box', '×25', 'Projector setup']) {
+    for (const text of ['Payment systems workshop', 'បន្ទប់មេគង្គ', 'Mekong Room', 'Sok Dara', '10 people']) {
       expect(first).toContain(text)
     }
+    // The time leads the row; the reference sits on the photo; what to check is in soft tags.
+    expect([row(wrapper, 21).get('.start').text(), row(wrapper, 21).get('.end').text()]).toEqual(['14:00', '15:30'])
+    expect(row(wrapper, 21).get('.photo .ref').text()).toBe('NBC-26-87467')
+    expect(row(wrapper, 21).findAll('.soft-tag').map((t) => t.text())).toEqual(['Food · Lunch box ×25', 'IT · Projector setup'])
     expect(row(wrapper, 22).text()).toContain('Private · reason given')
   })
 
@@ -162,12 +166,11 @@ describe('ReviewView', () => {
     expect(wrapper.findAll('.soon')).toHaveLength(1)
   })
 
-  it('draws the row bar with a gap for the decision, and no Pitika step', async () => {
+  it('says the step after the decision instead of a row bar', async () => {
     const { wrapper } = await mountReview()
 
-    const steps = row(wrapper, 22).findAll('.process-bar .step')
-    expect(steps.map((s) => s.get('.n').text())).toEqual(['Sent', 'Room owner', 'Confirmed'])
-    expect(steps[1]!.classes()).toContain('gap')
+    expect(row(wrapper, 22).get('.next').text()).toBe('Next: Room owner')
+    expect(row(wrapper, 22).find('.process-bar').exists()).toBe(false)
   })
 
   it('shows the room photo, or a plain tile when the room has none', async () => {

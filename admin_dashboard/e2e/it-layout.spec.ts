@@ -138,13 +138,13 @@ for (const width of [1366, 900, 390]) {
     for (const [tab, count] of [['', 3], ['?tab=in_progress', 2], ['?tab=ready', 2]] as const) {
       await page.unrouteAll()
       await signedIn(page, `/it-setup${tab}`)
-      await expect(page.locator('.row')).toHaveCount(count)
+      await expect(page.locator('.soft-row')).toHaveCount(count)
       expect(await sideways(page)).toBe(0)
       const ring = page.locator('.today-ring')
       await expect(ring).toHaveText('1/3')
       expect(await ring.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
       expect((await page.getByRole('tablist').boundingBox())!.width).toBeGreaterThan(200)
-      for (const row of await page.locator('.row').all()) {
+      for (const row of await page.locator('.soft-row').all()) {
         const r = (await row.boundingBox())!
         for (const b of await row.locator('button').all()) {
           const box = (await b.boundingBox())!
@@ -186,37 +186,23 @@ for (const width of [1366, 900, 390]) {
   })
 }
 
-for (const width of [1366, 900, 390]) {
-  test(`the Cards view fits at ${width}px, every button inside its card, and is remembered`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 800 })
-    await signedIn(page, '/it-setup?tab=in_progress')
-    await expect(page.locator('.timeline .row')).toHaveCount(2)
-    const views = page.getByRole('group', { name: 'Show setups as' })
-    const v = (await views.boundingBox())!
-    expect(v.x + v.width).toBeLessThanOrEqual(width)
-    await views.getByRole('button', { name: 'Cards' }).click()
-
-    await expect(page.locator('.cards .card')).toHaveCount(2)
-    expect(await sideways(page)).toBe(0)
-    for (const card of await page.locator('.card').all()) {
-      const c = (await card.boundingBox())!
-      for (const b of await card.locator('button').all()) {
-        const box = (await b.boundingBox())!
-        expect(box.x).toBeGreaterThanOrEqual(c.x)
-        expect(box.x + box.width).toBeLessThanOrEqual(c.x + c.width + 0.5)
-      }
-    }
-    await page.reload()
-    await expect(page.locator('.cards .card')).toHaveCount(2)
-  })
-}
+test('only the list scrolls, never the page, when the setups do not fit', async ({ page }) => {
+  // A short window (the shell's 640px minimum is still met): the list overflows. Hidden text in a
+  // row (the note, read out) must stay in its row, or the page itself grows and scrolls away the
+  // top bar.
+  await page.setViewportSize({ width: 1366, height: 660 })
+  await signedIn(page, '/it-setup')
+  await expect(page.locator('.soft-row')).toHaveCount(3)
+  expect(await page.locator('.queue').evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBe(0)
+})
 
 test('IT Staff land on My tasks with no buttons on the rows', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 })
   await signedIn(page, '/', ['IT_STAFF'])
 
   await expect(page).toHaveURL(/\/my-tasks$/)
-  await expect(page.locator('.row')).toHaveCount(2)
-  await expect(page.locator('.row button')).toHaveCount(0)
+  await expect(page.locator('.soft-row')).toHaveCount(2)
+  await expect(page.locator('.soft-row button')).toHaveCount(0)
   expect(await sideways(page)).toBe(0)
 })

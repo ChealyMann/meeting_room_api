@@ -138,14 +138,14 @@ for (const width of [1366, 900, 390]) {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/owner-review')
 
-    await expect(page.locator('.row')).toHaveCount(3)
-    await expect(page.locator('.row').first().locator('.chk')).toHaveText(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
+    await expect(page.locator('.soft-row')).toHaveCount(3)
+    await expect(page.locator('.soft-row').first().locator('.soft-tag')).toHaveText(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
     expect(await sideways(page)).toBe(0)
     const ring = page.locator('.today-ring')
     await expect(ring).toHaveText('3/6')
     expect(await ring.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
     expect((await page.getByRole('tablist').boundingBox())!.width).toBeGreaterThan(200)
-    for (const row of await page.locator('.row').all()) {
+    for (const row of await page.locator('.soft-row').all()) {
       const r = (await row.boundingBox())!
       for (const name of ['Reject', 'Approve']) {
         const b = (await row.getByRole('button', { name }).boundingBox())!

@@ -21,11 +21,9 @@ import { usePanelParam } from '../../composables/usePanelParam'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useResourceList } from '../../composables/useResourceList'
 import { useToast } from '../../composables/useToast'
-import { useUiStore } from '../../stores/ui'
 import { groupByDoneDay, groupBySetupDay, itItemIcon, setupText, type ItTab } from '../../utils/itQueue'
 import { formatDay } from '../../utils/time'
 import BookingActionDialog from '../bookings/BookingActionDialog.vue'
-import ITCard from './ITCard.vue'
 import ITPanel from './ITPanel.vue'
 import ITRow from './ITRow.vue'
 
@@ -57,9 +55,6 @@ const { list, result, loading, error, filtered, load } = useResourceList<ITTicke
 )
 const items = computed(() => result.value?.items ?? [])
 watch(result, (r) => r && emit('loaded', r.items, r.total))
-
-// Rows (a time line) or Cards (photo cards): the switch on the page, kept in this browser.
-const ui = useUiStore()
 
 const today = usePhnomPenhToday()
 const now = ref(new Date())
@@ -232,14 +227,12 @@ async function save() {
           <h2 :id="`group-${group.key}`">{{ group.label }}</h2>
           <span class="n mono">{{ group.items.length }}</span>
         </div>
-        <ul :class="ui.itView === 'cards' ? 'cards' : 'timeline'">
-          <component
-            :is="ui.itView === 'cards' ? ITCard : ITRow"
+        <ul class="timeline">
+          <ITRow
             v-for="t in group.items"
             :key="t.id"
             :ticket="t"
             :photo="thumbOf(t)"
-            :place="placeOf(t)"
             :now="now"
             :today="today"
             :actions="actions"
@@ -385,21 +378,10 @@ async function save() {
 .group-head.today .n {
   color: var(--color-crimson);
 }
-.timeline,
-.cards {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 .timeline {
-  padding: 8px 0 12px;
-}
-/* Photo cards (owner pick, 6 Nov 2026: Cards view): as many 300px+ columns as fit. */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  gap: 16px;
-  padding: 16px 12px 20px;
+  margin: 0;
+  padding: 10px 0 16px;
+  list-style: none;
 }
 .mono {
   font-family: var(--font-mono);

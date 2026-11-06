@@ -4,7 +4,7 @@
 // waiting for them, grouped by urgency, each with the room's photo, what to check and the row
 // bar ("gap is you"). Details are loaded per booking for the labels. What differs between the
 // Pitika and the owner comes from `REVIEWERS`.
-import { CalendarDays, Check, CircleAlert, ClipboardCheck, EyeOff, Landmark, Monitor, TriangleAlert, User, Users, Utensils, X } from 'lucide-vue-next'
+import { CircleAlert, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -19,8 +19,7 @@ import EmptyState from '../components/list/EmptyState.vue'
 import ListSearch from '../components/list/ListSearch.vue'
 import SearchPicker, { type PickerItem } from '../components/list/SearchPicker.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
-import ProcessBar from '../components/ProcessBar.vue'
-import RoomPhoto from '../components/RoomPhoto.vue'
+import SoftRow from '../components/SoftRow.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
@@ -136,7 +135,20 @@ function selectTab(next: Tab) {
 }
 
 const hhmm = (time: string) => time.slice(0, 5)
-const whenText = (b: BookingListItem) => (b.first_session.date === today.value ? `Today, ${formatDay(b.first_session.date)}` : formatDay(b.first_session.date))
+/** "Wed 11 Nov 2026" → "Wed 11 Nov": the row sits under its group, in this year. */
+const shortDay = (date: string) => formatDay(date).slice(0, -5)
+/** The step the booking goes to after this decision ("Room owner", "IT setup", "Confirmed"). */
+const nextOf = (b: BookingListItem) => R.value.rowSteps(b).find((step) => step.gap)?.label ?? null
+type Label = ReturnType<typeof labelsOf>[number]
+/** Soft tags: food and IT say what they are; a missing reason or too few seats is crimson. */
+const tagText = (c: Label) => {
+  const count = 'count' in c && c.count ? ` ×${c.count}` : ''
+  if (c.kind === 'food') return `Food · ${c.text}${count}`
+  if (c.kind === 'it') return `IT · ${c.text}`
+  return `${c.text}${count}`
+}
+const toneOf = (c: Label) =>
+  ('over' in c && c.over) || c.text === 'Private · no reason' ? 'alert' : c.kind === 'private' ? 'warn' : null
 
 // --- The panel (the open booking lives in the address, ?id=12) ------------------------------
 const panel = usePanelParam()
@@ -287,53 +299,36 @@ async function decide() {
             <p v-if="group.hint">{{ group.hint }}</p>
           </div>
           <ul class="rows">
-            <li
+            <SoftRow
               v-for="b in group.items"
               :key="b.id"
-              class="row"
-              :class="{ current: panel.id.value === b.id }"
               :data-booking="b.id"
-              tabindex="0"
-              @click="panel.open(b.id)"
-              @keydown.enter.self="panel.open(b.id)"
+              :start="hhmm(b.first_session.start_time)"
+              :end="hhmm(b.first_session.end_time)"
+              :day="group.key === 'today' ? null : shortDay(b.first_session.date)"
+              :more="b.session_count > 1 ? `+${b.session_count - 1} more` : null"
+              :photo="covers[b.room.id]?.thumbnail_url ?? null"
+              :photo-alt="b.room.name_en"
+              :reference="b.reference_code"
+              :title="b.meeting_title"
+              :current="panel.id.value === b.id"
+              @open="panel.open(b.id)"
             >
-              <RoomPhoto class="thumb" :path="covers[b.room.id]?.thumbnail_url ?? null" :alt="b.room.name_en" />
-              <div class="info">
-                <span class="ref mono"><span class="prefix">{{ b.reference_code.slice(0, 3) }}</span>{{ b.reference_code.slice(3) }}</span>
-                <h3>{{ b.meeting_title }}</h3>
-                <div class="room"><span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }}</div>
-                <div class="facts">
-                  <span>
-                    <CalendarDays aria-hidden="true" />{{ whenText(b) }} ·
-                    <span class="mono">{{ hhmm(b.first_session.start_time) }}–{{ hhmm(b.first_session.end_time) }}</span>
-                    <template v-if="b.session_count > 1"> +{{ b.session_count - 1 }} more</template>
-                  </span>
-                  <span><User aria-hidden="true" />{{ b.requester.name_en }}</span>
-                  <span><Users aria-hidden="true" />{{ b.attendees }} people</span>
-                </div>
-                <div v-if="labelsOf(b).length" class="checks">
-                  <span v-for="c in labelsOf(b)" :key="c.kind" class="chk" :class="[c.kind, { over: c.over }]">
-                    <EyeOff v-if="c.kind === 'private'" aria-hidden="true" />
-                    <Utensils v-else-if="c.kind === 'food'" aria-hidden="true" />
-                    <Monitor v-else-if="c.kind === 'it'" aria-hidden="true" />
-                    <Landmark v-else-if="c.kind === 'governor'" aria-hidden="true" />
-                    <Users v-else-if="c.kind === 'seats'" aria-hidden="true" />
-                    <ClipboardCheck v-else-if="c.kind === 'pitika-notes'" aria-hidden="true" />
-                    <TriangleAlert v-else aria-hidden="true" />
-                    <b>{{ c.text }}</b>
-                    <span v-if="c.count" class="mono">×{{ c.count }}</span>
-                  </span>
-                </div>
-              </div>
-              <div class="side">
-                <span v-if="group.key === 'today'" class="soon"><TriangleAlert aria-hidden="true" />{{ startsIn(b, now) }}</span>
-                <ProcessBar :steps="R.rowSteps(b)" />
-                <div class="acts">
-                  <BaseButton variant="danger" @click.stop="ask('reject', b)">Reject</BaseButton>
-                  <BaseButton variant="primary" @click.stop="ask('approve', b)"><Check aria-hidden="true" />Approve</BaseButton>
-                </div>
-              </div>
-            </li>
+              <template #line>
+                <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }} · {{ b.requester.name_en }} · {{ b.attendees }} people
+              </template>
+              <template v-if="labelsOf(b).length" #tags>
+                <span v-for="c in labelsOf(b)" :key="c.kind" class="soft-tag" :class="[c.kind, toneOf(c)]">{{ tagText(c) }}</span>
+              </template>
+              <template #status>
+                <span v-if="group.key === 'today'" class="soon">{{ startsIn(b, now) }}</span>
+                <span v-else-if="nextOf(b)" class="next">Next: <b>{{ nextOf(b) }}</b></span>
+              </template>
+              <template #actions>
+                <BaseButton variant="quiet" class="reject" @click="ask('reject', b)">Reject</BaseButton>
+                <BaseButton variant="primary" @click="ask('approve', b)">Approve</BaseButton>
+              </template>
+            </SoftRow>
           </ul>
         </section>
       </template>
@@ -443,186 +438,30 @@ async function decide() {
 }
 .rows {
   margin: 0;
-  padding: 0;
+  padding: 10px 0 16px;
   list-style: none;
 }
-.row {
-  display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) 232px;
-  gap: 20px;
-  align-items: center;
-  padding: 16px 12px;
-  border-bottom: 1px solid var(--color-rule);
-  transition: background-color 150ms ease;
-}
-.row {
-  cursor: pointer;
-}
-.row:hover {
-  background: var(--color-row-hover);
-}
-.row.current {
-  background: var(--color-crimson-wash);
-}
-.row:focus-visible {
-  outline: 2px solid var(--color-crimson);
-  outline-offset: -2px;
-}
-.acts {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.acts :deep(.btn) {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
-}
-.thumb {
-  width: 168px;
-  aspect-ratio: 16 / 10;
-  border-radius: 8px;
-}
-.info {
-  min-width: 0;
-}
-.ref {
-  font-size: 11.5px;
-  color: var(--color-intaglio);
-}
-.prefix {
-  color: var(--color-crimson);
-}
-.info h3 {
-  margin: 2px 0;
-  font-size: 15px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.room {
-  font-size: 13px;
-  color: var(--color-intaglio);
-}
-.room .kh {
+.kh {
   font-family: var(--font-kh);
   font-weight: 500;
   color: var(--color-ink);
 }
-.facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.facts > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.facts .mono {
-  font-size: 12px;
-  color: var(--color-ink);
-}
-.facts :deep(svg.lucide),
-.chk :deep(svg.lucide) {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-.checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.chk {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 24px;
-  padding: 2px 8px;
-  border: 1px solid var(--color-rule);
-  border-radius: 6px;
-  background: var(--color-paper);
-  font-size: 12px;
-}
-.chk :deep(svg.lucide) {
-  color: var(--color-intaglio);
-}
-.chk b {
-  font-weight: 500;
-}
-.chk .mono {
-  font-size: 11.5px;
-  color: var(--color-intaglio);
-}
-.chk.private {
-  border-color: var(--color-danger-line);
-  background: var(--color-crimson-wash);
-  color: var(--color-crimson);
-}
-.chk.private :deep(svg.lucide) {
-  color: var(--color-crimson);
-}
-/* The owner's checks: more people than seats is the only red one. */
-.chk.seats.over {
-  border-color: var(--color-danger-line);
-  background: var(--color-crimson-wash);
-  color: var(--color-crimson);
-}
-.chk.seats.over :deep(svg.lucide) {
-  color: var(--color-crimson);
-}
-.side {
-  display: grid;
-  gap: 10px;
-  align-content: center;
-}
 .soon {
-  justify-self: end;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-crimson-wash);
   color: var(--color-crimson);
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
-.soon :deep(svg.lucide) {
-  width: 13px;
-  height: 13px;
+.next {
+  color: var(--color-intaglio);
+  font-size: 12px;
+  white-space: nowrap;
 }
-
-@media (max-width: 1100px) {
-  .row {
-    grid-template-columns: 132px minmax(0, 1fr);
-  }
-  .thumb {
-    width: 132px;
-  }
-  .side {
-    grid-column: 1 / -1;
-  }
-  .soon {
-    justify-self: start;
-  }
-  .acts {
-    justify-content: flex-start;
-  }
+.next b {
+  color: var(--color-ink);
+  font-weight: 500;
 }
-@media (max-width: 560px) {
-  .row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .thumb {
-    width: 100%;
-  }
+.reject {
+  color: var(--color-crimson);
 }
 </style>

@@ -19,7 +19,6 @@ import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { itRing, itSummaryLine, itTabFrom, type ItTab } from '../utils/itQueue'
 import ITQueue from './it/ITQueue.vue'
-import ViewSwitch from './it/ViewSwitch.vue'
 
 // The filter bar only: each tab's list (ITQueue) reads the same address keys.
 const list = useListQuery({ from: 'string', to: 'string', q: 'string' }, { activeFilter: false })
@@ -120,7 +119,6 @@ function selectTab(next: string) {
         <X aria-hidden="true" />
         Clear filters
       </BaseButton>
-      <ViewSwitch class="view-end" />
     </div>
 
     <ITQueue :key="tab" :tab="tab" :rooms="rooms" :actions="true" @changed="loadSummary" />
@@ -142,8 +140,5 @@ function selectTab(next: string) {
 }
 .clear-filters {
   color: var(--color-crimson);
-}
-.view-end {
-  margin-left: auto;
 }
 </style>

@@ -105,10 +105,10 @@ for (const width of [1366, 900, 390]) {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/review')
 
-    await expect(page.locator('.row')).toHaveCount(3)
+    await expect(page.locator('.soft-row')).toHaveCount(3)
     await expect(page.locator('.group-head h2')).toHaveText(['Today', 'Tomorrow', 'Later'])
     expect(await sideways(page)).toBe(0)
-    for (const row of await page.locator('.row').all()) {
+    for (const row of await page.locator('.soft-row').all()) {
       const r = (await row.boundingBox())!
       for (const name of ['Reject', 'Approve']) {
         const b = (await row.getByRole('button', { name }).boundingBox())!

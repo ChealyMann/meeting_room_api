@@ -176,23 +176,23 @@ describe('IT setup', () => {
     const { wrapper } = await mountAt()
     const r = row(wrapper, 5)
     expect(r.text()).toContain('Training 5')
-    expect(r.get('.place').text()).toBe('Head Office · Building A · Floor 2')
-    expect(r.get('.time').text()).toBe('07:30')
-    expect(r.get('.time-label').text()).toBe('Set up by')
+    // The meeting time leads the row; the set-up time stays in the panel.
+    expect([r.get('.start').text(), r.get('.end').text(), r.get('.day').text()]).toEqual(['08:00', '11:00', 'Today'])
+    expect(r.get('.ref').text()).toBe('NBC-26-10005')
     expect(r.findAll('.chk').map((c) => c.text())).toEqual(['Projector setup', 'Microphones'])
     expect(r.get('.note').attributes('title')).toBe('Two wireless microphones')
-    expect(r.get('.state-word').text()).toBe('Needs staff')
     expect(r.get('.staff').text()).toBe('No staff yet')
-    expect(r.get('.soon').text()).toContain('Starts in')
+    expect(r.get('.state-word').text()).toContain('Starts in')
     expect(buttons(r)).toEqual(['Assign staff'])
-    expect(row(wrapper, 6).find('.soon').exists()).toBe(false)
+    expect(row(wrapper, 6).get('.state-word').text()).toBe('Next: Assign staff')
+    expect(row(wrapper, 6).get('.day').text()).toBe('Fri 6 Nov')
   })
 
   it('shows Change staff and Mark ready In progress', async () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
     expect(calls).toContain('GET /api/v1/it/tickets?state=in_progress&page=1&size=100')
     expect(row(wrapper, 7).get('.staff').text()).toBe('Sok Pisey')
-    expect(row(wrapper, 7).get('.state-word').text()).toBe('Staff set · not ready')
+    expect(row(wrapper, 7).get('.state-word').text()).toBe('Next: Mark ready')
     expect(buttons(row(wrapper, 7))).toEqual(['Change', 'Mark ready'])
   })
 
@@ -274,41 +274,14 @@ describe('IT setup', () => {
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
   })
 
-  it('marks each row with a state stripe: needs staff, staff set, ready, missed', async () => {
+  it('marks each row with its state: needs staff, staff set, ready, missed', async () => {
     const { wrapper } = await mountAt()
-    expect(wrapper.find('.timeline').exists()).toBe(true)
     expect(row(wrapper, 5).classes()).toContain('state-waiting')
     const progress = await mountAt('/it-setup?tab=in_progress')
     expect(row(progress.wrapper, 7).classes()).toContain('state-staffed')
     const done = await mountAt('/it-setup?tab=ready')
     expect(row(done.wrapper, 8).classes()).toContain('state-ready')
     expect(row(done.wrapper, 9).classes()).toContain('state-missed')
-  })
-
-  it('switches to cards and remembers the choice in this browser', async () => {
-    const { wrapper } = await mountAt()
-    const cardsButton = wrapper.findAll('.view-switch button').find((b) => b.text() === 'Cards')!
-    expect(cardsButton.attributes('aria-pressed')).toBe('false')
-    await cardsButton.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.timeline').exists()).toBe(false)
-    expect(wrapper.findAll('.cards [data-ticket]').length).toBe(2)
-    expect(localStorage.getItem('nbc.admin.itView')).toBe('cards')
-    const again = await mountAt()
-    expect(again.wrapper.find('.cards').exists()).toBe(true)
-  })
-
-  it('shows a card with the setup day and time on the photo, the needs as icons, and the buttons', async () => {
-    localStorage.setItem('nbc.admin.itView', 'cards')
-    const { wrapper } = await mountAt()
-    const card = row(wrapper, 5)
-    expect(card.get('.when').text()).toBe('Today · by 07:30')
-    expect(card.get('.soon').text()).toContain('Starts in')
-    expect(card.findAll('.need').map((n) => n.attributes('aria-label'))).toEqual(['Projector setup', 'Microphones', 'Note: Two wireless microphones'])
-    expect(card.get('.staff').text()).toBe('No staff yet')
-    expect(buttons(card)).toEqual(['Assign staff'])
-    expect(row(wrapper, 6).get('.when').text()).toBe('Fri 6 Nov · by 07:30')
   })
 
   it("asks for the staff with the setup day and shows each one's other setups that day", async () => {
