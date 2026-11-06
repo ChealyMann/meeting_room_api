@@ -46,6 +46,7 @@ class ITBusy(ResponseModel):
 
     ticket_id: int
     room_name_en: str
+    date: date
     setup_time: LocalTime
     meeting_start: LocalTime
 
@@ -57,6 +58,17 @@ class ITStaffPick(ITStaffOut):
 
     setups_that_day: int | None
     busy: list[ITBusy] | None
+
+
+class ITSetup(ResponseModel):
+    """IT sets up before every session (owner decision, 6 Nov 2026), `it_setup_lead_minutes`
+    before it. Staff are assigned once and it is made ready once, for all of them."""
+
+    session_number: int
+    date: date
+    setup_time: LocalTime
+    start_time: LocalTime
+    end_time: LocalTime
 
 
 class ITTicketItem(ResponseModel):
@@ -74,6 +86,8 @@ class ITTicketItem(ResponseModel):
     # Not Ready and the meeting started: it can no longer change (shown on Ready as missed).
     missed: bool
     review_notes: list[str]
+    # One per session, in order. `setup_date` / `setup_time` above are the first one's.
+    setups: list[ITSetup]
     booking: BookingListItem
 
 

@@ -27,14 +27,17 @@ def staff(make_user):
 
 @pytest.fixture
 def setup(make_user, make_bookable_room, make_booking, db_session):
-    """`build(state="RECEIVED", day=DAY, start=9, staff=(), ready_at=None, **options)`: a booking
-    in IT setup whose ticket is in `state`."""
+    """`build(state="RECEIVED", day=DAY, start=9, staff=(), ready_at=None, sessions=None,
+    **options)`: a booking in IT setup whose ticket is in `state`; one session on `day` at
+    `start`, or the given `sessions`."""
 
-    def build(state=ITStatus.RECEIVED, day=DAY, start=9, staff=(), ready_at=None, **options):
+    def build(
+        state=ITStatus.RECEIVED, day=DAY, start=9, staff=(), ready_at=None, sessions=None, **options
+    ):
         options.setdefault("status", BookingStatus.SETUP_IN_PROGRESS)
         booking = make_booking(
             make_bookable_room(), make_user(roles=["STAFF"]), it=True, forwarded=True,
-            sessions=((day, time(start), time(start + 1)),), **options,
+            sessions=sessions or ((day, time(start), time(start + 1)),), **options,
         )  # fmt: skip
         ticket = booking.it_ticket
         ticket.status = state
@@ -244,6 +247,7 @@ def test_staff_list_busy_at_the_same_time(
         {
             "ticket_id": clash.it_ticket.id,
             "room_name_en": clash.room.name_en,
+            "date": str(DAY),
             "setup_time": "08:30",
             "meeting_start": "09:00",
         }
@@ -255,3 +259,60 @@ def test_staff_list_busy_at_the_same_time(
     assert all(user["busy"] is None for user in plain)
     missing = client.get(STAFF, params={"ticket_id": 999999}, headers=headers)
     assert missing.status_code == 404
+
+
+# --- IT at every session (owner decision, 6 Nov 2026: like food; assign once, ready once) ----
+
+THREE_DAYS = ((DAY, time(9), time(10)), (DAY + timedelta(days=1), time(14), time(15)),
+              (DAY + timedelta(days=2), time(9), time(10)))  # fmt: skip
+
+
+def test_item_lists_a_setup_for_every_session(client, frozen, lead, setup, auth_headers):
+    setup(sessions=THREE_DAYS)
+    item = listed(client, auth_headers(lead), state="to_assign")["items"][0]
+    assert item["setups"] == [
+        {"session_number": 1, "date": str(DAY), "setup_time": "08:30",
+         "start_time": "09:00", "end_time": "10:00"},
+        {"session_number": 2, "date": str(DAY + timedelta(days=1)), "setup_time": "13:30",
+         "start_time": "14:00", "end_time": "15:00"},
+        {"session_number": 3, "date": str(DAY + timedelta(days=2)), "setup_time": "08:30",
+         "start_time": "09:00", "end_time": "10:00"},
+    ]  # fmt: skip
+
+
+def test_in_progress_keeps_a_ready_setup_while_sessions_remain(
+    client, frozen, freeze_now, lead, staff, setup, auth_headers
+):
+    """Made ready once (the booking is confirmed), but staff still set up the later sessions:
+    it stays In progress until its last session starts."""
+    headers = auth_headers(lead)
+    later = setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 1, 0),
+                  sessions=THREE_DAYS, status=BookingStatus.CONFIRMED)  # fmt: skip
+    one_day = setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 9, 1, 0),
+                    status=BookingStatus.CONFIRMED)  # fmt: skip
+    assert ids(listed(client, headers, state="in_progress")) == [later.id]
+    assert set(ids(listed(client, headers, state="done"))) == {later.id, one_day.id}
+
+    freeze_now(datetime(2026, 11, 12, 9, 30))  # the last session has started
+    assert ids(listed(client, headers, state="in_progress")) == []
+
+
+def test_from_to_match_any_session_day(client, frozen, lead, setup, auth_headers):
+    booking = setup(sessions=THREE_DAYS)
+    on = {"from": str(DAY + timedelta(days=2)), "to": str(DAY + timedelta(days=2))}
+    assert ids(listed(client, auth_headers(lead), **on)) == [booking.id]
+
+
+def test_staff_busy_and_counts_see_every_session(client, frozen, lead, staff, setup, auth_headers):
+    """Another booking's second session at the same time as this one's setup is a clash, and
+    every session is counted on its own day."""
+    target = setup(day=DAY + timedelta(days=1), start=14)
+    other = setup(ITStatus.ASSIGNED, staff=[staff], sessions=THREE_DAYS)
+    rows = client.get(STAFF, params={"ticket_id": target.it_ticket.id},
+                      headers=auth_headers(lead)).json()["items"]  # fmt: skip
+    me = next(u for u in rows if u["id"] == staff.id)
+    assert me["busy"] == [
+        {"ticket_id": other.it_ticket.id, "room_name_en": other.room.name_en,
+         "date": str(DAY + timedelta(days=1)), "setup_time": "13:30", "meeting_start": "14:00"}
+    ]  # fmt: skip
+    assert me["setups_that_day"] == 1
