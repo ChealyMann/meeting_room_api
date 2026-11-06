@@ -151,14 +151,14 @@ for (const width of [1366, 900, 390]) {
         }
       }
     }
-    await expect(page.locator('[data-ticket="7"] .missed')).toHaveText('Missed · not marked ready')
+    await expect(page.locator('[data-ticket="7"] .state-word')).toHaveText('Missed · not marked ready')
   })
 
   test(`the assign pop-up and the panel fit at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page, '/it-setup?tab=in_progress')
 
-    await page.locator('[data-ticket="4"]').getByRole('button', { name: 'Change staff' }).click()
+    await page.locator('[data-ticket="4"]').getByRole('button', { name: 'Change staff' }).first().click()
     const dialog = page.getByRole('alertdialog')
     await expect(dialog).toContainText('Assign IT Staff')
     await expect(dialog.locator('input[type="checkbox"]')).toHaveCount(2)

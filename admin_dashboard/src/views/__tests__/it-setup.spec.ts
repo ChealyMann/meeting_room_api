@@ -176,7 +176,8 @@ describe('IT setup', () => {
     expect(r.get('.time').text()).toBe('07:30')
     expect(r.get('.time-label').text()).toBe('Set up by')
     expect(r.findAll('.chk').map((c) => c.text())).toEqual(['Projector setup', 'Microphones'])
-    expect(r.get('.needs').text()).toBe('Two wireless microphones')
+    expect(r.get('.note').attributes('title')).toBe('Two wireless microphones')
+    expect(r.get('.state-word').text()).toBe('Needs staff')
     expect(r.get('.staff').text()).toBe('No staff yet')
     expect(r.get('.soon').text()).toContain('Starts in')
     expect(buttons(r)).toEqual(['Assign staff'])
@@ -187,22 +188,23 @@ describe('IT setup', () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
     expect(calls).toContain('GET /api/v1/it/tickets?state=in_progress&page=1&size=100')
     expect(row(wrapper, 7).get('.staff').text()).toBe('Sok Pisey')
-    expect(buttons(row(wrapper, 7))).toEqual(['Change staff', 'Mark ready'])
+    expect(row(wrapper, 7).get('.state-word').text()).toBe('Staff set · not ready')
+    expect(buttons(row(wrapper, 7))).toEqual(['Change', 'Mark ready'])
   })
 
   it('shows Ready 20 a page, newest first, with missed ones and no buttons', async () => {
     const { wrapper } = await mountAt('/it-setup?tab=ready')
     expect(calls).toContain('GET /api/v1/it/tickets?state=done&page=1&size=20')
     expect(wrapper.findAll('.group-head h2').map((h) => h.text())).toEqual(['Today · Thu 5 Nov', 'Yesterday · Wed 4 Nov'])
-    expect(row(wrapper, 9).get('.missed').text()).toBe('Missed · not marked ready')
-    expect(row(wrapper, 8).find('.missed').exists()).toBe(false)
+    expect(row(wrapper, 9).get('.state-word').text()).toBe('Missed · not marked ready')
+    expect(row(wrapper, 8).get('.state-word').text()).toBe('Ready · 08:00')
     expect(buttons(row(wrapper, 8))).toEqual([])
     expect(buttons(row(wrapper, 9))).toEqual([])
   })
 
   it('assigns staff in the pop-up, with the current staff checked', async () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
-    await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change staff')!.trigger('click')
+    await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change')!.trigger('click')
     await flushPromises()
 
     expect(dialog()?.textContent).toContain('Assign IT Staff')
@@ -268,12 +270,15 @@ describe('IT setup', () => {
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
   })
 
-  it('shows rows as a time line: a dashed dot while it needs staff, a check once it has staff', async () => {
+  it('marks each row with a state stripe: needs staff, staff set, ready, missed', async () => {
     const { wrapper } = await mountAt()
     expect(wrapper.find('.timeline').exists()).toBe(true)
-    expect(row(wrapper, 5).get('.node').classes()).toContain('state-waiting')
+    expect(row(wrapper, 5).classes()).toContain('state-waiting')
     const progress = await mountAt('/it-setup?tab=in_progress')
-    expect(row(progress.wrapper, 7).get('.node').classes()).toContain('state-staffed')
+    expect(row(progress.wrapper, 7).classes()).toContain('state-staffed')
+    const done = await mountAt('/it-setup?tab=ready')
+    expect(row(done.wrapper, 8).classes()).toContain('state-ready')
+    expect(row(done.wrapper, 9).classes()).toContain('state-missed')
   })
 
   it('switches to cards and remembers the choice in this browser', async () => {
@@ -304,7 +309,7 @@ describe('IT setup', () => {
 
   it("asks for the staff with the setup day and shows each one's other setups that day", async () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
-    await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change staff')!.trigger('click')
+    await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change')!.trigger('click')
     await flushPromises()
 
     expect(calls).toContain('GET /api/v1/it/staff?day=2026-11-06')
