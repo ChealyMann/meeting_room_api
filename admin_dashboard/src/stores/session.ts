@@ -26,7 +26,14 @@ export const useSessionStore = defineStore('session', () => {
   const roleCodes = computed(() => user.value?.roles.map((role) => role.code) ?? [])
   const isAdmin = computed(() => roleCodes.value.includes('ADMIN'))
   /** A Pitika who is not also Admin: their pages use the Pitika endpoints (their province). */
-  const pitikaOnly = computed(() => roleCodes.value.includes('PITIKA') && !isAdmin.value)
+  /** Which Bookings list the user reads: the Pitika's or the owner's when that is their only
+   *  list role, else the Admin's (the API refuses anyone else). */
+  const bookingsSource = computed<'admin' | 'pitika' | 'owner'>(() => {
+    if (isAdmin.value) return 'admin'
+    if (roleCodes.value.includes('PITIKA')) return 'pitika'
+    return roleCodes.value.includes('ROOM_OWNER') ? 'owner' : 'admin'
+  })
+  const pitikaOnly = computed(() => bookingsSource.value === 'pitika')
   const mustChangePassword = computed(() => user.value?.must_change_password ?? false)
 
   function applyTokens(tokens: Tokens): void {
@@ -108,6 +115,7 @@ export const useSessionStore = defineStore('session', () => {
     roleCodes,
     isAdmin,
     pitikaOnly,
+    bookingsSource,
     mustChangePassword,
     applyTokens,
     loadMe,

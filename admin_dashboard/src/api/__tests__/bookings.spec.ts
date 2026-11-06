@@ -1,6 +1,16 @@
 import { describe, expect, it, vi, type Mock } from 'vitest'
 
-import { adminReject, getPitikaSummary, listBookingPage, listPitikaDecidedPage } from '../bookings'
+import {
+  adminReject,
+  getOwnerSummary,
+  getPitikaSummary,
+  listBookingPage,
+  listOwnerBookingPage,
+  listOwnerDecidedPage,
+  listPitikaDecidedPage,
+  ownerApprove,
+  ownerReject,
+} from '../bookings'
 import { createApiClient } from '../client'
 
 const BASE = 'http://localhost:8000'
@@ -66,5 +76,40 @@ describe('Pitika decided API', () => {
 
     expect(await getPitikaSummary(client(fetchMock))).toEqual({ waiting: 3, approved_today: 5, rejected_today: 1 })
     expect(String(fetchMock.mock.calls[0]![0])).toBe(`${BASE}/api/v1/pitika/bookings/summary`)
+  })
+})
+
+describe('Room owner API', () => {
+  it('lists my rooms without a province, with dates', async () => {
+    const fetchMock = answer({ items: [], page: 1, size: 20, total: 0 })
+
+    await listOwnerBookingPage(client(fetchMock), { status: 'PENDING_OWNER', province: 'PP', from: '2026-11-05', page: 1, size: 100 })
+
+    expect(String(fetchMock.mock.calls[0]![0])).toBe(`${BASE}/api/v1/owner/bookings?status=PENDING_OWNER&from=2026-11-05&page=1&size=100`)
+  })
+
+  it('approves and rejects with exactly the given body', async () => {
+    const fetchMock = answer({ id: 12 })
+
+    await ownerApprove(client(fetchMock), 12, { notes: null, version: 3 })
+    await ownerReject(client(fetchMock), 12, { reason: 'Room closed', version: 3 })
+
+    const sent = fetchMock.mock.calls.map((c) => [c[1]?.method, String(c[0]), c[1]?.body])
+    expect(sent).toEqual([
+      ['POST', `${BASE}/api/v1/owner/bookings/12/approve`, JSON.stringify({ notes: null, version: 3 })],
+      ['POST', `${BASE}/api/v1/owner/bookings/12/reject`, JSON.stringify({ reason: 'Room closed', version: 3 })],
+    ])
+  })
+
+  it('lists my decisions and reads my summary', async () => {
+    const fetchMock = answer({ items: [], page: 1, size: 20, total: 0 })
+
+    await listOwnerDecidedPage(client(fetchMock), { decision: 'REJECTED', page: 1, size: 20 })
+    await getOwnerSummary(client(fetchMock))
+
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
+      `${BASE}/api/v1/owner/bookings/decided?decision=REJECTED&page=1&size=20`,
+      `${BASE}/api/v1/owner/bookings/summary`,
+    ])
   })
 })

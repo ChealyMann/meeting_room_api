@@ -139,16 +139,18 @@ async function listPage(page: Page, path: string, recordMs: number) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 })
 }
 
-/** Every frame for `ms`: the left edge of each panel on screen and the scrim's opacity. */
+/** Every frame for `ms`: the left edge of each panel on screen and the scrim's opacity.
+ * `t` counts from the start of the recording, `at` is the page's own clock (performance.now). */
 function frames(page: Page, ms: number) {
   return page.evaluate(
     (ms) =>
-      new Promise<Array<{ t: number; x: number[]; scrim: number[] }>>((done) => {
-        const out: Array<{ t: number; x: number[]; scrim: number[] }> = []
+      new Promise<Array<{ t: number; at: number; x: number[]; scrim: number[] }>>((done) => {
+        const out: Array<{ t: number; at: number; x: number[]; scrim: number[] }> = []
         const start = performance.now()
         const tick = () => {
           out.push({
             t: performance.now() - start,
+            at: performance.now(),
             x: [...document.querySelectorAll('aside.panel')].map((el) => el.getBoundingClientRect().x),
             scrim: [...document.querySelectorAll('.scrim')].map((el) => Number(getComputedStyle(el).opacity)),
           })
@@ -195,18 +197,38 @@ for (const path of [
   }
 }
 
-test('a record slides in as smoothly as a new one: no long frame while it moves', async ({ page }) => {
+test('a record slides in as smoothly as a new one: no form built while it moves', async ({ page }) => {
   await listPage(page, '/offices', 60)
+  // Frames that took long, with the scripts that ran in them (Long Animation Frames API).
+  await page.evaluate(() => {
+    const w = window as unknown as { longFrames: Array<{ start: number; end: number; scriptMs: number }> }
+    w.longFrames = []
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as unknown as Array<PerformanceEntry & { scripts: PerformanceEntry[] }>) {
+        const scriptMs = e.scripts.reduce((sum, s) => sum + s.duration, 0)
+        w.longFrames.push({ start: e.startTime, end: e.startTime + e.duration, scriptMs })
+      }
+    }).observe({ type: 'long-animation-frame' })
+  })
 
   const recording = frames(page, 1200)
   await page.locator('tbody tr').first().click()
   const seen = await recording
   const firstMove = seen.findIndex((f) => f.x.length && f.x[0]! < 1366 - 1)
   const moving = seen.slice(firstMove).filter((f) => f.x.length && f.x[0]! > 1366 - 440 + 1)
+  const slideStart = moving[0]!.at
+  const slideEnd = moving[moving.length - 1]!.at
+  const longFrames = await page.evaluate(
+    () => (window as unknown as { longFrames: Array<{ start: number; end: number; scriptMs: number }> }).longFrames,
+  )
 
-  // A "New office" panel has no frame over ~20ms here; the form must not be built mid-slide.
-  const gaps = moving.slice(1).map((f, i) => f.t - moving[i]!.t)
-  expect(Math.max(...gaps)).toBeLessThan(45)
+  // The form is built (lots of script) before the slide starts, never while the panel moves.
+  // Frame length alone is not checked: under the 6x slow-down the browser itself sometimes
+  // pauses for 50ms+ (no script in it), on a "New office" panel just as much.
+  const before = longFrames.filter((f) => f.end <= slideStart)
+  const during = longFrames.filter((f) => f.end > slideStart && f.start < slideEnd)
+  expect(Math.max(0, ...before.map((f) => f.scriptMs))).toBeGreaterThan(50)
+  expect(Math.max(0, ...during.map((f) => f.scriptMs))).toBeLessThan(20)
 })
 
 test('the panel slides out when it closes', async ({ page }) => {

@@ -1,16 +1,19 @@
 <script setup lang="ts">
 // The Approved and Rejected tabs of To review (spec 2026-11-05-pitika-decided-design): the
-// bookings this Pitika decided, as soft cards under decision days, newest first, with where
-// each booking is now. Read only: a card opens the review panel with only Close.
+// bookings this reviewer decided, under decision days, newest first, as the same soft rows as the
+// Waiting tab (owner decision, 6 Nov 2026): the meeting time, the photo with the reference, the
+// note as a tag, then my decision with its time and where the booking is now. Read only: a row
+// opens the review panel with only Close.
 import { Check, CircleAlert, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import { api } from '../../api'
-import { getBooking, listPitikaDecidedPage } from '../../api/bookings'
+import { getBooking } from '../../api/bookings'
 import type { BookingDetail, DecidedBookingItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import EmptyState from '../../components/list/EmptyState.vue'
 import PagingFoot from '../../components/list/PagingFoot.vue'
+import SoftRow from '../../components/SoftRow.vue'
 import TableSkeleton from '../../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../../composables/usePanelParam'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
@@ -18,18 +21,21 @@ import { useResourceList } from '../../composables/useResourceList'
 import { decidedTime, groupByDecisionDay, nowPill } from '../../utils/decided'
 import { formatDay } from '../../utils/time'
 import ReviewPanel from '../bookings/ReviewPanel.vue'
+import { REVIEWERS, type Reviewer } from './reviewers'
 
 const props = defineProps<{
+  /** Whose decisions: the Pitika's or the room owner's (defaults to the Pitika). */
+  reviewer?: Reviewer
   decision: 'APPROVED' | 'REJECTED'
-  /** Room id → its cover photo (full size), for the panel's header. */
-  covers: Record<number, { url: string } | null>
+  /** Room id → its cover photo: the thumbnail for the row, full size for the panel's header. */
+  covers: Record<number, { url: string; thumbnail_url: string } | null>
 }>()
 
 // The same address keys as the Waiting list, so the page's one filter bar drives both.
 const { list, result, loading, error, filtered, load } = useResourceList<DecidedBookingItem>(
   { room_id: 'int', from: 'string', to: 'string', q: 'string' },
   (params) =>
-    listPitikaDecidedPage(api, {
+    (props.reviewer ?? REVIEWERS.pitika).decided({
       decision: props.decision,
       room_id: params.room_id as number | undefined,
       from: params.from as string | undefined,
@@ -52,8 +58,7 @@ const shortDay = (day: string) => {
   const text = formatDay(day)
   return day.slice(0, 4) === today.value.slice(0, 4) ? text.slice(0, -5) : text
 }
-const meta = (b: DecidedBookingItem) =>
-  `${b.room.name_en} · ${shortDay(b.first_session.date)}, ${b.first_session.start_time.slice(0, 5)} · ${b.requester.name_en}`
+const hhmm = (time: string) => time.slice(0, 5)
 const note = (b: DecidedBookingItem) =>
   b.decision_note ? `${props.decision === 'REJECTED' ? 'Reason' : 'Notes'}: “${b.decision_note}”` : ''
 
@@ -102,32 +107,37 @@ watch(
           <h2 :id="`day-${day.key}`">{{ day.label }}</h2>
           <span class="n mono">{{ day.items.length }} {{ word }}</span>
         </div>
-        <ul class="cards" role="list">
-          <li
+        <ul class="rows">
+          <SoftRow
             v-for="b in day.items"
             :key="b.id"
-            class="card"
-            role="listitem"
-            tabindex="0"
             :data-booking="b.id"
-            @click="panel.open(b.id)"
-            @keydown.enter.prevent="panel.open(b.id)"
+            :start="hhmm(b.first_session.start_time)"
+            :end="hhmm(b.first_session.end_time)"
+            :day="shortDay(b.first_session.date)"
+            :more="b.session_count > 1 ? `+${b.session_count - 1} more` : null"
+            :photo="covers[b.room.id]?.thumbnail_url ?? null"
+            :photo-alt="b.room.name_en"
+            :reference="b.reference_code"
+            :title="b.meeting_title"
+            :current="panel.id.value === b.id"
+            @open="panel.open(b.id)"
           >
-            <span class="mark" :class="decision === 'APPROVED' ? 'ok' : 'no'" aria-hidden="true">
-              <Check v-if="decision === 'APPROVED'" />
-              <X v-else />
-            </span>
-            <div class="body">
-              <div class="title">
-                <span class="name">{{ b.meeting_title }}</span>
-                <span class="ref mono">{{ b.reference_code }}</span>
-              </div>
-              <div class="meta">{{ meta(b) }}</div>
-              <div v-if="note(b)" class="note">{{ note(b) }}</div>
-            </div>
-            <span class="now" :class="nowPill(b).tone">{{ nowPill(b).text }}</span>
-            <span class="time mono">{{ decidedTime(b) }}</span>
-          </li>
+            <template #line>
+              <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }} · {{ b.requester.name_en }}
+            </template>
+            <template v-if="note(b)" #tags>
+              <span class="soft-tag note" :class="{ alert: decision === 'REJECTED' }" :title="b.decision_note ?? ''">{{ note(b) }}</span>
+            </template>
+            <template #status>
+              <span class="mark" :class="decision === 'APPROVED' ? 'ok' : 'no'">
+                <Check v-if="decision === 'APPROVED'" aria-hidden="true" />
+                <X v-else aria-hidden="true" />{{ decision === 'APPROVED' ? 'Approved' : 'Rejected' }} ·
+                <span class="decided-at mono">{{ decidedTime(b) }}</span>
+              </span>
+              <span class="now" :class="nowPill(b).tone">{{ nowPill(b).text }}</span>
+            </template>
+          </SoftRow>
         </ul>
       </section>
       <PagingFoot
@@ -146,6 +156,7 @@ watch(
       :booking="detail"
       :photo-path="covers[detail.room.id]?.url ?? null"
       :starts-in="null"
+      :note="(reviewer ?? REVIEWERS.pitika).panelNote(detail)"
       read-only
       @close="panel.close"
     />
@@ -178,90 +189,41 @@ watch(
   font-size: 11.5px;
   color: var(--color-ink-off);
 }
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.rows {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: var(--color-sheet);
-  box-shadow: 0 1px 2px rgba(42, 28, 19, 0.05);
-  cursor: pointer;
-  transition: box-shadow 0.15s ease;
+.kh {
+  font-family: var(--font-kh);
+  font-weight: 500;
+  color: var(--color-ink);
 }
-.card:hover {
-  box-shadow: 0 2px 8px rgba(42, 28, 19, 0.08);
-}
-.card:focus-visible {
-  outline: 2px solid var(--color-thread);
-  outline-offset: 2px;
-}
+/* My decision and its time, then where the booking is now: the row's status, at its end. */
 .mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
 }
-.mark svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 2.5;
+.mark :deep(svg.lucide) {
+  width: 14px;
+  height: 14px;
 }
 .mark.ok {
-  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
   color: var(--color-ok);
 }
 .mark.no {
-  background: var(--color-crimson-wash);
   color: var(--color-crimson);
 }
-.body {
-  flex: 1;
-  min-width: 0;
-}
-.title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font-weight: 500;
-}
-.name {
-  overflow-wrap: anywhere;
-}
-.ref {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--color-field-disabled);
-  font-size: 11.5px;
+.decided-at {
   font-weight: 400;
-  letter-spacing: 0.02em;
-  color: var(--color-ink);
-}
-.meta,
-.note {
-  margin-top: 3px;
-  font-size: 12px;
-  color: var(--color-ink-off);
-  overflow-wrap: anywhere;
-}
-.note {
-  color: var(--color-intaglio);
 }
 .now {
-  flex: none;
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: 3px 10px;
+  border-radius: 999px;
   background: var(--color-field-disabled);
   font-size: 12px;
   color: var(--color-intaglio);
@@ -279,13 +241,6 @@ watch(
   background: var(--color-crimson-wash);
   color: var(--color-crimson);
 }
-.time {
-  flex: none;
-  width: 44px;
-  font-size: 11.5px;
-  text-align: right;
-  color: var(--color-ink-off);
-}
 .mono {
   font-family: var(--font-mono);
 }
@@ -299,25 +254,5 @@ watch(
   flex: none;
   width: 18px;
   height: 18px;
-}
-@media (max-width: 640px) {
-  .card {
-    flex-wrap: wrap;
-    gap: 10px 12px;
-  }
-  .body {
-    flex-basis: calc(100% - 46px);
-  }
-  .now {
-    margin-left: 46px;
-  }
-  .time {
-    margin-left: auto;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card {
-    transition: none;
-  }
 }
 </style>

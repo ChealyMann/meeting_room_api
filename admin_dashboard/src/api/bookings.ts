@@ -11,7 +11,7 @@ import type {
   DoorPassOut,
   ItemList,
   Page,
-  PitikaSummary,
+  ReviewSummary,
   ScheduleItem,
 } from './types'
 
@@ -65,8 +65,30 @@ export function listPitikaDecidedPage(
 }
 
 /** Waiting in the province now, and this Pitika's approvals and rejections today. */
-export function getPitikaSummary(client: ApiClient): Promise<PitikaSummary> {
-  return client.request<PitikaSummary>('GET', `${PITIKA}/summary`)
+export function getPitikaSummary(client: ApiClient): Promise<ReviewSummary> {
+  return client.request<ReviewSummary>('GET', `${PITIKA}/summary`)
+}
+
+// The room owner's list and decisions (T7 to T9): bookings of the private rooms they own now.
+const OWNER = '/api/v1/owner/bookings'
+export function listOwnerBookingPage(client: ApiClient, f: BookingFilters): Promise<Page<BookingListItem>> {
+  const { province: _province, ...rest } = f
+  return client.request<Page<BookingListItem>>('GET', OWNER + toQuery({ ...rest }))
+}
+export function ownerApprove(client: ApiClient, id: number, body: { notes: string | null; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${OWNER}/${id}/approve`, { json: body })
+}
+export function ownerReject(client: ApiClient, id: number, body: { reason: string; version: number }): Promise<BookingDetail> {
+  return client.request<BookingDetail>('POST', `${OWNER}/${id}/reject`, { json: body })
+}
+export function listOwnerDecidedPage(
+  client: ApiClient,
+  f: Omit<BookingFilters, 'status' | 'province'> & { decision: 'APPROVED' | 'REJECTED' },
+): Promise<Page<DecidedBookingItem>> {
+  return client.request<Page<DecidedBookingItem>>('GET', `${OWNER}/decided` + toQuery({ ...f }))
+}
+export function getOwnerSummary(client: ApiClient): Promise<ReviewSummary> {
+  return client.request<ReviewSummary>('GET', `${OWNER}/summary`)
 }
 
 export function getBooking(client: ApiClient, id: number): Promise<BookingDetail> {

@@ -39,8 +39,12 @@ export function groupByUrgency(items: BookingListItem[], today: string): Urgency
 
 /** "Starts in 4 h 40 min", "Starts in 2 h", "Starts in 25 min", or "Started". */
 export function startsIn(item: BookingListItem, now: Date): string {
-  const { date, start_time } = item.first_session
-  const start = Date.parse(`${date}T${start_time.slice(0, 5)}:00+07:00`)
+  return startsAt(item.first_session.date, item.first_session.start_time, now)
+}
+
+/** "Starts in 4 h 40 min" (or "Started") for any session: its Phnom Penh day and start time. */
+export function startsAt(date: string, startTime: string, now: Date): string {
+  const start = Date.parse(`${date}T${startTime.slice(0, 5)}:00+07:00`)
   const minutes = Math.floor((start - now.getTime()) / 60_000)
   if (minutes <= 0) return 'Started'
   const h = Math.floor(minutes / 60)

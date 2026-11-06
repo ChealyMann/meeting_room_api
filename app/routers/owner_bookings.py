@@ -1,10 +1,12 @@
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
+from app.constants.booking import ReviewDecision, ReviewStage
 from app.routers.common import AppSettings, DbSession, IdPath, IdQuery, PageParams, SearchQuery
 from app.schemas.booking import BookingDetail, BookingListItem
-from app.schemas.booking_review import ApproveBody, RejectBody
+from app.schemas.booking_review import ApproveBody, DecidedBookingItem, RejectBody, ReviewSummary
 from app.schemas.common import Page
 from app.security import RoomOwnerUser
 from app.services import booking_review, booking_view
@@ -18,6 +20,12 @@ def list_owner_bookings(
     session: DbSession,
     paging: Annotated[PageParams, Depends()],
     status: Annotated[str | None, Query(description="A display status, e.g. PENDING_OWNER")] = None,
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Any session on or after this day")
+    ] = None,
+    date_to: Annotated[
+        date | None, Query(alias="to", description="Any session on or before this day")
+    ] = None,
     room_id: IdQuery = None,
     q: SearchQuery = None,
 ) -> Page[BookingListItem]:
@@ -25,10 +33,43 @@ def list_owner_bookings(
     gets a new owner, its bookings move to the new owner's list. `q` matches the title, the
     reference code or the requester's name."""
     result = booking_review.list_owner_bookings(
-        session, current, paging.page, paging.size, status, room_id, q
+        session, current, paging.page, paging.size, status, date_from, date_to, room_id, q
     )
     items = booking_view.build_booking_list_items(result["items"])
     return Page[BookingListItem](**{**result, "items": items})
+
+
+@router.get("/decided", response_model=Page[DecidedBookingItem], summary="List bookings I decided")
+def list_decided_bookings(
+    current: RoomOwnerUser,
+    session: DbSession,
+    paging: Annotated[PageParams, Depends()],
+    decision: Annotated[Literal["APPROVED", "REJECTED"], Query(description="APPROVED or REJECTED")],
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Any session on or after this day")
+    ] = None,
+    date_to: Annotated[
+        date | None, Query(alias="to", description="Any session on or before this day")
+    ] = None,
+    room_id: IdQuery = None,
+    q: SearchQuery = None,
+) -> Page[DecidedBookingItem]:
+    """Bookings you approved or rejected as room owner (`decision`), newest decision first, in
+    the private rooms you own now. Each has `decided_at` and `decision_note`. Decisions the
+    Admin made as a backup are not listed."""
+    result = booking_review.list_owner_decided(
+        session, current, paging.page, paging.size, ReviewDecision(decision), date_from, date_to,
+        room_id, q,
+    )  # fmt: skip
+    items = booking_view.build_decided_items(result["items"], current.id, ReviewStage.OWNER)
+    return Page[DecidedBookingItem](**{**result, "items": items})
+
+
+@router.get("/summary", response_model=ReviewSummary, summary="See my day in numbers")
+def owner_summary(current: RoomOwnerUser, session: DbSession) -> ReviewSummary:
+    """`waiting`: bookings of your private rooms waiting for you now. `approved_today` and
+    `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted)."""
+    return ReviewSummary(**booking_review.owner_summary(session, current))
 
 
 @router.post("/{booking_id}/approve", response_model=BookingDetail, summary="Approve a booking")

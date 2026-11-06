@@ -5,7 +5,7 @@
 // the side panel, the icon tile beside the question, and the booking as a small table
 // so the Admin sees exactly which meeting they act on.
 import { CalendarX2, CircleCheck, CircleX } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, type Component } from 'vue'
 
 import BaseButton from '../../components/base/BaseButton.vue'
 
@@ -31,6 +31,11 @@ const props = defineProps<{
   fieldError?: string
   /** A required reason's shortest length (Pitika reject: 5); 0 when the box is optional. */
   minLength?: number
+  /** No text box (IT: Mark ready). A default slot can add content above the box (IT: the staff). */
+  noField?: boolean
+  /** Another icon in the tile (IT: assign staff). The `summary` slot can replace the booking
+   *  table, and the `foot-start` slot puts something before Back. */
+  icon?: Component
 }>()
 const text = defineModel<string>({ required: true })
 const emit = defineEmits<{ back: []; confirm: [] }>()
@@ -63,7 +68,7 @@ function onKey(event: KeyboardEvent) {
     return
   }
   if (event.key !== 'Tab' || !card.value) return
-  const stops = [...card.value.querySelectorAll<HTMLElement>('textarea, button:not([disabled])')]
+  const stops = [...card.value.querySelectorAll<HTMLElement>('input, textarea, button:not([disabled])')]
   const first = stops[0]
   const last = stops[stops.length - 1]
   if (!first || !last) return
@@ -80,7 +85,8 @@ onMounted(async () => {
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   document.addEventListener('keydown', onKey, true)
   await nextTick()
-  field.value?.focus()
+  if (field.value) field.value.focus()
+  else card.value?.querySelector<HTMLElement>('input, button.confirm')?.focus()
 })
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKey, true)
@@ -103,7 +109,8 @@ onBeforeUnmount(() => {
         >
           <div class="head">
             <span class="tile" aria-hidden="true">
-              <CalendarX2 v-if="action === 'cancel'" />
+              <component :is="icon" v-if="icon" />
+              <CalendarX2 v-else-if="action === 'cancel'" />
               <CircleX v-else-if="action === 'reject'" />
               <CircleCheck v-else />
             </span>
@@ -114,6 +121,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
+          <slot name="summary">
           <dl class="booking">
             <div>
               <dt>Meeting</dt>
@@ -128,8 +136,12 @@ onBeforeUnmount(() => {
               <dd>{{ day }} · <span class="mono times">{{ times }}</span></dd>
             </div>
           </dl>
+          </slot>
 
-          <div class="field">
+          <slot />
+
+          <p v-if="noField && error" class="step-error" role="alert">{{ error }}</p>
+          <div v-if="!noField" class="field">
             <label :for="fieldId">{{ fieldLabel }}</label>
             <textarea
               :id="fieldId"
@@ -149,6 +161,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="foot">
+            <slot name="foot-start" />
             <BaseButton class="back" :disabled="busy" @click="back">Back</BaseButton>
             <BaseButton variant="primary" class="confirm" :busy="busy" :disabled="!allowed || short" @click="emit('confirm')">
               {{ confirmLabel }}

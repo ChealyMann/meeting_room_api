@@ -22,7 +22,15 @@ const ITEMS = [
   listItem(23, { meeting_title: 'Audit prep', reference_code: 'NBC-26-44120', room: room(12, 'Mekong Room', 'បន្ទប់មេគង្គ'), first_session: session('2026-11-12', '15:00') }),
 ]
 const DETAILS: Record<number, Record<string, unknown>> = {
-  21: { catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 }, it: { items: [{ id: 2, name: 'Projector setup' }] } },
+  21: {
+    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 },
+    it: { items: [{ id: 2, name: 'Projector setup' }] },
+    sessions: [
+      { id: 1, date: '2026-11-05', start_time: '14:00', end_time: '15:30' },
+      { id: 2, date: '2026-11-06', start_time: '09:00', end_time: '10:30' },
+      { id: 3, date: '2026-11-07', start_time: '09:00', end_time: '10:30' },
+    ],
+  },
   22: { private_justification: "The Governor's team asked." },
   23: {},
 }
@@ -149,9 +157,13 @@ describe('ReviewView', () => {
     const { wrapper } = await mountReview()
 
     const first = row(wrapper, 21).text()
-    for (const text of ['NBC-26-87467', 'Payment systems workshop', 'បន្ទប់មេគង្គ', 'Mekong Room', '14:00–15:30', 'Sok Dara', '10 people', 'Lunch box', '×25', 'Projector setup']) {
+    for (const text of ['Payment systems workshop', 'បន្ទប់មេគង្គ', 'Mekong Room', 'Sok Dara', '10 people']) {
       expect(first).toContain(text)
     }
+    // The time leads the row; the reference sits on the photo; what to check is in soft tags.
+    expect([row(wrapper, 21).get('.start').text(), row(wrapper, 21).get('.end').text()]).toEqual(['14:00', '15:30'])
+    expect(row(wrapper, 21).get('.photo .ref').text()).toBe('NBC-26-87467')
+    expect(row(wrapper, 21).findAll('.soft-tag').map((t) => t.text())).toEqual(['Food · Lunch box ×25', 'IT · Projector setup'])
     expect(row(wrapper, 22).text()).toContain('Private · reason given')
   })
 
@@ -162,12 +174,11 @@ describe('ReviewView', () => {
     expect(wrapper.findAll('.soon')).toHaveLength(1)
   })
 
-  it('draws the row bar with a gap for the decision, and no Pitika step', async () => {
+  it('says the step after the decision instead of a row bar', async () => {
     const { wrapper } = await mountReview()
 
-    const steps = row(wrapper, 22).findAll('.process-bar .step')
-    expect(steps.map((s) => s.get('.n').text())).toEqual(['Sent', 'Room owner', 'Confirmed'])
-    expect(steps[1]!.classes()).toContain('gap')
+    expect(row(wrapper, 22).get('.next').text()).toBe('Next: Room owner')
+    expect(row(wrapper, 22).find('.process-bar').exists()).toBe(false)
   })
 
   it('shows the room photo, or a plain tile when the room has none', async () => {
@@ -217,6 +228,18 @@ describe('Review panel and decisions', () => {
     expect(p.textContent).toContain('Starts in 4 h 40 min. If nobody decides before it starts, it is rejected by the system.')
     expect(p.textContent).toContain('Lunch box')
     expect(p.textContent).toContain('Projector setup')
+  })
+
+  it('lists every session in the panel, and says the food comes at each of them', async () => {
+    const { wrapper } = await mountReview()
+    await row(wrapper, 21).trigger('click')
+    await flushPromises()
+
+    const p = panel()!
+    const sessions = [...p.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent).join(' '))
+    expect(sessions).toEqual(['Thu 5 Nov 2026 14:00–15:30', 'Fri 6 Nov 2026 09:00–10:30', 'Sat 7 Nov 2026 09:00–10:30'])
+    expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
+    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('At the start of every session (3 times)')
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {

@@ -167,14 +167,78 @@ def list_pitika_bookings(
     return _list_in_rooms(session, rooms, page, size, status, date_from, date_to, room_id, q)
 
 
-def _my_pitika_review(current: CurrentUser):
-    """The join condition for this Pitika's own review (not an Admin backup, B-34)."""
+def _my_review(current: CurrentUser, stage: ReviewStage):
+    """The join condition for this user's own review at `stage` (not an Admin backup, B-34)."""
     return and_(
         BookingReview.booking_id == Booking.id,
-        BookingReview.stage == ReviewStage.PITIKA,
+        BookingReview.stage == stage,
         BookingReview.reviewer_id == current.id,
         BookingReview.by_admin.is_(False),
     )
+
+
+def _list_decided(
+    session: Session,
+    current: CurrentUser,
+    stage: ReviewStage,
+    rooms,
+    page: int,
+    size: int,
+    decision: ReviewDecision,
+    date_from: date | None,
+    date_to: date | None,
+    room_id: int | None,
+    q: str | None,
+) -> dict:
+    """Bookings in `rooms` this user approved or rejected (`decision`) at `stage`, newest
+    decision first."""
+    query = (
+        select(Booking)
+        .join(User, Booking.requester_id == User.id)
+        .join(BookingReview, _my_review(current, stage))
+        .where(Booking.room_id.in_(rooms), BookingReview.decision == decision)
+        .options(
+            *booking_load_options(),
+            selectinload(Booking.reviews),
+            selectinload(Booking.rejection),
+        )
+    )
+    query = _apply_list_filters(query, date_from, date_to, room_id, q)
+    query = query.order_by(BookingReview.reviewed_at.desc(), Booking.id.desc())
+    return paginate(session, query, page, size)
+
+
+def _decided_summary(
+    session: Session,
+    current: CurrentUser,
+    stage: ReviewStage,
+    rooms,
+    waiting_status: BookingStatus,
+) -> dict[str, int]:
+    """Bookings in `rooms` waiting at `waiting_status` now, and this user's own approvals and
+    rejections at `stage` today (the Phnom Penh day; Admin backups not counted)."""
+    waiting = session.scalar(
+        select(func.count(Booking.id)).where(
+            Booking.room_id.in_(rooms), Booking.status == waiting_status
+        )
+    )
+    start = local_to_utc(datetime.combine(now_local().date(), time()))
+    rows = session.execute(
+        select(BookingReview.decision, func.count(BookingReview.id))
+        .join(Booking, _my_review(current, stage))
+        .where(
+            Booking.room_id.in_(rooms),
+            BookingReview.reviewed_at >= start,
+            BookingReview.reviewed_at < start + timedelta(days=1),
+        )
+        .group_by(BookingReview.decision)
+    ).all()
+    counts = dict(rows)
+    return {
+        "waiting": waiting or 0,
+        "approved_today": counts.get(ReviewDecision.APPROVED, 0),
+        "rejected_today": counts.get(ReviewDecision.REJECTED, 0),
+    }
 
 
 def list_pitika_decided(
@@ -190,51 +254,20 @@ def list_pitika_decided(
 ) -> dict:
     """Bookings this Pitika approved or rejected (`decision`) in rooms of their current
     province, newest decision first. No province means an empty list."""
-    province = booking_access.pitika_province(current)
-    rooms = booking_access.room_ids_in_province(province)
-    query = (
-        select(Booking)
-        .join(User, Booking.requester_id == User.id)
-        .join(BookingReview, _my_pitika_review(current))
-        .where(Booking.room_id.in_(rooms), BookingReview.decision == decision)
-        .options(
-            *booking_load_options(),
-            selectinload(Booking.reviews),
-            selectinload(Booking.rejection),
-        )
-    )
-    query = _apply_list_filters(query, date_from, date_to, room_id, q)
-    query = query.order_by(BookingReview.reviewed_at.desc(), Booking.id.desc())
-    return paginate(session, query, page, size)
+    rooms = booking_access.room_ids_in_province(booking_access.pitika_province(current))
+    return _list_decided(
+        session, current, ReviewStage.PITIKA, rooms, page, size, decision, date_from, date_to,
+        room_id, q,
+    )  # fmt: skip
 
 
 def pitika_summary(session: Session, current: CurrentUser) -> dict[str, int]:
     """Waiting bookings in the Pitika's province now, and their own approvals and rejections
     today (the Phnom Penh day; Admin backups not counted). No province: all 0."""
-    province = booking_access.pitika_province(current)
-    rooms = booking_access.room_ids_in_province(province)
-    waiting = session.scalar(
-        select(func.count(Booking.id)).where(
-            Booking.room_id.in_(rooms), Booking.status == BookingStatus.PENDING_PITIKA
-        )
+    rooms = booking_access.room_ids_in_province(booking_access.pitika_province(current))
+    return _decided_summary(
+        session, current, ReviewStage.PITIKA, rooms, BookingStatus.PENDING_PITIKA
     )
-    start = local_to_utc(datetime.combine(now_local().date(), time()))
-    rows = session.execute(
-        select(BookingReview.decision, func.count(BookingReview.id))
-        .join(Booking, _my_pitika_review(current))
-        .where(
-            Booking.room_id.in_(rooms),
-            BookingReview.reviewed_at >= start,
-            BookingReview.reviewed_at < start + timedelta(days=1),
-        )
-        .group_by(BookingReview.decision)
-    ).all()
-    counts = dict(rows)
-    return {
-        "waiting": waiting or 0,
-        "approved_today": counts.get(ReviewDecision.APPROVED, 0),
-        "rejected_today": counts.get(ReviewDecision.REJECTED, 0),
-    }
 
 
 def _load_in_province(session: Session, current: CurrentUser, booking_id: int) -> Booking:
@@ -276,18 +309,51 @@ def pitika_reject(
 # --- Room owner ------------------------------------------------------------------------
 
 
+def _owned_rooms(current: CurrentUser):
+    """The private rooms the user owns now (BR-OWN-05: the queue follows the room)."""
+    return select(Room.id).where(Room.is_private, Room.room_owner_id == current.id)
+
+
 def list_owner_bookings(
     session: Session,
     current: CurrentUser,
     page: int,
     size: int,
     status: str | None,
+    date_from: date | None,
+    date_to: date | None,
     room_id: int | None,
     q: str | None,
 ) -> dict:
-    """Bookings of the private rooms the user owns now (BR-OWN-05: the queue follows the room)."""
-    rooms = select(Room.id).where(Room.is_private, Room.room_owner_id == current.id)
-    return _list_in_rooms(session, rooms, page, size, status, None, None, room_id, q)
+    """Bookings of the private rooms the user owns now."""
+    rooms = _owned_rooms(current)
+    return _list_in_rooms(session, rooms, page, size, status, date_from, date_to, room_id, q)
+
+
+def list_owner_decided(
+    session: Session,
+    current: CurrentUser,
+    page: int,
+    size: int,
+    decision: ReviewDecision,
+    date_from: date | None,
+    date_to: date | None,
+    room_id: int | None,
+    q: str | None,
+) -> dict:
+    """Bookings this owner approved or rejected (`decision`) in the rooms they own now,
+    newest decision first."""
+    return _list_decided(
+        session, current, ReviewStage.OWNER, _owned_rooms(current), page, size, decision,
+        date_from, date_to, room_id, q,
+    )  # fmt: skip
+
+
+def owner_summary(session: Session, current: CurrentUser) -> dict[str, int]:
+    """Bookings waiting for this owner now, and their own approvals and rejections today."""
+    return _decided_summary(
+        session, current, ReviewStage.OWNER, _owned_rooms(current), BookingStatus.PENDING_OWNER
+    )
 
 
 def _load_owned(session: Session, current: CurrentUser, booking_id: int) -> Booking:

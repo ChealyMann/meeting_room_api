@@ -31,9 +31,13 @@ class RejectBody(RequestModel):
     version: int
 
 
-class PitikaSummary(ResponseModel):
-    """Bookings waiting in my province now, and my decisions today (Phnom Penh day)."""
+class ReviewSummary(ResponseModel):
+    """Bookings waiting for me now, and my decisions today (Phnom Penh day)."""
 
     waiting: int
     approved_today: int
     rejected_today: int
+
+
+# The Pitika's name for it, kept for its router.
+PitikaSummary = ReviewSummary

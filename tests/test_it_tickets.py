@@ -124,13 +124,19 @@ def test_item_shape(client, frozen, lead, staff, setup, auth_headers):
     item = client.get(URL, headers=auth_headers(lead)).json()["items"][0]
     assert set(item) == {
         "id", "status", "items", "special_requirements", "technician_notes", "staff",
-        "setup_date", "setup_time", "forwarded_at", "assigned_at", "ready_at", "review_notes",
-        "booking",
+        "setup_date", "setup_time", "forwarded_at", "assigned_at", "ready_at", "missed",
+        "review_notes", "setups", "booking",
     }  # fmt: skip
     assert item["id"] == booking.it_ticket.id
     assert item["booking"]["id"] == booking.id
     assert item["staff"] == [
-        {"id": staff.id, "name_en": staff.name_en, "name_kh": staff.name_kh, "is_active": True}
+        {
+            "id": staff.id,
+            "name_en": staff.name_en,
+            "name_kh": staff.name_kh,
+            "is_active": True,
+            "avatar_url": None,
+        }
     ]
 
 

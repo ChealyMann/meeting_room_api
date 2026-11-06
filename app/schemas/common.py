@@ -70,18 +70,14 @@ NoHtml = AfterValidator(_check_no_html)
 
 def BookingText(max_length: int, min_length: int = 1) -> Any:  # noqa: N802
     """Like `Text`, plus no HTML; `min_length` counts characters after trimming."""
-    limited = Annotated[
-        str, Field(min_length=min_length, max_length=max_length), NoHtml
-    ]
+    limited = Annotated[str, Field(min_length=min_length, max_length=max_length), NoHtml]
     return Annotated[limited, BeforeValidator(_strip)]
 
 
 def OptionalBookingText(max_length: int, min_length: int | None = None) -> Any:  # noqa: N802
     """Like `OptionalText`, plus no HTML. Empty is still saved as None; other text shorter
     than `min_length` (after trimming) is refused."""
-    limited = Annotated[
-        str, Field(min_length=min_length, max_length=max_length), NoHtml
-    ]
+    limited = Annotated[str, Field(min_length=min_length, max_length=max_length), NoHtml]
     return Annotated[limited | None, BeforeValidator(_strip_to_none)]
 
 

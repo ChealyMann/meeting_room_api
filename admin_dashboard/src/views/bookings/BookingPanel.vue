@@ -264,7 +264,11 @@ async function downloadIcs() {
       <dl v-else class="details">
         <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
         <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
-        <div><dt>Delivery</dt><dd>{{ formatDay(booking.catering.delivery_date) }} {{ hhmm(booking.catering.delivery_time) }}</dd></div>
+        <div>
+          <dt>Delivery</dt>
+          <dd v-if="booking.session_count > 1" class="delivery">At the start of every session ({{ booking.session_count }} times)</dd>
+          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} {{ hhmm(booking.catering.delivery_time) }}</dd>
+        </div>
         <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
         <div><dt>Pitika notes</dt><dd class="wrap" :class="{ none: !booking.catering.approver_notes }">{{ booking.catering.approver_notes || 'None' }}</dd></div>
         <div v-if="booking.catering.decided_at">
@@ -283,7 +287,6 @@ async function downloadIcs() {
           <dt>Staff</dt>
           <dd :class="{ none: !booking.it.staff.length }">{{ booking.it.staff.map((s) => s.name_en).join(', ') || 'None yet' }}</dd>
         </div>
-        <div><dt>Setup</dt><dd>{{ formatDay(booking.it.setup_date) }} {{ hhmm(booking.it.setup_time) }}</dd></div>
         <div><dt>Technician notes</dt><dd class="wrap" :class="{ none: !booking.it.technician_notes }">{{ booking.it.technician_notes || 'None' }}</dd></div>
         <div v-if="booking.it.forwarded_at"><dt>Sent to IT</dt><dd class="mono">{{ formatPhnomPenh(booking.it.forwarded_at) }}</dd></div>
         <div v-if="booking.it.assigned_at"><dt>Assigned</dt><dd class="mono">{{ formatPhnomPenh(booking.it.assigned_at) }}</dd></div>

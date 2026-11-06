@@ -169,6 +169,8 @@ class CateringOut(ResponseModel):
     packages: list[dict[str, Any]]
     remarks: str | None
     servings: int
+    # The first delivery. Food is served at every session (owner decision, 6 Nov 2026): the
+    # food list has one delivery per session.
     delivery_date: date
     delivery_time: LocalTime
     approver_notes: str | None

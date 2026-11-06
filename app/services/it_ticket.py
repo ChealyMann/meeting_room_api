@@ -5,8 +5,10 @@ A ticket is visible once it was forwarded and its booking is not REJECTED or CAN
 assigned to. The `version` in a request is the booking's (B-19).
 """
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from datetime import date, datetime, time, timedelta
+
+from sqlalchemy import Select, and_, func, literal_column, or_, select
+from sqlalchemy.orm import Session, aliased, selectinload
 
 from app.config import Settings
 from app.constants.booking import (
@@ -16,14 +18,15 @@ from app.constants.booking import (
 )
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
-from app.models import Booking, ITTicket, User, it_ticket_staff
-from app.schemas.it_ticket import ITStaffOut, ITTicketItem
+from app.models import Booking, BookingSession, ITTicket, Role, User, it_ticket_staff, user_roles
+from app.schemas.it_ticket import ITBusy, ITSetup, ITStaffOut, ITStaffPick, ITTicketItem
 from app.security import CurrentUser, load_role_codes
-from app.services import booking_access, booking_view
+from app.services import booking_access, booking_view, clock
 from app.services import booking_transitions as transitions
-from app.services.clock import now_utc
+from app.services.clock import local_to_utc, now_local, now_utc
 from app.services.listing import apply_search, paginate
 from app.services.records import not_found
+from app.services.user_avatar import avatar_url
 
 NOT_ACTIVE_STAFF = "This user is not active IT Staff."
 NO_ACTIVE_STAFF = "Assign active IT Staff first."
@@ -57,10 +60,84 @@ def _load_visible(session: Session, current: CurrentUser, ticket_id: int) -> ITT
 # --- Read ------------------------------------------------------------------------------
 
 
+STATES = ("to_assign", "in_progress", "done")
+
+
+def _missed_sql():
+    """Not Ready and the meeting has started (spec Part B, "Missed setup"): the ticket can no
+    longer change (T17 confirms the booking at the start)."""
+    return and_(
+        ITTicket.status != ITStatus.READY.value,
+        transitions.first_start_sql() <= now_local(),
+    )
+
+
+def _last_start_sql():
+    """The local start of a booking's last session, in SQL."""
+    return (
+        select(func.max(func.timestamp(BookingSession.date, BookingSession.start_time)))
+        .where(BookingSession.booking_id == Booking.id)
+        .scalar_subquery()
+    )
+
+
+def _sessions_between(date_from: date | None, date_to: date | None):
+    """Bookings with a session on a day in the range (IT sets up before every session)."""
+    query = select(BookingSession.booking_id)
+    if date_from is not None:
+        query = query.where(BookingSession.date >= date_from)
+    if date_to is not None:
+        query = query.where(BookingSession.date <= date_to)
+    return query
+
+
+def _later_sessions_left_sql():
+    """A booking with several sessions whose last one has not started."""
+    return and_(
+        _last_start_sql() > now_local(),
+        _last_start_sql() > transitions.first_start_sql(),
+    )
+
+
+def _in_state(query: Select, state: str) -> Select:
+    """The dashboard tabs. IT sets up before every session, so later sessions keep a setup on
+    these tabs: to assign: nobody assigned, and it is not missed or later sessions remain; in
+    progress: staff assigned, and it is not missed or later sessions remain (even when made
+    ready); done: Ready or missed."""
+    if state == "to_assign":
+        return query.where(
+            ITTicket.status == ITStatus.RECEIVED.value,
+            or_(~_missed_sql(), _later_sessions_left_sql()),
+        )
+    if state == "in_progress":
+        assigned_open = and_(ITTicket.status == ITStatus.ASSIGNED.value, ~_missed_sql())
+        with_staff = ITTicket.status.in_([ITStatus.ASSIGNED.value, ITStatus.READY.value])
+        return query.where(or_(assigned_open, and_(with_staff, _later_sessions_left_sql())))
+    return query.where(or_(ITTicket.status == ITStatus.READY.value, _missed_sql()))
+
+
+def _mine(query: Select, current: CurrentUser) -> Select:
+    assigned = select(it_ticket_staff.c.ticket_id).where(it_ticket_staff.c.user_id == current.id)
+    return query.where(ITTicket.id.in_(assigned))
+
+
 def list_tickets(
-    session: Session, current: CurrentUser, page: int, size: int, status: str | None, q: str | None
+    session: Session,
+    current: CurrentUser,
+    page: int,
+    size: int,
+    status: str | None,
+    q: str | None,
+    state: str | None = None,
+    mine: bool = False,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict:
-    """Visible tickets, earliest first start first."""
+    """Visible tickets, earliest first start first; `state="done"` newest first (made ready,
+    or the meeting start of a missed one). `date_from` / `date_to`: the first session's day
+    (the setup day). `mine`: only tickets assigned to me."""
+    if date_from is not None and date_to is not None and date_to < date_from:
+        raise _invalid("to", "Must be on or after from.")
     query = (
         select(ITTicket)
         .join(Booking, ITTicket.booking_id == Booking.id)
@@ -80,9 +157,185 @@ def list_tickets(
         except ValueError:
             choices = ", ".join(ITStatus)
             raise _invalid("status", f"Must be one of {choices}.") from None
+    if state is not None:
+        if state not in STATES:
+            raise _invalid("state", f"Must be one of {', '.join(STATES)}.")
+        query = _in_state(query, state)
+    if mine:
+        query = _mine(query, current)
+    if date_from is not None or date_to is not None:
+        query = query.where(Booking.id.in_(_sessions_between(date_from, date_to)))
     query = apply_search(query, q, [Booking.meeting_title, Booking.reference_code])
-    query = query.order_by(transitions.first_start_sql(), ITTicket.id)
+    if state == "done":
+        # Newest first: when it was made ready, or (missed) when the meeting started, both as
+        # Phnom Penh time (ready_at is UTC).
+        ready_local = func.timestampadd(literal_column("HOUR"), 7, ITTicket.ready_at)
+        moment = func.coalesce(ready_local, transitions.first_start_sql())
+        query = query.order_by(moment.desc(), ITTicket.id.desc())
+    else:
+        query = query.order_by(transitions.first_start_sql(), ITTicket.id)
     return paginate(session, query, page, size)
+
+
+def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
+    """The IT Lead's day: to assign and in progress now (missed left out), made ready today,
+    today's setups (first session today, Phnom Penh) with how many are ready, and later sessions
+    today (they have no Ready check)."""
+    base = select(func.count(ITTicket.id)).join(Booking, ITTicket.booking_id == Booking.id)
+    base = _visible(base, current)
+
+    def count(query) -> int:
+        return session.scalar(query) or 0
+
+    today = now_local().date()
+    start = local_to_utc(datetime.combine(today, time()))
+    first_day = transitions.first_day_sql()
+    # An alias: first_start_sql's own subquery must still see its sessions, not correlate them.
+    today_session = aliased(BookingSession)
+    repeats = (
+        select(func.count(today_session.id))
+        .select_from(ITTicket)
+        .join(Booking, ITTicket.booking_id == Booking.id)
+        .join(today_session, today_session.booking_id == Booking.id)
+    )
+    repeats = _visible(repeats, current).where(
+        today_session.date == today,
+        func.timestamp(today_session.date, today_session.start_time)
+        > transitions.first_start_sql(),
+    )
+    return {
+        "to_assign": count(_in_state(base, "to_assign")),
+        "in_progress": count(_in_state(base, "in_progress")),
+        "ready_today": count(
+            base.where(ITTicket.ready_at >= start, ITTicket.ready_at < start + timedelta(days=1))
+        ),
+        "due_today": count(base.where(first_day == today)),
+        "due_today_ready": count(
+            base.where(first_day == today, ITTicket.status == ITStatus.READY.value)
+        ),
+        "repeat_today": count(repeats),
+    }
+
+
+def list_it_staff(session: Session) -> list[User]:
+    """Active users with the IT_STAFF role, by English name (the assign picker)."""
+    query = (
+        select(User)
+        .join(user_roles, user_roles.c.user_id == User.id)
+        .join(Role, Role.id == user_roles.c.role_id)
+        .where(User.is_active, Role.code == RoleCode.IT_STAFF.value)
+        .order_by(User.name_en, User.id)
+    )
+    return list(session.scalars(query).unique())
+
+
+def staff_out(user: User) -> ITStaffOut:
+    return ITStaffOut(
+        id=user.id,
+        name_en=user.name_en,
+        name_kh=user.name_kh,
+        is_active=user.is_active,
+        avatar_url=avatar_url(user),
+    )
+
+
+def _starts(booking: Booking) -> list[datetime]:
+    """The local start of every session, in order."""
+    return sorted(clock.session_start(s) for s in booking.sessions)
+
+
+def _busy_at_the_same_time(
+    session: Session, settings: Settings, target: ITTicket, user_ids: list[int]
+) -> dict[int, list[ITBusy]]:
+    """Per user: their other visible setups whose time (set-up to meeting start) overlaps one of
+    the target's. IT sets up before every session; every setup lasts `it_setup_lead_minutes`,
+    so two overlap when their sessions start less than that apart."""
+    lead = timedelta(minutes=settings.it_setup_lead_minutes)
+    starts = _starts(target.booking)
+    near = {start.date() + timedelta(days=k) for start in starts for k in (-1, 0, 1)}
+    query = (
+        select(ITTicket)
+        .join(Booking, ITTicket.booking_id == Booking.id)
+        .where(
+            ITTicket.id != target.id,
+            ITTicket.forwarded_at.is_not(None),
+            Booking.status.not_in(_HIDDEN),
+            Booking.id.in_(select(BookingSession.booking_id).where(BookingSession.date.in_(near))),
+            ITTicket.id.in_(
+                select(it_ticket_staff.c.ticket_id).where(it_ticket_staff.c.user_id.in_(user_ids))
+            ),
+        )
+        .options(
+            selectinload(ITTicket.staff),
+            selectinload(ITTicket.booking).options(
+                selectinload(Booking.sessions), selectinload(Booking.room)
+            ),
+        )
+    )
+    busy: dict[int, list[ITBusy]] = {}
+    for ticket in session.scalars(query).unique():
+        for other in _starts(ticket.booking):
+            if all(abs(other - start) >= lead for start in starts):
+                continue
+            entry = ITBusy(
+                ticket_id=ticket.id,
+                room_name_en=ticket.booking.room.name_en,
+                date=(other - lead).date(),
+                setup_time=(other - lead).time(),
+                meeting_start=other.time(),
+            )
+            for user in ticket.staff:
+                if user.id in user_ids:
+                    busy.setdefault(user.id, []).append(entry)
+    for entries in busy.values():
+        entries.sort(key=lambda e: (e.date, e.meeting_start, e.ticket_id))
+    return busy
+
+
+def staff_picks(
+    session: Session,
+    settings: Settings,
+    current: CurrentUser,
+    day: date | None,
+    ticket_id: int | None = None,
+) -> list[ITStaffPick]:
+    """The assign picker: active IT Staff by name; with `day`, how many setups (visible
+    tickets whose first session is that day) each one already has. With `ticket_id` (404 when
+    hidden): that ticket's day, and each one's other setups at the same time."""
+    users = list_it_staff(session)
+    target = _load_visible(session, current, ticket_id) if ticket_id is not None else None
+    if target is not None and day is None:
+        day = transitions.first_start(target.booking).date()
+    busy = (
+        _busy_at_the_same_time(session, settings, target, [u.id for u in users])
+        if target is not None and users
+        else {}
+    )
+    counts: dict[int, int] = {}
+    if day is not None and users:
+        # Every session on the day is a setup (IT sets up before every session).
+        query = (
+            select(it_ticket_staff.c.user_id, func.count(BookingSession.id))
+            .join(ITTicket, ITTicket.id == it_ticket_staff.c.ticket_id)
+            .join(Booking, ITTicket.booking_id == Booking.id)
+            .join(BookingSession, BookingSession.booking_id == Booking.id)
+            .where(
+                ITTicket.forwarded_at.is_not(None),
+                Booking.status.not_in(_HIDDEN),
+                BookingSession.date == day,
+                it_ticket_staff.c.user_id.in_([u.id for u in users]),
+            )
+            .group_by(it_ticket_staff.c.user_id)
+        )
+        counts = {user_id: n for user_id, n in session.execute(query)}
+    return [
+        ITStaffPick(
+            **staff_out(user).model_dump(),
+            setups_that_day=None if day is None else counts.get(user.id, 0),
+            busy=None if target is None else busy.get(user.id, []),
+        )
+        for user in users
+    ]
 
 
 def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTicketItem]:
@@ -92,6 +345,20 @@ def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTi
     for ticket, booking_item in zip(tickets, bookings, strict=True):
         booking = ticket.booking
         setup = transitions.setup_start(booking, settings.it_setup_lead_minutes)
+        lead = timedelta(minutes=settings.it_setup_lead_minutes)
+        sessions = sorted(booking.sessions, key=lambda s: (s.date, s.start_time))
+        setups = []
+        for number, booked in enumerate(sessions, start=1):
+            at = clock.session_start(booked) - lead
+            setups.append(
+                ITSetup(
+                    session_number=number,
+                    date=at.date(),
+                    setup_time=at.time(),
+                    start_time=booked.start_time,
+                    end_time=booked.end_time,
+                )
+            )
         items.append(
             ITTicketItem(
                 id=ticket.id,
@@ -99,17 +366,19 @@ def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTi
                 items=ticket.requested_items,
                 special_requirements=ticket.special_requirements,
                 technician_notes=ticket.technician_notes,
-                staff=[ITStaffOut.model_validate(user) for user in ticket.staff],
+                staff=[staff_out(user) for user in ticket.staff],
                 setup_date=setup.date(),
                 setup_time=setup.time(),
                 forwarded_at=ticket.forwarded_at,
                 assigned_at=ticket.assigned_at,
                 ready_at=ticket.ready_at,
+                missed=ticket.status != ITStatus.READY and transitions.has_started(booking),
                 review_notes=[
                     review.notes
                     for review in booking.reviews
                     if review.decision == ReviewDecision.APPROVED and review.notes
                 ],
+                setups=setups,
                 booking=booking_item,
             )
         )
@@ -132,6 +401,15 @@ def _check_open(booking: Booking, version: int) -> None:
     transitions.check_version(booking, version)
     if booking.status != BookingStatus.SETUP_IN_PROGRESS:
         raise transitions.invalid_transition(booking)
+
+
+def _can_assign(ticket: ITTicket, booking: Booking) -> bool:
+    if booking.status == BookingStatus.SETUP_IN_PROGRESS:
+        return ticket.status != ITStatus.READY
+    if booking.status != BookingStatus.CONFIRMED:
+        return False
+    starts = _starts(booking)
+    return len(starts) > 1 and starts[-1] > now_local()
 
 
 def _is_active_it_staff(session: Session, user: User) -> bool:
@@ -163,15 +441,19 @@ def assign_staff(
     technician_notes: str | None,
     version: int,
 ) -> ITTicket:
-    """T10 (BR-IT-02). The new list replaces the old one; the booking version goes up by 1."""
+    """T10 (BR-IT-02). The new list replaces the old one; the booking version goes up by 1.
+    Also while a confirmed booking has later sessions to come: IT sets up before every session,
+    so staff can still be assigned or changed for them (owner decision, 6 Nov 2026). This does
+    not change the booking's status or door pass, and a setup made ready stays Ready."""
     ticket, booking = _load_for_write(session, current, ticket_id)
-    _check_open(booking, version)
-    if ticket.status == ITStatus.READY:
+    transitions.check_version(booking, version)
+    if not _can_assign(ticket, booking):
         raise transitions.invalid_transition(booking)
     users = _active_it_staff(session, user_ids)
 
     ticket.staff = sorted(users, key=lambda user: user.name_en)
-    ticket.status = ITStatus.ASSIGNED.value
+    if ticket.status != ITStatus.READY:
+        ticket.status = ITStatus.ASSIGNED.value
     ticket.assigned_at = now_utc()
     ticket.technician_notes = technician_notes
     transitions.advance(session, booking, version)

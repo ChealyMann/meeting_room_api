@@ -238,3 +238,20 @@ def test_reject_after_start_ok(client, frozen, freeze_now, owner, waiting, auth_
 def test_reject_stale(client, frozen, owner, waiting, auth_headers):
     booking = waiting()
     assert error(reject(client, auth_headers(owner), booking, version=0)) == (409, "STALE_VERSION")
+
+
+def test_list_from_to_match_any_session(client, frozen, owner, waiting, auth_headers):
+    far_day = NEXT_DAY + timedelta(days=5)
+    two_days = waiting(sessions=((DAY, time(9), time(10)), (far_day, time(9), time(10))))
+    only_day = waiting(sessions=((DAY, time(11), time(12)),))
+    headers = auth_headers(owner)
+
+    far = far_day.isoformat()
+    data = client.get(LIST, params={"from": far, "to": far}, headers=headers).json()
+    assert [item["id"] for item in data["items"]] == [two_days.id]
+
+    data = client.get(LIST, params={"to": DAY.isoformat()}, headers=headers).json()
+    assert {item["id"] for item in data["items"]} == {two_days.id, only_day.id}
+
+    params = {"from": DAY.isoformat(), "to": (DAY - timedelta(days=1)).isoformat()}
+    assert error(client.get(LIST, params=params, headers=headers))[0] == 422

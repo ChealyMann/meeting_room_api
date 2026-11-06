@@ -12,13 +12,21 @@ import DatePicker from '../../components/base/DatePicker.vue'
 import ListSearch from '../../components/list/ListSearch.vue'
 import SearchPicker, { type PickerItem } from '../../components/list/SearchPicker.vue'
 import { useListQuery } from '../../composables/useListQuery'
+import { useSessionStore } from '../../stores/session'
 import { STATUS_LABELS } from '../../utils/bookingLabels'
 import { FILTER_WORDS } from '../../utils/pickerWords'
 import { formatDay } from '../../utils/time'
 import { BOOKING_FILTERS } from './bookingFilters'
 
 /** Words for the active filters, for the "nothing matches" sentence. */
-const props = withDefaults(defineProps<{ provinceFilter?: boolean }>(), { provinceFilter: true })
+const props = withDefaults(
+  defineProps<{
+    provinceFilter?: boolean
+    /** `owned`: only the private rooms the user owns (a room owner's list). */
+    roomsOf?: 'all' | 'owned'
+  }>(),
+  { provinceFilter: true, roomsOf: 'all' },
+)
 const emit = defineEmits<{ summary: [parts: string[]] }>()
 
 const list = useListQuery(BOOKING_FILTERS, { activeFilter: false })
@@ -40,8 +48,12 @@ const statusItems: PickerItem[] = Object.entries(STATUS_LABELS).map(([value, lab
 const provinceItems = computed<PickerItem[]>(() =>
   provinces.value.map((p) => ({ value: p.code, label: p.name_en, keywords: p.name_kh })),
 )
+const session = useSessionStore()
+const shownRooms = computed(() =>
+  props.roomsOf === 'owned' ? rooms.value.filter((r) => r.is_private && r.owner?.id === session.user?.id) : rooms.value,
+)
 const roomItems = computed<PickerItem[]>(() =>
-  rooms.value.map((r) => ({ value: r.id, label: r.name_en, keywords: `${r.name_kh} ${r.location.name_en}` })),
+  shownRooms.value.map((r) => ({ value: r.id, label: r.name_en, keywords: `${r.name_kh} ${r.location.name_en}` })),
 )
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/

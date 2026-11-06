@@ -1,10 +1,11 @@
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
 from app.routers.common import AppSettings, DbSession, IdPath, PageParams, SearchQuery
 from app.schemas.common import Page
-from app.schemas.it_ticket import AssignStaffBody, ITTicketItem, ReadyBody
+from app.schemas.it_ticket import AssignStaffBody, ITSummary, ITTicketItem, ReadyBody
 from app.security import ITLeadUser, ITUser
 from app.services import it_ticket
 
@@ -19,13 +20,35 @@ def list_tickets(
     paging: Annotated[PageParams, Depends()],
     status: Annotated[str | None, Query(description="RECEIVED, ASSIGNED or READY")] = None,
     q: SearchQuery = None,
+    state: Annotated[
+        Literal["to_assign", "in_progress", "done"] | None,
+        Query(description="A dashboard tab: to_assign, in_progress or done (Ready or missed)"),
+    ] = None,
+    mine: Annotated[bool, Query(description="Only the tickets I am assigned to")] = False,
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Setup (first session) on or after this day")
+    ] = None,
+    date_to: Annotated[
+        date | None, Query(alias="to", description="Setup (first session) on or before this day")
+    ] = None,
 ) -> Page[ITTicketItem]:
     """Tickets sent to IT, earliest first start first. The IT Lead sees all of them; IT Staff
     see the tickets they are assigned to. Rejected and cancelled bookings are left out. `q`
-    matches the meeting title or the reference code."""
-    result = it_ticket.list_tickets(session, current, paging.page, paging.size, status, q)
+    matches the meeting title or the reference code. A ticket is `missed` when it is not
+    Ready and its meeting has started: it leaves to_assign / in_progress for done, which is
+    sorted newest first."""
+    result = it_ticket.list_tickets(
+        session, current, paging.page, paging.size, status, q, state, mine, date_from, date_to
+    )
     items = it_ticket.build_ticket_items(result["items"], settings)
     return Page[ITTicketItem](**{**result, "items": items})
+
+
+@router.get("/summary", response_model=ITSummary, summary="See the IT day in numbers")
+def ticket_summary(current: ITLeadUser, session: DbSession) -> ITSummary:
+    """IT Lead only. To assign and in progress now (missed left out), made ready today, and
+    today's setups (Phnom Penh day) with how many are ready."""
+    return ITSummary(**it_ticket.ticket_summary(session, current))
 
 
 @router.put("/{ticket_id}/staff", response_model=ITTicketItem, summary="Assign IT Staff")

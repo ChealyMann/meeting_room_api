@@ -198,7 +198,7 @@ The booking's shown date and time = its first session (by date, then start time)
 
 | Table | Fields | Notes |
 |---|---|---|
-| catering_orders | booking_id (unique), packages JSON, remarks(1000), approver_notes(1000), decided_by, decided_at | packages = copy of [{id, name}] at send time. Servings = attendees; delivery = first session start. decided_by = the Pitika who approved the booking. |
+| catering_orders | booking_id (unique), packages JSON, remarks(1000), approver_notes(1000), decided_by, decided_at | packages = copy of [{id, name}] at send time. Servings = attendees; food is delivered at every session's start (owner decision, 6 Nov 2026; was: the first session only). decided_by = the Pitika who approved the booking. |
 | it_tickets | booking_id (unique), requested_items JSON, special_requirements(1000), status, technician_notes(1000), forwarded_at, assigned_at, ready_at | requested_items = copy of [{id, name}]. forwarded_at is set at final approval; IT sees only forwarded tickets. |
 | it_ticket_staff | ticket_id, user_id | Unique pair. The user must be an active IT Staff. |
 
@@ -278,10 +278,10 @@ Each rule has an ID so code, tests and questions can point at it. The numbers (1
 | ID | Rule |
 |---|---|
 | BR-IT-01 | The IT ticket is made when the booking is sent, but IT sees it only after the final approval (forwarded_at is set) and while the booking is not rejected or cancelled. |
-| BR-IT-02 | The IT Lead assigns one or more active IT Staff and can change them later. |
+| BR-IT-02 | The IT Lead assigns one or more active IT Staff and can change them later, also on a confirmed booking while it has later sessions to come (owner decision, 6 Nov 2026). This does not change the booking's status or door pass, and a setup made ready stays Ready. |
 | BR-IT-03 | Only the IT Lead presses Ready, and only after staff are assigned. This confirms the booking (T11). |
 | BR-IT-04 | IT Staff see the tickets they are assigned to; they cannot change them. |
-| BR-IT-05 | Setup is planned 30 minutes before the first session (shown as information). |
+| BR-IT-05 | Setup is planned 30 minutes before every session (owner decision, 6 Nov 2026; was: the first session only). Staff are assigned once; Ready is pressed once, for the first session, and later sessions are reminders with no check. The dashboard shows only meeting times, not set-up times. |
 | BR-IT-06 | If IT has not pressed Ready when the first session starts, the system confirms the booking anyway (T17). The meeting can happen without IT. |
 
 ### 7.7 Door pass

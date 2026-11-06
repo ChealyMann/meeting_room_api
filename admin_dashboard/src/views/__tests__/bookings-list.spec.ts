@@ -7,12 +7,19 @@ import { navFor } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { listItem } from '../../test-utils/bookings'
 import { clearDate, dateLabel, pickDate } from '../../test-utils/datePicker'
-import { pickerLabel } from '../../test-utils/picker'
+import { pickerLabel, pickerOptions } from '../../test-utils/picker'
 import BookingsView from '../BookingsView.vue'
 
 enableAutoUnmount(afterEach)
 
 const listCalls: string[] = []
+const actionCalls: string[] = []
+const ownerOf = (id: number) => ({ id, name_en: `User ${id}`, name_kh: 'x' })
+const ROOMS = [
+  { ...listItem(1).room, id: 13, name_en: 'Governor Room', is_private: true, owner: ownerOf(7) },
+  { ...listItem(1).room, id: 15, name_en: 'Other Room', is_private: true, owner: ownerOf(99) },
+  { ...listItem(1).room, id: 12, name_en: 'Mekong Room', is_private: false, owner: ownerOf(7) },
+]
 let listAnswer: () => Response
 
 function json(body: unknown, status = 200) {
@@ -23,15 +30,19 @@ beforeEach(() => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   listCalls.length = 0
+  actionCalls.length = 0
   listAnswer = () => json({ items: [listItem(12)], page: 1, size: 20, total: 1 })
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
-      if (url.pathname === '/api/v1/bookings' || url.pathname === '/api/v1/pitika/bookings') {
-        listCalls.push(url.pathname === '/api/v1/bookings' ? url.search : `pitika${url.search}`)
+      if (url.pathname === '/api/v1/bookings' || url.pathname === '/api/v1/pitika/bookings' || url.pathname === '/api/v1/owner/bookings') {
+        const who = url.pathname.split('/')[3]
+        listCalls.push(url.pathname === '/api/v1/bookings' ? url.search : `${who}${url.search}`)
         return listAnswer()
       }
+      if (url.pathname.endsWith('/actions')) actionCalls.push(url.pathname)
+      if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: ROOMS.length })
       if (url.pathname.startsWith('/api/v1/bookings/')) return json({ error: { code: 'NOT_FOUND', message: 'Not found.', fields: {} } }, 404)
       if (url.pathname === '/api/v1/provinces') return json({ items: [{ code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' }], total: 1 })
       return json({ items: [], page: 1, size: 100, total: 0 })
@@ -163,6 +174,25 @@ describe('BookingsView', () => {
     expect(listCalls).toEqual(['pitika?page=1&size=20'])
     expect(document.querySelector('#filter-province')).toBeNull()
     expect(document.querySelector('#filter-status')).not.toBeNull()
+  })
+
+  it('lists my private rooms for a Room owner, read only, with only my rooms to filter', async () => {
+    useSessionStore().user = { id: 7, roles: [{ code: 'ROOM_OWNER' }, { code: 'STAFF' }] } as never
+    const { wrapper } = await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['owner?page=1&size=20'])
+    expect(document.querySelector('#filter-province')).toBeNull()
+    expect(await pickerOptions('filter-room')).toEqual(['All rooms', 'Governor Room'])
+    await wrapper.get('tbody tr').trigger('click')
+    await flushPromises()
+    expect(actionCalls).toEqual([])
+  })
+
+  it('uses the Pitika list for a Pitika who also owns a room', async () => {
+    useSessionStore().user = { id: 7, roles: [{ code: 'PITIKA' }, { code: 'ROOM_OWNER' }] } as never
+    await mountAt('/bookings')
+
+    expect(listCalls).toEqual(['pitika?page=1&size=20'])
   })
 
   it('keeps the Admin list for an Admin who is also Pitika', async () => {

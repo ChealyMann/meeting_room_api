@@ -3,20 +3,32 @@ import { ChevronRight, Clock, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { useSessionStore } from '../stores/session'
 import { useUiStore } from '../stores/ui'
-import { phnomPenhClock } from '../utils/time'
+import { pageLabel } from './nav'
+import { formatDay, phnomPenhClock, phnomPenhDate } from '../utils/time'
 
 defineProps<{ menuOpen: boolean }>()
 const emit = defineEmits<{ 'toggle-menu': [] }>()
 
 const route = useRoute()
 const ui = useUiStore()
-const title = computed(() => route.meta.title ?? '')
+const session = useSessionStore()
+// The menu's name for the page when it has one ("My rooms"), else the route's title.
+const title = computed(() => pageLabel(route.name, session.roleCodes) ?? route.meta.title ?? '')
 
-const now = ref(phnomPenhClock(new Date()))
+// Today and the time in Phnom Penh ("Fri 6 Nov 2026", "07:48"), checked every 30s.
+const today = ref('')
+const now = ref('')
+function tick() {
+  const date = new Date()
+  today.value = formatDay(phnomPenhDate(date))
+  now.value = phnomPenhClock(date)
+}
+tick()
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  timer = setInterval(() => (now.value = phnomPenhClock(new Date())), 30_000)
+  timer = setInterval(tick, 30_000)
 })
 onBeforeUnmount(() => clearInterval(timer))
 </script>
@@ -50,7 +62,7 @@ onBeforeUnmount(() => clearInterval(timer))
     </nav>
     <div class="clock mono">
       <Clock aria-hidden="true" />
-      <span>Phnom Penh {{ now }}</span>
+      <span>Phnom Penh <span class="today">{{ today }}</span> {{ now }}</span>
     </div>
     <button
       type="button"
@@ -126,6 +138,7 @@ onBeforeUnmount(() => clearInterval(timer))
   }
 }
 @media (max-width: 480px) {
+  .today,
   .path > span,
   .path > svg {
     display: none;

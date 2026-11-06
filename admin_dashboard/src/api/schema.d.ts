@@ -914,9 +914,32 @@ export interface paths {
          * List IT tickets
          * @description Tickets sent to IT, earliest first start first. The IT Lead sees all of them; IT Staff
          *     see the tickets they are assigned to. Rejected and cancelled bookings are left out. `q`
-         *     matches the meeting title or the reference code.
+         *     matches the meeting title or the reference code. A ticket is `missed` when it is not
+         *     Ready and its meeting has started: it leaves to_assign / in_progress for done, which is
+         *     sorted newest first.
          */
         get: operations["list_tickets_api_v1_it_tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/tickets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See the IT day in numbers
+         * @description IT Lead only. To assign and in progress now (missed left out), made ready today, and
+         *     today's setups (Phnom Penh day) with how many are ready.
+         */
+        get: operations["ticket_summary_api_v1_it_tickets_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -962,6 +985,29 @@ export interface paths {
          *     Staff (409 INVALID_TRANSITION). The booking becomes CONFIRMED with a door pass.
          */
         post: operations["mark_ready_api_v1_it_tickets__ticket_id__ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/it/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List IT Staff
+         * @description IT Lead only: active users with the IT Staff role, by name, to assign to a setup. With
+         *     `day`, `setups_that_day` counts the setups each one already has that day. With `ticket_id`,
+         *     the day is that setup's, and `busy` lists each one's other setups at the same time (a
+         *     warning only: they can still be assigned).
+         */
+        get: operations["list_it_staff_api_v1_it_staff_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1093,6 +1139,49 @@ export interface paths {
          *     reference code or the requester's name.
          */
         get: operations["list_owner_bookings_api_v1_owner_bookings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings/decided": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings I decided
+         * @description Bookings you approved or rejected as room owner (`decision`), newest decision first, in
+         *     the private rooms you own now. Each has `decided_at` and `decision_note`. Decisions the
+         *     Admin made as a backup are not listed.
+         */
+        get: operations["list_decided_bookings_api_v1_owner_bookings_decided_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/owner/bookings/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See my day in numbers
+         * @description `waiting`: bookings of your private rooms waiting for you now. `approved_today` and
+         *     `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted).
+         */
+        get: operations["owner_summary_api_v1_owner_bookings_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1950,6 +2039,10 @@ export interface components {
             remarks: string | null;
             /** Approver Notes */
             approver_notes: string | null;
+            /** Session Number */
+            session_number: number;
+            /** Session Count */
+            session_count: number;
         };
         /** CateringOut */
         CateringOut: {
@@ -2334,6 +2427,25 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * ITBusy
+         * @description Another setup of the same person whose time (set-up to meeting start) overlaps.
+         */
+        ITBusy: {
+            /** Ticket Id */
+            ticket_id: number;
+            /** Room Name En */
+            room_name_en: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Meeting Start */
+            meeting_start: string;
+        };
         /** ITIn */
         ITIn: {
             /** Service Ids */
@@ -2423,6 +2535,26 @@ export interface components {
             is_active?: boolean;
         };
         /**
+         * ITSetup
+         * @description IT sets up before every session (owner decision, 6 Nov 2026), `it_setup_lead_minutes`
+         *     before it. Staff are assigned once and it is made ready once, for all of them.
+         */
+        ITSetup: {
+            /** Session Number */
+            session_number: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Start Time */
+            start_time: string;
+            /** End Time */
+            end_time: string;
+        };
+        /**
          * ITStaffOut
          * @description An assigned user. `is_active` is false when the user was turned off later (B-22).
          */
@@ -2435,12 +2567,56 @@ export interface components {
             name_kh: string;
             /** Is Active */
             is_active: boolean;
+            /** Avatar Url */
+            avatar_url: string | null;
+        };
+        /**
+         * ITStaffPick
+         * @description A row of the assign picker. `setups_that_day`: the setups they already have on the
+         *     asked day (null when no day was asked). `busy`: their other setups at the same time as the
+         *     asked ticket (null when no ticket was asked).
+         */
+        ITStaffPick: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
+            /** Name Kh */
+            name_kh: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Setups That Day */
+            setups_that_day: number | null;
+            /** Busy */
+            busy: components["schemas"]["ITBusy"][] | null;
         };
         /**
          * ITStatus
          * @enum {string}
          */
         ITStatus: "RECEIVED" | "ASSIGNED" | "READY";
+        /**
+         * ITSummary
+         * @description The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
+         *     ready today, today's setups and how many of them are ready. Only a booking's first session
+         *     has a Ready check: its later sessions today are `repeat_today`, reminders to set up again.
+         */
+        ITSummary: {
+            /** To Assign */
+            to_assign: number;
+            /** In Progress */
+            in_progress: number;
+            /** Ready Today */
+            ready_today: number;
+            /** Due Today */
+            due_today: number;
+            /** Due Today Ready */
+            due_today_ready: number;
+            /** Repeat Today */
+            repeat_today: number;
+        };
         /** ITTicketItem */
         ITTicketItem: {
             /** Id */
@@ -2469,8 +2645,12 @@ export interface components {
             assigned_at: string | null;
             /** Ready At */
             ready_at: string | null;
+            /** Missed */
+            missed: boolean;
             /** Review Notes */
             review_notes: string[];
+            /** Setups */
+            setups: components["schemas"]["ITSetup"][];
             booking: components["schemas"]["BookingListItem"];
         };
         /**
@@ -2494,6 +2674,13 @@ export interface components {
         ItemList_EquipmentOut_: {
             /** Items */
             items: components["schemas"]["EquipmentOut"][];
+            /** Total */
+            total: number;
+        };
+        /** ItemList[ITStaffPick] */
+        ItemList_ITStaffPick_: {
+            /** Items */
+            items: components["schemas"]["ITStaffPick"][];
             /** Total */
             total: number;
         };
@@ -2845,18 +3032,6 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
-        /**
-         * PitikaSummary
-         * @description Bookings waiting in my province now, and my decisions today (Phnom Penh day).
-         */
-        PitikaSummary: {
-            /** Waiting */
-            waiting: number;
-            /** Approved Today */
-            approved_today: number;
-            /** Rejected Today */
-            rejected_today: number;
-        };
         /** PositionCreate */
         PositionCreate: {
             /** Name En */
@@ -3034,6 +3209,18 @@ export interface components {
          * @enum {string}
          */
         ReviewStage: "PITIKA" | "OWNER";
+        /**
+         * ReviewSummary
+         * @description Bookings waiting for me now, and my decisions today (Phnom Penh day).
+         */
+        ReviewSummary: {
+            /** Waiting */
+            waiting: number;
+            /** Approved Today */
+            approved_today: number;
+            /** Rejected Today */
+            rejected_today: number;
+        };
         /** RoleOut */
         RoleOut: {
             /** Id */
@@ -6100,6 +6287,14 @@ export interface operations {
                 /** @description RECEIVED, ASSIGNED or READY */
                 status?: string | null;
                 q?: string | null;
+                /** @description A dashboard tab: to_assign, in_progress or done (Ready or missed) */
+                state?: ("to_assign" | "in_progress" | "done") | null;
+                /** @description Only the tickets I am assigned to */
+                mine?: boolean;
+                /** @description Setup (first session) on or after this day */
+                from?: string | null;
+                /** @description Setup (first session) on or before this day */
+                to?: string | null;
                 page?: number;
                 size?: number;
             };
@@ -6125,6 +6320,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ticket_summary_api_v1_it_tickets_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ITSummary"];
                 };
             };
         };
@@ -6186,6 +6401,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ITTicketItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_it_staff_api_v1_it_staff_get: {
+        parameters: {
+            query?: {
+                /** @description Count each person's setups on this day */
+                day?: string | null;
+                /** @description The setup being assigned: its day and time clashes */
+                ticket_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_ITStaffPick_"];
                 };
             };
             /** @description Validation Error */
@@ -6294,7 +6543,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PitikaSummary"];
+                    "application/json": components["schemas"]["ReviewSummary"];
                 };
             };
         };
@@ -6374,6 +6623,10 @@ export interface operations {
             query?: {
                 /** @description A display status, e.g. PENDING_OWNER */
                 status?: string | null;
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
                 room_id?: number | null;
                 q?: string | null;
                 page?: number;
@@ -6401,6 +6654,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_decided_bookings_api_v1_owner_bookings_decided_get: {
+        parameters: {
+            query: {
+                /** @description APPROVED or REJECTED */
+                decision: "APPROVED" | "REJECTED";
+                /** @description Any session on or after this day */
+                from?: string | null;
+                /** @description Any session on or before this day */
+                to?: string | null;
+                room_id?: number | null;
+                q?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DecidedBookingItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owner_summary_api_v1_owner_bookings_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSummary"];
                 };
             };
         };

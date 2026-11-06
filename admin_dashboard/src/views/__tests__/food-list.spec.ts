@@ -32,6 +32,8 @@ const order = (changes: Record<string, unknown> = {}) => ({
   ],
   remarks: 'No pork',
   approver_notes: 'Approved',
+  session_number: 1,
+  session_count: 1,
   ...changes,
 })
 
@@ -120,6 +122,20 @@ describe('FoodListView', () => {
     expect(row).toContain('25')
     expect(row).toContain('No pork')
     expect(row).toContain('Confirmed')
+  })
+
+  it('shows each session of a booking with food as its own delivery, saying which session it is', async () => {
+    orders = [order({ delivery_time: '08:00', session_number: 3, session_count: 4 }), order({ delivery_time: '14:00', session_number: 4, session_count: 4 })]
+    const { wrapper } = await mountAt('/food-list?date=2026-11-04')
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.map((r) => r.get('td').text())).toEqual(['08:00', '14:00'])
+    expect(rows.map((r) => r.get('.session').text())).toEqual(['Session 3 of 4', 'Session 4 of 4'])
+  })
+
+  it('says nothing about sessions for a one-session booking', async () => {
+    const { wrapper } = await mountAt('/food-list?date=2026-11-04')
+    expect(wrapper.find('tbody .session').exists()).toBe(false)
   })
 
   it('shows the remarks and the Pitika notes in their own columns', async () => {

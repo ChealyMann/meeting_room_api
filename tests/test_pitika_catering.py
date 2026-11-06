@@ -1,4 +1,5 @@
-"""Food list: spec 9.12, B-12, B-25."""
+"""Food list: spec 9.12, B-12, B-25. Food is served at every session of a booking (owner
+decision, 6 Nov 2026): each session on the day is a delivery."""
 
 from datetime import time, timedelta
 
@@ -45,11 +46,16 @@ def test_food_list_day_and_status(client, frozen, pitika, order, auth_headers):
     order(status=BookingStatus.CANCELLED)
     order(catering=False)
     order(sessions=((NEXT_DAY, time(9), time(10)),))
-    # The first session decides the day, not a later one.
     first_on_day = order(sessions=((DAY, time(13), time(14)), (NEXT_DAY, time(9), time(10))))
+    # A later session on the day counts too: food comes at every session.
+    later_on_day = order(
+        sessions=((NEXT_DAY - timedelta(days=2), time(9), time(10)), (DAY, time(15), time(16)))
+    )
     order(sessions=((NEXT_DAY, time(9), time(10)), (DAY + timedelta(days=2), time(9), time(10))))
 
-    assert ids(client, headers, date=DAY.isoformat()) == [setup.id, confirmed.id, first_on_day.id]
+    assert ids(client, headers, date=DAY.isoformat()) == [
+        setup.id, confirmed.id, first_on_day.id, later_on_day.id
+    ]  # fmt: skip
     assert ids(client, headers, date=(DAY + timedelta(days=9)).isoformat()) == []
 
 
@@ -89,6 +95,7 @@ def test_food_list_item_shape(client, frozen, pitika, order, make_user, auth_hea
     assert set(item) == {
         "booking_id", "reference_code", "booking_status", "room", "meeting_title",
         "delivery_date", "delivery_time", "servings", "packages", "remarks", "approver_notes",
+        "session_number", "session_count",
     }  # fmt: skip
     assert item["booking_id"] == booking.id
     assert item["reference_code"] == booking.reference_code
@@ -99,6 +106,30 @@ def test_food_list_item_shape(client, frozen, pitika, order, make_user, auth_hea
     assert (item["delivery_date"], item["delivery_time"]) == (DAY.isoformat(), "09:00")
     assert item["packages"] == [{"id": 1, "name": "Lunch box"}]
     assert (item["remarks"], item["approver_notes"]) == ("No pork", "Serve at 11:45")
+    assert (item["session_number"], item["session_count"]) == (1, 1)
+
+
+def test_food_at_every_session(client, frozen, pitika, order, auth_headers):
+    """A 3-day training: one delivery on each day at that session's start, saying which
+    session it is; two sessions on one day are two deliveries."""
+    headers = auth_headers(pitika)
+    third = DAY + timedelta(days=2)
+    booking = order(sessions=(
+        (DAY, time(8), time(10)), (NEXT_DAY, time(13), time(15)),
+        (third, time(8), time(10)), (third, time(14), time(16)),
+    ))  # fmt: skip
+
+    def deliveries(day):
+        data = client.get(URL, params={"date": day.isoformat()}, headers=headers).json()
+        keys = ("booking_id", "delivery_date", "delivery_time", "session_number", "session_count")
+        return [tuple(i[k] for k in keys) for i in data["items"]]
+
+    assert deliveries(DAY) == [(booking.id, DAY.isoformat(), "08:00", 1, 4)]
+    assert deliveries(NEXT_DAY) == [(booking.id, NEXT_DAY.isoformat(), "13:00", 2, 4)]
+    assert deliveries(third) == [
+        (booking.id, third.isoformat(), "08:00", 3, 4),
+        (booking.id, third.isoformat(), "14:00", 4, 4),
+    ]
 
 
 def test_food_list_private_title_not_masked(

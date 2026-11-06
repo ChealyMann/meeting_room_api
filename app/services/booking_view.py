@@ -85,15 +85,17 @@ def build_booking_list_items(bookings: list[Booking]) -> list[BookingListItem]:
     return [BookingListItem(**_list_item_fields(booking)) for booking in bookings]
 
 
-def build_decided_items(bookings: list[Booking], reviewer_id: int) -> list[DecidedBookingItem]:
-    """List items with the Pitika's own decision: when, and the notes or the reason.
+def build_decided_items(
+    bookings: list[Booking], reviewer_id: int, stage: ReviewStage
+) -> list[DecidedBookingItem]:
+    """List items with the reviewer's own decision at `stage`: when, and the notes or the reason.
     Reads the loaded `reviews` and `rejection` (no query per row)."""
     items = []
     for booking in bookings:
         review = next(
             r
             for r in booking.reviews
-            if r.stage == ReviewStage.PITIKA and r.reviewer_id == reviewer_id and not r.by_admin
+            if r.stage == stage and r.reviewer_id == reviewer_id and not r.by_admin
         )
         if review.decision == ReviewDecision.REJECTED and booking.rejection is not None:
             note = booking.rejection.reason

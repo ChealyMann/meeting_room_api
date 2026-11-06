@@ -38,6 +38,37 @@ class ITStaffOut(ResponseModel):
     name_en: str
     name_kh: str
     is_active: bool
+    avatar_url: str | None  # GET /users/{id}/avatar, or null when there is no photo
+
+
+class ITBusy(ResponseModel):
+    """Another setup of the same person whose time (set-up to meeting start) overlaps."""
+
+    ticket_id: int
+    room_name_en: str
+    date: date
+    setup_time: LocalTime
+    meeting_start: LocalTime
+
+
+class ITStaffPick(ITStaffOut):
+    """A row of the assign picker. `setups_that_day`: the setups they already have on the
+    asked day (null when no day was asked). `busy`: their other setups at the same time as the
+    asked ticket (null when no ticket was asked)."""
+
+    setups_that_day: int | None
+    busy: list[ITBusy] | None
+
+
+class ITSetup(ResponseModel):
+    """IT sets up before every session (owner decision, 6 Nov 2026), `it_setup_lead_minutes`
+    before it. Staff are assigned once and it is made ready once, for all of them."""
+
+    session_number: int
+    date: date
+    setup_time: LocalTime
+    start_time: LocalTime
+    end_time: LocalTime
 
 
 class ITTicketItem(ResponseModel):
@@ -52,5 +83,22 @@ class ITTicketItem(ResponseModel):
     forwarded_at: UtcDateTime | None
     assigned_at: UtcDateTime | None
     ready_at: UtcDateTime | None
+    # Not Ready and the meeting started: it can no longer change (shown on Ready as missed).
+    missed: bool
     review_notes: list[str]
+    # One per session, in order. `setup_date` / `setup_time` above are the first one's.
+    setups: list[ITSetup]
     booking: BookingListItem
+
+
+class ITSummary(ResponseModel):
+    """The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
+    ready today, today's setups and how many of them are ready. Only a booking's first session
+    has a Ready check: its later sessions today are `repeat_today`, reminders to set up again."""
+
+    to_assign: int
+    in_progress: int
+    ready_today: int
+    due_today: int
+    due_today_ready: int
+    repeat_today: int
