@@ -33,7 +33,12 @@ const steps = computed(() => buildHistory(props.booking).steps)
 const hhmm = (time: string) => time.slice(0, 5)
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
 const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
-const first = computed(() => props.booking.sessions[0] ?? props.booking.first_session)
+/** Every session, in order: a booking can run over several days (up to 20 sessions). */
+const sessions = computed(() =>
+  [...(props.booking.sessions.length ? props.booking.sessions : [props.booking.first_session])].sort((a, b) =>
+    `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`),
+  ),
+)
 </script>
 
 <template>
@@ -64,15 +69,18 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
         <span>{{ note }}</span>
       </p>
 
+      <h3 class="sessions-head">
+        When <span>· {{ sessions.length }} {{ sessions.length === 1 ? 'session' : 'sessions' }}</span>
+      </h3>
+      <ul class="sessions">
+        <li v-for="s in sessions" :key="`${s.date} ${s.start_time}`">
+          <span>{{ formatDay(s.date) }}</span>
+          <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
+        </li>
+      </ul>
+
       <h3>Meeting</h3>
       <dl class="details">
-        <div>
-          <dt>When</dt>
-          <dd>
-            {{ formatDay(first.date) }} · <span class="mono">{{ hhmm(first.start_time) }}–{{ hhmm(first.end_time) }}</span>
-            <template v-if="booking.session_count > 1"> +{{ booking.session_count - 1 }} more sessions</template>
-          </dd>
-        </div>
         <div><dt>Meeting type</dt><dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }}</dd></div>
         <div><dt>Attendees</dt><dd class="mono">{{ booking.attendees }}</dd></div>
         <div><dt>Purpose</dt><dd class="wrap" :class="{ none: !booking.meeting_purpose }">{{ booking.meeting_purpose || 'None' }}</dd></div>
@@ -97,7 +105,8 @@ const first = computed(() => props.booking.sessions[0] ?? props.booking.first_se
         <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
         <div>
           <dt>Delivery</dt>
-          <dd>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
+          <dd v-if="sessions.length > 1" class="delivery">At the start of every session ({{ sessions.length }} times)</dd>
+          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
         </div>
         <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
       </dl>
@@ -170,6 +179,27 @@ h3 {
   margin: 20px 0 4px;
   font-size: 13px;
   font-weight: 600;
+}
+.sessions-head span {
+  font-weight: 400;
+  color: var(--color-intaglio);
+}
+/* Every session on its own line: the day, then the times at the end. */
+.sessions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sessions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-rule);
+  font-size: 13.5px;
+}
+.sessions .mono {
+  font-variant-numeric: tabular-nums;
 }
 .details {
   margin: 0;

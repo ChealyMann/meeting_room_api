@@ -264,7 +264,11 @@ async function downloadIcs() {
       <dl v-else class="details">
         <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
         <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
-        <div><dt>Delivery</dt><dd>{{ formatDay(booking.catering.delivery_date) }} {{ hhmm(booking.catering.delivery_time) }}</dd></div>
+        <div>
+          <dt>Delivery</dt>
+          <dd v-if="booking.session_count > 1" class="delivery">At the start of every session ({{ booking.session_count }} times)</dd>
+          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} {{ hhmm(booking.catering.delivery_time) }}</dd>
+        </div>
         <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
         <div><dt>Pitika notes</dt><dd class="wrap" :class="{ none: !booking.catering.approver_notes }">{{ booking.catering.approver_notes || 'None' }}</dd></div>
         <div v-if="booking.catering.decided_at">

@@ -22,7 +22,15 @@ const ITEMS = [
   listItem(23, { meeting_title: 'Audit prep', reference_code: 'NBC-26-44120', room: room(12, 'Mekong Room', 'បន្ទប់មេគង្គ'), first_session: session('2026-11-12', '15:00') }),
 ]
 const DETAILS: Record<number, Record<string, unknown>> = {
-  21: { catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 }, it: { items: [{ id: 2, name: 'Projector setup' }] } },
+  21: {
+    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 },
+    it: { items: [{ id: 2, name: 'Projector setup' }] },
+    sessions: [
+      { id: 1, date: '2026-11-05', start_time: '14:00', end_time: '15:30' },
+      { id: 2, date: '2026-11-06', start_time: '09:00', end_time: '10:30' },
+      { id: 3, date: '2026-11-07', start_time: '09:00', end_time: '10:30' },
+    ],
+  },
   22: { private_justification: "The Governor's team asked." },
   23: {},
 }
@@ -220,6 +228,18 @@ describe('Review panel and decisions', () => {
     expect(p.textContent).toContain('Starts in 4 h 40 min. If nobody decides before it starts, it is rejected by the system.')
     expect(p.textContent).toContain('Lunch box')
     expect(p.textContent).toContain('Projector setup')
+  })
+
+  it('lists every session in the panel, and says the food comes at each of them', async () => {
+    const { wrapper } = await mountReview()
+    await row(wrapper, 21).trigger('click')
+    await flushPromises()
+
+    const p = panel()!
+    const sessions = [...p.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent).join(' '))
+    expect(sessions).toEqual(['Thu 5 Nov 2026 14:00–15:30', 'Fri 6 Nov 2026 09:00–10:30', 'Sat 7 Nov 2026 09:00–10:30'])
+    expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
+    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('At the start of every session (3 times)')
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {

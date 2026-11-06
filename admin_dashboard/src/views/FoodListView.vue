@@ -104,7 +104,7 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in items" :key="order.booking_id">
+            <tr v-for="order in items" :key="`${order.booking_id}-${order.session_number}`">
               <td class="mono">{{ order.delivery_time.slice(0, 5) }}</td>
               <td>
                 <span class="kh">{{ order.room.name_kh }}</span>
@@ -116,6 +116,7 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
                   {{ order.meeting_title }}
                 </RouterLink>
                 <span class="sub mono">{{ order.reference_code }}</span>
+                <span v-if="order.session_count > 1" class="sub session">Session {{ order.session_number }} of {{ order.session_count }}</span>
               </td>
               <td class="num mono">{{ order.servings }}</td>
               <td>{{ packages(order) }}</td>

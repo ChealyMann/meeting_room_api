@@ -2039,6 +2039,10 @@ export interface components {
             remarks: string | null;
             /** Approver Notes */
             approver_notes: string | null;
+            /** Session Number */
+            session_number: number;
+            /** Session Count */
+            session_count: number;
         };
         /** CateringOut */
         CateringOut: {
