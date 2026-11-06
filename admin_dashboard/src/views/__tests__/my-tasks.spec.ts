@@ -88,7 +88,7 @@ describe('My tasks', () => {
   it('says how many and what is next, and groups by setup day', async () => {
     const { wrapper } = await mountAt()
     expect(wrapper.get('h1').text()).toBe('My tasks')
-    expect(wrapper.get('.sub').text()).toBe('2 setups to do · next: today 07:30, Mekong Room')
+    expect(wrapper.get('.sub').text()).toBe('2 setups to do · next: today 08:00, Mekong Room')
     expect(wrapper.findAll('.group-head h2').map((h) => h.text())).toEqual(['Today', 'This week'])
     expect(wrapper.find('[role="tab"]').exists()).toBe(false)
   })

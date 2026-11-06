@@ -38,6 +38,7 @@ export type ITTicketItem = Schemas['ITTicketItem']
 export type ITSummary = Schemas['ITSummary']
 export type ITStaffOut = Schemas['ITStaffOut']
 export type ITStaffPick = Schemas['ITStaffPick']
+export type ITSetup = Schemas['ITSetup']
 export type PitikaSummary = ReviewSummary
 export type DoorPassOut = Schemas['DoorPassOut']
 export type AdminActionsOut = Schemas['AdminActionsOut']

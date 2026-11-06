@@ -10,7 +10,7 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { buildHistory } from '../../utils/bookingHistory'
-import { setupText } from '../../utils/itQueue'
+import { sessionDate } from '../../utils/itQueue'
 import { formatDay } from '../../utils/time'
 
 const props = defineProps<{
@@ -29,9 +29,17 @@ const hhmm = (time: string) => time.slice(0, 5)
 const names = computed(() => props.ticket.items.map((i) => String((i as Record<string, unknown>).name)).join(', '))
 const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff.map((s) => s.name_en).join(', ') : 'No staff yet'))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
-const subtitle = computed(() =>
-  props.ticket.missed ? 'Missed · not marked ready' : props.ticket.status === 'READY' ? 'Ready' : setupText(props.ticket),
+/** IT sets up before every session (owner decision, 6 Nov 2026): all of them, in order. */
+const setups = computed(() =>
+  props.ticket.setups?.length
+    ? props.ticket.setups
+    : [{ session_number: 1, date: props.ticket.setup_date, setup_time: props.ticket.setup_time, start_time: b.value.first_session.start_time, end_time: b.value.first_session.end_time }],
 )
+const subtitle = computed(() => {
+  if (props.ticket.missed) return 'Missed · not marked ready'
+  if (props.ticket.status === 'READY') return 'Ready'
+  return props.ticket.staff.length ? 'Staff set · not ready' : 'Needs staff'
+})
 </script>
 
 <template>
@@ -47,12 +55,16 @@ const subtitle = computed(() =>
 
       <ProcessBar v-if="steps.length" :steps="steps" size="large" />
 
+      <h3>When <span class="count">· {{ setups.length }} {{ setups.length === 1 ? 'session' : 'sessions' }}</span></h3>
+      <ul class="setups">
+        <li v-for="s in setups" :key="s.session_number">
+          <span>{{ formatDay(sessionDate(s)) }}</span>
+          <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
+        </li>
+      </ul>
+
       <h3>Setup</h3>
       <dl class="details">
-        <div>
-          <dt>When</dt>
-          <dd>{{ formatDay(ticket.setup_date) }} · <span class="mono">{{ hhmm(ticket.setup_time) }}</span></dd>
-        </div>
         <div><dt>Items</dt><dd>{{ names }}</dd></div>
         <div>
           <dt>Special needs</dt>
@@ -70,14 +82,6 @@ const subtitle = computed(() =>
 
       <h3>Meeting</h3>
       <dl class="details">
-        <div>
-          <dt>When</dt>
-          <dd>
-            {{ formatDay(b.first_session.date) }} ·
-            <span class="mono">{{ hhmm(b.first_session.start_time) }}–{{ hhmm(b.first_session.end_time) }}</span>
-            <template v-if="b.session_count > 1"> +{{ b.session_count - 1 }} more</template>
-          </dd>
-        </div>
         <div><dt>Attendees</dt><dd>{{ b.attendees }}</dd></div>
         <div><dt>Booker</dt><dd>{{ b.requester.name_en }}</dd></div>
       </dl>
@@ -126,6 +130,23 @@ h3 {
   margin: 20px 0 4px;
   font-size: 13px;
   font-weight: 600;
+}
+h3 .count {
+  font-weight: 400;
+  color: var(--color-intaglio);
+}
+.setups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.setups li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-rule);
+  font-size: 13.5px;
 }
 .details {
   margin: 0;

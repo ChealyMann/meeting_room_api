@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ITTicketItem } from '../../api/types'
 import { listItem } from '../../test-utils/bookings'
-import { groupByDoneDay, groupBySetupDay, itItemIcon, itRing, itSummaryLine, itTabFrom, myTasksLine, setupText } from '../itQueue'
+import { groupByDoneDay, groupBySetupDay, itItemIcon, itRing, itSummaryLine, itTabFrom, myTasksLine, setupRows } from '../itQueue'
 
 const ticket = (id: number, setup_date: string, changes: Record<string, unknown> = {}) =>
   ({
@@ -60,10 +60,6 @@ describe('groupByDoneDay', () => {
 })
 
 describe('texts', () => {
-  it('says when to set up', () => {
-    expect(setupText(ticket(1, '2026-11-05'))).toBe('Set up by 07:30')
-  })
-
   it.each([
     [{ to_assign: 2, in_progress: 1, ready_today: 4, due_today: 6, due_today_ready: 4 }, 'Today 4 of 6 setups ready · 2 to assign'],
     [{ to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0 }, 'No setups today · 2 to assign'],
@@ -89,8 +85,8 @@ describe('texts', () => {
   it('says what is next for IT Staff', () => {
     const room = { ...listItem(1).room, name_en: 'Mekong Room' }
     const items = [ticket(1, '2026-11-05', { booking: { ...listItem(101), room } }), ticket(2, '2026-11-07')]
-    expect(myTasksLine(items, '2026-11-05')).toBe('2 setups to do · next: today 07:30, Mekong Room')
-    expect(myTasksLine([ticket(2, '2026-11-07')], '2026-11-05')).toBe('1 setup to do · next: Sat 7 Nov 07:30, Mekong Room')
+    expect(myTasksLine(items, '2026-11-05')).toBe('2 setups to do · next: today 09:00, Mekong Room')
+    expect(myTasksLine([ticket(2, '2026-11-07')], '2026-11-05')).toBe('1 setup to do · next: Sat 7 Nov 08:00, Mekong Room')
     expect(myTasksLine([], '2026-11-05')).toBe('Nothing to set up')
   })
 })
@@ -115,5 +111,29 @@ describe('itItemIcon', () => {
       'Printer',
       'Monitor',
     ])
+  })
+})
+
+describe('setupRows', () => {
+  const at = (n: number, date: string, start: string) => ({ session_number: n, date, setup_time: `${String(Number(start.slice(0, 2)) - 1).padStart(2, '0')}:30`, start_time: start, end_time: '17:00' })
+  const ticket = (id: number, setups: ReturnType<typeof at>[]) =>
+    ({ id, setup_date: setups[0]!.date, setup_time: setups[0]!.setup_time, setups, booking: listItem(id) }) as unknown as ITTicketItem
+
+  it('makes a row per session still to come, in set-up order across bookings', () => {
+    const now = new Date('2026-11-05T03:00:00Z') // 10:00 in Phnom Penh
+    const three = ticket(1, [at(1, '2026-11-05', '09:00'), at(2, '2026-11-06', '14:00'), at(3, '2026-11-07', '09:00')])
+    const one = ticket(2, [at(1, '2026-11-06', '09:00')])
+    const rows = setupRows([three, one], now)
+    // Session 1 of the training has started: it is left out.
+    expect(rows.map((r) => [r.id, r.session?.session_number ?? null, r.setup_date])).toEqual([
+      [2, null, '2026-11-06'],
+      [1, 2, '2026-11-06'],
+      [1, 3, '2026-11-07'],
+    ])
+  })
+
+  it('keeps one row per booking on the Ready tab', () => {
+    const three = ticket(1, [at(1, '2026-11-05', '09:00'), at(2, '2026-11-06', '14:00')])
+    expect(setupRows([three], new Date('2026-11-01T00:00:00Z'), true).map((r) => r.rowKey)).toEqual(['1'])
   })
 })

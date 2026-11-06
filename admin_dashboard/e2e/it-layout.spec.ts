@@ -101,7 +101,7 @@ async function signedIn(page: Page, path: string, roles = ['IT_LEAD']) {
     if (url.pathname === '/api/v1/rooms') return route.fulfill({ json: { items: ROOMS, page: 1, size: 100, total: 1 } })
     if (url.pathname === '/api/v1/it/staff') {
       const asked = url.searchParams.get('ticket_id')
-      const busy = [[], [{ ticket_id: 5, room_name_en: 'Mekong Room with a fairly long English name', setup_time: '23:00', meeting_start: '23:30' }]]
+      const busy = [[], [{ ticket_id: 5, room_name_en: 'Mekong Room with a fairly long English name', date: day(0), setup_time: '23:00', meeting_start: '23:30' }]]
       const items = STAFF.map((x, i) => ({ ...x, setups_that_day: asked ? [0, 3][i] : null, busy: asked ? busy[i] : null }))
       return route.fulfill({ json: { items, total: items.length } })
     }
@@ -165,7 +165,7 @@ for (const width of [1366, 900, 390]) {
     await expect(dialog).toContainText('Assign IT Staff')
     await expect(dialog.locator('input[type="checkbox"]')).toHaveCount(2)
     await expect(dialog.locator('.load')).toHaveText(['Free that day', '2 other setups that day'])
-    await expect(dialog.locator('.busy')).toHaveText(['Busy 23:00–23:30 · Mekong Room with a fairly long English name'])
+    await expect(dialog.locator('.busy')).toHaveText(['Busy at 23:30 · Mekong Room with a fairly long English name'])
     await expect(dialog.locator('.picked')).toHaveText('2 picked')
     await expect(dialog.locator('button.confirm')).toHaveText('Assign 2 staff')
     const d = (await dialog.boundingBox())!
@@ -185,6 +185,29 @@ for (const width of [1366, 900, 390]) {
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
   })
 }
+
+test('a booking with several sessions: one row per session, and the pop-up names the clash day', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 })
+  const setups = [1, 2, 3].map((n) => ({ session_number: n, date: day(n), setup_time: '08:30', start_time: '09:00', end_time: '10:30' }))
+  const three = { ...ticket(8, 1), setups, booking: { ...ticket(8, 1).booking, session_count: 3 } }
+  await signedIn(page, '/it-setup')
+  await page.route(
+    (url) => url.pathname === '/api/v1/it/tickets',
+    (route) => route.fulfill({ json: { items: [three], page: 1, size: 100, total: 1 } }),
+  )
+  await page.reload()
+
+  const rows = page.locator('[data-ticket="8"]')
+  await expect(rows.locator('.more')).toHaveText(['Session 1 of 3', 'Session 2 of 3', 'Session 3 of 3'])
+  await expect(page.locator('.soft-row').first()).not.toContainText(/set up by/i)
+
+  await rows.nth(1).getByRole('button', { name: 'Assign staff' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.locator('.room-box')).toContainText('all 3 sessions')
+  await expect(dialog.locator('.staff-row')).toHaveCount(2)
+  await expect(dialog.locator('.busy')).toContainText(/^Busy \w{3} \d{1,2} \w{3} at 23:30/)
+  await expect(dialog).not.toContainText(/set up by/i)
+})
 
 test('only the list scrolls, never the page, when the setups do not fit', async ({ page }) => {
   // A short window (the shell's 640px minimum is still met): the list overflows. Hidden text in a

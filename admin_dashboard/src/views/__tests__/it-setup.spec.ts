@@ -47,6 +47,7 @@ const ticket = (id: number, setup_date: string, changes: Record<string, unknown>
   ready_at: null,
   missed: false,
   review_notes: [],
+  setups: [{ session_number: 1, date: setup_date, setup_time: '07:30', start_time: '08:00', end_time: '11:00' }],
   booking: listItem(100 + id, {
     reference_code: `NBC-26-1000${id}`,
     meeting_title: `Training ${id}`,
@@ -57,8 +58,11 @@ const ticket = (id: number, setup_date: string, changes: Record<string, unknown>
   }),
   ...changes,
 })
-const TO_ASSIGN = [ticket(5, '2026-11-05'), ticket(6, '2026-11-06')]
-const IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]] })]
+let TO_ASSIGN = [ticket(5, '2026-11-05'), ticket(6, '2026-11-06')]
+let IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]] })]
+// IT sets up before every session (owner decision, 6 Nov 2026): a 3-day training.
+const setupOn = (n: number, date: string) => ({ session_number: n, date, setup_time: '07:30', start_time: '08:00', end_time: '11:00' })
+const THREE = [setupOn(1, '2026-11-05'), setupOn(2, '2026-11-06'), setupOn(3, '2026-11-09')]
 const DONE = [
   ticket(8, '2026-11-05', { status: 'READY', staff: [STAFF[0]], ready_at: '2026-11-05T01:00:00Z' }),
   ticket(9, '2026-11-04', { missed: true, status: 'ASSIGNED', staff: [STAFF[0]] }),
@@ -84,6 +88,8 @@ beforeEach(() => {
   calls.length = 0
   bodies.length = 0
   summary = SUMMARY
+  TO_ASSIGN = [ticket(5, '2026-11-05'), ticket(6, '2026-11-06')]
+  IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]] })]
   action = () => json(TO_ASSIGN[0])
   vi.stubGlobal(
     'fetch',
@@ -102,7 +108,7 @@ beforeEach(() => {
       if (url.pathname === '/api/v1/it/tickets/summary') return json(summary)
       if (url.pathname === '/api/v1/it/staff') {
         const asked = url.searchParams.get('ticket_id')
-        const busy = [[], [{ ticket_id: 99, room_name_en: 'Board Room', setup_time: '07:30', meeting_start: '08:00' }]]
+        const busy = [[], [{ ticket_id: 99, room_name_en: 'Board Room', date: '2026-11-06', setup_time: '07:30', meeting_start: '08:00' }]]
         return json({
           items: STAFF.map((x, i) => ({ ...x, setups_that_day: asked ? LOAD[i] : null, busy: asked ? busy[i] : null })),
           total: STAFF.length,
@@ -295,9 +301,12 @@ describe('IT setup', () => {
     expect(load).toEqual(['Free that day', '1 other setup that day'])
     // A clash is a warning only: the person can still be picked.
     const rows = [...dialog()!.querySelectorAll('.staff-row')]
-    expect(rows.map((r) => r.querySelector('.busy')?.textContent?.trim() ?? null)).toEqual([null, 'Busy 07:30–08:00 · Board Room'])
+    expect(rows.map((r) => r.querySelector('.busy')?.textContent?.trim() ?? null)).toEqual([null, 'Busy at 08:00 · Board Room'])
     expect(rows[1]!.querySelector<HTMLInputElement>('input')!.disabled).toBe(false)
     expect(dialog()!.querySelector('.room-box')?.textContent).toContain('Training 7')
+    // Only the meeting time: no set-up time anywhere on the IT pages (owner decision, 6 Nov 2026).
+    expect(dialog()!.querySelector('.room-box')?.textContent).toContain('08:00–11:00')
+    expect(dialog()!.textContent).not.toMatch(/set up by/i)
     expect(dialog()!.querySelector('.picked')?.textContent?.trim()).toBe('1 picked')
     expect(dialog()!.querySelector('button.confirm')?.textContent?.trim()).toBe('Assign 1 staff')
   })
@@ -311,5 +320,68 @@ describe('IT setup', () => {
     dialog()!.querySelector<HTMLElement>('button.add-note')!.click()
     await flushPromises()
     expect(dialog()!.querySelector('textarea')).not.toBeNull()
+  })
+
+  it('shows a setup before every session: one row per session still to come', async () => {
+    TO_ASSIGN = [ticket(10, '2026-11-05', { setups: THREE, booking: { ...ticket(10, '2026-11-05').booking, session_count: 3 } })]
+    const { wrapper } = await mountAt()
+
+    const rows = wrapper.findAll('[data-ticket="10"]')
+    expect(rows.map((r) => r.get('.more').text())).toEqual(['Session 1 of 3', 'Session 2 of 3', 'Session 3 of 3'])
+    expect(rows.map((r) => r.get('.day').text())).toEqual(['Today', 'Fri 6 Nov', 'Mon 9 Nov'])
+    expect(wrapper.findAll('.group-head h2').map((h) => h.text())).toEqual(['Today', 'Tomorrow', 'Later'])
+    // One booking, one decision: every row assigns the same staff.
+    expect(rows.map((r) => buttons(r))).toEqual([['Assign staff'], ['Assign staff'], ['Assign staff']])
+  })
+
+  it('offers Mark ready only on the first session: ready once, for the whole booking', async () => {
+    IN_PROGRESS = [
+      ticket(12, '2026-11-06', {
+        status: 'ASSIGNED',
+        staff: [STAFF[1]],
+        setups: [setupOn(1, '2026-11-06'), setupOn(2, '2026-11-09'), setupOn(3, '2026-11-10')],
+        booking: { ...ticket(12, '2026-11-06').booking, session_count: 3 },
+      }),
+    ]
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+
+    const rows = wrapper.findAll('[data-ticket="12"]')
+    expect(rows.map((r) => buttons(r))).toEqual([['Change', 'Mark ready'], ['Change'], ['Change']])
+    expect(rows.map((r) => r.get('.state-word').text())).toEqual(['Next: Mark ready', 'Set up again for this session', 'Set up again for this session'])
+  })
+
+  it('keeps the later sessions of a setup made ready, with no buttons: staff set up again', async () => {
+    const started = { ...setupOn(1, '2026-11-04'), start_time: '05:00', end_time: '06:00' }
+    IN_PROGRESS = [
+      ticket(11, '2026-11-04', {
+        status: 'READY',
+        staff: [STAFF[1]],
+        ready_at: '2026-11-03T23:00:00Z',
+        setups: [started, setupOn(2, '2026-11-06')],
+        booking: { ...ticket(11, '2026-11-04').booking, session_count: 2 },
+      }),
+    ]
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+
+    const rows = wrapper.findAll('[data-ticket="11"]')
+    expect(rows.map((r) => r.get('.more').text())).toEqual(['Session 2 of 2'])
+    expect(rows[0]!.get('.state-word').text()).toBe('Set up again for this session')
+    expect(buttons(rows[0]!)).toEqual([])
+  })
+
+  it('lists every session in the panel, with only the meeting times', async () => {
+    TO_ASSIGN = [ticket(10, '2026-11-05', { setups: THREE, booking: { ...ticket(10, '2026-11-05').booking, session_count: 3 } })]
+    const { wrapper } = await mountAt()
+    await wrapper.get('[data-ticket="10"]').trigger('click')
+    await flushPromises()
+
+    const items = [...panel()!.querySelectorAll('.setups li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
+    expect(items).toEqual([
+      'Thu 5 Nov 2026 08:00–11:00',
+      'Fri 6 Nov 2026 08:00–11:00',
+      'Mon 9 Nov 2026 08:00–11:00',
+    ])
+    expect(panel()!.textContent).not.toMatch(/set up/i)
+    expect(panel()!.textContent).not.toContain('07:30')
   })
 })

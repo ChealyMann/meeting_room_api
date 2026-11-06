@@ -21,7 +21,7 @@ import { usePanelParam } from '../../composables/usePanelParam'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useResourceList } from '../../composables/useResourceList'
 import { useToast } from '../../composables/useToast'
-import { groupByDoneDay, groupBySetupDay, itItemIcon, setupText, type ItTab } from '../../utils/itQueue'
+import { groupByDoneDay, groupBySetupDay, itItemIcon, setupRows, type ItTab, type SetupRow } from '../../utils/itQueue'
 import { formatDay } from '../../utils/time'
 import BookingActionDialog from '../bookings/BookingActionDialog.vue'
 import ITPanel from './ITPanel.vue'
@@ -34,7 +34,7 @@ const props = defineProps<{
   /** false: read only (My tasks). */
   actions: boolean
 }>()
-const emit = defineEmits<{ changed: []; loaded: [items: ITTicketItem[], total: number] }>()
+const emit = defineEmits<{ changed: []; loaded: [items: SetupRow[], total: number] }>()
 
 const paged = props.tab === 'ready'
 const STATE = { to_assign: 'to_assign', in_progress: 'in_progress', ready: 'done', mine: 'in_progress' } as const
@@ -54,7 +54,6 @@ const { list, result, loading, error, filtered, load } = useResourceList<ITTicke
   { activeFilter: false, paged },
 )
 const items = computed(() => result.value?.items ?? [])
-watch(result, (r) => r && emit('loaded', r.items, r.total))
 
 const today = usePhnomPenhToday()
 const now = ref(new Date())
@@ -62,10 +61,13 @@ let tick: ReturnType<typeof setInterval> | undefined
 onMounted(() => (tick = setInterval(() => (now.value = new Date()), 60_000)))
 onBeforeUnmount(() => clearInterval(tick))
 
+// IT sets up before every session: a booking with several is a row per session still to come.
+const rows = computed(() => setupRows(items.value, now.value, props.tab === 'ready'))
+watch(rows, (list) => result.value && emit('loaded', list, result.value.total))
 const groups = computed(() =>
   props.tab === 'ready'
-    ? groupByDoneDay(items.value, today.value).map((g) => ({ ...g, today: false }))
-    : groupBySetupDay(items.value, today.value).map((g) => ({ ...g, today: g.key === 'today' })),
+    ? groupByDoneDay(rows.value, today.value).map((g) => ({ ...g, today: false }))
+    : groupBySetupDay(rows.value, today.value).map((g) => ({ ...g, today: g.key === 'today' })),
 )
 
 // Where the room is, and its photo, from the rooms list (no extra call per row).
@@ -153,7 +155,9 @@ function busyText(s: StaffPick): string | null {
   const first = s.busy?.[0]
   if (!first) return null
   const more = (s.busy?.length ?? 0) > 1 ? ` +${s.busy!.length - 1}` : ''
-  return `Busy ${first.setup_time.slice(0, 5)}–${first.meeting_start.slice(0, 5)} · ${first.room_name_en}${more}`
+  // A booking with several sessions: say which day the clash is on.
+  const day = (asking.value?.ticket.setups?.length ?? 0) > 1 ? `${formatDay(first.date).slice(0, -5)} ` : ''
+  return `Busy ${day}at ${first.meeting_start.slice(0, 5)} · ${first.room_name_en}${more}`
 }
 const askNeeds = computed(() =>
   (asking.value?.ticket.items ?? []).map((item) => {
@@ -230,8 +234,9 @@ async function save() {
         <ul class="timeline">
           <ITRow
             v-for="t in group.items"
-            :key="t.id"
+            :key="t.rowKey"
             :ticket="t"
+            :session="t.session"
             :photo="thumbOf(t)"
             :now="now"
             :today="today"
@@ -278,7 +283,7 @@ async function save() {
       :no-field="true"
       :meeting="asking.ticket.booking.meeting_title"
       :reference="asking.ticket.booking.reference_code"
-      :day="`${formatDay(asking.ticket.booking.first_session.date)} · ${setupText(asking.ticket)}`"
+      :day="formatDay(asking.ticket.booking.first_session.date)"
       :times="askTimes"
       :effect="asking.step === 'assign' ? 'They see it in My tasks.' : 'The booking is confirmed and the booker gets the door pass.'"
       :busy="busy"
@@ -293,8 +298,9 @@ async function save() {
           <div class="room-text">
             <b>{{ asking.ticket.booking.meeting_title }}</b>
             <span>
-              {{ asking.ticket.booking.room.name_en }} · {{ formatDay(asking.ticket.setup_date).slice(0, -5) }} · set up by
-              <span class="mono">{{ asking.ticket.setup_time.slice(0, 5) }}</span>
+              {{ asking.ticket.booking.room.name_en }} · {{ formatDay(asking.ticket.booking.first_session.date).slice(0, -5) }} ·
+              <span class="mono">{{ askTimes }}</span>
+              <template v-if="asking.ticket.booking.session_count > 1"> · all {{ asking.ticket.booking.session_count }} sessions</template>
             </span>
             <span class="room-needs">
               <span v-for="n in askNeeds" :key="n.name"><component :is="n.icon" aria-hidden="true" />{{ n.name }}</span>

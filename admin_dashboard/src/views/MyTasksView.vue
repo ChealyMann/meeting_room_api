@@ -5,10 +5,10 @@ import { onMounted, ref } from 'vue'
 
 import { api } from '../api'
 import { listAllRooms } from '../api/references'
-import type { ITTicketItem, RoomListItem } from '../api/types'
+import type { RoomListItem } from '../api/types'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
-import { myTasksLine } from '../utils/itQueue'
+import { myTasksLine, type SetupRow } from '../utils/itQueue'
 import ITQueue from './it/ITQueue.vue'
 
 const today = usePhnomPenhToday()
@@ -23,7 +23,7 @@ onMounted(async () => {
   }
 })
 
-function onLoaded(items: ITTicketItem[], total: number) {
+function onLoaded(items: SetupRow[], total: number) {
   line.value = myTasksLine(items, today.value)
   reportWaiting('my-tasks', total) // the menu agrees
 }

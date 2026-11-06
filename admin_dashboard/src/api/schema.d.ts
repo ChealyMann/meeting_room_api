@@ -2436,6 +2436,11 @@ export interface components {
             ticket_id: number;
             /** Room Name En */
             room_name_en: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
             /** Setup Time */
             setup_time: string;
             /** Meeting Start */
@@ -2530,6 +2535,26 @@ export interface components {
             is_active?: boolean;
         };
         /**
+         * ITSetup
+         * @description IT sets up before every session (owner decision, 6 Nov 2026), `it_setup_lead_minutes`
+         *     before it. Staff are assigned once and it is made ready once, for all of them.
+         */
+        ITSetup: {
+            /** Session Number */
+            session_number: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Setup Time */
+            setup_time: string;
+            /** Start Time */
+            start_time: string;
+            /** End Time */
+            end_time: string;
+        };
+        /**
          * ITStaffOut
          * @description An assigned user. `is_active` is false when the user was turned off later (B-22).
          */
@@ -2621,6 +2646,8 @@ export interface components {
             missed: boolean;
             /** Review Notes */
             review_notes: string[];
+            /** Setups */
+            setups: components["schemas"]["ITSetup"][];
             booking: components["schemas"]["BookingListItem"];
         };
         /**
