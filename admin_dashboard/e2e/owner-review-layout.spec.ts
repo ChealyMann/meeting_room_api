@@ -101,6 +101,38 @@ test('a Room owner lands on To review, sees only their menu, with the waiting co
   await expect(page.locator('.rail .brand-text span')).toHaveText('Room owner')
 })
 
+test('on the folded rail the waiting count is a small crimson dot on the icon', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 800 }) // a tablet: the rail shows icons only
+  await signedIn(page, '/owner-review')
+
+  const link = page.locator('nav a[href="/owner-review"]')
+  const dot = link.locator('.wait')
+  await expect(dot).toHaveAttribute('aria-label', '3 waiting')
+  await expect(link.locator('.label')).toHaveCSS('opacity', '0')
+  expect(Math.round((await page.locator('aside.rail').boundingBox())!.width)).toBe(64)
+  const box = (await dot.boundingBox())!
+  expect([Math.round(box.width), Math.round(box.height)]).toEqual([8, 8])
+  expect(await dot.evaluate((el) => getComputedStyle(el).color)).toBe('rgba(0, 0, 0, 0)') // no number
+
+  // On the icon's top right, inside the link (not clipped, not on the next link).
+  const icon = (await link.locator('svg').boundingBox())!
+  const a = (await link.boundingBox())!
+  expect(box.x).toBeGreaterThan(icon.x + icon.width / 2)
+  expect(box.y).toBeLessThan(icon.y + icon.height / 2)
+  expect(box.x + box.width).toBeLessThanOrEqual(a.x + a.width)
+  expect(box.y).toBeGreaterThanOrEqual(a.y)
+  expect(await dot.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
+    await page.evaluate(() => {
+      const probe = document.createElement('i')
+      probe.style.color = 'var(--color-crimson)'
+      document.body.append(probe)
+      const color = getComputedStyle(probe).color
+      probe.remove()
+      return color
+    }),
+  )
+})
+
 for (const width of [1366, 900, 390]) {
   test(`the owner queue fits at ${width}px, with what to check and every button inside its row`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 })
