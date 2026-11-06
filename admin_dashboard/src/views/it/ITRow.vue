@@ -4,8 +4,9 @@
 // room's photo with the reference, the title, the room, soft tags for what to set up and the
 // staff, then the status and the buttons the ticket's state allows. IT sets up before every
 // session (owner decision, 6 Nov 2026): a booking with several sessions comes once per session
-// (`session`), with that session's time and "Session 2 of 5". Staff are for all of them; Mark ready
-// is once, on the first session (owner decision, 6 Nov 2026), and confirms the booking.
+// (`session`), with that session's time and "Session 2 of 5". Staff are for all of them, and can be
+// assigned or changed while sessions remain, even on a confirmed booking; Mark ready is once, on
+// the first session (owner decisions, 6 Nov 2026), and confirms the booking.
 import { computed, toRef } from 'vue'
 
 import type { ITSetup, ITTicketItem } from '../../api/types'
@@ -43,13 +44,16 @@ const more = computed(() => {
 })
 /** A session after the first: a reminder, with no Mark ready of its own. */
 const laterSession = computed(() => (props.session?.session_number ?? 1) > 1)
+/** A session to come with nobody on it (also when the first session was missed). */
+const needsStaff = computed(() => !!props.session && !staffNames.value.length)
 /** How soon this row's session starts, while the setup is still to do. */
 const startsSoon = computed(() => {
   if (!props.session) return soon.value
-  return isOpen.value && props.session.date <= props.today ? startsAt(date.value, start.value, props.now) : null
+  return (isOpen.value || needsStaff.value) && props.session.date <= props.today ? startsAt(date.value, start.value, props.now) : null
 })
 /** Ready, missed, how soon it starts, or what comes next. */
 const status = computed(() => {
+  if (needsStaff.value) return startsSoon.value ? { text: startsSoon.value, tone: 'alert' } : { text: 'Next: Assign staff', tone: 'next' }
   const again = { text: 'Set up again for this session', tone: 'next' }
   // A later session of a booking made ready (or missed) once: the same staff set up again.
   if (laterSession.value && (state.value === 'ready' || state.value === 'missed')) return again
@@ -96,11 +100,11 @@ const status = computed(() => {
     <template #status>
       <span class="state-word" :class="status.tone">{{ status.text }}</span>
     </template>
-    <template v-if="actions && isOpen" #actions>
+    <template v-if="actions && (isOpen || session)" #actions>
       <BaseButton v-if="ticket.status === 'RECEIVED'" variant="primary" @click="emit('assign')">Assign staff</BaseButton>
       <template v-else>
         <BaseButton aria-label="Change staff" class="change" @click="emit('assign')">Change</BaseButton>
-        <BaseButton v-if="!laterSession" variant="primary" @click="emit('ready')">Mark ready</BaseButton>
+        <BaseButton v-if="isOpen && !laterSession" variant="primary" @click="emit('ready')">Mark ready</BaseButton>
       </template>
     </template>
   </SoftRow>

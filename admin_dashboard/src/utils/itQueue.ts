@@ -74,6 +74,14 @@ export function sessionDate(s: ITSetup): string {
   return s.start_time < s.setup_time ? addDays(s.date, 1) : s.date
 }
 
+const sessionStart = (s: ITSetup) => Date.parse(`${sessionDate(s)}T${s.start_time.slice(0, 5)}:00+07:00`)
+
+/** A booking with several sessions, with one not started: staff can still be assigned or changed. */
+export function hasSessionAhead(t: ITTicketItem, now: Date): boolean {
+  const setups = t.setups ?? []
+  return setups.length > 1 && setups.some((s) => sessionStart(s) > now.getTime())
+}
+
 /** One row of the IT lists: a setup, or one session's setup of a booking with several. */
 export type SetupRow = ITTicketItem & { session: ITSetup | null; rowKey: string }
 
@@ -87,7 +95,7 @@ export function setupRows(items: ITTicketItem[], now: Date, whole = false): Setu
     const setups = t.setups ?? []
     const plain: SetupRow[] = [{ ...t, session: null, rowKey: String(t.id) }]
     if (whole || setups.length < 2) return plain
-    const ahead = setups.filter((s) => Date.parse(`${sessionDate(s)}T${s.start_time.slice(0, 5)}:00+07:00`) > now.getTime())
+    const ahead = setups.filter((s) => sessionStart(s) > now.getTime())
     if (!ahead.length) return plain
     return ahead.map((s) => ({ ...t, setup_date: s.date, setup_time: s.setup_time, session: s, rowKey: `${t.id}-${s.session_number}` }))
   })

@@ -350,7 +350,7 @@ describe('IT setup', () => {
     expect(rows.map((r) => r.get('.state-word').text())).toEqual(['Next: Mark ready', 'Set up again for this session', 'Set up again for this session'])
   })
 
-  it('keeps the later sessions of a setup made ready, with no buttons: staff set up again', async () => {
+  it('keeps the later sessions of a setup made ready: staff set up again, and can be changed', async () => {
     const started = { ...setupOn(1, '2026-11-04'), start_time: '05:00', end_time: '06:00' }
     IN_PROGRESS = [
       ticket(11, '2026-11-04', {
@@ -366,7 +366,29 @@ describe('IT setup', () => {
     const rows = wrapper.findAll('[data-ticket="11"]')
     expect(rows.map((r) => r.get('.more').text())).toEqual(['Session 2 of 2'])
     expect(rows[0]!.get('.state-word').text()).toBe('Set up again for this session')
-    expect(buttons(rows[0]!)).toEqual([])
+    expect(buttons(rows[0]!)).toEqual(['Change'])
+
+    await rows[0]!.trigger('click')
+    await flushPromises()
+    const foot = [...(panel()?.querySelectorAll('.panel-foot button') ?? [])].map((b) => b.textContent?.trim())
+    expect(foot).toEqual(['Close', 'Change staff'])
+  })
+
+  it('offers Assign staff for the later sessions when nobody was assigned in time', async () => {
+    const started = { ...setupOn(1, '2026-11-04'), start_time: '05:00', end_time: '06:00' }
+    TO_ASSIGN = [
+      ticket(13, '2026-11-04', {
+        missed: true,
+        setups: [started, setupOn(2, '2026-11-06'), setupOn(3, '2026-11-09')],
+        booking: { ...ticket(13, '2026-11-04').booking, session_count: 3 },
+      }),
+    ]
+    const { wrapper } = await mountAt()
+
+    const rows = wrapper.findAll('[data-ticket="13"]')
+    expect(rows.map((r) => r.get('.more').text())).toEqual(['Session 2 of 3', 'Session 3 of 3'])
+    expect(rows.map((r) => r.get('.state-word').text())).toEqual(['Next: Assign staff', 'Next: Assign staff'])
+    expect(rows.map((r) => buttons(r))).toEqual([['Assign staff'], ['Assign staff']])
   })
 
   it('lists every session in the panel, with only the meeting times', async () => {

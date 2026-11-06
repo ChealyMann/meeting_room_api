@@ -10,7 +10,7 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { buildHistory } from '../../utils/bookingHistory'
-import { sessionDate } from '../../utils/itQueue'
+import { hasSessionAhead, sessionDate } from '../../utils/itQueue'
 import { formatDay } from '../../utils/time'
 
 const props = defineProps<{
@@ -29,6 +29,8 @@ const hhmm = (time: string) => time.slice(0, 5)
 const names = computed(() => props.ticket.items.map((i) => String((i as Record<string, unknown>).name)).join(', '))
 const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff.map((s) => s.name_en).join(', ') : 'No staff yet'))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
+/** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
+const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
 /** IT sets up before every session (owner decision, 6 Nov 2026): all of them, in order. */
 const setups = computed(() =>
   props.ticket.setups?.length
@@ -90,12 +92,12 @@ const subtitle = computed(() => {
     <template #foot>
       <div class="foot">
         <BaseButton variant="quiet" @click="emit('close')">Close</BaseButton>
-        <template v-if="actions && isOpen">
+        <template v-if="actions && canStaff">
           <span class="spacer" />
           <BaseButton v-if="ticket.status === 'RECEIVED'" variant="primary" @click="emit('assign')">Assign staff</BaseButton>
           <template v-else>
             <BaseButton variant="quiet" @click="emit('assign')">Change staff</BaseButton>
-            <BaseButton variant="primary" @click="emit('ready')"><Check aria-hidden="true" />Mark ready</BaseButton>
+            <BaseButton v-if="isOpen" variant="primary" @click="emit('ready')"><Check aria-hidden="true" />Mark ready</BaseButton>
           </template>
         </template>
       </div>
