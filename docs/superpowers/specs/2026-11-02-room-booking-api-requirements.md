@@ -198,7 +198,7 @@ The booking's shown date and time = its first session (by date, then start time)
 
 | Table | Fields | Notes |
 |---|---|---|
-| catering_orders | booking_id (unique), packages JSON, remarks(1000), approver_notes(1000), decided_by, decided_at | packages = copy of [{id, name}] at send time. Servings = attendees; delivery = first session start. decided_by = the Pitika who approved the booking. |
+| catering_orders | booking_id (unique), packages JSON, remarks(1000), approver_notes(1000), decided_by, decided_at | packages = copy of [{id, name}] at send time. Servings = attendees; food is delivered at every session's start (owner decision, 6 Nov 2026; was: the first session only). decided_by = the Pitika who approved the booking. |
 | it_tickets | booking_id (unique), requested_items JSON, special_requirements(1000), status, technician_notes(1000), forwarded_at, assigned_at, ready_at | requested_items = copy of [{id, name}]. forwarded_at is set at final approval; IT sees only forwarded tickets. |
 | it_ticket_staff | ticket_id, user_id | Unique pair. The user must be an active IT Staff. |
 
