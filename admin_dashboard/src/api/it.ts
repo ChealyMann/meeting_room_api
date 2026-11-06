@@ -2,7 +2,7 @@
 // the IT Staff to assign, and the two actions (T10 assign, T11 ready). `version` is the booking's.
 import type { ApiClient } from './client'
 import { toQuery } from './query'
-import type { ITStaffOut, ITSummary, ITTicketItem, ItemList, Page } from './types'
+import type { ITStaffPick, ITSummary, ITTicketItem, ItemList, Page } from './types'
 
 const TICKETS = '/api/v1/it/tickets'
 
@@ -28,9 +28,9 @@ export function getItSummary(client: ApiClient): Promise<ITSummary> {
   return client.request<ITSummary>('GET', `${TICKETS}/summary`)
 }
 
-/** Active IT Staff, by name (IT Lead only). */
-export function listItStaff(client: ApiClient): Promise<ItemList<ITStaffOut>> {
-  return client.request<ItemList<ITStaffOut>>('GET', '/api/v1/it/staff')
+/** Active IT Staff, by name (IT Lead only). With `day`, each one's setups that day. */
+export function listItStaff(client: ApiClient, day?: string): Promise<ItemList<ITStaffPick>> {
+  return client.request<ItemList<ITStaffPick>>('GET', '/api/v1/it/staff' + toQuery({ day }))
 }
 
 /** T10: the list replaces the earlier staff. */

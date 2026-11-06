@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ITTicketItem } from '../../api/types'
 import { listItem } from '../../test-utils/bookings'
-import { groupByDoneDay, groupBySetupDay, itRing, itSummaryLine, itTabFrom, myTasksLine, setupText } from '../itQueue'
+import { groupByDoneDay, groupBySetupDay, itItemIcon, itRing, itSummaryLine, itTabFrom, myTasksLine, setupText } from '../itQueue'
 
 const ticket = (id: number, setup_date: string, changes: Record<string, unknown> = {}) =>
   ({
@@ -92,5 +92,28 @@ describe('texts', () => {
     expect(myTasksLine(items, '2026-11-05')).toBe('2 setups to do · next: today 07:30, Mekong Room')
     expect(myTasksLine([ticket(2, '2026-11-07')], '2026-11-05')).toBe('1 setup to do · next: Sat 7 Nov 07:30, Mekong Room')
     expect(myTasksLine([], '2026-11-05')).toBe('Nothing to set up')
+  })
+})
+
+describe('itItemIcon', () => {
+  it('picks an icon from the item name, and a monitor for anything else', () => {
+    const name = (text: string) => itItemIcon(text).key
+    expect(['Projector setup', 'HDMI projector', 'Microphones', 'Wireless mic', 'Sound system', 'Speakers'].map(name)).toEqual([
+      'Projector',
+      'Projector',
+      'Mic',
+      'Mic',
+      'Speaker',
+      'Speaker',
+    ])
+    expect(['Video call', 'Zoom link', 'Laptop', 'Wi-Fi access', 'Cables', 'Printer', 'Something else'].map(name)).toEqual([
+      'Video',
+      'Video',
+      'Laptop',
+      'Wifi',
+      'Cable',
+      'Printer',
+      'Monitor',
+    ])
   })
 })

@@ -1000,7 +1000,8 @@ export interface paths {
         };
         /**
          * List IT Staff
-         * @description IT Lead only: active users with the IT Staff role, by name, to assign to a setup.
+         * @description IT Lead only: active users with the IT Staff role, by name, to assign to a setup. With
+         *     `day`, `setups_that_day` counts the setups each one already has that day.
          */
         get: operations["list_it_staff_api_v1_it_staff_get"];
         put?: never;
@@ -2521,6 +2522,27 @@ export interface components {
             name_kh: string;
             /** Is Active */
             is_active: boolean;
+            /** Avatar Url */
+            avatar_url: string | null;
+        };
+        /**
+         * ITStaffPick
+         * @description A row of the assign picker. `setups_that_day`: the setups they already have on the
+         *     asked day (null when no day was asked).
+         */
+        ITStaffPick: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
+            /** Name Kh */
+            name_kh: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Setups That Day */
+            setups_that_day: number | null;
         };
         /**
          * ITStatus
@@ -2602,10 +2624,10 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** ItemList[ITStaffOut] */
-        ItemList_ITStaffOut_: {
+        /** ItemList[ITStaffPick] */
+        ItemList_ITStaffPick_: {
             /** Items */
-            items: components["schemas"]["ITStaffOut"][];
+            items: components["schemas"]["ITStaffPick"][];
             /** Total */
             total: number;
         };
@@ -6341,7 +6363,10 @@ export interface operations {
     };
     list_it_staff_api_v1_it_staff_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Count each person's setups on this day */
+                day?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6354,7 +6379,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ItemList_ITStaffOut_"];
+                    "application/json": components["schemas"]["ItemList_ITStaffPick_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

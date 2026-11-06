@@ -20,8 +20,8 @@ const ROOM = {
 }
 const ROOMS = [{ ...ROOM, capacity: 40, building: { id: 2, name_en: 'Building A', name_kh: 'x' }, floor: { id: 4, floor_label: 'Floor 2' }, cover_photo: null }]
 const STAFF = [
-  { id: 31, name_en: 'Chan Bopha', name_kh: 'ចាន់ បុប្ផា', is_active: true },
-  { id: 32, name_en: 'Sok Pisey', name_kh: 'សុខ ពិសី', is_active: true },
+  { id: 31, name_en: 'Chan Bopha', name_kh: 'ចាន់ បុប្ផា', is_active: true, avatar_url: null },
+  { id: 32, name_en: 'Sok Pisey', name_kh: 'សុខ ពិសី', is_active: true, avatar_url: null },
 ]
 const day = (offset: number) => {
   const d = new Date(Date.now() + 7 * 3600_000)
@@ -99,7 +99,10 @@ async function signedIn(page: Page, path: string, roles = ['IT_LEAD']) {
     }
     if (url.pathname === '/api/v1/me') return route.fulfill({ json: meWith(roles) })
     if (url.pathname === '/api/v1/rooms') return route.fulfill({ json: { items: ROOMS, page: 1, size: 100, total: 1 } })
-    if (url.pathname === '/api/v1/it/staff') return route.fulfill({ json: { items: STAFF, total: STAFF.length } })
+    if (url.pathname === '/api/v1/it/staff') {
+      const items = STAFF.map((x, i) => ({ ...x, setups_that_day: url.searchParams.get('day') ? [0, 3][i] : null }))
+      return route.fulfill({ json: { items, total: items.length } })
+    }
     if (url.pathname === '/api/v1/it/tickets/summary') {
       return route.fulfill({ json: { to_assign: 3, in_progress: 2, ready_today: 1, due_today: 3, due_today_ready: 1 } })
     }
@@ -159,9 +162,17 @@ for (const width of [1366, 900, 390]) {
     const dialog = page.getByRole('alertdialog')
     await expect(dialog).toContainText('Assign IT Staff')
     await expect(dialog.locator('input[type="checkbox"]')).toHaveCount(2)
+    await expect(dialog.locator('.load')).toHaveText(['Free that day', '2 other setups that day'])
+    await expect(dialog.locator('.picked')).toHaveText('2 picked')
+    await expect(dialog.locator('button.confirm')).toHaveText('Assign 2 staff')
     const d = (await dialog.boundingBox())!
     expect(d.x).toBeGreaterThanOrEqual(0)
     expect(d.x + d.width).toBeLessThanOrEqual(width)
+    for (const part of await dialog.locator('.staff-row, .room-box, .foot button').all()) {
+      const box = (await part.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(d.x)
+      expect(box.x + box.width).toBeLessThanOrEqual(d.x + d.width + 0.5)
+    }
     await page.keyboard.press('Escape')
 
     await page.locator('[data-ticket="4"]').click()
@@ -169,6 +180,31 @@ for (const width of [1366, 900, 390]) {
     await expect(panel).toContainText('Two wireless microphones')
     await expect(panel.locator('.panel-foot').getByRole('button')).toHaveText(['Close', 'Change staff', 'Mark ready'])
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
+  })
+}
+
+for (const width of [1366, 900, 390]) {
+  test(`the Cards view fits at ${width}px, every button inside its card, and is remembered`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await signedIn(page, '/it-setup?tab=in_progress')
+    await expect(page.locator('.timeline .row')).toHaveCount(2)
+    const views = page.getByRole('group', { name: 'Show setups as' })
+    const v = (await views.boundingBox())!
+    expect(v.x + v.width).toBeLessThanOrEqual(width)
+    await views.getByRole('button', { name: 'Cards' }).click()
+
+    await expect(page.locator('.cards .card')).toHaveCount(2)
+    expect(await sideways(page)).toBe(0)
+    for (const card of await page.locator('.card').all()) {
+      const c = (await card.boundingBox())!
+      for (const b of await card.locator('button').all()) {
+        const box = (await b.boundingBox())!
+        expect(box.x).toBeGreaterThanOrEqual(c.x)
+        expect(box.x + box.width).toBeLessThanOrEqual(c.x + c.width + 0.5)
+      }
+    }
+    await page.reload()
+    await expect(page.locator('.cards .card')).toHaveCount(2)
   })
 }
 

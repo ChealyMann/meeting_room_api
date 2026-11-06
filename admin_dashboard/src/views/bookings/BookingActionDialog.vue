@@ -5,7 +5,7 @@
 // the side panel, the icon tile beside the question, and the booking as a small table
 // so the Admin sees exactly which meeting they act on.
 import { CalendarX2, CircleCheck, CircleX } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, type Component } from 'vue'
 
 import BaseButton from '../../components/base/BaseButton.vue'
 
@@ -33,6 +33,9 @@ const props = defineProps<{
   minLength?: number
   /** No text box (IT: Mark ready). A default slot can add content above the box (IT: the staff). */
   noField?: boolean
+  /** Another icon in the tile (IT: assign staff). The `summary` slot can replace the booking
+   *  table, and the `foot-start` slot puts something before Back. */
+  icon?: Component
 }>()
 const text = defineModel<string>({ required: true })
 const emit = defineEmits<{ back: []; confirm: [] }>()
@@ -106,7 +109,8 @@ onBeforeUnmount(() => {
         >
           <div class="head">
             <span class="tile" aria-hidden="true">
-              <CalendarX2 v-if="action === 'cancel'" />
+              <component :is="icon" v-if="icon" />
+              <CalendarX2 v-else-if="action === 'cancel'" />
               <CircleX v-else-if="action === 'reject'" />
               <CircleCheck v-else />
             </span>
@@ -117,6 +121,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
+          <slot name="summary">
           <dl class="booking">
             <div>
               <dt>Meeting</dt>
@@ -131,6 +136,7 @@ onBeforeUnmount(() => {
               <dd>{{ day }} · <span class="mono times">{{ times }}</span></dd>
             </div>
           </dl>
+          </slot>
 
           <slot />
 
@@ -155,6 +161,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="foot">
+            <slot name="foot-start" />
             <BaseButton class="back" :disabled="busy" @click="back">Back</BaseButton>
             <BaseButton variant="primary" class="confirm" :busy="busy" :disabled="!allowed || short" @click="emit('confirm')">
               {{ confirmLabel }}

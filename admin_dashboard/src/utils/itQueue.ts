@@ -1,6 +1,9 @@
 // The IT pages (spec 2026-11-05-owner-and-it-pages-design, Part B): the open tab, setups by
 // day, the Ready tab's days, and the head's line and ring. Setup days and times are Phnom Penh
 // time from the API; `ready_at` is UTC.
+import { Cable, Laptop, Mic, Monitor, Printer, Projector, Speaker, Video, Wifi } from 'lucide-vue-next'
+import type { FunctionalComponent } from 'vue'
+
 import type { ITSummary, ITTicketItem } from '../api/types'
 import { addDays, formatDay, phnomPenhDate } from './time'
 
@@ -94,4 +97,22 @@ export function myTasksLine(items: ITTicketItem[], today: string): string {
   const day = next.setup_date === today ? 'today' : shortDay(next.setup_date, today)
   const count = `${items.length} ${items.length === 1 ? 'setup' : 'setups'} to do`
   return `${count} · next: ${day} ${next.setup_time.slice(0, 5)}, ${next.booking.room.name_en}`
+}
+
+// IT items have no icon of their own: the name tells which one fits (first match wins).
+const ITEM_ICONS: Array<[RegExp, string, FunctionalComponent]> = [
+  [/projector|hdmi|screen/i, 'Projector', Projector],
+  [/mic/i, 'Mic', Mic],
+  [/sound|speaker|audio/i, 'Speaker', Speaker],
+  [/video|zoom|teams|conference|camera/i, 'Video', Video],
+  [/laptop|computer|pc/i, 'Laptop', Laptop],
+  [/wi-?fi|internet|network/i, 'Wifi', Wifi],
+  [/cable|adapter/i, 'Cable', Cable],
+  [/print/i, 'Printer', Printer],
+]
+
+/** The icon for an IT item, by its name ("Projector setup" → Projector); a monitor otherwise. */
+export function itItemIcon(name: string): { key: string; icon: FunctionalComponent } {
+  const hit = ITEM_ICONS.find(([pattern]) => pattern.test(name))
+  return hit ? { key: hit[1], icon: hit[2] } : { key: 'Monitor', icon: Monitor }
 }

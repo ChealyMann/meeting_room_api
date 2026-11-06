@@ -25,9 +25,11 @@ const ROOMS = [
   },
 ]
 const STAFF = [
-  { id: 31, name_en: 'Chan Bopha', name_kh: 'x', is_active: true },
-  { id: 32, name_en: 'Sok Pisey', name_kh: 'x', is_active: true },
+  { id: 31, name_en: 'Chan Bopha', name_kh: 'x', is_active: true, avatar_url: null },
+  { id: 32, name_en: 'Sok Pisey', name_kh: 'x', is_active: true, avatar_url: null },
 ]
+// The picker's answer: how many setups each one already has on the asked day.
+const LOAD = [0, 2]
 const ticket = (id: number, setup_date: string, changes: Record<string, unknown> = {}) => ({
   id,
   status: 'RECEIVED',
@@ -78,6 +80,7 @@ beforeEach(() => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   useSessionStore().user = { id: 40, roles: [{ code: 'IT_LEAD' }], province: PP } as never
+  localStorage.clear()
   calls.length = 0
   bodies.length = 0
   summary = SUMMARY
@@ -97,7 +100,10 @@ beforeEach(() => {
         return json({ items, page: 1, size: Number(url.searchParams.get('size')), total: items.length })
       }
       if (url.pathname === '/api/v1/it/tickets/summary') return json(summary)
-      if (url.pathname === '/api/v1/it/staff') return json({ items: STAFF, total: STAFF.length })
+      if (url.pathname === '/api/v1/it/staff') {
+        const day = url.searchParams.get('day')
+        return json({ items: STAFF.map((x, i) => ({ ...x, setups_that_day: day ? LOAD[i] : null })), total: STAFF.length })
+      }
       if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: 1 })
       const one = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
       if (one) {
@@ -167,7 +173,8 @@ describe('IT setup', () => {
     const r = row(wrapper, 5)
     expect(r.text()).toContain('Training 5')
     expect(r.get('.place').text()).toBe('Head Office · Building A · Floor 2')
-    expect(r.get('.setup').text()).toContain('Set up by 07:30')
+    expect(r.get('.time').text()).toBe('07:30')
+    expect(r.get('.time-label').text()).toBe('Set up by')
     expect(r.findAll('.chk').map((c) => c.text())).toEqual(['Projector setup', 'Microphones'])
     expect(r.get('.needs').text()).toBe('Two wireless microphones')
     expect(r.get('.staff').text()).toBe('No staff yet')
@@ -259,5 +266,64 @@ describe('IT setup', () => {
     expect(panel()?.textContent).toContain('Meeting')
     const foot = [...(panel()?.querySelectorAll('.panel-foot button') ?? [])].map((b) => b.textContent?.trim())
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
+  })
+
+  it('shows rows as a time line: a dashed dot while it needs staff, a check once it has staff', async () => {
+    const { wrapper } = await mountAt()
+    expect(wrapper.find('.timeline').exists()).toBe(true)
+    expect(row(wrapper, 5).get('.node').classes()).toContain('state-waiting')
+    const progress = await mountAt('/it-setup?tab=in_progress')
+    expect(row(progress.wrapper, 7).get('.node').classes()).toContain('state-staffed')
+  })
+
+  it('switches to cards and remembers the choice in this browser', async () => {
+    const { wrapper } = await mountAt()
+    const cardsButton = wrapper.findAll('.view-switch button').find((b) => b.text() === 'Cards')!
+    expect(cardsButton.attributes('aria-pressed')).toBe('false')
+    await cardsButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.timeline').exists()).toBe(false)
+    expect(wrapper.findAll('.cards [data-ticket]').length).toBe(2)
+    expect(localStorage.getItem('nbc.admin.itView')).toBe('cards')
+    const again = await mountAt()
+    expect(again.wrapper.find('.cards').exists()).toBe(true)
+  })
+
+  it('shows a card with the setup day and time on the photo, the needs as icons, and the buttons', async () => {
+    localStorage.setItem('nbc.admin.itView', 'cards')
+    const { wrapper } = await mountAt()
+    const card = row(wrapper, 5)
+    expect(card.get('.when').text()).toBe('Today · by 07:30')
+    expect(card.get('.soon').text()).toContain('Starts in')
+    expect(card.findAll('.need').map((n) => n.attributes('aria-label'))).toEqual(['Projector setup', 'Microphones', 'Note: Two wireless microphones'])
+    expect(card.get('.staff').text()).toBe('No staff yet')
+    expect(buttons(card)).toEqual(['Assign staff'])
+    expect(row(wrapper, 6).get('.when').text()).toBe('Fri 6 Nov · by 07:30')
+  })
+
+  it("asks for the staff with the setup day and shows each one's other setups that day", async () => {
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+    await row(wrapper, 7).findAll('button').find((b) => b.text() === 'Change staff')!.trigger('click')
+    await flushPromises()
+
+    expect(calls).toContain('GET /api/v1/it/staff?day=2026-11-06')
+    const load = [...dialog()!.querySelectorAll('.staff-row .load')].map((n) => n.textContent?.trim())
+    // Sok Pisey has 2 that day, and one of them is this setup.
+    expect(load).toEqual(['Free that day', '1 other setup that day'])
+    expect(dialog()!.querySelector('.room-box')?.textContent).toContain('Training 7')
+    expect(dialog()!.querySelector('.picked')?.textContent?.trim()).toBe('1 picked')
+    expect(dialog()!.querySelector('button.confirm')?.textContent?.trim()).toBe('Assign 1 staff')
+  })
+
+  it('hides the note box until asked', async () => {
+    const { wrapper } = await mountAt()
+    await row(wrapper, 5).findAll('button').find((b) => b.text() === 'Assign staff')!.trigger('click')
+    await flushPromises()
+    expect(dialog()!.querySelector('textarea')).toBeNull()
+    expect(dialog()!.querySelector('button.confirm')?.textContent?.trim()).toBe('Assign staff')
+    dialog()!.querySelector<HTMLElement>('button.add-note')!.click()
+    await flushPromises()
+    expect(dialog()!.querySelector('textarea')).not.toBeNull()
   })
 })

@@ -1,15 +1,16 @@
 <script setup lang="ts">
-// One IT setup (spec 2026-11-05-owner-and-it-pages-design, Part B, "Row"): the room and where it
-// is, when to set up, what to set up, the staff, and the buttons the ticket's state allows.
-import { CalendarDays, Check, MapPin, Monitor, TriangleAlert, UserRound, Wrench } from 'lucide-vue-next'
-import { computed } from 'vue'
+// One IT setup on the time line (owner pick, 6 Nov 2026: demo C, "Day timeline"): the setup
+// time at the left, a dot on the line (dashed amber: needs staff; green check: has staff or is
+// ready; crimson: missed), then the setup on a sheet: the room's photo, what, where, the needs
+// with icons, the staff and the buttons the ticket's state allows.
+import { Check, CircleAlert, MessageSquareText, TriangleAlert, X } from 'lucide-vue-next'
+import { toRef } from 'vue'
 
 import type { ITTicketItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import { setupText } from '../../utils/itQueue'
-import { startsIn } from '../../utils/reviewQueue'
-import { formatDay } from '../../utils/time'
+import StaffAvatar from '../../components/StaffAvatar.vue'
+import { useTicketFacts } from './ticketFacts'
 
 const props = defineProps<{
   ticket: ITTicketItem
@@ -25,45 +26,60 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ open: []; assign: []; ready: [] }>()
 
-const b = computed(() => props.ticket.booking)
-const hhmm = (time: string) => time.slice(0, 5)
-const names = computed(() => props.ticket.items.map((i) => String((i as Record<string, unknown>).name)))
-const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
-const soon = computed(() => (isOpen.value && props.ticket.setup_date <= props.today ? startsIn(b.value, props.now) : null))
-const day = computed(() => (b.value.first_session.date === props.today ? 'Today' : formatDay(b.value.first_session.date).slice(0, -5)))
-const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff.map((s) => s.name_en).join(', ') : 'No staff yet'))
+const { b, isOpen, soon, setupDay, setupTime, meetingTimes, needs, staffNames, state } = useTicketFacts(
+  toRef(props, 'ticket'),
+  toRef(props, 'now'),
+  toRef(props, 'today'),
+)
 </script>
 
 <template>
   <li class="row" :class="{ current }" :data-ticket="ticket.id" tabindex="0" @click="emit('open')" @keydown.enter.self="emit('open')">
-    <RoomPhoto class="thumb" :path="photo" :alt="b.room.name_en" />
-    <div class="info">
-      <span class="ref mono"><span class="prefix">{{ b.reference_code.slice(0, 3) }}</span>{{ b.reference_code.slice(3) }}</span>
-      <h3>{{ b.meeting_title }}</h3>
-      <div class="room"><span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }}</div>
-      <div v-if="place" class="where"><MapPin aria-hidden="true" /><span class="place">{{ place }}</span></div>
-      <div class="facts">
-        <span class="setup"><Wrench aria-hidden="true" />{{ setupText(ticket) }}</span>
-        <span>
-          <CalendarDays aria-hidden="true" />{{ day }} · meeting
-          <span class="mono">{{ hhmm(b.first_session.start_time) }}–{{ hhmm(b.first_session.end_time) }}</span>
-        </span>
-        <span><UserRound aria-hidden="true" /><span class="staff">{{ staffText }}</span></span>
-      </div>
-      <div class="checks">
-        <span v-for="n in names" :key="n" class="chk"><Monitor aria-hidden="true" /><b>{{ n }}</b></span>
-      </div>
-      <p v-if="ticket.special_requirements" class="needs">{{ ticket.special_requirements }}</p>
+    <div class="when">
+      <span class="time-label">Set up by</span>
+      <b class="time mono">{{ setupTime }}</b>
+      <span class="day">{{ setupDay }}</span>
     </div>
-    <div class="side">
-      <span v-if="ticket.missed" class="missed"><TriangleAlert aria-hidden="true" />Missed · not marked ready</span>
-      <span v-else-if="soon" class="soon"><TriangleAlert aria-hidden="true" />{{ soon }}</span>
-      <div v-if="actions && isOpen" class="acts">
-        <BaseButton v-if="ticket.status === 'RECEIVED'" variant="primary" @click.stop="emit('assign')">Assign staff</BaseButton>
-        <template v-else>
-          <BaseButton variant="quiet" @click.stop="emit('assign')">Change staff</BaseButton>
-          <BaseButton variant="primary" @click.stop="emit('ready')"><Check aria-hidden="true" />Mark ready</BaseButton>
-        </template>
+    <div class="line" aria-hidden="true">
+      <span class="node" :class="`state-${state}`">
+        <Check v-if="state === 'staffed' || state === 'ready'" />
+        <X v-else-if="state === 'missed'" />
+      </span>
+    </div>
+    <div class="slip">
+      <RoomPhoto class="thumb" :path="photo" :alt="b.room.name_en" />
+      <div class="info">
+        <div class="title">
+          <h3>{{ b.meeting_title }}</h3>
+          <span class="ref mono"><span class="prefix">{{ b.reference_code.slice(0, 3) }}</span>{{ b.reference_code.slice(3) }}</span>
+        </div>
+        <div class="room">
+          <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }}<template v-if="place"> · <span class="place">{{ place }}</span></template>
+          · meeting <span class="mono">{{ meetingTimes }}</span>
+        </div>
+        <div class="checks">
+          <span v-for="n in needs" :key="n.name" class="chk"><component :is="n.icon" aria-hidden="true" /><b>{{ n.name }}</b></span>
+          <span v-if="ticket.special_requirements" class="note" :title="ticket.special_requirements">
+            <MessageSquareText aria-hidden="true" /><span class="needs">{{ ticket.special_requirements }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="who">
+        <span v-if="staffNames.length" class="faces">
+          <StaffAvatar v-for="s in ticket.staff" :key="s.id" :name="s.name_en" :photo="s.avatar_url ?? null" :size="26" />
+        </span>
+        <span class="staff" :class="{ none: !staffNames.length }">{{ staffNames.length ? staffNames.join(', ') : 'No staff yet' }}</span>
+      </div>
+      <div v-if="ticket.missed || soon || (actions && isOpen)" class="side">
+        <span v-if="ticket.missed" class="missed"><TriangleAlert aria-hidden="true" />Missed · not marked ready</span>
+        <span v-else-if="soon" class="soon"><CircleAlert aria-hidden="true" />{{ soon }}</span>
+        <div v-if="actions && isOpen" class="acts">
+          <BaseButton v-if="ticket.status === 'RECEIVED'" variant="primary" @click.stop="emit('assign')">Assign staff</BaseButton>
+          <template v-else>
+            <BaseButton variant="quiet" @click.stop="emit('assign')">Change staff</BaseButton>
+            <BaseButton variant="primary" @click.stop="emit('ready')"><Check aria-hidden="true" />Mark ready</BaseButton>
+          </template>
+        </div>
       </div>
     </div>
   </li>
@@ -72,136 +88,228 @@ const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff
 <style scoped>
 .row {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) 232px;
-  gap: 20px;
-  align-items: center;
-  padding: 16px 12px;
-  border-bottom: 1px solid var(--color-rule);
+  grid-template-columns: 64px 28px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 0 12px;
   cursor: pointer;
-  transition: background-color 150ms ease;
-}
-.row:hover {
-  background: var(--color-row-hover);
-}
-.row.current {
-  background: var(--color-crimson-wash);
 }
 .row:focus-visible {
+  outline: none;
+}
+.row:focus-visible .slip {
   outline: 2px solid var(--color-crimson);
-  outline-offset: -2px;
+  outline-offset: 2px;
+}
+.when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-top: 12px;
+  text-align: right;
+}
+.time {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.time-label,
+.day {
+  font-size: 11px;
+  color: var(--color-intaglio);
+  white-space: nowrap;
+}
+.line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* The line runs through every dot of a group; it starts at the first dot and ends at the last. */
+.line::before,
+.line::after {
+  content: '';
+  width: 1px;
+  background: var(--color-rule-strong);
+}
+.line::before {
+  height: 22px;
+  flex: none;
+}
+.line::after {
+  flex: 1;
+}
+.row:first-child .line::before,
+.row:last-child .line::after {
+  background: transparent;
+}
+.node {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  color: #fff;
+}
+.node.state-waiting {
+  border: 1.5px dashed var(--color-warn);
+  background: var(--color-paper);
+}
+.node.state-staffed,
+.node.state-ready {
+  background: var(--color-ok);
+}
+.node.state-missed {
+  background: var(--color-crimson);
+}
+.node :deep(svg.lucide) {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.75;
+}
+.slip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  min-width: 0;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-sheet);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.row:hover .slip {
+  border-color: var(--color-rule-strong);
+}
+.row.current .slip {
+  border-color: var(--color-danger-line);
+  background: var(--color-crimson-wash);
 }
 .thumb {
-  width: 168px;
-  aspect-ratio: 16 / 10;
+  flex: none;
+  width: 104px;
+  height: 66px;
   border-radius: 8px;
 }
 .info {
+  display: grid;
+  flex: 1 1 300px;
+  gap: 3px;
   min-width: 0;
 }
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.title h3 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
 .ref {
+  flex: none;
   font-size: 11.5px;
   color: var(--color-intaglio);
 }
 .prefix {
   color: var(--color-crimson);
 }
-.info h3 {
-  margin: 2px 0;
-  font-size: 15px;
-  font-weight: 600;
+.room {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.room,
-.where {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--color-intaglio);
-}
-.where {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
 }
 .room .kh {
   font-family: var(--font-kh);
   font-weight: 500;
   color: var(--color-ink);
 }
-.facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.facts > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.facts .setup {
-  font-weight: 600;
+.room .mono {
   color: var(--color-ink);
-}
-.facts .mono {
-  font-size: 12px;
-  color: var(--color-ink);
-}
-.facts :deep(svg.lucide),
-.where :deep(svg.lucide),
-.chk :deep(svg.lucide) {
-  width: 14px;
-  height: 14px;
-  flex: none;
 }
 .checks {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
+  align-items: center;
+  gap: 4px 14px;
+  min-width: 0;
+  margin-top: 2px;
+  font-size: 12.5px;
 }
-.chk {
+.chk,
+.note {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 24px;
-  padding: 2px 8px;
-  border: 1px solid var(--color-rule);
-  border-radius: 6px;
-  background: var(--color-paper);
-  font-size: 12px;
 }
-.chk :deep(svg.lucide) {
-  color: var(--color-intaglio);
+.chk {
+  flex: none;
 }
 .chk b {
-  font-weight: 500;
+  font-weight: 400;
+}
+.note {
+  min-width: 0;
+  color: var(--color-intaglio);
 }
 .needs {
-  margin: 8px 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.checks :deep(svg.lucide) {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.who {
+  display: flex;
+  flex: 0 1 190px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-size: 12.5px;
+}
+.faces {
+  display: inline-flex;
+  flex: none;
+}
+.faces > :deep(.staff-avatar) {
+  border: 2px solid var(--color-sheet);
+}
+.faces > :deep(.staff-avatar + .staff-avatar) {
+  margin-left: -8px;
+}
+.staff {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.staff.none {
   color: var(--color-intaglio);
 }
 .side {
   display: grid;
-  gap: 10px;
-  align-content: center;
+  justify-items: end;
+  gap: 8px;
+  margin-left: auto;
 }
 .soon,
 .missed {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-crimson-wash);
+  white-space: nowrap;
   color: var(--color-crimson);
   font-size: 12px;
   font-weight: 500;
@@ -213,42 +321,35 @@ const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff
 }
 .acts {
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
 }
 .acts :deep(.btn) {
-  height: 32px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 13px;
   font-size: 13px;
 }
 .mono {
   font-family: var(--font-mono);
 }
-@media (max-width: 1100px) {
+@media (max-width: 760px) {
   .row {
-    grid-template-columns: 132px minmax(0, 1fr);
+    grid-template-columns: 56px 20px minmax(0, 1fr);
+    column-gap: 8px;
+    padding: 0 4px 0 0;
   }
-  .thumb {
-    width: 132px;
+  .time-label {
+    display: none;
   }
-  .side {
-    grid-column: 1 / -1;
-  }
-  .soon,
-  .missed {
-    justify-self: start;
-  }
-  .acts {
-    justify-content: flex-start;
-  }
-}
-@media (max-width: 560px) {
-  .row {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .checks {
+    flex-wrap: wrap;
   }
   .thumb {
     width: 100%;
+    height: 120px;
+  }
+  .side {
+    justify-items: start;
+    margin-left: 0;
   }
 }
 </style>

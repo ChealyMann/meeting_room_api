@@ -10,6 +10,7 @@ import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { myTasksLine } from '../utils/itQueue'
 import ITQueue from './it/ITQueue.vue'
+import ViewSwitch from './it/ViewSwitch.vue'
 
 const today = usePhnomPenhToday()
 const line = ref<string | null>(null)
@@ -32,8 +33,11 @@ function onLoaded(items: ITTicketItem[], total: number) {
 <template>
   <div class="places-page my-tasks">
     <div class="head">
-      <h1>My tasks</h1>
-      <p v-if="line" class="sub">{{ line }}</p>
+      <div>
+        <h1>My tasks</h1>
+        <p v-if="line" class="sub">{{ line }}</p>
+      </div>
+      <ViewSwitch />
     </div>
     <ITQueue tab="mine" :rooms="rooms" :actions="false" @loaded="onLoaded" />
   </div>
@@ -43,6 +47,11 @@ function onLoaded(items: ITTicketItem[], total: number) {
 
 <style scoped>
 .head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 18px;
 }
 .sub {
