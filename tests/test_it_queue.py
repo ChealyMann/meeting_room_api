@@ -337,3 +337,93 @@ def test_staff_busy_and_counts_see_every_session(client, frozen, lead, staff, se
          "date": str(DAY + timedelta(days=1)), "setup_time": "13:30", "meeting_start": "14:00"}
     ]  # fmt: skip
     assert me["setups_that_day"] == 1
+
+
+# --- Staff while sessions remain (owner decision, 6 Nov 2026) --------------------------------
+
+
+def assign(client, headers, booking, *users):
+    body = {"user_ids": [u.id for u in users], "technician_notes": None, "version": booking.version}
+    return client.put(f"{URL}/{booking.it_ticket.id}/staff", json=body, headers=headers)
+
+
+def test_nobody_assigned_stays_to_assign_while_sessions_remain(
+    client, frozen, freeze_now, lead, setup, auth_headers
+):
+    """The first session started with nobody assigned: the system confirmed the booking and it is
+    missed, but the later sessions still need staff. One session: nothing is left to assign."""
+    headers = auth_headers(lead)
+    later = setup(sessions=THREE_DAYS, status=BookingStatus.CONFIRMED)
+    setup(status=BookingStatus.CONFIRMED)
+    freeze_now(datetime.combine(DAY, time(9, 30)))
+    assert ids(listed(client, headers, state="to_assign")) == [later.id]
+    assert later.id in ids(listed(client, headers, state="done"))
+    summary = client.get(SUMMARY, headers=headers).json()
+    assert summary["to_assign"] == 1
+
+    freeze_now(datetime.combine(DAY + timedelta(days=2), time(9, 30)))
+    assert ids(listed(client, headers, state="to_assign")) == []
+
+
+def test_assign_on_a_confirmed_booking_while_sessions_remain(
+    client, frozen, freeze_now, lead, staff, setup, db_session, auth_headers
+):
+    headers = auth_headers(lead)
+    booking = setup(sessions=THREE_DAYS, status=BookingStatus.CONFIRMED)
+    version = booking.version
+    freeze_now(datetime.combine(DAY, time(9, 30)))
+
+    response = assign(client, headers, booking, staff)
+    assert response.status_code == 200, response.json()
+    data = response.json()
+    assert (data["status"], data["missed"]) == ("ASSIGNED", True)
+    assert [user["id"] for user in data["staff"]] == [staff.id]
+    db_session.refresh(booking)
+    assert (booking.status, booking.version) == (BookingStatus.CONFIRMED, version + 1)
+    # Now it is In progress for its remaining sessions, not To assign.
+    assert ids(listed(client, headers, state="to_assign")) == []
+    assert ids(listed(client, headers, state="in_progress")) == [booking.id]
+
+
+def test_change_staff_after_ready_keeps_it_ready(
+    client, frozen, lead, staff, make_user, setup, db_session, auth_headers
+):
+    other = make_user(roles=["IT_STAFF"], name_en="Vann Dara")
+    ready_at = datetime(2026, 11, 9, 1, 0)
+    booking = setup(ITStatus.READY, staff=[staff], ready_at=ready_at, sessions=THREE_DAYS,
+                    status=BookingStatus.CONFIRMED)  # fmt: skip
+
+    response = assign(client, auth_headers(lead), booking, other)
+    assert response.status_code == 200, response.json()
+    assert [user["id"] for user in response.json()["staff"]] == [other.id]
+    db_session.refresh(booking.it_ticket)
+    assert (booking.it_ticket.status, booking.it_ticket.ready_at) == (ITStatus.READY, ready_at)
+
+
+def test_no_staff_change_once_no_session_remains(
+    client, frozen, freeze_now, lead, staff, make_user, setup, auth_headers
+):
+    """Refused: the last session has started, or the booking has only one session."""
+    headers = auth_headers(lead)
+    other = make_user(roles=["IT_STAFF"], name_en="Vann Dara")
+    ready = {"staff": [staff], "ready_at": datetime(2026, 11, 9, 1, 0),
+             "status": BookingStatus.CONFIRMED}  # fmt: skip
+    one_session = setup(ITStatus.READY, **ready)
+    three = setup(ITStatus.READY, sessions=THREE_DAYS, **ready)
+    assert assign(client, headers, one_session, other).status_code == 409
+
+    freeze_now(datetime.combine(DAY + timedelta(days=2), time(9, 30)))
+    assert assign(client, headers, three, other).status_code == 409
+
+
+def test_mark_ready_is_still_refused_on_a_confirmed_booking(
+    client, frozen, freeze_now, lead, staff, setup, auth_headers
+):
+    booking = setup(ITStatus.ASSIGNED, staff=[staff], sessions=THREE_DAYS,
+                    status=BookingStatus.CONFIRMED)  # fmt: skip
+    freeze_now(datetime.combine(DAY, time(9, 30)))
+    body = {"version": booking.version}
+    response = client.post(
+        f"{URL}/{booking.it_ticket.id}/ready", json=body, headers=auth_headers(lead)
+    )
+    assert response.status_code == 409

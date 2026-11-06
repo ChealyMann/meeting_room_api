@@ -91,20 +91,28 @@ def _sessions_between(date_from: date | None, date_to: date | None):
     return query
 
 
+def _later_sessions_left_sql():
+    """A booking with several sessions whose last one has not started."""
+    return and_(
+        _last_start_sql() > now_local(),
+        _last_start_sql() > transitions.first_start_sql(),
+    )
+
+
 def _in_state(query: Select, state: str) -> Select:
-    """The dashboard tabs: to assign (without missed ones); in progress: staff assigned and a
-    session still to come (a setup made ready stays while its later sessions remain, since IT
-    sets up before every session); done: Ready or missed."""
+    """The dashboard tabs. IT sets up before every session, so later sessions keep a setup on
+    these tabs: to assign: nobody assigned, and it is not missed or later sessions remain; in
+    progress: staff assigned, and it is not missed or later sessions remain (even when made
+    ready); done: Ready or missed."""
     if state == "to_assign":
-        return query.where(ITTicket.status == ITStatus.RECEIVED.value, ~_missed_sql())
-    if state == "in_progress":
-        later_sessions_left = and_(
-            ITTicket.status.in_([ITStatus.ASSIGNED.value, ITStatus.READY.value]),
-            _last_start_sql() > now_local(),
-            _last_start_sql() > transitions.first_start_sql(),
+        return query.where(
+            ITTicket.status == ITStatus.RECEIVED.value,
+            or_(~_missed_sql(), _later_sessions_left_sql()),
         )
+    if state == "in_progress":
         assigned_open = and_(ITTicket.status == ITStatus.ASSIGNED.value, ~_missed_sql())
-        return query.where(or_(assigned_open, later_sessions_left))
+        with_staff = ITTicket.status.in_([ITStatus.ASSIGNED.value, ITStatus.READY.value])
+        return query.where(or_(assigned_open, and_(with_staff, _later_sessions_left_sql())))
     return query.where(or_(ITTicket.status == ITStatus.READY.value, _missed_sql()))
 
 
@@ -395,6 +403,15 @@ def _check_open(booking: Booking, version: int) -> None:
         raise transitions.invalid_transition(booking)
 
 
+def _can_assign(ticket: ITTicket, booking: Booking) -> bool:
+    if booking.status == BookingStatus.SETUP_IN_PROGRESS:
+        return ticket.status != ITStatus.READY
+    if booking.status != BookingStatus.CONFIRMED:
+        return False
+    starts = _starts(booking)
+    return len(starts) > 1 and starts[-1] > now_local()
+
+
 def _is_active_it_staff(session: Session, user: User) -> bool:
     """Active and still holding the IT_STAFF role."""
     return user.is_active and RoleCode.IT_STAFF in load_role_codes(session, user.id)
@@ -424,15 +441,19 @@ def assign_staff(
     technician_notes: str | None,
     version: int,
 ) -> ITTicket:
-    """T10 (BR-IT-02). The new list replaces the old one; the booking version goes up by 1."""
+    """T10 (BR-IT-02). The new list replaces the old one; the booking version goes up by 1.
+    Also while a confirmed booking has later sessions to come: IT sets up before every session,
+    so staff can still be assigned or changed for them (owner decision, 6 Nov 2026). This does
+    not change the booking's status or door pass, and a setup made ready stays Ready."""
     ticket, booking = _load_for_write(session, current, ticket_id)
-    _check_open(booking, version)
-    if ticket.status == ITStatus.READY:
+    transitions.check_version(booking, version)
+    if not _can_assign(ticket, booking):
         raise transitions.invalid_transition(booking)
     users = _active_it_staff(session, user_ids)
 
     ticket.staff = sorted(users, key=lambda user: user.name_en)
-    ticket.status = ITStatus.ASSIGNED.value
+    if ticket.status != ITStatus.READY:
+        ticket.status = ITStatus.ASSIGNED.value
     ticket.assigned_at = now_utc()
     ticket.technician_notes = technician_notes
     transitions.advance(session, booking, version)

@@ -278,7 +278,7 @@ Each rule has an ID so code, tests and questions can point at it. The numbers (1
 | ID | Rule |
 |---|---|
 | BR-IT-01 | The IT ticket is made when the booking is sent, but IT sees it only after the final approval (forwarded_at is set) and while the booking is not rejected or cancelled. |
-| BR-IT-02 | The IT Lead assigns one or more active IT Staff and can change them later. |
+| BR-IT-02 | The IT Lead assigns one or more active IT Staff and can change them later, also on a confirmed booking while it has later sessions to come (owner decision, 6 Nov 2026). This does not change the booking's status or door pass, and a setup made ready stays Ready. |
 | BR-IT-03 | Only the IT Lead presses Ready, and only after staff are assigned. This confirms the booking (T11). |
 | BR-IT-04 | IT Staff see the tickets they are assigned to; they cannot change them. |
 | BR-IT-05 | Setup is planned 30 minutes before every session (owner decision, 6 Nov 2026; was: the first session only). Staff are assigned once; Ready is pressed once, for the first session, and later sessions are reminders with no check. The dashboard shows only meeting times, not set-up times. |
