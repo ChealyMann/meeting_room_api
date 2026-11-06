@@ -218,6 +218,4 @@ PitikaUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.PITIKA))]
 RoomOwnerUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.ROOM_OWNER))]
 ITLeadUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.IT_LEAD))]
 ITUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.IT_LEAD, RoleCode.IT_STAFF))]
-PitikaOrAdminUser = Annotated[
-    CurrentUser, Depends(require_roles(RoleCode.PITIKA, RoleCode.ADMIN))
-]
+PitikaOrAdminUser = Annotated[CurrentUser, Depends(require_roles(RoleCode.PITIKA, RoleCode.ADMIN))]
