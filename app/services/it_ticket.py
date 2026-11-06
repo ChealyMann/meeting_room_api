@@ -19,7 +19,7 @@ from app.constants.booking import (
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
 from app.models import Booking, ITTicket, Role, User, it_ticket_staff, user_roles
-from app.schemas.it_ticket import ITStaffOut, ITStaffPick, ITTicketItem
+from app.schemas.it_ticket import ITBusy, ITStaffOut, ITStaffPick, ITTicketItem
 from app.security import CurrentUser, load_role_codes
 from app.services import booking_access, booking_view
 from app.services import booking_transitions as transitions
@@ -193,10 +193,73 @@ def staff_out(user: User) -> ITStaffOut:
     )
 
 
-def staff_picks(session: Session, day: date | None) -> list[ITStaffPick]:
+def _busy_at_the_same_time(
+    session: Session, settings: Settings, target: ITTicket, user_ids: list[int]
+) -> dict[int, list[ITBusy]]:
+    """Per user: their other visible setups whose time (set-up to meeting start) overlaps the
+    target's. Both last `it_setup_lead_minutes`, so they overlap when the meetings start less
+    than that apart."""
+    lead = timedelta(minutes=settings.it_setup_lead_minutes)
+    start = transitions.first_start(target.booking)
+    day = start.date()
+    first_day = transitions.first_day_sql()
+    query = (
+        select(ITTicket)
+        .join(Booking, ITTicket.booking_id == Booking.id)
+        .where(
+            ITTicket.id != target.id,
+            ITTicket.forwarded_at.is_not(None),
+            Booking.status.not_in(_HIDDEN),
+            first_day.between(day - timedelta(days=1), day + timedelta(days=1)),
+            ITTicket.id.in_(
+                select(it_ticket_staff.c.ticket_id).where(it_ticket_staff.c.user_id.in_(user_ids))
+            ),
+        )
+        .options(
+            selectinload(ITTicket.staff),
+            selectinload(ITTicket.booking).options(
+                selectinload(Booking.sessions), selectinload(Booking.room)
+            ),
+        )
+    )
+    busy: dict[int, list[ITBusy]] = {}
+    for ticket in session.scalars(query).unique():
+        other = transitions.first_start(ticket.booking)
+        if abs(other - start) >= lead:
+            continue
+        entry = ITBusy(
+            ticket_id=ticket.id,
+            room_name_en=ticket.booking.room.name_en,
+            setup_time=(other - lead).time(),
+            meeting_start=other.time(),
+        )
+        for user in ticket.staff:
+            if user.id in user_ids:
+                busy.setdefault(user.id, []).append(entry)
+    for entries in busy.values():
+        entries.sort(key=lambda e: (e.meeting_start, e.ticket_id))
+    return busy
+
+
+def staff_picks(
+    session: Session,
+    settings: Settings,
+    current: CurrentUser,
+    day: date | None,
+    ticket_id: int | None = None,
+) -> list[ITStaffPick]:
     """The assign picker: active IT Staff by name; with `day`, how many setups (visible
-    tickets whose first session is that day) each one already has."""
+    tickets whose first session is that day) each one already has. With `ticket_id` (404 when
+    hidden): that ticket's day, and each one's other setups at the same time."""
     users = list_it_staff(session)
+    target = _load_visible(session, current, ticket_id) if ticket_id is not None else None
+    if target is not None and day is None:
+        day = transitions.first_start(target.booking).date()
+    busy = (
+        _busy_at_the_same_time(session, settings, target, [u.id for u in users])
+        if target is not None and users
+        else {}
+    )
     counts: dict[int, int] = {}
     if day is not None and users:
         query = (
@@ -216,6 +279,7 @@ def staff_picks(session: Session, day: date | None) -> list[ITStaffPick]:
         ITStaffPick(
             **staff_out(user).model_dump(),
             setups_that_day=None if day is None else counts.get(user.id, 0),
+            busy=None if target is None else busy.get(user.id, []),
         )
         for user in users
     ]

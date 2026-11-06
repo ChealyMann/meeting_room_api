@@ -221,3 +221,37 @@ def test_staff_list_photo_and_setups_that_day(
 
     plain = client.get(STAFF, headers=headers).json()["items"]
     assert all(user["setups_that_day"] is None for user in plain)
+
+
+def test_staff_list_busy_at_the_same_time(
+    client, frozen, lead, staff, make_user, setup, auth_headers
+):
+    """With `ticket_id`: each person's other setups whose time (set-up to meeting start)
+    overlaps this one, and the day's count for that ticket's day. Cancelled bookings, other
+    times and the ticket itself are left out; unknown tickets are 404."""
+    other = make_user(roles=["IT_STAFF"], name_en="Vann Dara")
+    target = setup(staff=[staff])
+    clash = setup(ITStatus.ASSIGNED, staff=[staff])
+    setup(ITStatus.ASSIGNED, staff=[staff, other], start=10)
+    setup(ITStatus.ASSIGNED, staff=[other], status=BookingStatus.CANCELLED)
+    headers = auth_headers(lead)
+
+    params = {"ticket_id": target.it_ticket.id}
+    rows = {
+        u["name_en"]: u for u in client.get(STAFF, params=params, headers=headers).json()["items"]
+    }
+    assert rows["Sok Pisey"]["busy"] == [
+        {
+            "ticket_id": clash.it_ticket.id,
+            "room_name_en": clash.room.name_en,
+            "setup_time": "08:30",
+            "meeting_start": "09:00",
+        }
+    ]
+    assert rows["Vann Dara"]["busy"] == []
+    assert (rows["Sok Pisey"]["setups_that_day"], rows["Vann Dara"]["setups_that_day"]) == (3, 1)
+
+    plain = client.get(STAFF, headers=headers).json()["items"]
+    assert all(user["busy"] is None for user in plain)
+    missing = client.get(STAFF, params={"ticket_id": 999999}, headers=headers)
+    assert missing.status_code == 404

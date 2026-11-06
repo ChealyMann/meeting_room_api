@@ -41,11 +41,22 @@ class ITStaffOut(ResponseModel):
     avatar_url: str | None  # GET /users/{id}/avatar, or null when there is no photo
 
 
+class ITBusy(ResponseModel):
+    """Another setup of the same person whose time (set-up to meeting start) overlaps."""
+
+    ticket_id: int
+    room_name_en: str
+    setup_time: LocalTime
+    meeting_start: LocalTime
+
+
 class ITStaffPick(ITStaffOut):
     """A row of the assign picker. `setups_that_day`: the setups they already have on the
-    asked day (null when no day was asked)."""
+    asked day (null when no day was asked). `busy`: their other setups at the same time as the
+    asked ticket (null when no ticket was asked)."""
 
     setups_that_day: int | None
+    busy: list[ITBusy] | None
 
 
 class ITTicketItem(ResponseModel):
