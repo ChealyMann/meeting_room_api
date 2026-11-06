@@ -130,7 +130,13 @@ def test_item_shape(client, frozen, lead, staff, setup, auth_headers):
     assert item["id"] == booking.it_ticket.id
     assert item["booking"]["id"] == booking.id
     assert item["staff"] == [
-        {"id": staff.id, "name_en": staff.name_en, "name_kh": staff.name_kh, "is_active": True}
+        {
+            "id": staff.id,
+            "name_en": staff.name_en,
+            "name_kh": staff.name_kh,
+            "is_active": True,
+            "avatar_url": None,
+        }
     ]
 
 

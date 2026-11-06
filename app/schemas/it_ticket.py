@@ -38,6 +38,14 @@ class ITStaffOut(ResponseModel):
     name_en: str
     name_kh: str
     is_active: bool
+    avatar_url: str | None  # GET /users/{id}/avatar, or null when there is no photo
+
+
+class ITStaffPick(ITStaffOut):
+    """A row of the assign picker. `setups_that_day`: the setups they already have on the
+    asked day (null when no day was asked)."""
+
+    setups_that_day: int | None
 
 
 class ITTicketItem(ResponseModel):

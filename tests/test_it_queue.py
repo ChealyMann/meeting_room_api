@@ -197,3 +197,27 @@ def test_staff_list_active_it_staff_by_name(client, frozen, lead, make_user, aut
     data = client.get(STAFF, headers=auth_headers(lead)).json()
     assert [user["name_en"] for user in data["items"]] == ["Chan Bopha", "Vann Dara"]
     assert all(user["is_active"] for user in data["items"])
+
+
+def test_staff_list_photo_and_setups_that_day(
+    client, frozen, lead, staff, make_user, setup, db_session, auth_headers
+):
+    """The assign picker: each person's photo, and with `day` how many setups they already
+    have that day (cancelled bookings and other days left out); null without `day`."""
+    other = make_user(roles=["IT_STAFF"], name_en="Vann Dara")
+    staff.user_avatar = "photo.jpg"
+    db_session.commit()
+    setup(ITStatus.ASSIGNED, staff=[staff])
+    setup(ITStatus.READY, staff=[staff, other], start=13)
+    setup(ITStatus.ASSIGNED, staff=[staff], day=DAY + timedelta(days=1))
+    setup(ITStatus.ASSIGNED, staff=[other], status=BookingStatus.CANCELLED)
+    headers = auth_headers(lead)
+
+    data = client.get(STAFF, params={"day": str(DAY)}, headers=headers).json()
+    rows = {user["name_en"]: user for user in data["items"]}
+    assert rows["Sok Pisey"]["avatar_url"] == f"/api/v1/users/{staff.id}/avatar"
+    assert rows["Vann Dara"]["avatar_url"] is None
+    assert (rows["Sok Pisey"]["setups_that_day"], rows["Vann Dara"]["setups_that_day"]) == (2, 1)
+
+    plain = client.get(STAFF, headers=headers).json()["items"]
+    assert all(user["setups_that_day"] is None for user in plain)

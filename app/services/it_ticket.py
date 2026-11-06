@@ -19,13 +19,14 @@ from app.constants.booking import (
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
 from app.models import Booking, ITTicket, Role, User, it_ticket_staff, user_roles
-from app.schemas.it_ticket import ITStaffOut, ITTicketItem
+from app.schemas.it_ticket import ITStaffOut, ITStaffPick, ITTicketItem
 from app.security import CurrentUser, load_role_codes
 from app.services import booking_access, booking_view
 from app.services import booking_transitions as transitions
 from app.services.clock import local_to_utc, now_local, now_utc
 from app.services.listing import apply_search, paginate
 from app.services.records import not_found
+from app.services.user_avatar import avatar_url
 
 NOT_ACTIVE_STAFF = "This user is not active IT Staff."
 NO_ACTIVE_STAFF = "Assign active IT Staff first."
@@ -182,6 +183,44 @@ def list_it_staff(session: Session) -> list[User]:
     return list(session.scalars(query).unique())
 
 
+def staff_out(user: User) -> ITStaffOut:
+    return ITStaffOut(
+        id=user.id,
+        name_en=user.name_en,
+        name_kh=user.name_kh,
+        is_active=user.is_active,
+        avatar_url=avatar_url(user),
+    )
+
+
+def staff_picks(session: Session, day: date | None) -> list[ITStaffPick]:
+    """The assign picker: active IT Staff by name; with `day`, how many setups (visible
+    tickets whose first session is that day) each one already has."""
+    users = list_it_staff(session)
+    counts: dict[int, int] = {}
+    if day is not None and users:
+        query = (
+            select(it_ticket_staff.c.user_id, func.count(ITTicket.id))
+            .join(ITTicket, ITTicket.id == it_ticket_staff.c.ticket_id)
+            .join(Booking, ITTicket.booking_id == Booking.id)
+            .where(
+                ITTicket.forwarded_at.is_not(None),
+                Booking.status.not_in(_HIDDEN),
+                transitions.first_day_sql() == day,
+                it_ticket_staff.c.user_id.in_([u.id for u in users]),
+            )
+            .group_by(it_ticket_staff.c.user_id)
+        )
+        counts = {user_id: n for user_id, n in session.execute(query)}
+    return [
+        ITStaffPick(
+            **staff_out(user).model_dump(),
+            setups_that_day=None if day is None else counts.get(user.id, 0),
+        )
+        for user in users
+    ]
+
+
 def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTicketItem]:
     """Answers for `tickets`. Their bookings, staff and reviews should be preloaded."""
     bookings = booking_view.build_booking_list_items([t.booking for t in tickets])
@@ -196,7 +235,7 @@ def build_ticket_items(tickets: list[ITTicket], settings: Settings) -> list[ITTi
                 items=ticket.requested_items,
                 special_requirements=ticket.special_requirements,
                 technician_notes=ticket.technician_notes,
-                staff=[ITStaffOut.model_validate(user) for user in ticket.staff],
+                staff=[staff_out(user) for user in ticket.staff],
                 setup_date=setup.date(),
                 setup_time=setup.time(),
                 forwarded_at=ticket.forwarded_at,
