@@ -93,10 +93,12 @@ class ITTicketItem(ResponseModel):
 
 class ITSummary(ResponseModel):
     """The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
-    ready today, today's setups and how many of them are ready."""
+    ready today, today's setups and how many of them are ready. Only a booking's first session
+    has a Ready check: its later sessions today are `repeat_today`, reminders to set up again."""
 
     to_assign: int
     in_progress: int
     ready_today: int
     due_today: int
     due_today_ready: int
+    repeat_today: int

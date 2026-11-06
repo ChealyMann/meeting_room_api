@@ -98,8 +98,11 @@ export function setupRows(items: ITTicketItem[], now: Date, whole = false): Setu
 
 /** The line under the IT setup title. */
 export function itSummaryLine(s: ITSummary): string {
-  const left = s.due_today ? `Today ${s.due_today_ready} of ${s.due_today} setups ready` : 'No setups today'
-  return `${left} · ${s.to_assign ? `${s.to_assign} to assign` : 'nothing to assign'}`
+  const again = s.repeat_today ? `${s.repeat_today} to set up again` : null
+  const today = s.due_today
+    ? [`Today ${s.due_today_ready} of ${s.due_today} setups ready`, again]
+    : [again ? `${again} today` : 'No setups today']
+  return [...today, s.to_assign ? `${s.to_assign} to assign` : 'nothing to assign'].filter(Boolean).join(' · ')
 }
 
 /** The ring: today's setups that are ready, of all due today. */

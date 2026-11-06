@@ -8,7 +8,7 @@ assigned to. The `version` in a request is the booking's (B-19).
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import Select, and_, func, literal_column, or_, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, aliased, selectinload
 
 from app.config import Settings
 from app.constants.booking import (
@@ -171,7 +171,8 @@ def list_tickets(
 
 def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
     """The IT Lead's day: to assign and in progress now (missed left out), made ready today,
-    and today's setups (first session today, Phnom Penh) with how many are ready."""
+    today's setups (first session today, Phnom Penh) with how many are ready, and later sessions
+    today (they have no Ready check)."""
     base = select(func.count(ITTicket.id)).join(Booking, ITTicket.booking_id == Booking.id)
     base = _visible(base, current)
 
@@ -181,6 +182,19 @@ def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
     today = now_local().date()
     start = local_to_utc(datetime.combine(today, time()))
     first_day = transitions.first_day_sql()
+    # An alias: first_start_sql's own subquery must still see its sessions, not correlate them.
+    today_session = aliased(BookingSession)
+    repeats = (
+        select(func.count(today_session.id))
+        .select_from(ITTicket)
+        .join(Booking, ITTicket.booking_id == Booking.id)
+        .join(today_session, today_session.booking_id == Booking.id)
+    )
+    repeats = _visible(repeats, current).where(
+        today_session.date == today,
+        func.timestamp(today_session.date, today_session.start_time)
+        > transitions.first_start_sql(),
+    )
     return {
         "to_assign": count(_in_state(base, "to_assign")),
         "in_progress": count(_in_state(base, "in_progress")),
@@ -191,6 +205,7 @@ def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
         "due_today_ready": count(
             base.where(first_day == today, ITTicket.status == ITStatus.READY.value)
         ),
+        "repeat_today": count(repeats),
     }
 
 

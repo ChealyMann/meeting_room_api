@@ -67,7 +67,7 @@ const DONE = [
   ticket(8, '2026-11-05', { status: 'READY', staff: [STAFF[0]], ready_at: '2026-11-05T01:00:00Z' }),
   ticket(9, '2026-11-04', { missed: true, status: 'ASSIGNED', staff: [STAFF[0]] }),
 ]
-const SUMMARY = { to_assign: 2, in_progress: 1, ready_today: 1, due_today: 6, due_today_ready: 4 }
+const SUMMARY = { to_assign: 2, in_progress: 1, ready_today: 1, due_today: 6, due_today_ready: 4, repeat_today: 0 }
 
 const calls: string[] = []
 const bodies: string[] = []
@@ -166,7 +166,7 @@ describe('IT setup', () => {
   })
 
   it('shows 0/0 light when nothing is due today', async () => {
-    summary = { to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0 }
+    summary = { to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0, repeat_today: 0 }
     const { wrapper } = await mountAt()
     expect(wrapper.get('.today-ring').classes()).toContain('empty')
     expect(wrapper.get('.sub').text()).toBe('No setups today · 2 to assign')

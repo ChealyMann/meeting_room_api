@@ -61,21 +61,23 @@ describe('groupByDoneDay', () => {
 
 describe('texts', () => {
   it.each([
-    [{ to_assign: 2, in_progress: 1, ready_today: 4, due_today: 6, due_today_ready: 4 }, 'Today 4 of 6 setups ready · 2 to assign'],
-    [{ to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0 }, 'No setups today · 2 to assign'],
-    [{ to_assign: 0, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0 }, 'No setups today · nothing to assign'],
+    [{ to_assign: 2, in_progress: 1, ready_today: 4, due_today: 6, due_today_ready: 4, repeat_today: 0 }, 'Today 4 of 6 setups ready · 2 to assign'],
+    [{ to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0, repeat_today: 0 }, 'No setups today · 2 to assign'],
+    [{ to_assign: 2, in_progress: 1, ready_today: 1, due_today: 3, due_today_ready: 1, repeat_today: 2 }, 'Today 1 of 3 setups ready · 2 to set up again · 2 to assign'],
+    [{ to_assign: 0, in_progress: 1, ready_today: 0, due_today: 0, due_today_ready: 0, repeat_today: 1 }, '1 to set up again today · nothing to assign'],
+    [{ to_assign: 0, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0, repeat_today: 0 }, 'No setups today · nothing to assign'],
   ])('%j → %s', (s, line) => {
     expect(itSummaryLine(s)).toBe(line)
   })
 
   it('draws the ring from today’s setups', () => {
-    expect(itRing({ to_assign: 2, in_progress: 1, ready_today: 4, due_today: 6, due_today_ready: 4 })).toEqual({
+    expect(itRing({ to_assign: 2, in_progress: 1, ready_today: 4, due_today: 6, due_today_ready: 4, repeat_today: 0 })).toEqual({
       parts: [{ value: 4 / 6, tone: 'ok' }],
       label: '4/6',
       spoken: '4 of 6 setups ready today',
     })
     // Review Focus 5: nothing due today.
-    expect(itRing({ to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0 })).toEqual({
+    expect(itRing({ to_assign: 2, in_progress: 0, ready_today: 0, due_today: 0, due_today_ready: 0, repeat_today: 0 })).toEqual({
       parts: [],
       label: '0/0',
       spoken: 'No setups today',

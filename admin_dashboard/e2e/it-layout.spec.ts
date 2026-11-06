@@ -106,7 +106,7 @@ async function signedIn(page: Page, path: string, roles = ['IT_LEAD']) {
       return route.fulfill({ json: { items, total: items.length } })
     }
     if (url.pathname === '/api/v1/it/tickets/summary') {
-      return route.fulfill({ json: { to_assign: 3, in_progress: 2, ready_today: 1, due_today: 3, due_today_ready: 1 } })
+      return route.fulfill({ json: { to_assign: 3, in_progress: 2, ready_today: 1, due_today: 3, due_today_ready: 1, repeat_today: 0 } })
     }
     if (url.pathname === '/api/v1/it/tickets') {
       const state = url.searchParams.get('state')

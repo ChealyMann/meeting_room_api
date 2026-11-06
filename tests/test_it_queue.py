@@ -183,7 +183,28 @@ def test_summary_counts(client, frozen, freeze_now, lead, staff, setup, auth_hea
         "ready_today": 1,
         "due_today": 3,
         "due_today_ready": 1,
+        "repeat_today": 0,
     }
+
+
+def test_summary_counts_later_sessions_today_apart(
+    client, frozen, freeze_now, lead, staff, setup, auth_headers
+):
+    """Only a booking's first session has a Ready check, so later sessions today stay out of
+    `due_today`: they are `repeat_today`, reminders to set up again."""
+    today = date(2026, 11, 9)
+    earlier = today - timedelta(days=1)
+    setup(ITStatus.READY, staff=[staff], ready_at=datetime(2026, 11, 8, 0, 0),
+          status=BookingStatus.CONFIRMED,
+          sessions=((earlier, time(9), time(10)), (today, time(14), time(15))))  # fmt: skip
+    # Two sessions today: the first is due, the second is a repeat.
+    setup(ITStatus.ASSIGNED, staff=[staff],
+          sessions=((today, time(10), time(11)), (today, time(15), time(16))))  # fmt: skip
+    setup(sessions=((earlier, time(9), time(10)), (today, time(16), time(17))),
+          status=BookingStatus.CANCELLED)  # fmt: skip
+    freeze_now(datetime(2026, 11, 9, 9, 0))
+    data = client.get(SUMMARY, headers=auth_headers(lead)).json()
+    assert (data["due_today"], data["repeat_today"]) == (1, 2)
 
 
 def test_summary_and_staff_lead_only(client, frozen, staff, as_staff, auth_headers):

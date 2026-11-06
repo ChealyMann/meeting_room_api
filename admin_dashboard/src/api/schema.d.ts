@@ -2600,7 +2600,8 @@ export interface components {
         /**
          * ITSummary
          * @description The IT Lead's day (Phnom Penh): to assign and in progress now (missed left out), made
-         *     ready today, today's setups and how many of them are ready.
+         *     ready today, today's setups and how many of them are ready. Only a booking's first session
+         *     has a Ready check: its later sessions today are `repeat_today`, reminders to set up again.
          */
         ITSummary: {
             /** To Assign */
@@ -2613,6 +2614,8 @@ export interface components {
             due_today: number;
             /** Due Today Ready */
             due_today_ready: number;
+            /** Repeat Today */
+            repeat_today: number;
         };
         /** ITTicketItem */
         ITTicketItem: {
