@@ -9,6 +9,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api'
 import { listBookableRooms, listMyBookings } from '../../api/staff'
 import type { BookingDetail, BookingListItem } from '../../api/types'
+import BaseButton from '../../components/base/BaseButton.vue'
+import EmptyState from '../../components/list/EmptyState.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { statusLabel } from '../../utils/bookingLabels'
@@ -77,7 +79,7 @@ const tone = (status: string) =>
   <section class="st-page my-page">
     <header class="st-head head">
       <h1>My bookings</h1>
-      <button type="button" class="book" @click="router.push({ name: 'find-room' })"><Plus :size="16" aria-hidden="true" />Book a room</button>
+      <BaseButton variant="primary" @click="router.push({ name: 'find-room' })"><Plus aria-hidden="true" />Book a room</BaseButton>
     </header>
 
     <div class="st-seg tabs" role="tablist" aria-label="Bookings">
@@ -90,10 +92,14 @@ const tone = (status: string) =>
     </div>
 
     <p v-if="failed" class="st-empty" role="alert"><b>Your bookings could not load</b></p>
-    <div v-else-if="loaded && !shown.length" class="st-empty">
-      <b>{{ tab === 'soon' ? 'Nothing coming up' : 'Nothing here yet' }}</b>
-      <button v-if="tab === 'soon'" type="button" class="book" @click="router.push({ name: 'find-room' })">Book a room</button>
-    </div>
+    <EmptyState v-else-if="loaded && !shown.length && tab === 'soon'" title="Nothing coming up" text="Book a room and it shows here.">
+      <BaseButton variant="primary" @click="router.push({ name: 'find-room' })">Book a room</BaseButton>
+    </EmptyState>
+    <EmptyState
+      v-else-if="loaded && !shown.length"
+      title="Nothing here yet"
+      text="Past, cancelled and not approved bookings show here."
+    />
     <ul v-else class="list">
       <li v-for="b in shown" :key="b.id">
         <article class="bk-card" tabindex="0" :aria-label="`${b.meeting_title}, details`" @click="openBooking(b.id)" @keydown.enter="openBooking(b.id)">
@@ -127,23 +133,6 @@ const tone = (status: string) =>
   justify-content: space-between;
   gap: 16px;
 }
-.book {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--color-crimson-fill);
-  color: #fff;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms var(--ease-out-quint);
-}
-.book:active,
 .pass:active {
   transform: scale(0.97);
 }
@@ -276,9 +265,6 @@ const tone = (status: string) =>
   .bk-card:hover {
     box-shadow: 0 6px 20px rgba(30, 22, 17, 0.08);
   }
-  .book:hover {
-    background: var(--color-crimson-deep);
-  }
   .pass:hover {
     background: var(--color-rule);
   }
@@ -291,7 +277,6 @@ const tone = (status: string) =>
 }
 @media (prefers-reduced-motion: reduce) {
   .bk-card,
-  .book,
   .pass {
     transition: none;
   }
