@@ -151,7 +151,6 @@ const tone = (status: string) =>
 .list {
   display: grid;
   gap: 10px;
-  max-width: 980px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -177,9 +176,10 @@ const tone = (status: string) =>
 .date {
   display: grid;
   flex: none;
+  align-content: center;
   justify-items: center;
-  width: 58px;
-  padding: 6px 0;
+  width: 64px;
+  height: 68px;
   border-radius: 12px;
   background: var(--color-paper);
 }
@@ -200,11 +200,12 @@ const tone = (status: string) =>
 }
 .ph {
   flex: none;
-  width: 72px;
-  height: 52px;
+  width: 100px;
+  height: 68px;
   overflow: hidden;
   border-radius: 12px;
 }
+.ph :deep(.room-photo),
 .ph :deep(img) {
   width: 100%;
   height: 100%;
@@ -219,7 +220,7 @@ const tone = (status: string) =>
 .txt h2 {
   overflow: hidden;
   margin: 0;
-  font-size: 15.5px;
+  font-size: 16px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;

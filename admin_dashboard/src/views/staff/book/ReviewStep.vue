@@ -144,6 +144,7 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
   overflow: hidden;
   border-radius: 12px;
 }
+.rv-room .ph :deep(.room-photo),
 .rv-room .ph :deep(img) {
   width: 100%;
   height: 100%;

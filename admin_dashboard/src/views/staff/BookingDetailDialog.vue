@@ -149,19 +149,20 @@ async function reload() {
         </div>
       </dl>
 
-      <button v-if="open" type="button" class="cal" @click="addToCalendar">
-        <CalendarPlus :size="16" aria-hidden="true" />Add to calendar
-      </button>
-      <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
-
       <div v-if="open" class="cancel">
-        <textarea v-model="reason" rows="2" placeholder="Reason (optional)" aria-label="Reason for cancelling (optional)" />
-        <p v-if="cancelError" class="msg" role="alert">
-          {{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button>
-        </p>
-        <button type="button" class="danger" :disabled="busy" @click="cancel">Cancel booking</button>
+        <textarea v-model="reason" rows="1" placeholder="Reason to cancel (optional)" aria-label="Reason to cancel (optional)" />
       </div>
+      <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
+      <p v-if="cancelError" class="msg" role="alert">
+        {{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button>
+      </p>
     </div>
+
+    <!-- The actions stay in the panel's foot, like every dashboard panel. -->
+    <template v-if="booking && open" #foot>
+      <button type="button" class="danger" :disabled="busy" @click="cancel">Cancel booking</button>
+      <button type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+    </template>
   </SidePanel>
 </template>
 
@@ -175,6 +176,7 @@ async function reload() {
   overflow: hidden;
   border-radius: 16px;
 }
+.ph :deep(.room-photo),
 .ph :deep(img) {
   width: 100%;
   height: 100%;
@@ -220,18 +222,23 @@ dd {
   transition: background-color 160ms ease, transform 160ms var(--ease-out-quint);
 }
 .cal {
-  justify-self: start;
   background: var(--color-field-disabled);
   color: var(--color-ink);
 }
+/* Cancel sits apart at the start of the foot; Add to calendar at the end. */
+.danger {
+  margin-right: auto;
+}
 .cancel {
   display: grid;
-  gap: 10px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-rule);
 }
 .cancel textarea {
-  padding: 10px 14px;
+  box-sizing: border-box;
+  min-height: 42px;
+  max-height: 120px;
+  padding: 11px 14px;
+  field-sizing: content;
+  line-height: 20px;
   border: 0;
   border-radius: 12px;
   outline: none;
