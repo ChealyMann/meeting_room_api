@@ -12,6 +12,8 @@ import { listHolidays } from '../../api/staff'
 import type { PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { addDays, phnomPenhClock } from '../../utils/time'
+import MeetingStep from './book/MeetingStep.vue'
+import { meetingErrors } from './book/meetingErrors'
 import SideCard from './book/SideCard.vue'
 import StepBar from './book/StepBar.vue'
 import { useBookingDraft } from './book/useBookingDraft'
@@ -82,9 +84,20 @@ function add(s: PickedSession) {
   message.value = ''
 }
 
+// Step 2 shows its errors once someone tried to leave it; they then follow the typing.
+const tried = ref(false)
+const errors = computed(() => (tried.value && room.value ? meetingErrors(draft, room.value) : {}))
+
 function go(step: number) {
   if (step > 1 && draft.sessions.length === 0) {
+    draft.step = 1
     message.value = 'Pick at least one time in the table.'
+    return
+  }
+  if (step > 2 && room.value && Object.keys(meetingErrors(draft, room.value)).length) {
+    tried.value = true
+    draft.step = 2
+    reached.value = Math.max(reached.value, 2)
     return
   }
   message.value = ''
@@ -130,6 +143,7 @@ function back() {
               @remove="removeSession"
             />
           </template>
+          <MeetingStep v-else-if="draft.step === 2" :draft="draft" :room="room" :errors="errors" />
           <p v-else class="st-empty">{{ STEPS[draft.step - 1] }}</p>
         </main>
         <SideCard
