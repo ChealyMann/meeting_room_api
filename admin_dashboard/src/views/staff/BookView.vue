@@ -8,12 +8,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api'
 import { getRoomSchedule } from '../../api/bookings'
 import { getRoom } from '../../api/rooms'
-import { listHolidays } from '../../api/staff'
+import type { ServiceOut } from '../../api/services'
+import { listActiveServices, listHolidays } from '../../api/staff'
 import type { PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { addDays, phnomPenhClock } from '../../utils/time'
 import MeetingStep from './book/MeetingStep.vue'
 import { meetingErrors } from './book/meetingErrors'
+import ServicesStep from './book/ServicesStep.vue'
 import SideCard from './book/SideCard.vue'
 import StepBar from './book/StepBar.vue'
 import { useBookingDraft } from './book/useBookingDraft'
@@ -45,6 +47,8 @@ const { draft, addSession, removeSession } = useBookingDraft(roomId, first)
 const room = ref<RoomDetail | null>(null)
 const busy = ref<ScheduleItem[]>([])
 const holidays = ref<PublicHolidayOut[]>([])
+const foods = ref<ServiceOut[]>([])
+const its = ref<ServiceOut[]>([])
 const failed = ref(false)
 const message = ref('')
 const reached = ref(1)
@@ -73,6 +77,13 @@ onMounted(async () => {
   try {
     room.value = await getRoom(api, roomId)
     await loadWeek()
+    // Food and IT lists are not needed for step 1: a failure leaves them empty, the booking goes on.
+    const [f, i] = await Promise.all([
+      listActiveServices(api, 'catering').catch(() => []),
+      listActiveServices(api, 'it').catch(() => []),
+    ])
+    foods.value = f
+    its.value = i
   } catch {
     failed.value = true
   }
@@ -144,6 +155,7 @@ function back() {
             />
           </template>
           <MeetingStep v-else-if="draft.step === 2" :draft="draft" :room="room" :errors="errors" />
+          <ServicesStep v-else-if="draft.step === 3" :draft="draft" :foods="foods" :its="its" />
           <p v-else class="st-empty">{{ STEPS[draft.step - 1] }}</p>
         </main>
         <SideCard
