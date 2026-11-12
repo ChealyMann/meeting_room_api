@@ -29,9 +29,17 @@ onBeforeUnmount(() => clearInterval(tick))
 const title = computed(() =>
   props.live.failing.value ? "Can't reach the server · Try again" : `Updated ${updatedAgo(props.live.lastOk.value, now.value)} · Refresh`,
 )
+// The turn (Emil Kowalski's motion rules): only when someone presses the button — the quiet
+// refresh every 15 s stays still. One full turn plays even when the reload is instant, so the
+// press is seen to work; a slow reload keeps turning, and it stops only at the end of a turn.
+const turning = ref(false)
 function refresh() {
   now.value = Date.now()
+  turning.value = true
   void props.live.run()
+}
+function turnDone() {
+  if (!props.live.refreshing.value) turning.value = false
 }
 </script>
 
@@ -39,13 +47,13 @@ function refresh() {
   <button
     type="button"
     class="btn refresh"
-    :class="{ turning: live.refreshing.value, off: live.failing.value }"
+    :class="{ turning, off: live.failing.value }"
     aria-label="Refresh"
     :title="title"
     :aria-busy="live.refreshing.value || undefined"
     @click="refresh"
   >
-    <RotateCw aria-hidden="true" />
+    <RotateCw aria-hidden="true" @animationiteration="turnDone" />
   </button>
 </template>
 
@@ -54,14 +62,22 @@ function refresh() {
   width: 36px;
   padding: 0;
   color: var(--color-intaglio);
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out-quint);
+}
+/* Pressed: it gives a little, like every pressable thing here. */
+.refresh:active {
+  transform: scale(0.97);
 }
 .refresh svg {
   width: 16px;
   height: 16px;
 }
-/* One smooth turn per refresh; a slow one keeps turning until it is done. */
+/* One smooth turn per press (ease-in-out: it sets off and settles); a slow reload keeps going. */
 .refresh.turning svg {
-  animation: turn 700ms var(--ease-out-quint) infinite;
+  animation: turn 600ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 .refresh.off {
   border-color: var(--color-warn);
@@ -77,10 +93,16 @@ function refresh() {
     color: var(--color-ink);
   }
 }
+/* Reduced motion: no turning; the icon fades softly instead (same timing, same stop). */
+@keyframes fade {
+  50% {
+    opacity: 0.35;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .refresh.turning svg {
-    animation-duration: 1.6s;
-    animation-timing-function: linear;
+    animation-name: fade;
+    animation-timing-function: ease;
   }
 }
 </style>

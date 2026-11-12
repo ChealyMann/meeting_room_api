@@ -45,10 +45,34 @@ describe('RefreshButton', () => {
     expect(live.run).toHaveBeenCalledTimes(1)
   })
 
-  it('turns while it refreshes', () => {
+  it('does not turn for the quiet refresh every 15 s', () => {
     const w = mount(RefreshButton, { props: { live: fakeLive({ refreshing: true }) } })
-    expect(w.get('button').classes()).toContain('turning')
+    expect(w.get('button').classes()).not.toContain('turning')
     expect(w.get('button').attributes('aria-busy')).toBe('true')
+  })
+
+  it('makes one full turn on a click, even when the refresh is quick', async () => {
+    const live = fakeLive()
+    const w = mount(RefreshButton, { props: { live } })
+    const button = w.get('button')
+    await button.trigger('click')
+    expect(button.classes()).toContain('turning') // the refresh is already done; the turn still plays
+    await w.get('svg').trigger('animationiteration') // the end of a full turn
+    expect(button.classes()).not.toContain('turning')
+  })
+
+  it('keeps turning while a slow refresh works, and stops at the end of a turn', async () => {
+    const live = fakeLive()
+    const w = mount(RefreshButton, { props: { live } })
+    await w.get('button').trigger('click')
+    live.refreshing.value = true
+    await w.get('svg').trigger('animationiteration')
+    expect(w.get('button').classes()).toContain('turning')
+    live.refreshing.value = false
+    await w.vm.$nextTick()
+    expect(w.get('button').classes()).toContain('turning') // never stops mid-turn
+    await w.get('svg').trigger('animationiteration')
+    expect(w.get('button').classes()).not.toContain('turning')
   })
 
   it('says when the server cannot be reached', () => {
