@@ -42,5 +42,7 @@ const tabs = computed<HeadTab[]>(() => {
     :tabs="tabs"
     :tab="tab"
     @select="emit('select', $event as Tab)"
-  />
+  >
+    <template #actions><slot name="actions" /></template>
+  </QueueHead>
 </template>

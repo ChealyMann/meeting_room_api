@@ -13,10 +13,11 @@ import type { ITSummary, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import DatePicker from '../components/base/DatePicker.vue'
 import ListSearch from '../components/list/ListSearch.vue'
+import OfflineNote from '../components/list/OfflineNote.vue'
+import RefreshButton from '../components/list/RefreshButton.vue'
 import QueueHead, { type HeadTab } from '../components/QueueHead.vue'
 import { useListQuery } from '../composables/useListQuery'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
-import { useLiveRefresh } from '../composables/useLiveRefresh'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { itRing, itSummaryLine, itTabFrom, type ItTab } from '../utils/itQueue'
 import ITQueue from './it/ITQueue.vue'
@@ -43,7 +44,9 @@ async function loadSummary() {
 const today = usePhnomPenhToday()
 onMounted(loadSummary)
 watch(today, loadSummary)
-useLiveRefresh(loadSummary) // the ring and the tab counts follow new bookings
+// The queue below reloads the summary with each refresh, and hands up its refresh status.
+const queue = ref<InstanceType<typeof ITQueue> | null>(null)
+const live = computed(() => queue.value?.live ?? null)
 
 // Rooms, loaded once: where each room is (office · building · floor) and its photo.
 const rooms = ref<RoomListItem[]>([])
@@ -84,7 +87,10 @@ function selectTab(next: string) {
       :tabs="tabs"
       :tab="tab"
       @select="selectTab"
-    />
+    >
+      <template #actions><RefreshButton v-if="live" :live="live" /></template>
+    </QueueHead>
+    <OfflineNote v-if="live" :live="live" class="offline" />
 
     <div class="filters" role="search">
       <ListSearch
@@ -123,13 +129,16 @@ function selectTab(next: string) {
       </BaseButton>
     </div>
 
-    <ITQueue :key="tab" :tab="tab" :rooms="rooms" :actions="true" @changed="loadSummary" />
+    <ITQueue ref="queue" :key="tab" :tab="tab" :rooms="rooms" :actions="true" :also-refresh="loadSummary" @changed="loadSummary" />
   </div>
 </template>
 
 <style scoped src="./listPage.css"></style>
 
 <style scoped>
+.offline {
+  margin: 16px 0 0;
+}
 .day {
   display: inline-flex;
   align-items: center;

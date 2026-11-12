@@ -11,6 +11,8 @@ import { listBookableRooms, listMyBookings } from '../../api/staff'
 import type { BookingDetail, BookingListItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import EmptyState from '../../components/list/EmptyState.vue'
+import OfflineNote from '../../components/list/OfflineNote.vue'
+import RefreshButton from '../../components/list/RefreshButton.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { statusLabel } from '../../utils/bookingLabels'
@@ -39,12 +41,13 @@ async function loadList(quiet = false) {
     items.value = (await listMyBookings(api, { page: 1, size: 100 })).items
     failed.value = false
   } catch {
-    if (!quiet) failed.value = true
+    if (quiet) throw new Error('refresh failed') // what is shown stays; the button learns it
+    failed.value = true
   } finally {
     loaded.value = true
   }
 }
-useLiveRefresh(() => loadList(true))
+const live = useLiveRefresh(() => loadList(true))
 
 onMounted(async () => {
   await loadList()
@@ -79,9 +82,13 @@ const tone = (status: string) =>
   <section class="st-page my-page">
     <header class="st-head head">
       <h1>My bookings</h1>
-      <BaseButton variant="primary" @click="router.push({ name: 'find-room' })"><Plus aria-hidden="true" />Book a room</BaseButton>
+      <div class="head-actions">
+        <RefreshButton :live="live" />
+        <BaseButton variant="primary" @click="router.push({ name: 'find-room' })"><Plus aria-hidden="true" />Book a room</BaseButton>
+      </div>
     </header>
 
+    <OfflineNote :live="live" class="offline" />
     <div class="st-seg tabs" role="tablist" aria-label="Bookings">
       <button type="button" role="tab" :aria-selected="tab === 'soon'" :class="{ on: tab === 'soon' }" @click="tab = 'soon'">
         Coming up <span class="n">{{ soon.length }}</span>
@@ -135,6 +142,13 @@ const tone = (status: string) =>
 }
 .pass:active {
   transform: scale(0.97);
+}
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+.offline {
+  margin: 18px 0 0;
 }
 .tabs {
   align-self: flex-start;

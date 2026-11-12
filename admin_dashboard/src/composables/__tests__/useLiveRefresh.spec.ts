@@ -14,11 +14,12 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+let live!: ReturnType<typeof useLiveRefresh>
 function host(refresh: () => unknown) {
   return mount(
     defineComponent({
       setup() {
-        useLiveRefresh(refresh)
+        live = useLiveRefresh(refresh)
         return () => h('div')
       },
     }),
@@ -95,5 +96,48 @@ describe('useLiveRefresh', () => {
     vi.advanceTimersByTime(60_000)
     await flushPromises()
     expect(refresh).toHaveBeenCalledTimes(2)
+  })
+
+  describe('status for the refresh button', () => {
+    it('refreshes at once on request, and says when it last worked', async () => {
+      vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
+      let finish!: () => void
+      const refresh = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)))
+      host(refresh)
+      expect(live.lastOk.value).toBe(Date.parse('2026-11-12T03:00:00Z')) // the page's first load
+      vi.setSystemTime(new Date('2026-11-12T03:01:00Z'))
+      const done = live.run()
+      expect(refresh).toHaveBeenCalledTimes(1)
+      expect(live.refreshing.value).toBe(true)
+      finish()
+      await done
+      expect(live.refreshing.value).toBe(false)
+      expect(live.lastOk.value).toBe(Date.parse('2026-11-12T03:01:00Z'))
+      expect(live.failing.value).toBe(false)
+    })
+
+    it('says it cannot reach the server, keeps the last good time, and clears when it works again', async () => {
+      vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
+      let fail = true
+      host(async () => {
+        if (fail) throw new Error('offline')
+      })
+      vi.setSystemTime(new Date('2026-11-12T03:02:00Z'))
+      await live.run()
+      expect(live.failing.value).toBe(true)
+      expect(live.lastOk.value).toBe(Date.parse('2026-11-12T03:00:00Z'))
+      fail = false
+      await live.run()
+      expect(live.failing.value).toBe(false)
+      expect(live.lastOk.value).toBe(Date.parse('2026-11-12T03:02:00Z'))
+    })
+
+    it('refreshes on request even while the tab is hidden', async () => {
+      const refresh = vi.fn()
+      host(refresh)
+      hidden = true
+      await live.run()
+      expect(refresh).toHaveBeenCalledTimes(1)
+    })
   })
 })

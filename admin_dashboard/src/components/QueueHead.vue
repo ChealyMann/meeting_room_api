@@ -91,6 +91,7 @@ watch(
         {{ t.label }}<em v-if="t.count !== null" class="mono">{{ t.count }}</em>
       </button>
     </div>
+    <slot name="actions" />
   </div>
 </template>
 

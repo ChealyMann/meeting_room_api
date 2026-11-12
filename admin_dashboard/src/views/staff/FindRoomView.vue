@@ -14,6 +14,8 @@ import type { RoomDaySchedule, RoomListItem } from '../../api/types'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { formatDay, phnomPenhClock } from '../../utils/time'
+import OfflineNote from '../../components/list/OfflineNote.vue'
+import RefreshButton from '../../components/list/RefreshButton.vue'
 import RoomCard from './RoomCard.vue'
 import { busySpans, nowLine, roomHours, toMin, type NowLine } from './rules'
 import './staff.css'
@@ -103,7 +105,7 @@ watch(q, (text) => {
 })
 watch([query, building, kind], () => load())
 // Quiet refresh: the live lines of every loaded room follow new bookings with no click.
-useLiveRefresh(() => (loading.value || !rooms.value.length ? undefined : loadDays(rooms.value.map((r) => r.id))))
+const live = useLiveRefresh(() => (loading.value || !rooms.value.length ? undefined : loadDays(rooms.value.map((r) => r.id))))
 
 // The end of the list: a line under the cards; when it comes near the view, the next page loads.
 const page = ref<HTMLElement | null>(null)
@@ -173,10 +175,14 @@ const KINDS = [
 
 <template>
   <section ref="page" class="st-page find-room">
-    <header class="st-head">
-      <h1>Find a room</h1>
-      <p>{{ formatDay(today) }} · {{ countText }}</p>
+    <header class="st-head head">
+      <div>
+        <h1>Find a room</h1>
+        <p>{{ formatDay(today) }} · {{ countText }}</p>
+      </div>
+      <RefreshButton :live="live" />
     </header>
+    <OfflineNote :live="live" class="offline" />
 
     <div class="bar" role="search">
       <label class="st-search">
@@ -244,6 +250,15 @@ const KINDS = [
 </template>
 
 <style scoped>
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.offline {
+  margin: 18px 0 0;
+}
 .bar {
   display: flex;
   flex-wrap: wrap;
