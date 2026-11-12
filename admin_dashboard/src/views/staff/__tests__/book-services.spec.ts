@@ -108,14 +108,15 @@ describe('Booking step 3: food and IT', () => {
     expect(icons('it')).toEqual(['projector', 'mic', 'headset'])
   })
 
-  it('counts a pick made while searching, with servings and a note field', async () => {
+  it('counts a pick made while searching, with no serving line, and a note field', async () => {
     const w = await step3()
     expect(food(w).get('.svc-h').text()).toContain('None')
     expect(food(w).find('textarea[name="foodNote"]').exists()).toBe(false)
     await food(w).get('input[type="search"]').setValue('coffee')
     await food(w).get('.row').trigger('click')
     expect(food(w).get('.svc-h').text()).toContain('1 picked')
-    expect(food(w).text()).toContain('× 8 · served at 08:00')
+    expect(food(w).text()).not.toContain('served at')
+    expect(food(w).get('.row.on').text()).toContain('Coffee and tea')
     expect(food(w).find('textarea[name="foodNote"]').exists()).toBe(true)
   })
 })

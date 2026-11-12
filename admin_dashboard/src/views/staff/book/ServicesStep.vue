@@ -4,7 +4,7 @@
 import { computed } from 'vue'
 
 import type { ServiceOut } from '../../../api/services'
-import { foodGroupFirst, toTime } from '../rules'
+import { foodGroupFirst } from '../rules'
 import ServiceList from './ServiceList.vue'
 import type { BookingDraft } from './useBookingDraft'
 
@@ -23,8 +23,6 @@ const foodOrder = computed(() => {
   const head = foodGroupFirst(firstStart.value)
   return [head, ...['BREAKFAST', 'MEALS', 'BREAKS'].filter((g) => g !== head)]
 })
-/** Servings follow the people coming (the API serves one per person). */
-const served = computed(() => `× ${draft.value.people} · served at ${toTime(firstStart.value)}`)
 
 function toggle(list: 'foods' | 'its', id: number) {
   const now = draft.value[list]
@@ -42,10 +40,9 @@ function toggle(list: 'foods' | 'its', id: number) {
       :group-labels="FOOD_LABELS"
       :picked="draft.foods"
       search-label="food"
-      :picked-line="served"
       @toggle="toggle('foods', $event)"
     >
-      <textarea v-if="draft.foods.length" v-model="draft.foodNote" name="foodNote" class="note" rows="2" placeholder="Note for the kitchen" aria-label="Note for the kitchen" />
+      <textarea v-if="draft.foods.length" v-model="draft.foodNote" name="foodNote" class="note" rows="1" placeholder="Note for the kitchen" aria-label="Note for the kitchen" />
     </ServiceList>
     <ServiceList
       kind="it"
@@ -57,7 +54,7 @@ function toggle(list: 'foods' | 'its', id: number) {
       search-label="IT help"
       @toggle="toggle('its', $event)"
     >
-      <textarea v-if="draft.its.length" v-model="draft.itNote" name="itNote" class="note" rows="2" placeholder="Note for IT" aria-label="Note for IT" />
+      <textarea v-if="draft.its.length" v-model="draft.itNote" name="itNote" class="note" rows="1" placeholder="Note for IT" aria-label="Note for IT" />
     </ServiceList>
   </div>
 </template>
@@ -70,10 +67,16 @@ function toggle(list: 'foods' | 'its', id: number) {
   gap: 28px;
   min-height: 0;
 }
+/* The note matches the search field: one line, then it grows with the text (up to 4 lines). */
 .note {
   flex: none;
+  box-sizing: border-box;
+  min-height: 40px;
+  max-height: 112px;
   margin-top: 10px;
   padding: 10px 14px;
+  field-sizing: content;
+  line-height: 20px;
   border: 0;
   border-radius: 12px;
   outline: none;

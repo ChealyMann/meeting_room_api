@@ -16,8 +16,6 @@ const props = defineProps<{
   groupLabels: Record<string, string>
   picked: number[]
   searchLabel: string
-  /** Shown under a picked item, like "× 8 · served at 09:00". */
-  pickedLine?: string
 }>()
 const emit = defineEmits<{ toggle: [number] }>()
 
@@ -56,8 +54,7 @@ const headed = computed(() => props.items.some((item) => item.group && props.gro
           /></span>
           <span class="txt">
             <span class="name">{{ item.name }}</span>
-            <small v-if="isOn(item.id) && pickedLine" class="line">{{ pickedLine }}</small>
-            <small v-else-if="item.description">{{ item.description }}</small>
+            <small v-if="item.description">{{ item.description }}</small>
           </span>
           <span class="tick" aria-hidden="true"><Check :size="12" :stroke-width="3" /></span>
         </button>
@@ -172,13 +169,18 @@ const headed = computed(() => props.items.some((item) => item.group && props.gro
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms var(--ease-out-quint);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms var(--ease-out-quint);
 }
 .row:active {
   transform: scale(0.99);
 }
+.row + .row {
+  margin-top: 2px;
+}
+/* A light stroke keeps two picked rows apart. */
 .row.on {
   background: var(--color-crimson-wash);
+  box-shadow: inset 0 0 0 1px var(--color-danger-line);
 }
 .svc-scroll > .row:first-child {
   margin-top: 6px;
@@ -219,9 +221,6 @@ const headed = computed(() => props.items.some((item) => item.group && props.gro
   font-size: 12.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.txt small.line {
-  color: var(--color-crimson);
 }
 .tick {
   display: grid;
