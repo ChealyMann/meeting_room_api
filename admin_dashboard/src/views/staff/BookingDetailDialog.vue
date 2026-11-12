@@ -149,19 +149,22 @@ async function reload() {
         </div>
       </dl>
 
-      <div v-if="open" class="cancel">
-        <textarea v-model="reason" rows="1" placeholder="Reason to cancel (optional)" aria-label="Reason to cancel (optional)" />
-      </div>
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
-      <p v-if="cancelError" class="msg" role="alert">
-        {{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button>
-      </p>
     </div>
 
-    <!-- The actions stay in the panel's foot, like every dashboard panel. -->
+    <!-- The actions stay in the panel's foot, like every dashboard panel; the reason sits right
+         above the button it belongs to. -->
     <template v-if="booking && open" #foot>
-      <button type="button" class="danger" :disabled="busy" @click="cancel">Cancel booking</button>
-      <button type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+      <div class="foot">
+        <textarea v-model="reason" class="reason" rows="1" placeholder="Reason to cancel (optional)" aria-label="Reason to cancel (optional)" />
+        <p v-if="cancelError" class="msg" role="alert">
+          {{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button>
+        </p>
+        <div class="row">
+          <button type="button" class="danger" :disabled="busy" @click="cancel">Cancel booking</button>
+          <button type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+        </div>
+      </div>
     </template>
   </SidePanel>
 </template>
@@ -229,10 +232,16 @@ dd {
 .danger {
   margin-right: auto;
 }
-.cancel {
+.foot {
   display: grid;
+  flex: 1;
+  gap: 10px;
 }
-.cancel textarea {
+.row {
+  display: flex;
+  gap: 8px;
+}
+.reason {
   box-sizing: border-box;
   min-height: 42px;
   max-height: 120px;
@@ -248,7 +257,7 @@ dd {
   font-size: 14px;
   resize: none;
 }
-.cancel textarea:focus {
+.reason:focus {
   background: var(--color-sheet);
   box-shadow: 0 0 0 1.5px var(--color-ink);
 }
