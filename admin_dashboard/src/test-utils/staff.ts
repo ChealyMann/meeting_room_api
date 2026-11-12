@@ -102,3 +102,44 @@ export function bookingStubs(room: { id: number }, answers: StubAnswers = {}) {
   }
   return { fetch, calls, bodies }
 }
+
+/** A booking in "My bookings" (the list shape). */
+export const bookingItem = (id: number, title: string, status: string, date: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  reference_code: `NBC-26-${id}`,
+  room: { id: 12, name_en: 'Mekong Room', name_kh: 'x', is_private: false, location: { id: 1, name_en: 'NBC', name_kh: 'x' }, province: { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'x' } },
+  meeting_title: title,
+  meeting_type: 'INTERNAL',
+  route: 'R1',
+  status: status === 'COMPLETED' ? 'CONFIRMED' : status,
+  display_status: status,
+  requester: { id: 5, name_en: 'Sok Dara', name_kh: 'x' },
+  first_session: { id: id * 10, date, start_time: '09:00', end_time: '10:00' },
+  session_count: 1,
+  attendees: 8,
+  has_catering: false,
+  has_it: false,
+  created_at: '2026-11-10T02:00:00Z',
+  version: 3,
+  ...extra,
+})
+
+/** The same booking with its details (GET /bookings/{id}). */
+export const bookingDetail = (item: ReturnType<typeof bookingItem>, extra: Record<string, unknown> = {}) => ({
+  ...item,
+  requester_info: { name_en: 'Sok Dara' },
+  meeting_purpose: null,
+  private_justification: null,
+  participant_emails: [],
+  sessions: [item.first_session],
+  last_end: { date: item.first_session.date, time: '10:00' },
+  catering: null,
+  it: null,
+  reviews: [],
+  rejection: null,
+  cancelled_at: null,
+  cancel_reason: null,
+  cancelled_by: null,
+  updated_at: '2026-11-10T02:00:00Z',
+  ...extra,
+})
