@@ -100,6 +100,8 @@ export function nowLine(busy: Span[], hours: Hours, day: string, today: string, 
   if (current) {
     let until = current.b
     for (const s of busy) if (s.a <= until && s.b > until) until = s.b
+    // Busy up to closing time: the room does not come free after it, so no end time is named.
+    if (until >= hours.close) return { tone: 'alert', text: 'In use for the rest of the day' }
     return { tone: 'alert', text: `In use until ${toTime(until)}` }
   }
   const next = busy.find((s) => s.a > now)

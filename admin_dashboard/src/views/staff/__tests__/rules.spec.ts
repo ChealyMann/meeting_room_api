@@ -99,6 +99,13 @@ describe('nowLine', () => {
     expect(nowLine([], hours, D, D, toMin('17:40'))).toEqual({ tone: 'off', text: 'Closes at 18:00' })
   })
 
+  it('does not name closing time as the end of a meeting', () => {
+    const late = [{ a: 900, b: 1080, masked: false }]
+    expect(nowLine(late, hours, D, D, toMin('15:10'))).toEqual({ tone: 'alert', text: 'In use for the rest of the day' })
+    const chain = [{ a: 840, b: 900, masked: false }, { a: 900, b: 1080, masked: true }]
+    expect(nowLine(chain, hours, D, D, toMin('14:30'))).toEqual({ tone: 'alert', text: 'In use for the rest of the day' })
+  })
+
   it('says until when a room is in use, through meetings that touch', () => {
     expect(nowLine(busy, hours, D, D, toMin('14:30'))).toEqual({ tone: 'alert', text: 'In use until 15:00' })
     const chain = [...busy, { a: 900, b: 960, masked: true }]
