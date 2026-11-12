@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One room on Find a room: the photo, the names, the facts, a live line ("Free until 14:00"),
 // then Details and Book (shared) or Request (private: Pitika and the owner both check it).
-import { CalendarPlus, Lock } from 'lucide-vue-next'
+import { CalendarPlus, Clock, Lock } from 'lucide-vue-next'
 
 import type { RoomListItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -22,7 +22,7 @@ const bookWord = () => (props.room.is_private ? 'Request' : 'Book')
     <div class="body" @click="emit('details')">
       <div class="top">
         <h2>{{ room.name_en }}</h2>
-        <span class="st-now now" :class="now.tone"><i aria-hidden="true" />{{ now.text }}</span>
+        <span class="st-now now" :class="now.tone"><Clock :size="14" aria-hidden="true" />{{ now.text }}</span>
       </div>
       <p class="kh">{{ room.name_kh }}</p>
       <p class="facts">

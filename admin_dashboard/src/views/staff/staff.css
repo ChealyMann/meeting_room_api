@@ -106,11 +106,8 @@
   font-weight: 500;
   white-space: nowrap;
 }
-.st-now i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+.st-now svg {
+  flex: none;
 }
 .st-now.ok {
   color: var(--color-ok);

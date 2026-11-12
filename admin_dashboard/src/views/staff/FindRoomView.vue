@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Find a room (Staff): every bookable room as a photo card with a live line, one request for
 // every room's day, and filters on the rooms already loaded (search, building, type, free now).
-import { DoorOpen, Search, X } from 'lucide-vue-next'
+import { Clock, Search, X } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -121,7 +121,7 @@ const KINDS = [
         </button>
       </div>
       <button type="button" class="st-chip free-now" :class="{ on: freeNow }" :aria-pressed="freeNow" @click="freeNow = !freeNow">
-        <DoorOpen :size="15" aria-hidden="true" />Free now
+        <Clock :size="15" aria-hidden="true" />Free now
       </button>
     </div>
 
@@ -151,6 +151,12 @@ const KINDS = [
   align-items: center;
   gap: 10px;
   margin: 26px 0 30px;
+}
+.free-now svg {
+  color: var(--color-ok);
+}
+.free-now.on svg {
+  color: var(--color-crimson);
 }
 .cards {
   display: grid;

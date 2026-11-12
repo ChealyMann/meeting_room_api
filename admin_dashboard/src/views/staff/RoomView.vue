@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A room (Staff): the photo fills the page with the name, facts and equipment on it, and a
 // floating "Book a time" card. Continue opens the booking with that time already picked.
-import { ArrowRight, Lock } from 'lucide-vue-next'
+import { ArrowRight, Clock, Lock } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -63,7 +63,7 @@ function pick(p: { date: string; a: number; b: number }) {
         <PhotoGallery :photos="room.photos" :name="room.name_en" />
         <div class="shade" aria-hidden="true" />
         <div class="title">
-          <span class="st-now now on-photo" :class="line.tone"><i aria-hidden="true" />{{ line.text }}</span>
+          <span class="st-now now on-photo" :class="line.tone"><Clock :size="14" aria-hidden="true" />{{ line.text }}</span>
           <h1>{{ room.name_en }}</h1>
           <p class="kh">{{ room.name_kh }}</p>
           <p class="facts">
