@@ -40,8 +40,10 @@ async function loadList(quiet = false) {
   try {
     items.value = (await listMyBookings(api, { page: 1, size: 100 })).items
     failed.value = false
-  } catch {
-    if (quiet) throw new Error('refresh failed') // what is shown stays; the button learns it
+  } catch (err) {
+    // Quiet: what is shown stays; the button learns why (the server's own error, so a
+    // "too many requests" is seen as one).
+    if (quiet) throw err
     failed.value = true
   } finally {
     loaded.value = true

@@ -7,12 +7,13 @@ import OfflineNote from '../OfflineNote.vue'
 import RefreshButton, { updatedAgo } from '../RefreshButton.vue'
 
 const T0 = Date.parse('2026-11-12T03:00:00Z')
-function fakeLive(changes: Partial<Record<'refreshing' | 'failing', boolean>> = {}): LiveRefresh {
+function fakeLive(changes: Partial<Record<'refreshing' | 'failing', boolean>> & { waitUntil?: number } = {}): LiveRefresh {
   return {
     run: vi.fn(async () => undefined),
     refreshing: ref(changes.refreshing ?? false),
     failing: ref(changes.failing ?? false),
     lastOk: ref(T0),
+    waitUntil: ref(changes.waitUntil ?? 0),
   }
 }
 beforeEach(() => {
@@ -79,6 +80,24 @@ describe('RefreshButton', () => {
     const w = mount(RefreshButton, { props: { live: fakeLive({ failing: true }) } })
     expect(w.get('button').classes()).toContain('off')
     expect(w.get('button').attributes('title')).toBe("Can't reach the server · Try again")
+  })
+})
+
+describe('too many requests', () => {
+  it('the button says to wait', () => {
+    const w = mount(RefreshButton, { props: { live: fakeLive({ failing: true, waitUntil: T0 + 25_000 }) } })
+    expect(w.get('button').attributes('title')).toBe('Too many requests · Wait 25 s')
+    expect(w.get('button').classes()).toContain('off')
+  })
+
+  it('the note counts down, with Try again off until the wait is over', async () => {
+    const w = mount(OfflineNote, { props: { live: fakeLive({ failing: true, waitUntil: T0 + 25_000 }) } })
+    expect(w.get('[role="status"]').text()).toContain('Too many requests. Trying again in 25 s.')
+    expect(w.get('button').attributes('disabled')).toBeDefined()
+    vi.setSystemTime(T0 + 9_000)
+    vi.advanceTimersByTime(1_000) // the clock moves on too: 10 s gone
+    await w.vm.$nextTick()
+    expect(w.get('[role="status"]').text()).toContain('Trying again in 15 s.')
   })
 })
 

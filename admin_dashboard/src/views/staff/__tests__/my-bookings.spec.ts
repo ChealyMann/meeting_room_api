@@ -22,6 +22,7 @@ let cancelAnswer: () => [unknown, number]
 let mine: unknown[]
 let detail8: unknown
 let mineFails = false
+let mineLimited = false
 
 function stub() {
   calls = []
@@ -33,6 +34,11 @@ function stub() {
     const key = `${init?.method ?? 'GET'} ${url.pathname}`
     calls.push(key)
     if (init?.body) bodies[key] = JSON.parse(String(init.body))
+    if (key === 'GET /api/v1/bookings/mine' && mineLimited)
+      return new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'Too many requests.' } }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '20' },
+      })
     if (key === 'GET /api/v1/bookings/mine')
       return mineFails ? json({ error: { code: 'X', message: 'Down.' } }, 503) : json({ items: mine, page: 1, size: 100, total: mine.length })
     if (key === 'GET /api/v1/rooms') return json({ items: [], page: 1, size: 100, total: 0 })
@@ -182,9 +188,23 @@ describe('My bookings', () => {
       expect(w.get('[role="status"]').text()).toContain("Can't reach the server.")
       expect(titles(w)).toEqual(['Budget review', 'Team sync'])
       mineFails = false
+      vi.setSystemTime(Date.now() + 3_000) // a moment later (clicks within 2 s send nothing)
       await w.get('[role="status"] button').trigger('click')
       await flushPromises()
       expect(w.find('[role="status"]').exists()).toBe(false)
     })
+  })
+
+  it('waits as the server asks after "too many requests", and says so', async () => {
+    const w = await open()
+    mineLimited = true
+    await w.get('button[aria-label="Refresh"]').trigger('click')
+    await flushPromises()
+    expect(w.get('.offline-note').text()).toContain('Too many requests. Trying again in 20 s.')
+    const asked = calls.filter((c) => c === 'GET /api/v1/bookings/mine').length
+    vi.setSystemTime(Date.now() + 5_000)
+    await w.get('button[aria-label="Refresh"]').trigger('click')
+    await flushPromises()
+    expect(calls.filter((c) => c === 'GET /api/v1/bookings/mine').length).toBe(asked)
   })
 })

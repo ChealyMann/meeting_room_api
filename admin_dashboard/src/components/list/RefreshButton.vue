@@ -20,15 +20,18 @@ import type { LiveRefresh } from '../../composables/useLiveRefresh'
 
 const props = defineProps<{ live: LiveRefresh }>()
 
-// The hover text follows the clock; ten seconds is close enough.
+// The hover text follows the clock (every second, for the "too many requests" count down).
 const now = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | undefined
-onMounted(() => (tick = setInterval(() => (now.value = Date.now()), 10_000)))
+onMounted(() => (tick = setInterval(() => (now.value = Date.now()), 1_000)))
 onBeforeUnmount(() => clearInterval(tick))
 
-const title = computed(() =>
-  props.live.failing.value ? "Can't reach the server · Try again" : `Updated ${updatedAgo(props.live.lastOk.value, now.value)} · Refresh`,
-)
+const waitLeft = computed(() => Math.max(0, Math.ceil((props.live.waitUntil.value - now.value) / 1000)))
+const title = computed(() => {
+  if (waitLeft.value) return `Too many requests · Wait ${waitLeft.value} s`
+  if (props.live.failing.value) return "Can't reach the server · Try again"
+  return `Updated ${updatedAgo(props.live.lastOk.value, now.value)} · Refresh`
+})
 // The turn (Emil Kowalski's motion rules): only when someone presses the button — the quiet
 // refresh every 15 s stays still. One full turn plays even when the reload is instant, so the
 // press is seen to work; a slow reload keeps turning, and it stops only at the end of a turn.
