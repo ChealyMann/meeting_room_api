@@ -2,11 +2,11 @@
 // One list of step 3 (food, or IT help): a flat header with the count, a search that matches the
 // start of words, items under small sticky group headings, a tick circle on what is picked.
 import { Check, Search, X } from 'lucide-vue-next'
-import { computed, ref, type Component } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { ServiceOut } from '../../../api/services'
-import { iconFor } from '../../../utils/equipmentIcons'
 import { groupServices } from '../rules'
+import { serviceIcon } from './serviceIcons'
 
 const props = defineProps<{
   kind: 'food' | 'it'
@@ -16,7 +16,6 @@ const props = defineProps<{
   groupLabels: Record<string, string>
   picked: number[]
   searchLabel: string
-  fallbackIcon: Component
   /** Shown under a picked item, like "× 8 · served at 09:00". */
   pickedLine?: string
 }>()
@@ -25,6 +24,8 @@ const emit = defineEmits<{ toggle: [number] }>()
 const q = ref('')
 const groups = computed(() => groupServices(props.items, props.groupOrder, q.value))
 const isOn = (id: number) => props.picked.includes(id)
+/** Headings only help once the Admin has put something in a group; a lone "Other" says nothing. */
+const headed = computed(() => props.items.some((item) => item.group && props.groupOrder.includes(item.group)))
 </script>
 
 <template>
@@ -40,7 +41,7 @@ const isOn = (id: number) => props.picked.includes(id)
     </label>
     <div class="svc-scroll">
       <template v-for="g in groups" :key="g.group">
-        <h4 class="grp-h">{{ groupLabels[g.group] ?? g.group }}</h4>
+        <h4 v-if="headed" class="grp-h">{{ groupLabels[g.group] ?? g.group }}</h4>
         <button
           v-for="item in g.items"
           :key="item.id"
@@ -50,7 +51,9 @@ const isOn = (id: number) => props.picked.includes(id)
           :aria-pressed="isOn(item.id)"
           @click="emit('toggle', item.id)"
         >
-          <span class="ic"><component :is="iconFor(item.icon) ?? fallbackIcon" :size="17" aria-hidden="true" /></span>
+          <span class="ic" :data-icon="serviceIcon(item, kind).name"
+            ><component :is="serviceIcon(item, kind).icon" :size="18" aria-hidden="true"
+          /></span>
           <span class="txt">
             <span class="name">{{ item.name }}</span>
             <small v-if="isOn(item.id) && pickedLine" class="line">{{ pickedLine }}</small>
@@ -177,17 +180,27 @@ const isOn = (id: number) => props.picked.includes(id)
 .row.on {
   background: var(--color-crimson-wash);
 }
+.svc-scroll > .row:first-child {
+  margin-top: 6px;
+}
+/* Food is warm amber, IT help a calm green: the two lists read apart at a glance. */
 .ic {
   display: grid;
   flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: var(--color-field-disabled);
-  color: var(--color-intaglio);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--color-saved-tint);
+  color: var(--color-warn);
+  transition: background-color 160ms ease, color 160ms ease;
 }
-.row.on .ic {
+.svc[data-kind='it'] .ic {
+  background: color-mix(in srgb, var(--color-ok) 11%, var(--color-sheet));
+  color: var(--color-ok);
+}
+.row.on .ic,
+.svc[data-kind='it'] .row.on .ic {
   background: var(--color-sheet);
   color: var(--color-crimson);
 }

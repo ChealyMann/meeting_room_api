@@ -84,6 +84,30 @@ describe('Booking step 3: food and IT', () => {
     expect(names(w)).toHaveLength(4)
   })
 
+  it('shows no lone Other heading when nothing has a group yet', async () => {
+    vi.stubGlobal(
+      'fetch',
+      bookingStubs(roomDetail(12, 'Mekong Room'), { foods: [service(1, 'Coffee break', null), service(3, 'Lunch box', null)], its: ITS }).fetch,
+    )
+    const w = await step3()
+    expect(groups(w)).toEqual([])
+    expect(names(w)).toEqual(['Coffee break', 'Lunch box'])
+  })
+
+  it('guesses an icon from the name when the Admin set none, and uses the one set', async () => {
+    vi.stubGlobal(
+      'fetch',
+      bookingStubs(roomDetail(12, 'Mekong Room'), {
+        foods: [service(1, 'Coffee break', null), service(3, 'Lunch box', null), { ...service(4, 'Fruit plate', null), icon: 'wifi' }],
+        its: [service(10, 'Projector setup', null), service(11, 'Microphones', null), service(12, 'Something else', null)],
+      }).fetch,
+    )
+    const w = await step3()
+    const icons = (kind: string) => w.get(`.svc[data-kind="${kind}"]`).findAll('.ic').map((i) => i.attributes('data-icon'))
+    expect(icons('food')).toEqual(['coffee', 'utensils', 'wifi'])
+    expect(icons('it')).toEqual(['projector', 'mic', 'headset'])
+  })
+
   it('counts a pick made while searching, with servings and a note field', async () => {
     const w = await step3()
     expect(food(w).get('.svc-h').text()).toContain('None')

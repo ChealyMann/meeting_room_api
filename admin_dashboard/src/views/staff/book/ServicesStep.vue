@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Step 3, Food & IT: two lists side by side. Food groups start with the one that suits the first
 // session (no label says so). A note field shows under a list once something in it is picked.
-import { Headset, UtensilsCrossed } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { ServiceOut } from '../../../api/services'
@@ -43,7 +42,6 @@ function toggle(list: 'foods' | 'its', id: number) {
       :group-labels="FOOD_LABELS"
       :picked="draft.foods"
       search-label="food"
-      :fallback-icon="UtensilsCrossed"
       :picked-line="served"
       @toggle="toggle('foods', $event)"
     >
@@ -57,7 +55,6 @@ function toggle(list: 'foods' | 'its', id: number) {
       :group-labels="IT_LABELS"
       :picked="draft.its"
       search-label="IT help"
-      :fallback-icon="Headset"
       @toggle="toggle('its', $event)"
     >
       <textarea v-if="draft.its.length" v-model="draft.itNote" name="itNote" class="note" rows="2" placeholder="Note for IT" aria-label="Note for IT" />
