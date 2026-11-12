@@ -9,7 +9,6 @@ import {
   listBookableRooms,
   listHolidays,
   listMyBookings,
-  listRoomPhotos,
   sendBooking,
 } from '../staff'
 
@@ -39,12 +38,6 @@ describe('Staff API', () => {
     const m = answer({ items: [], total: 0 })
     await getDaySchedule(client(m), '2026-11-13', [3, 5])
     expect(urlOf(m)).toBe(`${BASE}/api/v1/room-schedule?date=2026-11-13&room_ids=3%2C5`)
-  })
-
-  it('lists a room’s photos', async () => {
-    const m = answer({ items: [], total: 0 })
-    await listRoomPhotos(client(m), 12)
-    expect(urlOf(m)).toBe(`${BASE}/api/v1/rooms/12/photos`)
   })
 
   it('lists active food packages and IT services in one page of 100', async () => {

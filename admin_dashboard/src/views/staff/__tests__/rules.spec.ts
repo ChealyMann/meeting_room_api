@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   busySpans,
+  dayLabel,
   fits,
   foodGroupFirst,
   freeStarts,
@@ -35,6 +36,10 @@ describe('times', () => {
   it('turns HH:MM into minutes and back', () => {
     expect(toMin('07:30')).toBe(450)
     expect(toTime(450)).toBe('07:30')
+  })
+
+  it('names a day shortly', () => {
+    expect(dayLabel('2026-11-13')).toBe('Fri 13 Nov')
   })
 
   it('says a length in words', () => {

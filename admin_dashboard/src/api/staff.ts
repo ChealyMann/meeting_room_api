@@ -12,7 +12,6 @@ import type {
   BookingSaved,
   ItemList,
   Page,
-  PhotoOut,
   PublicHolidayOut,
   RoomDaySchedule,
   RoomListItem,
@@ -39,10 +38,6 @@ export function listBookableRooms(client: ApiClient, f: StaffRoomFilters): Promi
 /** Every room's blocking sessions on `day`, in one request (`roomIds` empty: every active room). */
 export function getDaySchedule(client: ApiClient, day: string, roomIds?: number[]): Promise<ItemList<RoomDaySchedule>> {
   return client.request<ItemList<RoomDaySchedule>>('GET', '/api/v1/room-schedule' + toQuery({ date: day, room_ids: roomIds }))
-}
-
-export function listRoomPhotos(client: ApiClient, roomId: number): Promise<ItemList<PhotoOut>> {
-  return client.request<ItemList<PhotoOut>>('GET', `/api/v1/rooms/${roomId}/photos`)
 }
 
 /** Active food packages or IT services; one page of 100 holds them all. */
