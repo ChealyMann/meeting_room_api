@@ -103,6 +103,11 @@ export function nowLine(busy: Span[], hours: Hours, day: string, today: string, 
     return { tone: 'alert', text: `In use until ${toTime(until)}` }
   }
   const next = busy.find((s) => s.a > now)
+  // Less than the shortest booking (30 minutes) left is not "free": nothing can be booked in it.
+  const freeUntil = next ? next.a : hours.close
+  if (freeUntil - now < 30) {
+    return next ? { tone: 'alert', text: `Busy from ${toTime(next.a)}` } : { tone: 'off', text: `Closes at ${toTime(hours.close)}` }
+  }
   return next ? { tone: 'ok', text: `Free until ${toTime(next.a)}` } : { tone: 'ok', text: 'Free all day' }
 }
 

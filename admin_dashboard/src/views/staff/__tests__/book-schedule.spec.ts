@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { useSessionStore } from '../../../stores/session'
-import { bookingStubs, roomDetail } from '../../../test-utils/staff'
+import { bookingStubs, roomDetail, scheduleItem } from '../../../test-utils/staff'
 import BookView from '../BookView.vue'
 
 enableAutoUnmount(afterEach)
@@ -116,6 +116,13 @@ describe('Booking step 1: the week table', () => {
     expect(cell(w, '2026-11-17', '09:00').attributes('disabled')).toBeUndefined()
     await click(w, '2026-11-17', '09:00')
     expect(w.get('.bf-side').text()).toContain('Tue 17 Nov is Test holiday')
+  })
+
+  it('says No time left on today when the rest of the day is busy, not Full', async () => {
+    vi.stubGlobal('fetch', bookingStubs(roomDetail(12, 'Mekong Room'), { schedule: [scheduleItem('2026-11-12', '10:00', '17:00')] }).fetch)
+    const w = await open()
+    expect(w.get('.tbl-day[data-day="2026-11-12"]').text()).toContain('No time left')
+    expect(w.get('.tbl-day[data-day="2026-11-12"]').text()).not.toContain('Full')
   })
 
   it('needs at least one time before going on', async () => {

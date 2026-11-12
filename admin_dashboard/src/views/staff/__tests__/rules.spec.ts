@@ -93,6 +93,12 @@ describe('nowLine', () => {
     expect(nowLine([], hours, D, D, toMin('10:00'))).toEqual({ tone: 'ok', text: 'Free all day' })
   })
 
+  it('does not call it free when less than 30 minutes stay free', () => {
+    expect(nowLine(busy, hours, D, D, toMin('13:55'))).toEqual({ tone: 'alert', text: 'Busy from 14:00' })
+    expect(nowLine(busy, hours, D, D, toMin('13:30'))).toEqual({ tone: 'ok', text: 'Free until 14:00' })
+    expect(nowLine([], hours, D, D, toMin('17:40'))).toEqual({ tone: 'off', text: 'Closes at 18:00' })
+  })
+
   it('says until when a room is in use, through meetings that touch', () => {
     expect(nowLine(busy, hours, D, D, toMin('14:30'))).toEqual({ tone: 'alert', text: 'In use until 15:00' })
     const chain = [...busy, { a: 900, b: 960, masked: true }]
