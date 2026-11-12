@@ -94,7 +94,6 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
         <small>Food &amp; drinks</small>
         <b v-if="foodNames.length">{{ foodNames.join(', ') }}</b>
         <b v-else class="off">None</b>
-        <span v-if="foodNames.length">× {{ draft.people }} each</span>
         <span v-if="draft.foodNote">{{ draft.foodNote }}</span>
         <Pencil class="pen" :size="14" aria-hidden="true" />
       </button>
@@ -125,6 +124,7 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
 <style scoped>
 .rv {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 14px;
   min-height: 0;
@@ -312,10 +312,12 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+/* Booked by sits at the bottom of the card, as on Meeting details. */
 .by {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: auto;
   padding-top: 14px;
   border-top: 1px solid var(--color-rule);
   font-size: 14px;

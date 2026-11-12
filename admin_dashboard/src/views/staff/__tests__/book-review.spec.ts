@@ -71,6 +71,23 @@ describe('Booking step 4: review, check and send', () => {
     expect(w.get('.rv').text()).toContain('Budget review')
   })
 
+  it('names the picked food with no serving count', async () => {
+    const stubs = bookingStubs(roomDetail(12, 'Mekong Room'), { foods: [service(1, 'Coffee and tea', 'BREAKS')] })
+    vi.stubGlobal('fetch', stubs.fetch)
+    await router.push('/book/12?date=2026-11-13&start=09:00&end=10:00')
+    const w = mount(BookView, { global: { plugins: [router] }, attachTo: document.body })
+    await flushPromises()
+    await w.get('button.next').trigger('click')
+    await w.get('input[name="title"]').setValue('Budget review')
+    await w.get('button.next').trigger('click')
+    await flushPromises()
+    await w.get('.svc[data-kind="food"] .row').trigger('click')
+    await w.get('button.next').trigger('click')
+    await flushPromises()
+    expect(w.get('.rv').text()).toContain('Coffee and tea')
+    expect(w.get('.rv').text()).not.toContain('each')
+  })
+
   it('shows a public holiday warning and still lets you send', async () => {
     const { w } = await step4({
       check: () => [
