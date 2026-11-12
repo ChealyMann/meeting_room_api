@@ -26,6 +26,7 @@ const busy = (start: string, end: string) => ({
   is_masked: false,
 })
 const calls: string[] = []
+let room3: unknown[] = []
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -39,6 +40,7 @@ beforeEach(async () => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   calls.length = 0
+  room3 = []
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
@@ -50,7 +52,7 @@ beforeEach(async () => {
           items: [
             { room_id: 1, items: [busy('14:00', '15:00')] },
             { room_id: 2, items: [busy('09:30', '11:00')] },
-            { room_id: 3, items: [] },
+            { room_id: 3, items: room3 },
           ],
           total: 3,
         })
@@ -134,5 +136,18 @@ describe('Find a room', () => {
     expect(w.text()).toContain('No room matches')
     await w.get('button.clear').trigger('click')
     expect(names(w)).toHaveLength(3)
+  })
+
+  it('shows a new booking with no click (quiet refresh)', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
+    const w = await open()
+    const line = () => w.findAll('.room-card').find((c) => c.find('h2').text() === 'Governor Room')!.find('.now').text()
+    expect(line()).toBe('Free all day')
+    room3 = [busy('09:30', '11:00')]
+    vi.advanceTimersByTime(15_000)
+    await flushPromises()
+    expect(line()).toBe('In use until 11:00')
+    expect(w.find('.room-card').exists()).toBe(true)
   })
 })

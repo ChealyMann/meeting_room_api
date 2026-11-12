@@ -10,6 +10,7 @@ import { getRoomSchedule } from '../../api/bookings'
 import { getRoom } from '../../api/rooms'
 import { listHolidays } from '../../api/staff'
 import type { PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { iconFor } from '../../utils/equipmentIcons'
 import { phnomPenhClock } from '../../utils/time'
@@ -48,6 +49,12 @@ onMounted(async () => {
   } catch {
     failed.value = true
   }
+})
+
+// Quiet refresh: the free times and the status line follow new bookings with no click.
+useLiveRefresh(async () => {
+  if (!room.value) return
+  busy.value = (await getRoomSchedule(api, roomId, days.value[0]!, days.value[days.value.length - 1]!)).items
 })
 
 function pick(p: { date: string; a: number; b: number }) {

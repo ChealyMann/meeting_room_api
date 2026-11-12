@@ -16,6 +16,7 @@ import ListSearch from '../components/list/ListSearch.vue'
 import QueueHead, { type HeadTab } from '../components/QueueHead.vue'
 import { useListQuery } from '../composables/useListQuery'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
+import { useLiveRefresh } from '../composables/useLiveRefresh'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { itRing, itSummaryLine, itTabFrom, type ItTab } from '../utils/itQueue'
 import ITQueue from './it/ITQueue.vue'
@@ -42,6 +43,7 @@ async function loadSummary() {
 const today = usePhnomPenhToday()
 onMounted(loadSummary)
 watch(today, loadSummary)
+useLiveRefresh(loadSummary) // the ring and the tab counts follow new bookings
 
 // Rooms, loaded once: where each room is (office · building · floor) and its photo.
 const rooms = ref<RoomListItem[]>([])

@@ -5,6 +5,7 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { ApiError } from '../api/errors'
 import type { Page } from '../api/types'
 import { useListQuery, type FilterSpec, type ListQueryOptions } from './useListQuery'
+import { useLiveRefresh } from './useLiveRefresh'
 
 export function useResourceList<T>(
   spec: FilterSpec,
@@ -20,11 +21,16 @@ export function useResourceList<T>(
   const savedId = ref<number | null>(null)
   let latest = 0
 
-  async function load() {
+  /** `quiet`: the live refresh — no spinner, and a failure keeps what is shown with no message. */
+  async function load(quietRefresh?: unknown) {
+    // Only a real `true` is quiet: `@click="load"` passes the click event.
+    const quiet = quietRefresh === true
     const request = ++latest
-    loading.value = true
-    error.value = ''
-    errorFields.value = {}
+    if (!quiet) {
+      loading.value = true
+      error.value = ''
+      errorFields.value = {}
+    }
     try {
       const page = await fetchPage(list.apiParams.value)
       if (request !== latest) return
@@ -36,7 +42,7 @@ export function useResourceList<T>(
       }
       result.value = page
     } catch (err) {
-      if (request !== latest) return
+      if (request !== latest || quiet) return
       // The old page no longer matches the filters the API refused: drop it, so the count and
       // the paging foot do not show numbers from before.
       result.value = null
@@ -47,7 +53,9 @@ export function useResourceList<T>(
     }
   }
 
-  watch(() => JSON.stringify(list.apiParams.value), load, { immediate: true })
+  watch(() => JSON.stringify(list.apiParams.value), () => load(), { immediate: true })
+  // New, changed and deleted records show with no click; a load already on its way goes first.
+  useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
   const filtered = computed(
     () =>

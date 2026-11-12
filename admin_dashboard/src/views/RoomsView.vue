@@ -15,6 +15,7 @@ import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import { useListQuery } from '../composables/useListQuery'
+import { useLiveRefresh } from '../composables/useLiveRefresh'
 import RoomDetailPanel, { type RoomStep } from './rooms/RoomDetailPanel.vue'
 import RoomFilters from './rooms/RoomFilters.vue'
 import RoomFormPanel from './rooms/RoomFormPanel.vue'
@@ -32,10 +33,14 @@ const summary = ref<string[]>([])
 const savedId = ref<number | null>(null)
 let latest = 0
 
-async function load() {
+/** `quiet` (only a real `true`): the live refresh — no spinner, a failure keeps what is shown. */
+async function load(quietRefresh?: unknown) {
+  const quiet = quietRefresh === true
   const request = ++latest
-  loading.value = true
-  error.value = ''
+  if (!quiet) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const page = await listRooms(api, list.apiParams.value as RoomFilterParams)
     if (request !== latest) return
@@ -47,13 +52,14 @@ async function load() {
     }
     result.value = page
   } catch (err) {
-    if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
+    if (request === latest && !quiet) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
     if (request === latest) loading.value = false
   }
 }
 
-watch(() => JSON.stringify(list.apiParams.value), load, { immediate: true })
+watch(() => JSON.stringify(list.apiParams.value), () => load(), { immediate: true })
+useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 const total = computed(() => result.value?.total ?? 0)
 const count = computed(() => `${String(total.value).padStart(3, '0')} ${total.value === 1 ? 'room' : 'rooms'}`)

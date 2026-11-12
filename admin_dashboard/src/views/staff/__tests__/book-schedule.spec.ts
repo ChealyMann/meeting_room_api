@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { useSessionStore } from '../../../stores/session'
-import { bookingStubs, roomDetail, scheduleItem } from '../../../test-utils/staff'
+import { bookingStubs, roomDetail, scheduleItem, type StubAnswers } from '../../../test-utils/staff'
 import BookView from '../BookView.vue'
 
 enableAutoUnmount(afterEach)
@@ -129,5 +129,18 @@ describe('Booking step 1: the week table', () => {
     await w.get('button.next').trigger('click')
     expect(w.text()).toContain('Pick at least one time in the table.')
     expect(w.get('.bf-steps button.on').text()).toContain('Schedule')
+  })
+
+  it('greys out a time someone else just booked, with no click (quiet refresh)', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
+    const answers: StubAnswers = { schedule: [] }
+    vi.stubGlobal('fetch', bookingStubs(roomDetail(12, 'Mekong Room'), answers).fetch)
+    const w = await open()
+    expect(cell(w, '2026-11-16', '09:00').attributes('disabled')).toBeUndefined()
+    answers.schedule = [scheduleItem('2026-11-16', '09:00', '10:00')]
+    vi.advanceTimersByTime(15_000)
+    await flushPromises()
+    expect(cell(w, '2026-11-16', '09:00').attributes('disabled')).toBeDefined()
   })
 })

@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { api } from '../../api'
 import { getDaySchedule, listBookableRooms } from '../../api/staff'
 import type { RoomDaySchedule, RoomListItem } from '../../api/types'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { formatDay, phnomPenhClock } from '../../utils/time'
 import RoomCard from './RoomCard.vue'
@@ -26,9 +27,13 @@ const building = ref<'all' | number>('all')
 const kind = ref<'all' | 'shared' | 'private'>('all')
 const freeNow = ref(false)
 
-async function load() {
-  loading.value = true
-  failed.value = false
+/** `quiet` (only a real `true`): the live refresh — the cards stay, a failure changes nothing. */
+async function load(quietRefresh?: unknown) {
+  const quiet = quietRefresh === true
+  if (!quiet) {
+    loading.value = true
+    failed.value = false
+  }
   try {
     const page = await listBookableRooms(api, { page: 1, size: 100 })
     rooms.value = page.items
@@ -37,12 +42,13 @@ async function load() {
       days.value = Object.fromEntries(day.items.map((row) => [row.room_id, row.items]))
     }
   } catch {
-    failed.value = true
+    if (!quiet) failed.value = true
   } finally {
-    loading.value = false
+    if (!quiet) loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => load())
+useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 const now = () => toMin(phnomPenhClock(new Date()))
 const lineOf = (room: RoomListItem): NowLine =>

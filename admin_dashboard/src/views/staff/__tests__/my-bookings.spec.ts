@@ -19,6 +19,8 @@ let router: Router
 let calls: string[]
 let bodies: Record<string, unknown>
 let cancelAnswer: () => [unknown, number]
+let mine: unknown[]
+let detail8: unknown
 
 function stub() {
   calls = []
@@ -30,10 +32,10 @@ function stub() {
     const key = `${init?.method ?? 'GET'} ${url.pathname}`
     calls.push(key)
     if (init?.body) bodies[key] = JSON.parse(String(init.body))
-    if (key === 'GET /api/v1/bookings/mine') return json({ items: [SOON, WAITING, GONE, DONE], page: 1, size: 100, total: 4 })
+    if (key === 'GET /api/v1/bookings/mine') return json({ items: mine, page: 1, size: 100, total: mine.length })
     if (key === 'GET /api/v1/rooms') return json({ items: [], page: 1, size: 100, total: 0 })
     if (key === 'GET /api/v1/bookings/7') return json(bookingDetail(SOON))
-    if (key === 'GET /api/v1/bookings/8') return json(bookingDetail(WAITING))
+    if (key === 'GET /api/v1/bookings/8') return json(detail8)
     if (key === 'GET /api/v1/bookings/7/door-pass') return json({ passcode: '482913', expires_at: '2026-11-13T03:00:00Z', expired: false })
     if (key === 'POST /api/v1/bookings/7/cancel') {
       const [body, status] = cancelAnswer()
@@ -48,6 +50,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
+  mine = [SOON, WAITING, GONE, DONE]
+  detail8 = bookingDetail(WAITING)
   cancelAnswer = () => [bookingDetail({ ...SOON, status: 'CANCELLED', display_status: 'CANCELLED', version: 4 }), 200]
   vi.stubGlobal('fetch', stub())
   router = createRouter({
@@ -131,5 +135,30 @@ describe('My bookings', () => {
     useConfirm().answer(true)
     await flushPromises()
     expect(panel()?.textContent).toContain('This item changed. Reload it.')
+  })
+
+  describe('quiet refresh', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+      vi.setSystemTime(new Date('2026-11-12T03:00:00Z'))
+    })
+
+    it('shows a new booking with no click', async () => {
+      const w = await open()
+      mine = [...mine, bookingItem(11, 'New plan', 'PENDING_PITIKA', '2026-11-17')]
+      vi.advanceTimersByTime(15_000)
+      await flushPromises()
+      expect(titles(w)).toEqual(['Budget review', 'Team sync', 'New plan'])
+    })
+
+    it('updates an open booking when someone decides it', async () => {
+      await open('?booking=8')
+      expect(panel()?.textContent).toContain('Waiting for Pitika')
+      detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED', version: 4 })
+      vi.advanceTimersByTime(15_000)
+      await flushPromises()
+      expect(panel()?.textContent).toContain('Confirmed')
+      expect(panel()?.textContent).not.toContain('Waiting for Pitika')
+    })
   })
 })

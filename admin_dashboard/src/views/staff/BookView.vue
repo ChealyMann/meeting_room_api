@@ -12,6 +12,7 @@ import type { ServiceOut } from '../../api/services'
 import { ApiError } from '../../api/errors'
 import { checkBooking, listActiveServices, listHolidays, sendBooking } from '../../api/staff'
 import type { BookingCheckResult, BookingStep, PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useToast } from '../../composables/useToast'
 import { addDays, phnomPenhClock } from '../../utils/time'
@@ -93,6 +94,8 @@ onMounted(async () => {
   }
 })
 watch(page, () => loadWeek().catch(() => (failed.value = true)))
+// Quiet refresh: a time someone else just booked turns busy here with no click.
+useLiveRefresh(() => (room.value ? loadWeek() : undefined))
 
 function add(s: PickedSession) {
   addSession(s)

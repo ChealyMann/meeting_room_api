@@ -10,6 +10,7 @@ import { api } from '../../api'
 import { listBookableRooms, listMyBookings } from '../../api/staff'
 import type { BookingDetail, BookingListItem } from '../../api/types'
 import RoomPhoto from '../../components/RoomPhoto.vue'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { statusLabel } from '../../utils/bookingLabels'
 import BookingDetailDialog from './BookingDetailDialog.vue'
 import { dateNumber, monthShort, weekdayShort } from './rules'
@@ -30,14 +31,21 @@ const soon = computed(() => items.value.filter((b) => !PAST.includes(b.display_s
 const past = computed(() => items.value.filter((b) => PAST.includes(b.display_status)).sort((x, y) => (startOf(x) < startOf(y) ? 1 : -1)))
 const shown = computed(() => (tab.value === 'soon' ? soon.value : past.value))
 
-onMounted(async () => {
+/** `quiet`: the live refresh — what is shown stays when it fails. */
+async function loadList(quiet = false) {
   try {
     items.value = (await listMyBookings(api, { page: 1, size: 100 })).items
+    failed.value = false
   } catch {
-    failed.value = true
+    if (!quiet) failed.value = true
   } finally {
     loaded.value = true
   }
+}
+useLiveRefresh(() => loadList(true))
+
+onMounted(async () => {
+  await loadList()
   // Photos are a nice extra: without them the cards still work.
   listBookableRooms(api, { size: 100 })
     .then((page) => (covers.value = Object.fromEntries(page.items.map((r) => [r.id, r.cover_photo?.url ?? null]))))

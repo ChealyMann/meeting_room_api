@@ -173,7 +173,8 @@ describe('FoodListView', () => {
     vi.advanceTimersByTime(60_000)
     await flushPromises()
 
-    expect(calls).toEqual(['?date=2026-11-02'])
+    // The quiet refresh asks again, always for the chosen day.
+    expect([...new Set(calls)]).toEqual(['?date=2026-11-02'])
   })
 
   it('links each order to its booking', async () => {

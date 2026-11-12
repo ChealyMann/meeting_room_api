@@ -22,6 +22,7 @@ import TableSkeleton from '../components/list/TableSkeleton.vue'
 import SoftRow from '../components/SoftRow.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
+import { useLiveRefresh } from '../composables/useLiveRefresh'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { pageLabel } from '../layouts/nav'
 import { useResourceList } from '../composables/useResourceList'
@@ -120,6 +121,7 @@ async function loadSummary() {
 }
 onMounted(loadSummary)
 watch(today, loadSummary)
+useLiveRefresh(loadSummary) // the ring and the tab counts follow new bookings
 
 const route = useRoute()
 const router = useRouter()

@@ -15,6 +15,7 @@ import RoomPhoto from '../../components/RoomPhoto.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useConfirm } from '../../composables/useConfirm'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
@@ -36,6 +37,13 @@ async function load() {
   }
 }
 watch(() => props.bookingId, load, { immediate: true })
+// Quiet refresh: a decision by Pitika, the owner or IT shows here with no click. Not while a
+// cancel is on its way, and a failure keeps what is shown.
+useLiveRefresh(async () => {
+  if (busy.value || !booking.value) return
+  const fresh = await getBooking(api, props.bookingId)
+  if (!busy.value && fresh.id === props.bookingId) booking.value = fresh
+})
 
 const steps = computed(() => (booking.value ? buildHistory(booking.value).steps : []))
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
