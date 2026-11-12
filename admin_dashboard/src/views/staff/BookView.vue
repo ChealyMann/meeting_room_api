@@ -9,12 +9,15 @@ import { api } from '../../api'
 import { getRoomSchedule } from '../../api/bookings'
 import { getRoom } from '../../api/rooms'
 import type { ServiceOut } from '../../api/services'
-import { listActiveServices, listHolidays } from '../../api/staff'
-import type { PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
+import { ApiError } from '../../api/errors'
+import { checkBooking, listActiveServices, listHolidays, sendBooking } from '../../api/staff'
+import type { BookingCheckResult, BookingStep, PublicHolidayOut, RoomDetail, ScheduleItem } from '../../api/types'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
+import { useToast } from '../../composables/useToast'
 import { addDays, phnomPenhClock } from '../../utils/time'
 import MeetingStep from './book/MeetingStep.vue'
-import { meetingErrors } from './book/meetingErrors'
+import { meetingErrors, type MeetingErrors } from './book/meetingErrors'
+import ReviewStep from './book/ReviewStep.vue'
 import ServicesStep from './book/ServicesStep.vue'
 import SideCard from './book/SideCard.vue'
 import StepBar from './book/StepBar.vue'
@@ -42,7 +45,8 @@ function fromQuery(): PickedSession | null {
   return b > a ? { date, a, b } : null
 }
 const first = fromQuery()
-const { draft, addSession, removeSession } = useBookingDraft(roomId, first)
+const { draft, addSession, removeSession, toCheckBody, toCreateBody } = useBookingDraft(roomId, first)
+const toast = useToast()
 
 const room = ref<RoomDetail | null>(null)
 const busy = ref<ScheduleItem[]>([])
@@ -97,7 +101,25 @@ function add(s: PickedSession) {
 
 // Step 2 shows its errors once someone tried to leave it; they then follow the typing.
 const tried = ref(false)
-const errors = computed(() => (tried.value && room.value ? meetingErrors(draft, room.value) : {}))
+/** Messages the API gave for step 2 fields on send; they go once that step is left again. */
+const serverErrors = ref<MeetingErrors>({})
+const errors = computed<MeetingErrors>(() => ({
+  ...(tried.value && room.value ? meetingErrors(draft, room.value) : {}),
+  ...serverErrors.value,
+}))
+
+/** The step that owns an API field name, or null when no step does. */
+function stepOfField(field: string): number | null {
+  if (field.startsWith('sessions') || field === 'room_id') return 1
+  if (/^(meeting_|attendees|participant_emails|private_justification)/.test(field)) return 2
+  if (/^(catering|it)\b/.test(field)) return 3
+  return null
+}
+const STEP_FIELDS: Record<string, keyof MeetingErrors> = {
+  meeting_title: 'title',
+  attendees: 'people',
+  private_justification: 'justification',
+}
 
 function go(step: number) {
   if (step > 1 && draft.sessions.length === 0) {
@@ -112,8 +134,75 @@ function go(step: number) {
     return
   }
   message.value = ''
+  if (draft.step === 2) serverErrors.value = {}
   draft.step = step as 1 | 2 | 3 | 4
   reached.value = Math.max(reached.value, step)
+}
+
+// Step 4 asks the API first: its steps feed "After you send"; a problem keeps Send off.
+const check = ref<BookingCheckResult | null>(null)
+const checking = ref(false)
+const sending = ref(false)
+const problemStep = computed(() => {
+  const fields = Object.keys(check.value?.problem?.fields ?? {})
+  return fields.map(stepOfField).find((n) => n !== null) ?? null
+})
+watch(
+  () => draft.step,
+  async (step) => {
+    if (step !== 4) return
+    check.value = null
+    checking.value = true
+    try {
+      check.value = await checkBooking(api, toCheckBody())
+    } catch (error) {
+      message.value = error instanceof ApiError ? error.message : 'The booking could not be checked.'
+    } finally {
+      checking.value = false
+    }
+  },
+)
+const PATH: Record<BookingStep, string> = {
+  PITIKA: 'Pitika checks it',
+  OWNER: 'The room owner checks it',
+  IT_SETUP: 'IT gets the room ready',
+  CONFIRMED: 'Confirmed',
+}
+
+async function send() {
+  if (!room.value || sending.value) return
+  sending.value = true
+  message.value = ''
+  try {
+    await sendBooking(api, toCreateBody())
+    toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
+    await router.push({ name: 'my-bookings' })
+  } catch (error) {
+    if (!(error instanceof ApiError)) {
+      message.value = 'The request could not be sent. Try again.'
+      return
+    }
+    // Back to the step that owns the field, with everything typed kept.
+    const owned = Object.keys(error.fields)
+      .map((field) => ({ field, step: stepOfField(field) }))
+      .filter((x): x is { field: string; step: number } => x.step !== null)
+    const target = owned.length ? Math.min(...owned.map((x) => x.step)) : null
+    if (target === 2) {
+      serverErrors.value = Object.fromEntries(
+        owned.filter((x) => STEP_FIELDS[x.field]).map((x) => [STEP_FIELDS[x.field], error.fields[x.field]]),
+      )
+    }
+    if (target) draft.step = target as 1 | 2 | 3
+    message.value = target === 2 && Object.keys(serverErrors.value).length ? '' : error.message
+    if (target === 1) loadWeek().catch(() => undefined)
+  } finally {
+    sending.value = false
+  }
+}
+const sendOff = computed(() => draft.step === 4 && (checking.value || sending.value || !!check.value?.problem))
+function next() {
+  if (draft.step === 4) send()
+  else go(draft.step + 1)
 }
 const nextLabel = computed(() => (draft.step < STEPS.length ? `Next: ${STEPS[draft.step]}` : 'Send request'))
 function back() {
@@ -156,7 +245,16 @@ function back() {
           </template>
           <MeetingStep v-else-if="draft.step === 2" :draft="draft" :room="room" :errors="errors" />
           <ServicesStep v-else-if="draft.step === 3" :draft="draft" :foods="foods" :its="its" />
-          <p v-else class="st-empty">{{ STEPS[draft.step - 1] }}</p>
+          <ReviewStep
+            v-else
+            :draft="draft"
+            :room="room"
+            :foods="foods"
+            :its="its"
+            :check="check"
+            :problem-step="problemStep"
+            @jump="go"
+          />
         </main>
         <SideCard
           :room="room"
@@ -167,9 +265,18 @@ function back() {
           :message="message"
           @remove="removeSession"
         >
+          <div v-if="draft.step === 4" class="after">
+            <h3>After you send</h3>
+            <ol class="bf-path">
+              <li class="on"><i />You send it<small>Now</small></li>
+              <li v-for="s in check?.steps ?? []" :key="s"><i />{{ PATH[s] }}</li>
+              <li class="end"><i />You can cancel any time before it starts</li>
+            </ol>
+            <p v-if="checking" class="checking">Checking…</p>
+          </div>
           <template #actions>
             <button type="button" class="bf-btn quiet" @click="back">{{ draft.step === 1 ? 'Cancel' : 'Back' }}</button>
-            <button type="button" class="bf-btn next" @click="go(draft.step + 1)">{{ nextLabel }}</button>
+            <button type="button" class="bf-btn next" :disabled="sendOff" @click="next">{{ nextLabel }}</button>
           </template>
         </SideCard>
       </div>
@@ -264,8 +371,73 @@ function back() {
   background: var(--color-crimson-fill);
   color: #fff;
 }
+.bf-btn.next:disabled {
+  background: var(--color-rule-strong);
+  cursor: not-allowed;
+  transform: none;
+}
+.after {
+  margin-top: 18px;
+}
+.after h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.bf-path {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bf-path li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 14px 22px;
+  font-size: 13.5px;
+}
+.bf-path li::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: -2px;
+  left: 5px;
+  width: 1.5px;
+  background: var(--color-rule);
+}
+.bf-path li:last-child::before {
+  display: none;
+}
+.bf-path i {
+  position: absolute;
+  top: 5px;
+  left: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-sheet);
+  box-shadow: inset 0 0 0 1.5px var(--color-rule-strong);
+}
+.bf-path li.on i {
+  background: var(--color-crimson-fill);
+  box-shadow: none;
+}
+.bf-path li.end {
+  color: var(--color-intaglio);
+}
+.bf-path small {
+  margin-left: auto;
+  color: var(--color-ink-off);
+  font-size: 12px;
+}
+.checking {
+  margin: 0;
+  color: var(--color-ink-off);
+  font-size: 13px;
+}
 @media (hover: hover) and (pointer: fine) {
-  .bf-btn.next:hover {
+  .bf-btn.next:not(:disabled):hover {
     background: var(--color-crimson-deep);
   }
   .arrow:not(:disabled):hover,
