@@ -25,13 +25,21 @@ const SERVICE_PATHS: Record<ServiceKind, string> = {
 export interface StaffRoomFilters {
   q?: string
   is_private?: boolean
+  building_id?: number
   page?: number
   size?: number
 }
 
 /** Rooms a staff member can book now. */
 export function listBookableRooms(client: ApiClient, f: StaffRoomFilters): Promise<Page<RoomListItem>> {
-  const query = toQuery({ is_bookable: true, search: f.q, is_private: f.is_private, page: f.page, size: f.size })
+  const query = toQuery({
+    is_bookable: true,
+    search: f.q,
+    is_private: f.is_private,
+    building_id: f.building_id,
+    page: f.page,
+    size: f.size,
+  })
   return client.request<Page<RoomListItem>>('GET', '/api/v1/rooms' + query)
 }
 

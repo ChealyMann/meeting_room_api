@@ -9,7 +9,7 @@ import FindRoomView from '../FindRoomView.vue'
 
 enableAutoUnmount(afterEach)
 
-const ROOMS = [
+const THREE = [
   roomItem(1, 'Mekong Room'),
   roomItem(2, 'Bassac Room', { building: building(2, 'Annex') }),
   roomItem(3, 'Governor Room', { is_private: true }),
@@ -26,10 +26,22 @@ const busy = (start: string, end: string) => ({
   is_masked: false,
 })
 const calls: string[] = []
+let allRooms: ReturnType<typeof roomItem>[]
 let room3: unknown[] = []
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+// jsdom has no IntersectionObserver: this one lets a test say "the end of the list is in view".
+let reachEnd: (() => void) | null = null
+class FakeObserver {
+  constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
+    reachEnd = () => callback([{ isIntersecting: true }])
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 
 let router: Router
@@ -40,22 +52,36 @@ beforeEach(async () => {
   setActivePinia(createPinia())
   useSessionStore().accessToken = 'A1'
   calls.length = 0
+  allRooms = THREE
   room3 = []
+  reachEnd = null
+  vi.stubGlobal('IntersectionObserver', FakeObserver)
   vi.stubGlobal(
     'fetch',
     vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input))
       calls.push(url.pathname + url.search)
-      if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: ROOMS.length })
-      if (url.pathname === '/api/v1/room-schedule')
-        return json({
-          items: [
-            { room_id: 1, items: [busy('14:00', '15:00')] },
-            { room_id: 2, items: [busy('09:30', '11:00')] },
-            { room_id: 3, items: room3 },
-          ],
-          total: 3,
-        })
+      const p = url.searchParams
+      if (url.pathname === '/api/v1/rooms') {
+        // The server does the search and the filters, and pages the answer.
+        const search = (p.get('search') ?? '').toLowerCase()
+        const found = allRooms.filter(
+          (r) =>
+            (!search || r.name_en.toLowerCase().includes(search)) &&
+            (!p.has('is_private') || String(r.is_private) === p.get('is_private')) &&
+            (!p.has('building_id') || String(r.building.id) === p.get('building_id')),
+        )
+        const page = Number(p.get('page'))
+        const size = Number(p.get('size'))
+        return json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length })
+      }
+      if (url.pathname === '/api/v1/buildings')
+        return json({ items: [building(1, 'Head office'), building(2, 'Annex')], page: 1, size: 100, total: 2 })
+      if (url.pathname === '/api/v1/room-schedule') {
+        const ids = (p.get('room_ids') ?? '').split(',').map(Number)
+        const of = (id: number) => (id === 1 ? [busy('14:00', '15:00')] : id === 2 ? [busy('09:30', '11:00')] : id === 3 ? room3 : [])
+        return json({ items: ids.map((id) => ({ room_id: id, items: of(id) })), total: ids.length })
+      }
       return json({}, 404)
     }),
   )
@@ -81,13 +107,23 @@ async function open() {
   return wrapper
 }
 const names = (w: Awaited<ReturnType<typeof open>>) => w.findAll('.room-card h2').map((h) => h.text())
+const roomCalls = () => calls.filter((c) => c.startsWith('/api/v1/rooms?')).map((c) => Object.fromEntries(new URL(c, 'http://x').searchParams))
+const dayCalls = () => calls.filter((c) => c.startsWith('/api/v1/room-schedule'))
+/** Typing waits 250 ms before it asks the server. */
+async function search(w: Awaited<ReturnType<typeof open>>, text: string) {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+  await w.get('input[type="search"]').setValue(text)
+  vi.advanceTimersByTime(250)
+  await flushPromises()
+}
 
 describe('Find a room', () => {
-  it('shows one card per room and asks every room’s day in one request', async () => {
+  it('loads the first 24 bookable rooms and their day in one request', async () => {
     const w = await open()
     expect(names(w)).toEqual(['Mekong Room', 'Bassac Room', 'Governor Room'])
-    const day = calls.filter((c) => c.startsWith('/api/v1/room-schedule'))
-    expect(day).toEqual(['/api/v1/room-schedule?date=2026-11-12&room_ids=1%2C2%2C3'])
+    expect(roomCalls()).toEqual([{ is_bookable: 'true', page: '1', size: '24' }])
+    expect(dayCalls()).toEqual(['/api/v1/room-schedule?date=2026-11-12&room_ids=1%2C2%2C3'])
+    expect(w.text()).toContain('3 rooms')
   })
 
   it('says until when each room is free or in use, and Free now hides the busy one', async () => {
@@ -118,24 +154,69 @@ describe('Find a room', () => {
     expect(router.currentRoute.value).toMatchObject({ name: 'staff-room', params: { roomId: '2' } })
   })
 
-  it('filters by search, building and type', async () => {
+  it('asks the server to search, and to filter by building and type', async () => {
     const w = await open()
-    await w.get('input[type="search"]').setValue('mekong')
+    await search(w, 'mekong')
+    expect(roomCalls().at(-1)).toEqual({ is_bookable: 'true', search: 'mekong', page: '1', size: '24' })
     expect(names(w)).toEqual(['Mekong Room'])
-    await w.get('input[type="search"]').setValue('')
+    await search(w, '')
     await w.get('[role="radio"][data-building="2"]').trigger('click')
+    await flushPromises()
+    expect(roomCalls().at(-1)).toMatchObject({ building_id: '2', page: '1' })
     expect(names(w)).toEqual(['Bassac Room'])
     await w.get('[role="radio"][data-building="all"]').trigger('click')
     await w.get('[role="radio"][data-kind="private"]').trigger('click')
+    await flushPromises()
+    expect(roomCalls().at(-1)).toMatchObject({ is_private: 'true' })
     expect(names(w)).toEqual(['Governor Room'])
   })
 
   it('says so when nothing matches, and Clear filters brings every room back', async () => {
     const w = await open()
-    await w.get('input[type="search"]').setValue('zzz')
+    await search(w, 'zzz')
     expect(w.text()).toContain('No room matches')
     await w.get('button.clear').trigger('click')
+    await flushPromises()
     expect(names(w)).toHaveLength(3)
+  })
+
+  it('loads the next 24 rooms when the end of the list comes into view, and stops at the last', async () => {
+    allRooms = Array.from({ length: 30 }, (_, i) => roomItem(i + 1, `Room ${i + 1}`))
+    const w = await open()
+    expect(names(w)).toHaveLength(24)
+    expect(w.text()).toContain('30 rooms')
+    reachEnd!()
+    await flushPromises()
+    expect(names(w)).toHaveLength(30)
+    expect(names(w).at(-1)).toBe('Room 30')
+    expect(roomCalls().map((c) => c.page)).toEqual(['1', '2'])
+    expect(dayCalls().at(-1)).toBe('/api/v1/room-schedule?date=2026-11-12&room_ids=25%2C26%2C27%2C28%2C29%2C30')
+    reachEnd!()
+    await flushPromises()
+    expect(roomCalls()).toHaveLength(2)
+    expect(w.find('button.more').exists()).toBe(false)
+  })
+
+  it('keeps loading while the end of the list stays in view (a tall screen)', async () => {
+    allRooms = Array.from({ length: 60 }, (_, i) => roomItem(i + 1, `Room ${i + 1}`))
+    // Every box is 600 px tall at the top of the page: the end of the list is always in view.
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(600)
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top: 0, bottom: 600 } as DOMRect)
+    const w = await open()
+    reachEnd!() // the browser says so once; after that it says nothing while the end stays in view
+    await flushPromises()
+    await flushPromises()
+    expect(names(w)).toHaveLength(60)
+    expect(roomCalls().map((c) => c.page)).toEqual(['1', '2', '3'])
+    vi.restoreAllMocks()
+  })
+
+  it('has a Show more rooms button too, for the keyboard', async () => {
+    allRooms = Array.from({ length: 30 }, (_, i) => roomItem(i + 1, `Room ${i + 1}`))
+    const w = await open()
+    await w.get('button.more').trigger('click')
+    await flushPromises()
+    expect(names(w)).toHaveLength(30)
   })
 
   it('shows a new booking with no click (quiet refresh)', async () => {
@@ -148,6 +229,6 @@ describe('Find a room', () => {
     vi.advanceTimersByTime(15_000)
     await flushPromises()
     expect(line()).toBe('In use until 11:00')
-    expect(w.find('.room-card').exists()).toBe(true)
+    expect(names(w)).toHaveLength(3)
   })
 })
