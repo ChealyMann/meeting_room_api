@@ -12,6 +12,8 @@ OUT_FIELDS = {
     "version",
     "created_at",
     "updated_at",
+    "group",
+    "icon",
 }
 NEW = {"name": "Coffee break", "description": "Coffee and cakes", "sort_order": 1}
 
@@ -137,3 +139,39 @@ def test_html_refused(client, as_admin, make_catering_package):
 def test_description_blank_becomes_null(client, as_admin):
     response = client.post(URL, json={"name": "Lunch", "description": "  "}, headers=as_admin)
     assert response.json()["description"] is None
+
+
+def test_create_with_group_and_icon(client, as_admin):
+    body = client.post(
+        URL, json={**NEW, "group": "BREAKFAST", "icon": "coffee"}, headers=as_admin
+    ).json()
+    assert (body["group"], body["icon"]) == ("BREAKFAST", "coffee")
+
+
+def test_group_defaults_to_none(client, as_admin):
+    body = client.post(URL, json=NEW, headers=as_admin).json()
+    assert body["group"] is None
+    assert body["icon"] is None
+
+
+def test_wrong_group_is_refused(client, as_admin):
+    response = client.post(URL, json={**NEW, "group": "SCREENS"}, headers=as_admin)
+    assert error(response) == (422, "VALIDATION_ERROR")
+    assert "group" in fields(response)
+
+
+def test_patch_group(client, as_admin):
+    item = client.post(URL, json=NEW, headers=as_admin).json()
+    url = f"{URL}/{item['id']}"
+    first = client.patch(url, json={"version": 1, "group": "MEALS"}, headers=as_admin)
+    assert first.json()["group"] == "MEALS"
+    second = client.patch(url, json={"version": 2, "group": None}, headers=as_admin)
+    assert second.json()["group"] is None
+
+
+def test_staff_list_shows_group(client, as_admin, as_staff):
+    client.post(URL, json={**NEW, "group": "BREAKFAST", "icon": "coffee"}, headers=as_admin)
+    items = client.get(URL, headers=as_staff).json()["items"]
+    assert items
+    assert all("group" in item and "icon" in item for item in items)
+    assert items[0]["group"] == "BREAKFAST"
