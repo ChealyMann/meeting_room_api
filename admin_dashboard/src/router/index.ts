@@ -47,6 +47,30 @@ const router = createRouter({
           meta: { title: 'Rooms', roles: ['ADMIN'] },
         },
         {
+          path: 'find-room',
+          name: 'find-room',
+          component: () => import('../views/staff/FindRoomView.vue'),
+          meta: { title: 'Find a room', roles: ['STAFF'] },
+        },
+        {
+          path: 'find-room/:roomId(\\d+)',
+          name: 'staff-room',
+          component: () => import('../views/staff/RoomView.vue'),
+          meta: { title: 'Room', roles: ['STAFF'] },
+        },
+        {
+          path: 'book/:roomId(\\d+)',
+          name: 'book',
+          component: () => import('../views/staff/BookView.vue'),
+          meta: { title: 'Book a room', roles: ['STAFF'] },
+        },
+        {
+          path: 'my-bookings',
+          name: 'my-bookings',
+          component: () => import('../views/staff/MyBookingsView.vue'),
+          meta: { title: 'My bookings', roles: ['STAFF'] },
+        },
+        {
           path: 'review',
           name: 'review',
           component: () => import('../views/ReviewView.vue'),

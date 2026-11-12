@@ -16,6 +16,8 @@ const PROFILE = nav('profile', '/profile')
 const SIGN_IN = nav('sign-in', '/sign-in', { public: true })
 const CHANGE = nav('change-password', '/change-password')
 const NO_ACCESS = nav('no-access', '/no-access')
+const FIND_ROOM = nav('find-room', '/find-room', { roles: ['STAFF'] })
+const BOOK = nav('book', '/book/12', { roles: ['STAFF'] })
 
 const signedOut = { signedIn: false, mustChangePassword: false, roles: [] }
 const mustChange = { signedIn: true, mustChangePassword: true, roles: ['ADMIN'] }
@@ -59,7 +61,7 @@ describe('Room owner', () => {
 
   it('keeps the Pitika home for a Pitika who also owns a room', () => {
     expect(homeFor(['PITIKA', 'ROOM_OWNER'])).toBe('review')
-    expect(homeFor(['STAFF'])).toBe('no-access')
+    expect(homeFor(['STAFF'])).toBe('find-room')
   })
 })
 
@@ -84,10 +86,24 @@ describe('resolveNavigation', () => {
     expect(resolveNavigation(HOME, { ...mustChange, roles: ['STAFF'] })).toEqual({ name: 'change-password' })
   })
 
-  it('sends a user with no dashboard role to no-access', () => {
-    expect(resolveNavigation(HOME, staff)).toEqual({ name: 'no-access' })
-    expect(resolveNavigation(SIGN_IN, staff)).toEqual({ name: 'no-access' })
-    expect(resolveNavigation(NO_ACCESS, staff)).toBe(true)
+  it('sends a Staff user to Find a room, and home from Admin and Pitika pages', () => {
+    expect(resolveNavigation(SIGN_IN, staff)).toEqual({ name: 'find-room' })
+    expect(resolveNavigation(NO_ACCESS, staff)).toEqual({ name: 'find-room' })
+    expect(resolveNavigation(HOME, staff)).toEqual({ name: 'find-room' })
+    expect(resolveNavigation(BOOKINGS, staff)).toEqual({ name: 'find-room' })
+    expect(resolveNavigation(FIND_ROOM, staff)).toBe(true)
+    expect(resolveNavigation(BOOK, staff)).toBe(true)
+  })
+
+  it('sends a user with no role at all to no-access', () => {
+    const nobody = { signedIn: true, mustChangePassword: false, roles: [] }
+    expect(resolveNavigation(HOME, nobody)).toEqual({ name: 'no-access' })
+    expect(resolveNavigation(NO_ACCESS, nobody)).toBe(true)
+  })
+
+  it('keeps a Pitika home on To review while they may also book', () => {
+    expect(homeFor(['PITIKA', 'STAFF'])).toBe('review')
+    expect(resolveNavigation(BOOK, pitika)).toBe(true)
   })
 
   it('sends a signed-in admin away from sign-in and no-access', () => {
@@ -120,10 +136,11 @@ describe('resolveNavigation', () => {
 })
 
 describe('homeFor', () => {
-  it('is Rooms for an Admin, To review for a Pitika, and no-access otherwise', () => {
+  it('is Rooms for an Admin, To review for a Pitika, Find a room for Staff, and no-access otherwise', () => {
     expect(homeFor(['ADMIN'])).toBe('home')
     expect(homeFor(['PITIKA'])).toBe('review')
     expect(homeFor(['PITIKA', 'ADMIN'])).toBe('home')
-    expect(homeFor(['STAFF'])).toBe('no-access')
+    expect(homeFor(['STAFF'])).toBe('find-room')
+    expect(homeFor([])).toBe('no-access')
   })
 })

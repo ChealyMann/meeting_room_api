@@ -17,7 +17,7 @@ describe('navFor', () => {
   })
 
   it('gives a Pitika only Daily: To review, Bookings, Food list', () => {
-    expect(shape(['PITIKA', 'STAFF'])).toEqual([{ title: 'Daily', items: ['review', 'bookings', 'food-list'] }])
+    expect(shape(['PITIKA', 'STAFF'])).toEqual([{ title: 'Daily', items: ['find-room', 'my-bookings', 'review', 'bookings', 'food-list'] }])
     const review = navFor(['PITIKA'])[0]!.items[0]!
     expect(review).toMatchObject({ label: 'To review', icon: 'inbox' })
     expect(NAV_ICONS[review.icon]).toBeDefined()
@@ -28,7 +28,7 @@ describe('navFor', () => {
   })
 
   it('gives a Room owner To review and Bookings', () => {
-    expect(shape(['ROOM_OWNER', 'STAFF'])).toEqual([{ title: 'Daily', items: ['owner-review', 'bookings'] }])
+    expect(shape(['ROOM_OWNER', 'STAFF'])).toEqual([{ title: 'Daily', items: ['find-room', 'my-bookings', 'owner-review', 'bookings'] }])
     expect(navFor(['ROOM_OWNER'])[0]!.items[0]).toMatchObject({ label: 'To review', icon: 'inbox' })
   })
 
@@ -45,8 +45,14 @@ describe('navFor', () => {
     for (const item of navFor(['IT_LEAD', 'IT_STAFF'])[0]!.items) expect(NAV_ICONS[item.icon]).toBeDefined()
   })
 
+  it('gives Staff Find a room and My bookings, with icons', () => {
+    expect(shape(['STAFF'])).toEqual([{ title: 'Daily', items: ['find-room', 'my-bookings'] }])
+    for (const item of navFor(['STAFF'])[0]!.items) expect(NAV_ICONS[item.icon]).toBeDefined()
+    expect(navFor(['STAFF'])[0]!.items.map((item) => item.label)).toEqual(['Find a room', 'My bookings'])
+  })
+
   it('gives anyone else nothing', () => {
-    expect(navFor(['STAFF'])).toEqual([])
+    expect(navFor([])).toEqual([])
   })
 })
 
@@ -57,6 +63,7 @@ describe('roleTitle', () => {
     expect(roleTitle(['ROOM_OWNER', 'STAFF'])).toBe('Room owner')
     expect(roleTitle(['IT_LEAD', 'IT_STAFF'])).toBe('IT Lead')
     expect(roleTitle(['IT_STAFF'])).toBe('IT Staff')
+    expect(roleTitle(['STAFF'])).toBe('Staff')
   })
 })
 
