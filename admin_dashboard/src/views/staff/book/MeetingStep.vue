@@ -152,9 +152,9 @@ const removeEmail = (e: string) => (draft.value.emails = draft.value.emails.filt
       <p v-else class="hint below">Only Pitika and the room owner read this.</p>
     </template>
 
-    <div class="sf area">
+    <div class="sf area grow">
       <FileText class="ic" :size="17" aria-hidden="true" />
-      <textarea id="bf-notes" v-model="draft.notes" name="notes" rows="3" placeholder=" " />
+      <textarea id="bf-notes" v-model="draft.notes" name="notes" rows="4" placeholder=" " />
       <label for="bf-notes">Agenda or notes</label>
     </div>
 
@@ -170,12 +170,21 @@ const removeEmail = (e: string) => (draft.value.emails = draft.value.emails.filt
 .ms {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 12px;
-  max-width: 640px;
   min-height: 0;
   overflow: auto;
-  padding: 4px 2px 8px;
+  padding: 4px 2px 2px;
   scrollbar-width: thin;
+}
+/* Agenda or notes takes the free height, so the form fills the card and Booked by sits at the bottom. */
+.sf.grow {
+  flex: 1 0 120px;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+.sf.grow textarea {
+  resize: none;
 }
 .sf {
   position: relative;
