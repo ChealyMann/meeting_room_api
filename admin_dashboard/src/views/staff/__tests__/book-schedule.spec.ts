@@ -118,11 +118,10 @@ describe('Booking step 1: the week table', () => {
     expect(w.get('.bf-side').text()).toContain('Tue 17 Nov is Test holiday')
   })
 
-  it('says No time left on today when the rest of the day is busy, not Full', async () => {
+  it('says Full on today when the rest of the day is busy', async () => {
     vi.stubGlobal('fetch', bookingStubs(roomDetail(12, 'Mekong Room'), { schedule: [scheduleItem('2026-11-12', '10:00', '17:00')] }).fetch)
     const w = await open()
-    expect(w.get('.tbl-day[data-day="2026-11-12"]').text()).toContain('No time left')
-    expect(w.get('.tbl-day[data-day="2026-11-12"]').text()).not.toContain('Full')
+    expect(w.get('.tbl-day[data-day="2026-11-12"]').text()).toContain('Full')
   })
 
   it('needs at least one time before going on', async () => {

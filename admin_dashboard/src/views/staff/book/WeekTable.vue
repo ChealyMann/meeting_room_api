@@ -98,7 +98,7 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
       >
         <small>{{ label(d) }}</small><b>{{ dateNumber(d) }}</b>
         <em v-if="holidayOf(d)" class="hol">Holiday</em>
-        <em v-else :class="{ none: !freeHours(d) }">{{ freeHours(d) ? `${freeHours(d)} h free` : d === today ? 'No time left' : 'Full' }}</em>
+        <em v-else :class="{ none: !freeHours(d) }">{{ freeHours(d) ? `${freeHours(d)} h free` : 'Full' }}</em>
       </div>
       <div class="tbl-times" :style="{ gridTemplateRows: `repeat(${rows}, 22px)` }">
         <span v-for="i in rows" :key="i" class="mono">{{ (i - 1) % 2 === 0 ? toTime(startOf(i - 1)) : '' }}</span>

@@ -101,9 +101,9 @@ describe('nowLine', () => {
 
   it('does not name closing time as the end of a meeting', () => {
     const late = [{ a: 900, b: 1080, masked: false }]
-    expect(nowLine(late, hours, D, D, toMin('15:10'))).toEqual({ tone: 'alert', text: 'In use for the rest of the day' })
+    expect(nowLine(late, hours, D, D, toMin('15:10'))).toEqual({ tone: 'alert', text: 'Full' })
     const chain = [{ a: 840, b: 900, masked: false }, { a: 900, b: 1080, masked: true }]
-    expect(nowLine(chain, hours, D, D, toMin('14:30'))).toEqual({ tone: 'alert', text: 'In use for the rest of the day' })
+    expect(nowLine(chain, hours, D, D, toMin('14:30'))).toEqual({ tone: 'alert', text: 'Full' })
   })
 
   it('says until when a room is in use, through meetings that touch', () => {
