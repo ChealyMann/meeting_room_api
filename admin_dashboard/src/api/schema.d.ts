@@ -800,6 +800,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/room-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * See every room's day
+         * @description Every room's blocking sessions on one day, in one request, for the Staff room cards.
+         *     A private booking you may not see shows as a masked item, as in a room's schedule.
+         */
+        get: operations["get_day_schedule_api_v1_room_schedule_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms/{room_id}/equipment": {
         parameters: {
             query?: never;
@@ -2073,6 +2094,9 @@ export interface components {
             name: string;
             /** Description */
             description?: string | null;
+            group?: components["schemas"]["FoodGroup"] | null;
+            /** Icon */
+            icon?: string | null;
             /**
              * Sort Order
              * @default 0
@@ -2092,6 +2116,10 @@ export interface components {
             name: string;
             /** Description */
             description: string | null;
+            /** Group */
+            group: string | null;
+            /** Icon */
+            icon: string | null;
             /** Sort Order */
             sort_order: number;
             /** Is Active */
@@ -2114,6 +2142,9 @@ export interface components {
             name?: string;
             /** Description */
             description?: string | null;
+            group?: components["schemas"]["FoodGroup"] | null;
+            /** Icon */
+            icon?: string | null;
             /** Sort Order */
             sort_order?: number;
             /** Is Active */
@@ -2422,6 +2453,13 @@ export interface components {
             /** Is Active */
             is_active?: boolean;
         };
+        /**
+         * FoodGroup
+         * @description The group a catering package shows under on the Staff booking page (owner decision,
+         *     12 Nov 2026). None means "Other", shown last.
+         * @enum {string}
+         */
+        FoodGroup: "BREAKFAST" | "MEALS" | "BREAKS";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2446,6 +2484,12 @@ export interface components {
             /** Meeting Start */
             meeting_start: string;
         };
+        /**
+         * ITGroup
+         * @description The group an IT service shows under on the Staff booking page. None means "Other".
+         * @enum {string}
+         */
+        ITGroup: "SCREENS" | "SOUND" | "DEVICES" | "SUPPORT";
         /** ITIn */
         ITIn: {
             /** Service Ids */
@@ -2488,6 +2532,9 @@ export interface components {
             name: string;
             /** Description */
             description?: string | null;
+            group?: components["schemas"]["ITGroup"] | null;
+            /** Icon */
+            icon?: string | null;
             /**
              * Sort Order
              * @default 0
@@ -2507,6 +2554,10 @@ export interface components {
             name: string;
             /** Description */
             description: string | null;
+            /** Group */
+            group: string | null;
+            /** Icon */
+            icon: string | null;
             /** Sort Order */
             sort_order: number;
             /** Is Active */
@@ -2529,6 +2580,9 @@ export interface components {
             name?: string;
             /** Description */
             description?: string | null;
+            group?: components["schemas"]["ITGroup"] | null;
+            /** Icon */
+            icon?: string | null;
             /** Sort Order */
             sort_order?: number;
             /** Is Active */
@@ -2702,6 +2756,13 @@ export interface components {
         ItemList_RoleOut_: {
             /** Items */
             items: components["schemas"]["RoleOut"][];
+            /** Total */
+            total: number;
+        };
+        /** ItemList[RoomDaySchedule] */
+        ItemList_RoomDaySchedule_: {
+            /** Items */
+            items: components["schemas"]["RoomDaySchedule"][];
             /** Total */
             total: number;
         };
@@ -3291,6 +3352,16 @@ export interface components {
              * @default false
              */
             is_private: boolean;
+        };
+        /**
+         * RoomDaySchedule
+         * @description One room's blocking sessions on one day; `items` is empty when the room is free all day.
+         */
+        RoomDaySchedule: {
+            /** Room Id */
+            room_id: number;
+            /** Items */
+            items: components["schemas"]["ScheduleItem"][];
         };
         /** RoomDetail */
         RoomDetail: {
@@ -5998,6 +6069,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemList_ScheduleItem_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_day_schedule_api_v1_room_schedule_get: {
+        parameters: {
+            query?: {
+                /** @description The day; default today */
+                date?: string | null;
+                /** @description Comma list, e.g. 3,5; default every active room */
+                room_ids?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_RoomDaySchedule_"];
                 };
             };
             /** @description Validation Error */
