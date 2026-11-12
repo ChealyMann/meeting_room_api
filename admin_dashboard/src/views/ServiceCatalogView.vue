@@ -18,7 +18,7 @@ import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
 import { serial } from '../utils/serial'
-import { SERVICE_KINDS } from '../utils/serviceForms'
+import { groupLabel, SERVICE_KINDS } from '../utils/serviceForms'
 import ServiceFormPanel from './catalog/ServiceFormPanel.vue'
 
 const props = defineProps<{ kind: ServiceKind }>()
@@ -53,7 +53,7 @@ async function onSaved(item: ServiceOut) {
   await refresh(item.id)
 }
 
-const SKELETON_COLUMNS = ['72px', '2fr', '3fr', '64px', '96px', '32px']
+const SKELETON_COLUMNS = ['72px', '2fr', '120px', '3fr', '64px', '96px', '32px']
 </script>
 
 <template>
@@ -116,6 +116,7 @@ const SKELETON_COLUMNS = ['72px', '2fr', '3fr', '64px', '96px', '32px']
             <tr>
               <th class="col-serial" scope="col">Serial</th>
               <th scope="col">Name</th>
+              <th class="col-group" scope="col">Group</th>
               <th scope="col">Description</th>
               <th class="num" scope="col">Order</th>
               <th scope="col">State</th>
@@ -134,6 +135,7 @@ const SKELETON_COLUMNS = ['72px', '2fr', '3fr', '64px', '96px', '32px']
             >
               <td class="col-serial"><span class="serial"><span class="prefix">{{ words.serial }}</span>·{{ String(item.id).padStart(4, '0') }}</span></td>
               <td class="name">{{ item.name }}</td>
+              <td class="col-group" :class="{ off: !item.group }">{{ groupLabel(kind, item.group) ?? '—' }}</td>
               <td class="desc">{{ item.description }}</td>
               <td class="num mono">{{ item.sort_order }}</td>
               <td class="state-col"><StateMarks :active="item.is_active" /></td>
@@ -189,6 +191,12 @@ const SKELETON_COLUMNS = ['72px', '2fr', '3fr', '64px', '96px', '32px']
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--color-ink-off);
+}
+.col-group {
+  white-space: nowrap;
+}
+td.col-group.off {
   color: var(--color-ink-off);
 }
 </style>
