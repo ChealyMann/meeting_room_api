@@ -7,6 +7,8 @@ const service = (changes: Partial<ServiceOut> = {}): ServiceOut => ({
   id: 3,
   name: 'Coffee break',
   description: 'Coffee and cake',
+  group: null,
+  icon: null,
   sort_order: 1,
   is_active: true,
   version: 4,
