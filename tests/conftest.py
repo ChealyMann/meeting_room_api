@@ -183,3 +183,39 @@ def client(app, db_session):
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+# --- Request slip: an office with its heads, and a booker in it -----------------------
+
+
+@pytest.fixture
+def org(make_department, make_division, make_user, db_session):
+    """An office (division) in a department, each with a head; a Director of Cabinet."""
+    dept_head = make_user(name_kh="ចាន់ សុភក្ត្រ", title="Mr.", user_signature="users/1/dept.png")
+    office_head = make_user(name_kh="ហេង សុខលីណា", title="Ms.", user_signature="users/2/office.png")
+    director = make_user(name_kh="ពេជ្រ វិសាល", title="Mr.", user_signature="users/3/dir.png")
+    department = make_department(name_kh="នាយកដ្ឋានប្រព័ន្ធទូទាត់", head_user_id=dept_head.id)
+    division = make_division(
+        department=department, name_kh="ការិយាល័យគោលនយោបាយ", head_user_id=office_head.id
+    )
+    from app.services.slip_settings import get_slip_settings
+
+    get_slip_settings(db_session).director_user_id = director.id
+    db_session.flush()
+    return {
+        "department": department,
+        "division": division,
+        "dept_head": dept_head,
+        "office_head": office_head,
+        "director": director,
+    }
+
+
+@pytest.fixture
+def maker(make_user, org):
+    return make_user(
+        name_kh="សុខ ដារ៉ា",
+        title="Mr.",
+        division=org["division"],
+        user_signature="users/9/me.png",
+    )
