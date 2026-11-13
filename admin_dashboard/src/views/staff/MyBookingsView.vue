@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // My bookings (Staff): "Coming up" and "Past & cancelled", each card with a date block, the room
-// photo, title, time, room and status; "Door pass" on a confirmed one. A card opens its details;
+// photo, title, time, room and status (no door pass button: owner pick, 13 Nov 2026). A card opens its details;
 // ?booking=<id> opens them too.
-import { KeyRound, Plus } from 'lucide-vue-next'
+import { Plus } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -124,9 +124,6 @@ const tone = (status: string) =>
             </span>
           </span>
           <span class="pill" :class="tone(b.display_status)">{{ statusLabel(b.display_status) }}</span>
-          <button v-if="b.display_status === 'CONFIRMED'" type="button" class="pass" @click.stop="openBooking(b.id)">
-            <KeyRound :size="14" aria-hidden="true" />Door pass
-          </button>
         </article>
       </li>
     </ul>
@@ -141,9 +138,6 @@ const tone = (status: string) =>
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-}
-.pass:active {
-  transform: scale(0.97);
 }
 .head-actions {
   display: flex;
@@ -261,28 +255,9 @@ const tone = (status: string) =>
   background: var(--color-field-disabled);
   color: var(--color-intaglio);
 }
-.pass {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--color-field-disabled);
-  color: var(--color-ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms var(--ease-out-quint);
-}
 @media (hover: hover) and (pointer: fine) {
   .bk-card:hover {
     box-shadow: 0 6px 20px rgba(30, 22, 17, 0.08);
-  }
-  .pass:hover {
-    background: var(--color-rule);
   }
 }
 @media (max-width: 640px) {
@@ -292,8 +267,7 @@ const tone = (status: string) =>
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bk-card,
-  .pass {
+  .bk-card {
     transition: none;
   }
 }

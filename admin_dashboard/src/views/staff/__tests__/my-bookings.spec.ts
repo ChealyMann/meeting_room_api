@@ -103,11 +103,10 @@ describe('My bookings', () => {
     expect(tabs).toEqual(['Coming up 2', 'Past & cancelled 2'])
   })
 
-  it('shows Door pass on a confirmed booking only', async () => {
+  it('has no Door pass button on the cards (owner pick, 13 Nov 2026)', async () => {
     const w = await open()
-    const cards = w.findAll('.bk-card')
-    expect(cards[0]!.text()).toContain('Door pass')
-    expect(cards[1]!.text()).not.toContain('Door pass')
+    for (const card of w.findAll('.bk-card')) expect(card.text()).not.toContain('Door pass')
+    expect(w.findAll('.bk-card button')).toHaveLength(0)
   })
 
   it('lists cancelled and completed under Past & cancelled', async () => {
