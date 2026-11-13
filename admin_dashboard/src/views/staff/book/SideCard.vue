@@ -39,9 +39,11 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
       <ul v-if="sorted.length" class="bf-sess">
         <li v-for="s in sorted" :key="`${s.date}-${s.a}`">
           <span class="when"
-            ><b>{{ dayName(s.date) }}</b> <span class="mono">{{ toTime(s.a) }}–{{ toTime(s.b) }}</span></span
+            ><b class="day">{{ dayName(s.date) }}</b> <span class="time"
+              ><span class="mono">{{ toTime(s.a) }}–{{ toTime(s.b) }}</span
+              ><span class="len">{{ ` · ${lenText(s.b - s.a)}` }}</span></span
+            ></span
           >
-          <span class="len">{{ ` · ${lenText(s.b - s.a)}` }}</span>
           <button type="button" class="rm" :aria-label="`Remove ${dayLabel(s.date)} ${toTime(s.a)}`" @click="emit('remove', s)">
             <X :size="14" aria-hidden="true" />
           </button>
@@ -106,22 +108,37 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
   padding: 0;
   list-style: none;
 }
+/* Day on top, time and length under it; × on the right. Nothing breaks inside a line. */
 .bf-sess li {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 0 6px 0 12px;
+  padding: 8px 6px 8px 12px;
   border-radius: 12px;
   background: var(--color-paper);
-  font-size: 13.5px;
 }
 .when {
-  flex: none;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.day {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.time {
+  font-size: 12.5px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 .len {
-  flex: 1;
   color: var(--color-intaglio);
+}
+.rm {
+  flex: none;
 }
 .rm {
   display: grid;
