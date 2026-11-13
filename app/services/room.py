@@ -3,14 +3,16 @@ floor), R4, R7 (valid owner), R8 (owners edit only their rooms and some fields),
 (bookable), R13 (opening hours), and the booking guards of spec section 12 (a private room
 needs an owner; B-14; no turning off or moving with future bookings, B-21)."""
 
-from datetime import time
+import re
+from datetime import date, time
 
-from sqlalchemy import and_, func, not_, select
+from sqlalchemy import and_, exists, func, not_, select
 from sqlalchemy.orm import Session
 
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
 from app.models import (
+    BookingSession,
     Building,
     Category,
     Equipment,
@@ -181,10 +183,14 @@ def list_rooms(
     bookable: bool | None = None,
     search: str | None = None,
     is_private: bool | None = None,
+    free_dates: str | None = None,
+    free_from: str | None = None,
+    free_to: str | None = None,
 ) -> dict:
     """Paged rooms sorted by English name. All filters combine with AND."""
     check_province_code(province)
     wanted_equipment = parse_ids(equipment_ids, "equipment_ids")
+    free = parse_free_window(free_dates, free_from, free_to)
 
     query = (
         select(Room)
@@ -223,7 +229,65 @@ def list_rooms(
     if bookable is not None:
         query = query.where(_BOOKABLE if bookable else not_(_BOOKABLE))
     query = apply_search(query, search, [Room.name_en, Room.name_kh, Room.short_desc])
+    if free:
+        query = _only_free(query, *free)
     return paginate(session, apply_default_order(query, Room), page, size)
+
+
+# --- Free at a time on some days (Staff "Find a room") ----------------------------------
+
+MAX_FREE_DATES = 20  # as many days as one booking may have (booking_max_sessions)
+_HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+
+
+def _bad(field: str, message: str) -> AppError:
+    return AppError(ErrorCode.VALIDATION_ERROR, 422, "Invalid request.", {field: message})
+
+
+def _parse_hhmm(raw: str, field: str) -> time:
+    if not _HHMM.fullmatch(raw.strip()):
+        raise _bad(field, "Use HH:MM, e.g. 09:00.")
+    hours, minutes = raw.strip().split(":")
+    return time(int(hours), int(minutes))
+
+
+def parse_free_window(
+    free_dates: str | None, free_from: str | None, free_to: str | None
+) -> tuple[list[date], time, time] | None:
+    """`free_dates=2026-11-16,2026-11-17&free_from=08:00&free_to=12:00`: all three or none."""
+    has_dates = bool(free_dates and free_dates.strip())
+    has_times = free_from is not None or free_to is not None
+    if not has_dates and not has_times:
+        return None
+    if not has_dates:
+        raise _bad("free_dates", "Give free_dates with free_from and free_to.")
+    if free_from is None or free_to is None:
+        missing = "free_from" if free_from is None else "free_to"
+        raise _bad(missing, "Give free_from and free_to with free_dates.")
+    try:
+        dates = list(dict.fromkeys(date.fromisoformat(p.strip()) for p in free_dates.split(",")))
+    except ValueError:
+        message = "Must be a comma-separated list of dates, e.g. 2026-11-16,2026-11-17."
+        raise _bad("free_dates", message) from None
+    if len(dates) > MAX_FREE_DATES:
+        raise _bad("free_dates", f"Give at most {MAX_FREE_DATES} dates.")
+    start, end = _parse_hhmm(free_from, "free_from"), _parse_hhmm(free_to, "free_to")
+    if end <= start:
+        raise _bad("free_to", "Must be after free_from.")
+    return dates, start, end
+
+
+def _only_free(query, dates: list[date], start: time, end: time):
+    """Rooms open from `start` to `end`, with no blocking session meeting that time on any of
+    `dates` (the clash rule of a booking, BR-SCH-04: back-to-back is fine)."""
+    clash = exists().where(
+        BookingSession.room_id == Room.id,
+        BookingSession.date.in_(dates),
+        BookingSession.is_blocking.is_(True),
+        BookingSession.start_time < end,
+        BookingSession.end_time > start,
+    )
+    return query.where(Room.start_time <= start, Room.end_time >= end, not_(clash))
 
 
 def get_room(session: Session, room_id: int) -> Room:

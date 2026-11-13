@@ -73,6 +73,16 @@ describe('Booking step 1: the week table', () => {
     expect(sessions(w)).toEqual(['Tomorrow 09:00–10:00 · 1 h'])
   })
 
+  it('starts with every day picked on Find a room (day to day), the same time each', async () => {
+    const w = await open('?dates=2026-11-16,2026-11-17,2026-11-18&start=08:00&end=12:00')
+    expect(sessions(w)).toEqual(['Mon 16 Nov 08:00–12:00 · 4 h', 'Tue 17 Nov 08:00–12:00 · 4 h', 'Wed 18 Nov 08:00–12:00 · 4 h'])
+  })
+
+  it('ignores a picked time that is not whole', async () => {
+    const w = await open('?dates=2026-11-16,soon&start=08:00&end=12:00')
+    expect(sessions(w)).toEqual([])
+  })
+
   it('adds 1 hour with a click, and joins picks that touch', async () => {
     const w = await open()
     await click(w, '2026-11-16', '09:00')

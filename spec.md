@@ -796,6 +796,7 @@ Admin manages all rooms; a room owner manages only their own rooms, with a small
 | `is_active` | The room's own flag |
 | `is_bookable` | Computed flag (R12) |
 | `search` | `name_en`, `name_kh`, `short_desc` |
+| `free_dates`, `free_from`, `free_to` | All three or none. `free_dates` is a comma list of up to 20 dates (`2026-11-16,2026-11-17`); the times are `HH:MM`, `free_to` after `free_from`. Only rooms open for the whole time and with no blocking session meeting it on any of the dates (the clash rule BR-SCH-04: back-to-back is fine). Used by Staff "Find a room". Else 422 on the field. |
 
 **`POST /rooms`**
 

@@ -25,7 +25,15 @@ const SERVICE_PATHS: Record<ServiceKind, string> = {
 export interface StaffRoomFilters {
   q?: string
   is_private?: boolean
+  location_id?: number
   building_id?: number
+  min_capacity?: number
+  /** Rooms having every one. */
+  equipment_ids?: number[]
+  /** All three or none: free at that time on every one of the dates. */
+  free_dates?: string[]
+  free_from?: string
+  free_to?: string
   page?: number
   size?: number
 }
@@ -36,7 +44,13 @@ export function listBookableRooms(client: ApiClient, f: StaffRoomFilters): Promi
     is_bookable: true,
     search: f.q,
     is_private: f.is_private,
+    location_id: f.location_id,
     building_id: f.building_id,
+    min_capacity: f.min_capacity,
+    equipment_ids: f.equipment_ids?.length ? f.equipment_ids.join(',') : undefined,
+    free_dates: f.free_dates?.length ? f.free_dates.join(',') : undefined,
+    free_from: f.free_from,
+    free_to: f.free_to,
     page: f.page,
     size: f.size,
   })

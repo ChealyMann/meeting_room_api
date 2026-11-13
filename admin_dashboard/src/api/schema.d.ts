@@ -5741,6 +5741,12 @@ export interface operations {
                 /** @description true = private, false = public */
                 is_private?: boolean | null;
                 search?: string | null;
+                /** @description Comma list of dates, e.g. 2026-11-16,2026-11-17 (at most 20) */
+                free_dates?: string | null;
+                /** @description HH:MM, with free_dates */
+                free_from?: string | null;
+                /** @description HH:MM, after free_from */
+                free_to?: string | null;
                 page?: number;
                 size?: number;
             };

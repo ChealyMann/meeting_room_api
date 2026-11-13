@@ -36,17 +36,24 @@ const today = usePhnomPenhToday()
 const tomorrow = computed(() => addDays(today.value, 1))
 const roomId = Number(route.params.roomId)
 
-/** The time picked on the room page, when the query holds a whole one. */
-function fromQuery(): PickedSession | null {
-  const { date, start, end } = route.query
-  if (typeof date !== 'string' || typeof start !== 'string' || typeof end !== 'string') return null
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return null
+/**
+ * The time picked before (the room page, or Find a room), when the query holds a whole one:
+ * `date` for one day, or `dates` (a comma list, Find a room's "day to day") for several, with
+ * `start` and `end` the same every day.
+ */
+function fromQuery(): PickedSession[] {
+  const { date, dates, start, end } = route.query
+  const list = typeof dates === 'string' ? dates.split(',') : typeof date === 'string' ? [date] : []
+  if (typeof start !== 'string' || typeof end !== 'string') return []
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return []
   const a = toMin(start)
   const b = toMin(end)
-  return b > a ? { date, a, b } : null
+  if (b <= a || !list.length || !list.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))) return []
+  return list.map((d) => ({ date: d, a, b }))
 }
-const first = fromQuery()
-const { draft, addSession, removeSession, toCheckBody, toCreateBody } = useBookingDraft(roomId, first)
+const picked = fromQuery()
+const first = picked[0] ?? null
+const { draft, addSession, removeSession, toCheckBody, toCreateBody } = useBookingDraft(roomId, picked)
 const toast = useToast()
 
 const room = ref<RoomDetail | null>(null)

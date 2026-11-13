@@ -21,10 +21,11 @@ export interface BookingDraft {
   itNote: string
 }
 
-export function useBookingDraft(roomId: number, first?: PickedSession | null) {
+/** `first`: the time or times picked before the form opened (the room page, Find a room). */
+export function useBookingDraft(roomId: number, first?: PickedSession | PickedSession[] | null) {
   const draft = reactive<BookingDraft>({
     step: 1,
-    sessions: first ? [first] : [],
+    sessions: Array.isArray(first) ? mergeSessions(first) : first ? [first] : [],
     title: '',
     external: false,
     governor: false,
