@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarDays,
   DoorOpen,
+  FileText,
   GitFork,
   Inbox,
   Landmark,
@@ -88,6 +89,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Departments', icon: 'network', route: 'departments' },
       { label: 'Divisions', icon: 'git-fork', route: 'divisions' },
       { label: 'Positions', icon: 'briefcase', route: 'positions' },
+      { label: 'Request slip', icon: 'file-text', route: 'slip-settings' },
     ],
   },
   {
@@ -122,6 +124,7 @@ export const NAV_ICONS: Record<string, Component> = {
   wrench: Wrench,
   'list-checks': ListChecks,
   briefcase: Briefcase,
+  'file-text': FileText,
   users: Users,
   'shield-check': ShieldCheck,
 }

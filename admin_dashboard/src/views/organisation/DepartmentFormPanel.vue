@@ -25,7 +25,9 @@ import {
   emptyDepartmentForm,
   type DepartmentForm,
 } from '../../utils/orgForms'
+import { FIELD_WORDS } from '../../utils/pickerWords'
 import { serial } from '../../utils/serial'
+import HeadPicker from './HeadPicker.vue'
 
 const props = defineProps<{ department: DepartmentOut | null; defaultOfficeId?: number | null }>()
 const emit = defineEmits<{ saved: [department: DepartmentOut]; close: [] }>()
@@ -35,6 +37,7 @@ const LABELS: Record<string, string> = {
   name_kh: 'Khmer name',
   name_en: 'English name',
   sort_order: 'Order',
+  head_user_id: 'Head',
 }
 
 const drafts = useDraftsStore()
@@ -189,6 +192,22 @@ async function turn(active: boolean) {
         <BaseField id="sort_order" label="Order" hint="Lower comes first" :error="errors.sort_order">
           <template #default="{ describedBy, invalid }">
             <input id="sort_order" v-model="form.sort_order" class="input mono order" inputmode="numeric" placeholder="0" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
+          </template>
+        </BaseField>
+      </section>
+
+      <section class="group" aria-labelledby="g-slip">
+        <h3 id="g-slip">Request slip</h3>
+        <BaseField id="head_user_id" label="Head" hint="Signs this department's box" :error="errors.head_user_id">
+          <template #default="{ describedBy, invalid }">
+            <HeadPicker
+              id="head_user_id"
+              v-model="form.head_user_id"
+              :current="department?.head ?? null"
+              :words="FIELD_WORDS.head"
+              :invalid="invalid"
+              :described-by="describedBy"
+            />
           </template>
         </BaseField>
       </section>

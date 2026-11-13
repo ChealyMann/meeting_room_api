@@ -177,6 +177,12 @@ const router = createRouter({
           meta: { title: 'Positions', roles: ['ADMIN'] },
         },
         {
+          path: 'slip-settings',
+          name: 'slip-settings',
+          component: () => import('../views/SlipSettingsView.vue'),
+          meta: { title: 'Request slip', roles: ['ADMIN'] },
+        },
+        {
           path: 'users',
           name: 'users',
           component: () => import('../views/UsersView.vue'),

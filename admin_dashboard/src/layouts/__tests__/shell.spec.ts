@@ -35,6 +35,7 @@ function makeRouter() {
           { path: 'departments', name: 'departments', component: Page, meta: { title: 'Departments' } },
           { path: 'divisions', name: 'divisions', component: Page, meta: { title: 'Divisions' } },
           { path: 'positions', name: 'positions', component: Page, meta: { title: 'Positions' } },
+          { path: 'slip-settings', name: 'slip-settings', component: Page, meta: { title: 'Request slip' } },
           { path: 'users', name: 'users', component: Page, meta: { title: 'Users' } },
           { path: 'roles', name: 'roles', component: Page, meta: { title: 'Roles' } },
         ],
@@ -188,9 +189,9 @@ describe('AppShell folded sidebar', () => {
     await group(wrapper, 'Organisation').trigger('click')
     expect(group(wrapper, 'Organisation').attributes('aria-expanded')).toBe('true')
     const items = [...menu()!.querySelectorAll('a')].map((a) => a.textContent?.trim())
-    expect(items).toEqual(['Departments', 'Divisions', 'Positions'])
-    expect(menu()!.querySelector('.menu-head')?.textContent).toMatch(/Organisation\s*3/)
-    expect(menu()!.querySelectorAll('a svg')).toHaveLength(3)
+    expect(items).toEqual(['Departments', 'Divisions', 'Positions', 'Request slip'])
+    expect(menu()!.querySelector('.menu-head')?.textContent).toMatch(/Organisation\s*4/)
+    expect(menu()!.querySelectorAll('a svg')).toHaveLength(4)
     expect(menu()!.querySelector('.menu-pointer')).not.toBeNull()
     expect(menu()!.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Positions')
 

@@ -11,7 +11,7 @@ describe('navFor', () => {
       { title: 'Daily', items: ['bookings', 'food-list', 'home'] },
       { title: 'Places', items: ['offices', 'buildings', 'floors'] },
       { title: 'Catalog', items: ['room-types', 'equipment', 'catering-packages', 'it-services', 'public-holidays'] },
-      { title: 'Organisation', items: ['departments', 'divisions', 'positions'] },
+      { title: 'Organisation', items: ['departments', 'divisions', 'positions', 'slip-settings'] },
       { title: 'People', items: ['users', 'roles'] },
     ])
   })

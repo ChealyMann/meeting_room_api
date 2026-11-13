@@ -81,6 +81,11 @@ export function listRoomOwners(client: ApiClient): Promise<UserListItem[]> {
   return listAll<UserListItem>(client, '/api/v1/users', { role: 'ROOM_OWNER', is_active: true })
 }
 
+/** Every active user: who can be a head (departments, offices, the Director of Cabinet). */
+export function listActiveUsers(client: ApiClient): Promise<UserListItem[]> {
+  return listAll<UserListItem>(client, '/api/v1/users', { is_active: true })
+}
+
 /** Every room, any status: the Bookings room filter. */
 export function listAllRooms(client: ApiClient): Promise<RoomListItem[]> {
   return listAll<RoomListItem>(client, '/api/v1/rooms')
