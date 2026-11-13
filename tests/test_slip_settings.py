@@ -59,3 +59,18 @@ def test_staff_cannot_read_or_change(client, as_staff):
     assert client.get(URL, headers=as_staff).status_code == 403
     body = {"director_user_id": None, "address_kh": "x"}
     assert client.put(URL, json=body, headers=as_staff).status_code == 403
+
+
+def test_first_read_does_not_commit(db_session, monkeypatch):
+    """Read inside a booking's confirm: making the missing row must not commit that work."""
+    from app.models import SlipSettings
+    from app.services.slip_settings import get_slip_settings
+
+    db_session.delete(db_session.get(SlipSettings, 1))
+    db_session.flush()
+
+    def no_commit():
+        raise AssertionError("committed in the middle of another change")
+
+    monkeypatch.setattr(db_session, "commit", no_commit)
+    assert get_slip_settings(db_session).id == 1

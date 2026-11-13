@@ -9,12 +9,15 @@ ROW_ID = 1
 
 
 def get_slip_settings(session: Session) -> SlipSettings:
-    """The one row; made with the defaults on first use (the migration also adds it)."""
+    """The one row; made with the defaults on first use (the migration also adds it).
+
+    Only flushed, never committed here: a booking's confirm reads it mid-transaction, and the
+    caller that owns the transaction commits (or rolls back) everything together."""
     row = session.get(SlipSettings, ROW_ID)
     if row is None:
         row = SlipSettings(id=ROW_ID)
         session.add(row)
-        save(session)
+        session.flush()
     return row
 
 
