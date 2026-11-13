@@ -34,6 +34,8 @@ CATALOG = {
     "description": ("varchar(1000)", True),
     "version": ("int", False),
 }
+# Food packages and IT services: Staff pages group them and show an icon (None = Other / no icon).
+SERVICE = {"group": ("varchar(20)", True), "icon": ("varchar(1000)", True)}
 NAMES = {"name_en": ("varchar(100)", False), "name_kh": ("varchar(100)", False)}
 
 # table -> column -> (MySQL column type, nullable)
@@ -122,8 +124,8 @@ EXPECTED_COLUMNS = {
     },
     "roles": {**COMMON, **NAMES, "code": ("varchar(50)", False)},
     "user_roles": {"user_id": ("int unsigned", False), "role_id": ("int unsigned", False)},
-    "catering_packages": {**COMMON, **SORT_ORDER, **CATALOG},
-    "it_services": {**COMMON, **SORT_ORDER, **CATALOG},
+    "catering_packages": {**COMMON, **SORT_ORDER, **CATALOG, **SERVICE},
+    "it_services": {**COMMON, **SORT_ORDER, **CATALOG, **SERVICE},
     "public_holidays": {
         "id": ("int unsigned", False),
         "created_at": ("datetime", False),
