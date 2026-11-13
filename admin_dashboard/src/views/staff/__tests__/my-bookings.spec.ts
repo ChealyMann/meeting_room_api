@@ -23,6 +23,7 @@ let mine: unknown[]
 let detail8: unknown
 let mineFails = false
 let mineLimited = false
+let rooms: unknown[] = []
 
 function stub() {
   calls = []
@@ -41,7 +42,7 @@ function stub() {
       })
     if (key === 'GET /api/v1/bookings/mine')
       return mineFails ? json({ error: { code: 'X', message: 'Down.' } }, 503) : json({ items: mine, page: 1, size: 100, total: mine.length })
-    if (key === 'GET /api/v1/rooms') return json({ items: [], page: 1, size: 100, total: 0 })
+    if (key === 'GET /api/v1/rooms') return json({ items: rooms, page: 1, size: 100, total: rooms.length })
     if (key === 'GET /api/v1/bookings/7') return json(bookingDetail(SOON))
     if (key === 'GET /api/v1/bookings/8') return json(detail8)
     if (key === 'GET /api/v1/bookings/7/door-pass') return json({ passcode: '482913', expires_at: '2026-11-13T03:00:00Z', expired: false })
@@ -60,6 +61,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   mine = [SOON, WAITING, GONE, DONE]
   mineFails = false
+  rooms = []
   detail8 = bookingDetail(WAITING)
   cancelAnswer = () => [bookingDetail({ ...SOON, status: 'CANCELLED', display_status: 'CANCELLED', version: 4 }), 200]
   vi.stubGlobal('fetch', stub())
@@ -124,11 +126,13 @@ describe('My bookings', () => {
   it('cancels with the version it read, and the card moves to Past', async () => {
     const w = await open()
     await openCard(w, 'Budget review')
+    expect(panel()!.querySelector('textarea')).toBeNull()
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
-    expect(useConfirm().current.value?.title).toBeTruthy()
-    useConfirm().answer(true)
+    expect(panel()!.textContent).toContain('Cancel this booking?')
+    buttonIn(panel()!, 'Yes, cancel booking')!.click()
     await flushPromises()
+    expect(useConfirm().current.value).toBeNull()
     expect(bodies['POST /api/v1/bookings/7/cancel']).toEqual({ version: 3 })
     expect(titles(w)).toEqual(['Team sync'])
     await w.findAll('[role="tab"]')[1]!.trigger('click')
@@ -141,9 +145,94 @@ describe('My bookings', () => {
     await openCard(w, 'Budget review')
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
-    useConfirm().answer(true)
+    buttonIn(panel()!, 'Yes, cancel booking')!.click()
     await flushPromises()
     expect(panel()?.textContent).toContain('This item changed. Reload it.')
+  })
+
+  it('asks for the cancel reason only after Cancel booking, and Keep it closes the question', async () => {
+    const w = await open()
+    await openCard(w, 'Budget review')
+    buttonIn(panel()!, 'Cancel booking')!.click()
+    await flushPromises()
+    const reason = panel()!.querySelector('textarea')!
+    reason.value = 'The date moved.'
+    reason.dispatchEvent(new Event('input'))
+    buttonIn(panel()!, 'Keep it')!.click()
+    await flushPromises()
+    expect(panel()!.querySelector('textarea')).toBeNull()
+    expect(buttonIn(panel()!, 'Add to calendar')).toBeTruthy()
+    expect(calls).not.toContain('POST /api/v1/bookings/7/cancel')
+  })
+
+  it('sends the cancel reason when one is written', async () => {
+    const w = await open()
+    await openCard(w, 'Budget review')
+    buttonIn(panel()!, 'Cancel booking')!.click()
+    await flushPromises()
+    const reason = panel()!.querySelector('textarea')!
+    reason.value = 'The date moved.'
+    reason.dispatchEvent(new Event('input'))
+    buttonIn(panel()!, 'Yes, cancel booking')!.click()
+    await flushPromises()
+    expect(bodies['POST /api/v1/bookings/7/cancel']).toEqual({ version: 3, reason: 'The date moved.' })
+  })
+
+  it('puts the room photo on top with the title, the room and a status pill on it', async () => {
+    rooms = [{ id: 12, cover_photo: { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_t.jpg' } }]
+    const w = await open()
+    await openCard(w, 'Budget review')
+    expect(panel()!.querySelector('.panel-cover img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
+    expect(panel()!.querySelector('.panel-head.on-cover')).not.toBeNull()
+    expect(panel()!.querySelector('.pill')?.textContent?.trim()).toBe('Confirmed')
+    expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Mekong Room · NBC')
+  })
+
+  it('keeps the plain head with the status when the room has no photo', async () => {
+    const w = await open()
+    await openCard(w, 'Budget review')
+    expect(panel()!.querySelector('.panel-cover')).toBeNull()
+    expect(panel()!.querySelector('.pill')).toBeNull()
+    expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Confirmed')
+  })
+
+  it('shows why a booking was not approved, who said so and when', async () => {
+    detail8 = bookingDetail(
+      { ...WAITING, status: 'REJECTED', display_status: 'REJECTED' },
+      {
+        rejection: {
+          rejected_by: 'PITIKA',
+          actor: { id: 3, name_en: 'Chan Rath' },
+          reason: 'The hall is kept for a visit.',
+          decided_at: '2026-11-11T03:42:00Z',
+          by_admin: false,
+        },
+      },
+    )
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const note = panel()!.querySelector('.callout')!
+    expect(note.textContent).toContain('Not approved by Pitika')
+    expect(note.textContent).toContain('The hall is kept for a visit.')
+    expect(note.textContent).toContain('Chan Rath')
+    expect(buttonIn(panel()!, 'Cancel booking')).toBeUndefined()
+  })
+
+  it('lists each session with its length and the total', async () => {
+    detail8 = bookingDetail(WAITING, {
+      sessions: [
+        { id: 1, date: '2026-11-16', start_time: '12:30', end_time: '18:00' },
+        { id: 2, date: '2026-11-17', start_time: '07:30', end_time: '18:00' },
+      ],
+    })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const rows = [...panel()!.querySelectorAll('.sessions tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()))
+    expect(rows).toEqual([
+      ['Mon 16 Nov', '12:30–18:00', '5 h 30 min'],
+      ['Tue 17 Nov', '07:30–18:00', '10 h 30 min'],
+    ])
+    expect(panel()!.textContent).toContain('16 h in all')
   })
 
   describe('quiet refresh', () => {
