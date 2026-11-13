@@ -909,6 +909,8 @@ List filters: `location_id`, `is_active`, `search` (`name_en`, `name_kh`).
 
 Required: `location_id` (exists, active, R2), `name_en`, `name_kh`. Changing `location_id` changes the province of every user in its divisions.
 
+Optional: `head_user_id` (an existing, active user, else 422 / 409 `INACTIVE_REFERENCE`; `null` clears it). The head signs this department's box on the request slip (R20). Responses carry `head: {id, name_en, name_kh} | null`.
+
 ### Divisions
 
 | Method | Path | Access | Success | Errors |
@@ -924,7 +926,19 @@ List filters: `department_id`, `is_active`, `search` (`name_en`, `name_kh`, `sho
 { "department_id": 1, "name_en": "IT Division", "name_kh": "ផ្នែកព័ត៌មានវិទ្យា", "short_name": "IT", "sort_order": 1 }
 ```
 
-Required: `department_id` (exists, active, R2), `name_en`, `name_kh`. Optional: `short_name` (max 20), `sort_order`.
+Required: `department_id` (exists, active, R2), `name_en`, `name_kh`. Optional: `short_name` (max 20), `sort_order`, `head_user_id` (as for departments: the head signs the office's box on the request slip, R20). Responses carry `head`.
+
+### Request slip
+
+| Method | Path | Access | Success | Errors |
+| --- | --- | --- | --- | --- |
+| GET | `/slip-settings` | Admin | 200 `SlipSettings` | 403 |
+| PUT | `/slip-settings` | Admin | 200 `SlipSettings` | 403, 409, 422 |
+| GET | `/bookings/{id}/request-slip` | Booker, Admin, Pitika of the room's province | 200 Word file | 403, 404 |
+
+`SlipSettings` is one row: `{ director: {id, name_en, name_kh} | null, address_kh, updated_at }`. `PUT` takes both fields every time: `director_user_id` (an active user or `null`) and `address_kh` (1–500 characters, trimmed). The first read makes the row with the default address.
+
+`GET /bookings/{id}/request-slip` returns `application/vnd.openxmlformats-officedocument.wordprocessingml.document` with `Content-Disposition: attachment; filename="request-slip-<reference_code>.docx"; filename*=UTF-8''ប័ណ្ណស្នើបន្ទប់ប្រជុំ_<room name_kh>_<dd_mm_yyyy of the first session>.docx`. Not visible → 404; visible but not one of the three → 403; not `CONFIRMED` (a completed meeting is still `CONFIRMED`) → 404 "This booking is not confirmed yet.". The layout and wording follow the owner's signed paper; see `docs/superpowers/plans/2026-11-13-request-slip.md`.
 
 ### Positions
 
@@ -1050,6 +1064,7 @@ Eighteen rules, each enforced in a service function inside a database transactio
 | R16 | While `must_change_password` is true, only `POST /auth/change-password`, `POST /auth/logout` and `GET /me` work. | 403 `PASSWORD_CHANGE_REQUIRED` |
 | R17 | Roles are only the six seeded ones. Their `code` and `is_active` never change through the API; there is no create or deactivate. | 422 `VALIDATION_ERROR` |
 | R18 | New passwords are 8 to 128 characters, not equal to the user's email, and not trimmed. A changed password must differ from the current one. A new password is also not a pattern (repeats like `aaaaaaaa` or `12121212`; keys or letters in a row like `12345678`, `qwerty123`, `a1b2c3d4`), not a common password once numbers and symbols at the ends and look-alikes are taken off (`P@ssw0rd2026!`, `Welcome@2026`), and holds no name or email word of 4+ letters (`Dara@2026`). | 422 `VALIDATION_ERROR` |
+| R20 | A confirmed booking's request slip never changes. When a booking is sent, `requester_info` also keeps `division_id`, `division_kh`, `department_id`, `department_kh`. When it is confirmed, `bookings.confirmed_at` is set and `booking_signers` keeps one row per signer (the booker; the head of the office and the department the booker was in when sending; the Director of Cabinet from the settings), each with name, title and the signature file then in use. A head not set gets no row (that box stays empty); a booker who is a head signs that box too. A signature file a signer row uses is never deleted. The slip shows the Khmer lunar date of the day the booking was sent. | 404 |
 | R19 | A user has at most one signature image, cleaned as in section 14 (upright, no metadata, black ink on transparent paper, cropped, at most 600 × 300 px PNG). It is stored outside `UPLOAD_DIR` and served only to signed-in users. A user changes only their own; the Admin changes anyone's. | 413, 415, 422 `INVALID_IMAGE`, 403 |
 | R20 | A user has at most one profile photo, uploaded (not a link) and cleaned as in section 14 (upright, no metadata, centred square, at most 512 × 512 px JPEG). It is stored outside `UPLOAD_DIR` and served only to signed-in users. A user changes only their own; the Admin changes anyone's. | 413, 415, 422 `INVALID_IMAGE`, 403 |
 

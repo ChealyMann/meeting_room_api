@@ -96,7 +96,9 @@ People sign in with email and password. There is no sign-up: only the Admin crea
 | AUTH-F05 | First sign-in: a new user must change their password before they can do anything else. | Everyone | — |
 | AUTH-F06 | See my profile: my name, team, job, province and roles. | Everyone | `GET /me` |
 | AUTH-F07 | Change my profile: second email, phone, photo link, email notifications on or off. | Everyone | `PATCH /me` |
-| AUTH-F08 | Add, change or remove my signature (a picture of how I sign). It is printed on booking approval forms. | Everyone | `PUT /me/signature`, `DELETE /me/signature` |
+| AUTH-F08 | Add, change or remove my signature (a picture of how I sign). It is printed on the request slip (ប័ណ្ណស្នើ) of a confirmed booking. | Everyone | `PUT /me/signature`, `DELETE /me/signature` |
+| SLIP-F01 | Download the request slip (ប័ណ្ណស្នើ) of my confirmed booking as a Word file, signed by me and the heads. | Staff (booker), Admin, Pitika of the province | `GET /bookings/{id}/request-slip` |
+| SLIP-F02 | Set the head of each department and office, the Director of Cabinet and the slip's address line. | Admin | `PATCH /departments/{id}`, `PATCH /divisions/{id}`, `PUT /slip-settings` |
 
 **Validation**
 
@@ -450,7 +452,6 @@ These come later, in part 2 or after.
 
 - Booking rooms, and checking if a room is free.
 - Approving bookings (Pitika, room owner).
-- Printing signatures on approval forms. Signatures are saved now (AUTH-F08, USR-F11) and used when bookings come.
 - IT help for bookings (IT Lead, IT Staff).
 - Sending emails or notifications.
 - Signing up alone, or "forgot password" by email.
