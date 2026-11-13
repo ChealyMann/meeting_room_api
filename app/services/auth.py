@@ -83,7 +83,9 @@ def change_password(
     """
     if not verify_password(user.password_hash, current_password):
         raise AppError(ErrorCode.WRONG_PASSWORD, 400, "Current password is wrong.")
-    check_new_password(new_password, user.email, "new_password", current_password)
+    check_new_password(
+        new_password, user.email, "new_password", current_password, name=user.name_en
+    )
     user.password_hash = hash_password(new_password)
     user.must_change_password = False
     session.commit()

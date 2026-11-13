@@ -133,7 +133,7 @@ async function fillNew() {
   type('name_en', 'Chan Tha')
   type('email', 'tha@company.com')
   await choosePicker('position_id', 'IT Lead')
-  type('temporary_password', ' Secret-123 ')
+  type('temporary_password', ' Kite@Mekong ')
   await flushPromises()
 }
 
@@ -185,7 +185,7 @@ describe('UsersView', () => {
       name_en: 'Chan Tha',
       email: 'tha@company.com',
       position_id: 4,
-      temporary_password: ' Secret-123 ',
+      temporary_password: ' Kite@Mekong ',
     })
     expect(router.currentRoute.value.query).toEqual({ id: '9', tab: 'roles' })
   })

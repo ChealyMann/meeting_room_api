@@ -90,7 +90,7 @@ def new(position, **overrides) -> dict:
         "phone": "098 765 432",
         "position_id": position.id,
         "email_notifications": True,
-        "temporary_password": "Welcome@2026",
+        "temporary_password": "Kite@Mekong",
         **overrides,
     }
 
@@ -125,7 +125,7 @@ def test_create_user(client, headers, position, division):
 def test_create_never_returns_password(client, headers, position):
     response = client.post(URL, json=new(position), headers=headers)
     assert "password_hash" not in response.text
-    assert "Welcome@2026" not in response.text
+    assert "Kite@Mekong" not in response.text
 
 
 def test_create_with_only_required_fields(client, headers, position):
@@ -135,7 +135,7 @@ def test_create_with_only_required_fields(client, headers, position):
         "name_kh": "សុខ",
         "email": "sok@company.com",
         "position_id": position.id,
-        "temporary_password": "Welcome@2026",
+        "temporary_password": "Kite@Mekong",
     }
     response = client.post(URL, json=body, headers=headers).json()
     assert (response["title"], response["division"], response["department"]) == (None, None, None)
@@ -149,19 +149,17 @@ def test_create_with_only_required_fields(client, headers, position):
 
 def test_new_user_signs_in_with_temporary_password(client, headers, position):
     client.post(URL, json=new(position), headers=headers)
-    login = {"email": "chan.sreymom@company.com", "password": "Welcome@2026"}
+    login = {"email": "chan.sreymom@company.com", "password": "Kite@Mekong"}
     response = client.post(LOGIN, json=login)
     assert response.status_code == 200
     assert response.json()["must_change_password"] is True
 
 
 def test_temporary_password_is_not_trimmed(client, headers, position):
-    client.post(URL, json=new(position, temporary_password=" Welcome@2026 "), headers=headers)
+    client.post(URL, json=new(position, temporary_password=" Kite@Mekong "), headers=headers)
     email = "chan.sreymom@company.com"
-    assert client.post(LOGIN, json={"email": email, "password": "Welcome@2026"}).status_code == 401
-    assert (
-        client.post(LOGIN, json={"email": email, "password": " Welcome@2026 "}).status_code == 200
-    )
+    assert client.post(LOGIN, json={"email": email, "password": "Kite@Mekong"}).status_code == 401
+    assert client.post(LOGIN, json={"email": email, "password": " Kite@Mekong "}).status_code == 200
 
 
 @pytest.mark.parametrize("email", ["chan.sreymom@company.com", "CHAN.SREYMOM@COMPANY.COM"])
@@ -235,6 +233,8 @@ def test_create_blank_title_is_null(client, headers, position):
         ("x" * 129, "Password must be 8 to 128 characters."),
         ("chan.sreymom@company.com", "Password cannot be your email."),
         ("CHAN.SREYMOM@company.com", "Password cannot be your email."),
+        ("12345678", "Do not use keys or letters in a row, like 12345678, abcdefgh or qwerty."),
+        ("Sreymom@2026", "Do not use your name or email in the password."),
     ],
 )
 def test_create_bad_temporary_password(client, headers, position, password, message):
@@ -800,7 +800,7 @@ def test_no_delete(client, headers, user):
 # --- Task 52: POST /users/{id}/reset-password ------------------------------------------
 
 
-def reset(client, headers, user, password="Reset@2026"):
+def reset(client, headers, user, password="Rain@Tonle"):
     return client.post(
         f"{URL}/{user.id}/reset-password", json={"temporary_password": password}, headers=headers
     )
@@ -814,7 +814,7 @@ def test_reset_password(client, headers, user, auth_headers, db_session):
     db_session.refresh(user)
     assert user.must_change_password is True
     assert _error(client.get("/api/v1/me", headers=old_headers)) == (401, "UNAUTHORIZED")
-    login = client.post(LOGIN, json={"email": "sok.dara@company.com", "password": "Reset@2026"})
+    login = client.post(LOGIN, json={"email": "sok.dara@company.com", "password": "Rain@Tonle"})
     assert login.status_code == 200
     assert login.json()["must_change_password"] is True
 
@@ -838,6 +838,8 @@ def test_admin_resets_own_password(client, headers, admin):
         ("Short@1", "Password must be 8 to 128 characters."),
         ("y" * 129, "Password must be 8 to 128 characters."),
         ("Sok.Dara@Company.com", "Password cannot be your email."),
+        ("aaaaaaaa", "Do not repeat the same characters, like aaaaaaaa or 12121212."),
+        ("SokDara99", "Do not use your name or email in the password."),
     ],
 )
 def test_reset_bad_password(client, headers, user, password, message):
@@ -845,7 +847,7 @@ def test_reset_bad_password(client, headers, user, password, message):
 
 
 @pytest.mark.parametrize(
-    "body", [{}, {"temporary_password": None}, {"temporary_password": "Reset@2026", "x": 1}]
+    "body", [{}, {"temporary_password": None}, {"temporary_password": "Rain@Tonle", "x": 1}]
 )
 def test_reset_bad_body(client, headers, user, body):
     response = client.post(f"{URL}/{user.id}/reset-password", json=body, headers=headers)
@@ -854,7 +856,7 @@ def test_reset_bad_body(client, headers, user, body):
 
 def test_reset_unknown_user(client, headers):
     response = client.post(
-        f"{URL}/999999/reset-password", json={"temporary_password": "Reset@2026"}, headers=headers
+        f"{URL}/999999/reset-password", json={"temporary_password": "Rain@Tonle"}, headers=headers
     )
     assert _error(response) == (404, "NOT_FOUND")
 
@@ -865,6 +867,6 @@ def test_reset_needs_admin(client, as_staff, user):
 
 def test_reset_needs_a_token(client, user):
     response = client.post(
-        f"{URL}/{user.id}/reset-password", json={"temporary_password": "Reset@2026"}
+        f"{URL}/{user.id}/reset-password", json={"temporary_password": "Rain@Tonle"}
     )
     assert _error(response) == (401, "UNAUTHORIZED")

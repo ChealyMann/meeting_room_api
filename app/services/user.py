@@ -254,7 +254,7 @@ def _division_required(field: str) -> AppError:
 def create_user(session: Session, data: dict) -> User:
     """POST /users: no roles, and the user must change the temporary password."""
     password = data.pop("temporary_password")
-    check_new_password(password, data["email"], "temporary_password")
+    check_new_password(password, data["email"], "temporary_password", name=data["name_en"])
     _check_secondary_email(data["email"], data["secondary_email"], "secondary_email")
     position = get_reference(session, Position, data["position_id"], "position_id", POSITION)
     division = None
@@ -352,7 +352,7 @@ def reset_password(session: Session, user_id: int, password: str) -> None:
     """POST /users/{id}/reset-password. The new hash changes the password fingerprint, so
     every token the user holds stops working. Works on inactive users too."""
     user = get_or_404(session, User, user_id)
-    check_new_password(password, user.email, "temporary_password")
+    check_new_password(password, user.email, "temporary_password", name=user.name_en)
     user.password_hash = hash_password(password)
     user.must_change_password = True
     session.commit()

@@ -126,6 +126,19 @@ def test_new_password_same_as_email(client, make_user, auth_headers, new):
     }
 
 
+@pytest.mark.parametrize(
+    ("new", "message"),
+    [
+        ("qwerty123", "Do not use keys or letters in a row, like 12345678, abcdefgh or qwerty."),
+        ("P@ssw0rd2026!", "This password is too common. Pick one that is hard to guess."),
+        ("Dara@2026!", "Do not use your name or email in the password."),
+    ],
+)
+def test_new_password_is_not_a_pattern(client, make_user, auth_headers, new, message):
+    user = make_user(name_en="Sok Dara")
+    assert _fields(change(client, auth_headers(user), new=new)) == {"new_password": message}
+
+
 @pytest.mark.parametrize("new", ["x" * 7, "x" * 129])
 def test_new_password_length(client, make_user, auth_headers, new):
     assert _fields(change(client, auth_headers(make_user()), new=new)) == {

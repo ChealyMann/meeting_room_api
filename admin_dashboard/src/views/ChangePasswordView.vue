@@ -7,6 +7,7 @@ import { ApiError } from '../api/errors'
 import BaseButton from '../components/base/BaseButton.vue'
 import BaseField from '../components/base/BaseField.vue'
 import PasswordInput from '../components/base/PasswordInput.vue'
+import PasswordStrength from '../components/PasswordStrength.vue'
 import { useFieldErrors } from '../composables/useFieldErrors'
 import { useToast } from '../composables/useToast'
 import AuthFrame from '../layouts/AuthFrame.vue'
@@ -28,7 +29,7 @@ const forced = computed(() => session.mustChangePassword)
 async function submit() {
   clear()
   if (!current.value) errors.value.current_password = 'Enter your current password.'
-  const problem = passwordProblem(next.value, session.user?.email ?? '', current.value)
+  const problem = passwordProblem(next.value, session.user?.email ?? '', current.value, session.user?.name_en ?? '')
   if (problem) errors.value.new_password = problem
   else if (confirm.value !== next.value) errors.value.confirm_password = 'The passwords do not match.'
   if (Object.keys(errors.value).length) return
@@ -77,7 +78,7 @@ async function signOut() {
         </template>
       </BaseField>
 
-      <BaseField id="new_password" label="New password" hint="8 to 128 characters" :error="errors.new_password">
+      <BaseField id="new_password" label="New password" hint="8+ characters, not a pattern" :error="errors.new_password">
         <template #default="{ describedBy, invalid }">
           <PasswordInput
             id="new_password"
@@ -85,6 +86,13 @@ async function signOut() {
             autocomplete="new-password"
             :described-by="describedBy"
             :invalid="invalid"
+          />
+          <PasswordStrength
+            v-if="!errors.new_password"
+            :password="next"
+            :email="session.user?.email ?? ''"
+            :current="current"
+            :name="session.user?.name_en ?? ''"
           />
         </template>
       </BaseField>

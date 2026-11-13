@@ -25,7 +25,7 @@ const filled = () => ({
   name_en: 'Chan Tha',
   email: 'tha@company.com',
   position_id: 4,
-  temporary_password: 'Secret-123',
+  temporary_password: 'Kite@Mekong',
 })
 
 describe('user form', () => {
@@ -53,14 +53,14 @@ describe('user form', () => {
   })
 
   it('leaves out empty optional fields on create, and keeps the password as typed', () => {
-    expect(userCreateBody({ ...filled(), temporary_password: ' Secret-123 ', phone: '  ' })).toEqual({
+    expect(userCreateBody({ ...filled(), temporary_password: ' Kite@Mekong ', phone: '  ' })).toEqual({
       staff_id: 'EMP-010',
       name_en: 'Chan Tha',
       name_kh: 'ចាន់ ថា',
       email: 'tha@company.com',
       position_id: 4,
       email_notifications: true,
-      temporary_password: ' Secret-123 ',
+      temporary_password: ' Kite@Mekong ',
     })
   })
 

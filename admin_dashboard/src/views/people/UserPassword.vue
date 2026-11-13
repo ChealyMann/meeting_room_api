@@ -42,7 +42,7 @@ async function copy() {
 
 async function save() {
   error.value = ''
-  problem.value = temporaryPasswordProblem(password.value) ?? ''
+  problem.value = temporaryPasswordProblem(password.value, props.user.email, props.user.name_en) ?? ''
   if (problem.value) {
     document.getElementById('reset_password')?.focus()
     return
@@ -74,7 +74,7 @@ async function save() {
       <b>{{ error }}</b>
     </div>
     <p class="lead">They are signed out everywhere and must choose a new password when they next sign in.</p>
-    <BaseField id="reset_password" label="Temporary password" hint="8 to 128 characters" :error="problem">
+    <BaseField id="reset_password" label="Temporary password" hint="8+ characters, not a pattern" :error="problem">
       <template #default="{ describedBy, invalid }">
         <PasswordInput id="reset_password" v-model="password" v-model:visible="shown" autocomplete="new-password" :described-by="describedBy" :invalid="invalid" />
       </template>
