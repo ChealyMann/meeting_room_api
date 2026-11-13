@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import User
+from app.services.booking_signers import signature_in_use
 from app.services.images import invalid_image, open_image, read_upload, remove_files
 from app.services.records import not_found
 
@@ -92,6 +93,15 @@ def _save_path(session: Session, user: User, stored: str | None) -> None:
     session.commit()
 
 
+def _remove_unless_on_a_slip(session: Session, settings: Settings, stored: str | None) -> None:
+    """Delete a replaced signature file, unless a confirmed booking's request slip prints it
+    (the slip keeps the signature as it was when the booking was confirmed)."""
+    if not stored or signature_in_use(session, stored):
+        return
+    if old_path := _file(settings, stored):
+        remove_files([old_path])
+
+
 def set_signature(session: Session, settings: Settings, user: User, file: BinaryIO) -> User:
     """Save a new signature, then delete the one it replaces."""
     png = make_signature_png(read_upload(file, settings.max_upload_mb))
@@ -105,8 +115,7 @@ def set_signature(session: Session, settings: Settings, user: User, file: Binary
     except BaseException:
         remove_files([path])
         raise
-    if old and (old_path := _file(settings, old)):
-        remove_files([old_path])
+    _remove_unless_on_a_slip(session, settings, old)
     return user
 
 
@@ -116,8 +125,7 @@ def remove_signature(session: Session, settings: Settings, user: User) -> None:
     if not old:
         return
     _save_path(session, user, None)
-    if old_path := _file(settings, old):
-        remove_files([old_path])
+    _remove_unless_on_a_slip(session, settings, old)
 
 
 def signature_file(settings: Settings, user: User) -> Path:

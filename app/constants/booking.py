@@ -78,3 +78,12 @@ MASKED_TITLE = "Reserved (Private Session)"
 EXPIRY_REASON = "Expired: not approved before the meeting time."
 BOOKER_OFF_REASON = "Cancelled: the booker's account was turned off."
 REFERENCE_PREFIX = "NBC-"
+
+
+class SignerRole(StrEnum):
+    """Who a request slip copy is of: the booker (អ្នកធ្វើប័ណ្ណ) and the three opinion boxes."""
+
+    MAKER = "MAKER"
+    OFFICE_HEAD = "OFFICE_HEAD"
+    DEPARTMENT_HEAD = "DEPARTMENT_HEAD"
+    DIRECTOR = "DIRECTOR"

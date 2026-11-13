@@ -46,6 +46,7 @@ class Booking(IdMixin, TimestampMixin, Base):
     private_justification: Mapped[str | None] = mapped_column(String(1000))
     route: Mapped[str] = mapped_column(String(2))
     status: Mapped[str] = mapped_column(String(20), index=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)  # UTC; the slip's boxes
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
     cancel_reason: Mapped[str | None] = mapped_column(String(500))
     # Who cancelled: the booker or an Admin (B-35); null for the system (B-27).

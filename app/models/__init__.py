@@ -7,6 +7,7 @@ from app.models.booking_participant import BookingParticipant
 from app.models.booking_rejection import BookingRejection
 from app.models.booking_review import BookingReview
 from app.models.booking_session import BookingSession
+from app.models.booking_signer import BookingSigner
 from app.models.building import Building
 from app.models.category import Category
 from app.models.catering_order import CateringOrder
@@ -37,6 +38,7 @@ __all__ = [
     "BookingRejection",
     "BookingReview",
     "BookingSession",
+    "BookingSigner",
     "Building",
     "CateringOrder",
     "CateringPackage",

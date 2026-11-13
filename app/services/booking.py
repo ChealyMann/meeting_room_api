@@ -121,6 +121,11 @@ def requester_info(user: User) -> dict[str, Any]:
         "division": division.name_en if division else None,
         "department": department.name_en if department else None,
         "office": office.name_en if office else None,
+        # For the request slip, as they were when sent (the booker may move later).
+        "division_id": division.id if division else None,
+        "division_kh": division.name_kh if division else None,
+        "department_id": department.id if department else None,
+        "department_kh": department.name_kh if department else None,
         "email": user.email,
         "phone": user.phone,
     }
