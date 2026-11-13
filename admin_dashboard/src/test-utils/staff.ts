@@ -16,6 +16,7 @@ export const roomItem = (id: number, name: string, extra: Record<string, unknown
   province: { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'x' },
   owner: null,
   cover_photo: null,
+  photo_count: 0,
   is_active: true,
   is_bookable: true,
   is_private: false,

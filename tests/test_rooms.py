@@ -24,6 +24,7 @@ LIST_FIELDS = {
     "province",
     "owner",
     "cover_photo",
+    "photo_count",
     "is_active",
     "is_bookable",
     "is_private",
@@ -291,7 +292,8 @@ def test_create_missing_required_fields(client, as_admin):
 
 
 @pytest.mark.parametrize(
-    "field", ["id", "is_active", "is_bookable", "created_at", "cover_photo", "private"]
+    "field",
+    ["id", "is_active", "is_bookable", "created_at", "cover_photo", "photo_count", "private"],
 )
 def test_create_refuses_unknown_and_server_fields(client, as_admin, floor, category, field):
     response = client.post(URL, json=new(floor, category, **{field: True}), headers=as_admin)
@@ -420,7 +422,7 @@ def test_list_item(client, as_staff, rooms, owner):
     item = client.get(URL, params={"search": "Mekong"}, headers=as_staff).json()["items"][0]
     assert item["owner"]["id"] == owner.id
     assert (item["start_time"], item["end_time"]) == ("08:00", "18:00")
-    assert item["cover_photo"] is None
+    assert (item["cover_photo"], item["photo_count"]) == (None, 0)
     assert item["is_bookable"] is True
 
 
@@ -438,6 +440,7 @@ def test_list_cover_photo(client, as_staff, rooms, db_session):
     db_session.flush()
     item = client.get(URL, params={"search": "Mekong"}, headers=as_staff).json()["items"][0]
     assert item["cover_photo"] == {"url": "/u/first.jpg", "thumbnail_url": "/u/first_t.jpg"}
+    assert item["photo_count"] == 3
 
 
 @pytest.mark.parametrize(

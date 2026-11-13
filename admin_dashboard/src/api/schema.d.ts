@@ -3388,6 +3388,8 @@ export interface components {
             province: components["schemas"]["ProvinceRef"];
             owner: components["schemas"]["NamedRef"] | null;
             cover_photo: components["schemas"]["CoverPhoto"] | null;
+            /** Photo Count */
+            photo_count: number;
             /** Is Active */
             is_active: boolean;
             /** Is Bookable */
@@ -3441,6 +3443,8 @@ export interface components {
             province: components["schemas"]["ProvinceRef"];
             owner: components["schemas"]["NamedRef"] | null;
             cover_photo: components["schemas"]["CoverPhoto"] | null;
+            /** Photo Count */
+            photo_count: number;
             /** Is Active */
             is_active: boolean;
             /** Is Bookable */

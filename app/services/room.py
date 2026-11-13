@@ -77,9 +77,12 @@ def is_bookable(room: Room) -> bool:
 # --- Responses -------------------------------------------------------------------------
 
 
-def _cover_photos(session: Session, room_ids: list[int]) -> dict[int, RoomPhoto]:
-    """The photo with the lowest sort_order (then id) of each room."""
+def _cover_photos(
+    session: Session, room_ids: list[int]
+) -> tuple[dict[int, RoomPhoto], dict[int, int]]:
+    """The photo with the lowest sort_order (then id) of each room, and how many photos each has."""
     covers: dict[int, RoomPhoto] = {}
+    counts: dict[int, int] = {}
     photos = session.scalars(
         select(RoomPhoto)
         .where(RoomPhoto.room_id.in_(room_ids))
@@ -87,10 +90,11 @@ def _cover_photos(session: Session, room_ids: list[int]) -> dict[int, RoomPhoto]
     )
     for photo in photos:
         covers.setdefault(photo.room_id, photo)
-    return covers
+        counts[photo.room_id] = counts.get(photo.room_id, 0) + 1
+    return covers, counts
 
 
-def _list_item_fields(room: Room, cover: RoomPhoto | None) -> dict:
+def _list_item_fields(room: Room, cover: RoomPhoto | None, photo_count: int) -> dict:
     building = room.floor.building
     location = building.location
     return {
@@ -109,6 +113,7 @@ def _list_item_fields(room: Room, cover: RoomPhoto | None) -> dict:
         "province": ProvinceRef.from_code(location.province),
         "owner": NamedRef.model_validate(room.owner) if room.owner else None,
         "cover_photo": CoverPhoto.model_validate(cover) if cover else None,
+        "photo_count": photo_count,
         "is_active": room.is_active,
         "is_bookable": is_bookable(room),
         "is_private": room.is_private,
@@ -116,8 +121,11 @@ def _list_item_fields(room: Room, cover: RoomPhoto | None) -> dict:
 
 
 def build_room_list_items(session: Session, rooms: list[Room]) -> list[RoomListItem]:
-    covers = _cover_photos(session, [room.id for room in rooms])
-    return [RoomListItem(**_list_item_fields(room, covers.get(room.id))) for room in rooms]
+    covers, counts = _cover_photos(session, [room.id for room in rooms])
+    return [
+        RoomListItem(**_list_item_fields(room, covers.get(room.id), counts.get(room.id, 0)))
+        for room in rooms
+    ]
 
 
 def room_photos(session: Session, room_id: int) -> list[RoomPhoto]:
@@ -142,7 +150,7 @@ def room_equipment_items(session: Session, room_id: int) -> list[Equipment]:
 def build_room_detail(session: Session, room: Room) -> RoomDetail:
     photos = room_photos(session, room.id)
     return RoomDetail(
-        **_list_item_fields(room, photos[0] if photos else None),
+        **_list_item_fields(room, photos[0] if photos else None, len(photos)),
         description=room.description,
         photos=[PhotoOut.model_validate(photo) for photo in photos],
         equipment=[
