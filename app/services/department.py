@@ -7,6 +7,7 @@ from app.models import Department, Location
 from app.services.listing import apply_active_filter, apply_default_order, apply_search, paginate
 from app.services.records import (
     apply_changes,
+    check_head,
     check_parent_active,
     get_or_404,
     get_reference,
@@ -38,6 +39,7 @@ def get_department(session: Session, department_id: int) -> Department:
 
 def create_department(session: Session, data: dict) -> Department:
     location = get_reference(session, Location, data["location_id"], "location_id", OFFICE)
+    check_head(session, data)
     department = Department(**data)
     department.location = location
     session.add(department)
@@ -54,6 +56,7 @@ def update_department(session: Session, department_id: int, changes: dict) -> De
         location = get_reference(session, Location, changes["location_id"], "location_id", OFFICE)
     if changes.get("is_active") is True and not department.is_active:
         check_parent_active(location, OFFICE)
+    check_head(session, changes)
     apply_changes(department, changes)
     department.location = location
     save(session)

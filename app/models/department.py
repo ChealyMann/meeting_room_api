@@ -15,6 +15,7 @@ from app.models.base import (
 
 if TYPE_CHECKING:
     from app.models.location import Location
+    from app.models.user import User
 
 
 class Department(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
@@ -26,5 +27,12 @@ class Department(IdMixin, SortOrderMixin, ActiveMixin, TimestampMixin, Base):
     )
     name_en: Mapped[str] = mapped_column(String(100))
     name_kh: Mapped[str] = mapped_column(String(100))
+    head_user_id: Mapped[int | None] = mapped_column(
+        UnsignedInt,
+        # use_alter: users → divisions → departments → users is a circle; this link is added last.
+        ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT", use_alter=True),
+        index=True,
+    )  # signs this department's opinion box on the request slip
 
     location: Mapped["Location"] = relationship()
+    head: Mapped["User | None"] = relationship(foreign_keys=[head_user_id])

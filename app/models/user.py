@@ -46,5 +46,5 @@ class User(IdMixin, ActiveMixin, TimestampMixin, Base):
         Boolean, default=True, server_default=text("1")
     )
 
-    division: Mapped["Division | None"] = relationship()
+    division: Mapped["Division | None"] = relationship(foreign_keys=[division_id])
     position: Mapped["Position"] = relationship()
