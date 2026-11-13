@@ -672,6 +672,9 @@ export interface paths {
          * List rooms
          * @description All filters combine with AND. Search matches English name, Khmer name and short
          *     description. Sorted by English name.
+         *
+         *     `free_dates` + `free_from` + `free_to` (all three or none): only rooms open at that time
+         *     and with no blocking booking meeting it on any of those dates.
          */
         get: operations["list_rooms_api_v1_rooms_get"];
         put?: never;
@@ -1456,6 +1459,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/request-slip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the request slip (ប័ណ្ណស្នើ) as a Word file
+         * @description The signed request slip of a CONFIRMED booking, for the booker, the Admin and the Pitika
+         *     of the room's province. It is built from the copies kept when the booking was sent and
+         *     confirmed, so it never changes.
+         */
+        get: operations["get_request_slip_api_v1_bookings__booking_id__request_slip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/cancel": {
         parameters: {
             query?: never;
@@ -1554,6 +1579,24 @@ export interface paths {
          *     reason is optional ("Rejected by the Admin." when none).
          */
         post: operations["reject_booking_api_v1_admin_bookings__booking_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/slip-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** See the request slip settings */
+        get: operations["get_slip_settings_api_v1_slip_settings_get"];
+        /** Change the request slip settings */
+        put: operations["update_slip_settings_api_v1_slip_settings_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2226,6 +2269,8 @@ export interface components {
              * @default 0
              */
             sort_order: number;
+            /** Head User Id */
+            head_user_id?: number | null;
         };
         /** DepartmentOut */
         DepartmentOut: {
@@ -2241,6 +2286,7 @@ export interface components {
             sort_order: number;
             /** Is Active */
             is_active: boolean;
+            head: components["schemas"]["NamedRef"] | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -2260,6 +2306,8 @@ export interface components {
             name_kh?: string;
             /** Sort Order */
             sort_order?: number;
+            /** Head User Id */
+            head_user_id?: number | null;
             /** Is Active */
             is_active?: boolean;
         };
@@ -2284,6 +2332,8 @@ export interface components {
              * @default 0
              */
             sort_order: number;
+            /** Head User Id */
+            head_user_id?: number | null;
         };
         /** DivisionOut */
         DivisionOut: {
@@ -2301,6 +2351,7 @@ export interface components {
             sort_order: number;
             /** Is Active */
             is_active: boolean;
+            head: components["schemas"]["NamedRef"] | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -2321,6 +2372,8 @@ export interface components {
             short_name?: string | null;
             /** Sort Order */
             sort_order?: number;
+            /** Head User Id */
+            head_user_id?: number | null;
             /** Is Active */
             is_active?: boolean;
         };
@@ -3563,6 +3616,24 @@ export interface components {
         SetRolesRequest: {
             /** Role Codes */
             role_codes: string[];
+        };
+        /** SlipSettingsOut */
+        SlipSettingsOut: {
+            director: components["schemas"]["NamedRef"] | null;
+            /** Address Kh */
+            address_kh: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * SlipSettingsUpdate
+         * @description PUT /slip-settings: both fields, every time.
+         */
+        SlipSettingsUpdate: {
+            /** Director User Id */
+            director_user_id: number | null;
+            /** Address Kh */
+            address_kh: string;
         };
         /** Tokens */
         Tokens: {
@@ -7335,6 +7406,35 @@ export interface operations {
             };
         };
     };
+    get_request_slip_api_v1_bookings__booking_id__request_slip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_booking_api_v1_bookings__booking_id__cancel_post: {
         parameters: {
             query?: never;
@@ -7493,6 +7593,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_slip_settings_api_v1_slip_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlipSettingsOut"];
+                };
+            };
+        };
+    };
+    update_slip_settings_api_v1_slip_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlipSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlipSettingsOut"];
                 };
             };
             /** @description Validation Error */

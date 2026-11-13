@@ -5,7 +5,7 @@
 // length; the details in two columns. Foot: Add to calendar, and Cancel booking, which asks
 // right there (reason optional) and sends the version that was read; if someone saved first it
 // says so and offers Reload.
-import { Ban, CalendarPlus, Check, Clock, X } from 'lucide-vue-next'
+import { Ban, CalendarPlus, Check, Clock, FileText, X } from 'lucide-vue-next'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { api } from '../../api'
@@ -18,9 +18,11 @@ import RoomPhoto from '../../components/RoomPhoto.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
+import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
+import { downloadBlob } from '../../utils/download'
 import { dayLabel, lenText } from './rules'
 
 const props = defineProps<{ bookingId: number; cover: string | null }>()
@@ -113,18 +115,14 @@ async function addToCalendar() {
   if (!booking.value) return
   icsError.value = ''
   try {
-    const url = URL.createObjectURL(await getBookingIcs(api, booking.value.id))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${booking.value.reference_code}.ics`
-    document.body.append(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    downloadBlob(await getBookingIcs(api, booking.value.id), `${booking.value.reference_code}.ics`)
   } catch (error) {
     icsError.value = error instanceof ApiError ? error.message : 'The calendar file could not load.'
   }
 }
+
+// The request slip (ប័ណ្ណស្នើ): for a confirmed booking, also after the meeting is over.
+const slip = useRequestSlip(booking)
 
 // Cancel: "Cancel booking" opens the question in the foot (an optional reason, 5 characters or
 // more when given); "Yes, cancel booking" sends it, "Keep it" closes the question.
@@ -252,9 +250,10 @@ async function reload() {
       </dl>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
+      <p v-if="slip.error.value" class="msg" role="alert">{{ slip.error.value }}</p>
     </div>
 
-    <template v-if="booking && open" #foot>
+    <template v-if="booking && (open || slip.hasSlip.value)" #foot>
       <div v-if="asking" class="foot">
         <p class="ask">Cancel this booking? <span>This cannot be undone.</span></p>
         <textarea
@@ -275,8 +274,12 @@ async function reload() {
       </div>
       <div v-else class="foot">
         <div class="row">
-          <button type="button" class="quiet" @click="ask">Cancel booking</button>
-          <button type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+          <button v-if="open" type="button" class="quiet" @click="ask">Cancel booking</button>
+          <span class="push" />
+          <button v-if="slip.hasSlip.value" type="button" class="cal kh" :disabled="slip.busy.value" @click="slip.download">
+            <FileText :size="16" aria-hidden="true" />{{ SLIP_LABEL }}
+          </button>
+          <button v-if="open" type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
         </div>
       </div>
     </template>
@@ -421,8 +424,10 @@ dd.none {
   color: var(--color-ink);
 }
 /* Cancel is a quiet text button at the start of the foot; Add to calendar at the end. */
-.quiet {
+.push {
   margin-right: auto;
+}
+.quiet {
   padding: 0 12px;
   background: none;
   color: var(--color-intaglio);
@@ -453,6 +458,7 @@ dd.none {
 }
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .reason {

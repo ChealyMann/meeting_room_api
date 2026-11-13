@@ -79,6 +79,7 @@ beforeEach(() => {
         return actionAnswer()
       }
       if (url.pathname === '/api/v1/bookings/12/door-pass') return json(doorPass)
+      if (url.pathname === '/api/v1/bookings/12/request-slip') return new Response('docx', { headers: { 'Content-Type': 'application/octet-stream' } })
       if (url.pathname === '/api/v1/bookings/12/ics') return new Response('BEGIN:VCALENDAR', { headers: { 'Content-Type': 'text/calendar' } })
       if (url.pathname === '/api/v1/bookings/12') return json(current)
       if (url.pathname === '/api/v1/bookings') return json({ items: [listItem(12)], page: 1, size: 20, total: 1 })
@@ -245,6 +246,26 @@ describe('BookingPanel', () => {
     expect(revokedAtClick).toEqual([false])
     await new Promise((done) => setTimeout(done, 0))
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:1')
+  })
+
+  it('downloads the request slip (Word) of a confirmed booking', async () => {
+    const names: string[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download)
+    })
+    await mountAt('/bookings?id=12')
+
+    await click(panel()!.querySelector<HTMLButtonElement>('.panel-head button[aria-label="Request slip"]')!)
+
+    expect(calls).toContain('GET /api/v1/bookings/12/request-slip')
+    expect(names).toEqual(['request-slip-NBC-26-48213.docx'])
+  })
+
+  it('has no request slip button before the booking is confirmed', async () => {
+    current = detail({ status: 'PENDING_PITIKA', display_status: 'PENDING_PITIKA' })
+    await mountAt('/bookings?id=12')
+
+    expect(panel()!.querySelector('button[aria-label="Request slip"]')).toBeNull()
   })
 
   it('is read only', async () => {

@@ -24,6 +24,7 @@ let detail8: unknown
 let mineFails = false
 let mineLimited = false
 let rooms: unknown[] = []
+let slipFails = false
 
 function stub() {
   calls = []
@@ -45,6 +46,10 @@ function stub() {
     if (key === 'GET /api/v1/rooms') return json({ items: rooms, page: 1, size: 100, total: rooms.length })
     if (key === 'GET /api/v1/bookings/7') return json(bookingDetail(SOON))
     if (key === 'GET /api/v1/bookings/8') return json(detail8)
+    if (key === 'GET /api/v1/bookings/7/request-slip')
+      return slipFails
+        ? json({ error: { code: 'NOT_FOUND', message: 'This booking is not confirmed yet.' } }, 404)
+        : new Response('docx', { headers: { 'Content-Type': 'application/octet-stream' } })
     if (key === 'GET /api/v1/bookings/7/door-pass') return json({ passcode: '482913', expires_at: '2026-11-13T03:00:00Z', expired: false })
     if (key === 'POST /api/v1/bookings/7/cancel') {
       const [body, status] = cancelAnswer()
@@ -62,6 +67,7 @@ beforeEach(() => {
   mine = [SOON, WAITING, GONE, DONE]
   mineFails = false
   rooms = []
+  slipFails = false
   detail8 = bookingDetail(WAITING)
   cancelAnswer = () => [bookingDetail({ ...SOON, status: 'CANCELLED', display_status: 'CANCELLED', version: 4 }), 200]
   vi.stubGlobal('fetch', stub())
@@ -193,6 +199,54 @@ describe('My bookings', () => {
     expect(panel()!.querySelector('.panel-cover')).toBeNull()
     expect(panel()!.querySelector('.pill')).toBeNull()
     expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Confirmed')
+  })
+
+  describe('request slip', () => {
+    const SLIP = 'ប័ណ្ណស្នើ (Word)'
+    let saved: string[]
+    beforeEach(() => {
+      saved = []
+      URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
+      URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        saved.push(this.download)
+      })
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('downloads the Word slip of a confirmed booking', async () => {
+      const w = await open()
+      await openCard(w, 'Budget review')
+      buttonIn(panel()!, SLIP)!.click()
+      await flushPromises()
+      expect(calls).toContain('GET /api/v1/bookings/7/request-slip')
+      expect(saved).toEqual(['request-slip-NBC-26-7.docx'])
+    })
+
+    it('is not offered while the booking waits', async () => {
+      const w = await open()
+      await openCard(w, 'Team sync')
+      expect(buttonIn(panel()!, SLIP)).toBeUndefined()
+      expect(buttonIn(panel()!, 'Add to calendar')).toBeTruthy()
+    })
+
+    it('is still offered when the meeting is over', async () => {
+      detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'COMPLETED' })
+      const w = await open()
+      await openCard(w, 'Team sync')
+      expect(buttonIn(panel()!, SLIP)).toBeTruthy()
+      expect(buttonIn(panel()!, 'Cancel booking')).toBeUndefined()
+    })
+
+    it('says so when the slip cannot load', async () => {
+      slipFails = true
+      const w = await open()
+      await openCard(w, 'Budget review')
+      buttonIn(panel()!, SLIP)!.click()
+      await flushPromises()
+      expect(panel()!.textContent).toContain('This booking is not confirmed yet.')
+      expect(saved).toEqual([])
+    })
   })
 
   it('shows why a booking was not approved, who said so and when', async () => {
