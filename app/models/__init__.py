@@ -25,6 +25,7 @@ from app.models.role import Role
 from app.models.room import Room
 from app.models.room_equipment import room_equipment
 from app.models.room_photo import RoomPhoto
+from app.models.slip_settings import SlipSettings
 from app.models.user import User
 from app.models.user_roles import user_roles
 
@@ -52,6 +53,7 @@ __all__ = [
     "Role",
     "Room",
     "RoomPhoto",
+    "SlipSettings",
     "User",
     "it_ticket_staff",
     "room_equipment",
