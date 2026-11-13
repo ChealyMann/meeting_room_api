@@ -23,7 +23,7 @@ def test_digits():
 def test_dates():
     assert khmer_date(date(2026, 9, 14)) == "ថ្ងៃទី១៤ ខែកញ្ញា ឆ្នាំ២០២៦"
     assert khmer_short_date(date(2026, 9, 5)) == "០៥/០៩/២០២៦"
-    assert khmer_weekday(date(2026, 9, 14)) == "ច័ន្ទ"
+    assert khmer_weekday(date(2026, 9, 14)) == "ចន្ទ"  # as on the signed paper
     assert KH_MONTHS[10] == "វិច្ឆិកា"
 
 
