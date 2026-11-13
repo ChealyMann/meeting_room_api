@@ -26,7 +26,7 @@ from app.schemas.booking import (
 from app.schemas.common import Page
 from app.security import AdminUser, AnyUser
 from app.services import booking as booking_service
-from app.services import booking_review, booking_view
+from app.services import booking_review, booking_view, request_slip
 from app.services.booking_ics import build_ics
 from app.services.clock import now_utc
 
@@ -138,6 +138,25 @@ def get_booking_ics(booking_id: IdPath, current: AnyUser, session: DbSession) ->
         content=build_ics(booking),
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{booking.reference_code}.ics"'},
+    )
+
+
+@router.get(
+    "/{booking_id}/request-slip",
+    summary="Download the request slip (ប័ណ្ណស្នើ) as a Word file",
+    response_class=Response,
+)
+def get_request_slip(
+    booking_id: IdPath, current: AnyUser, session: DbSession, settings: AppSettings
+) -> Response:
+    """The signed request slip of a CONFIRMED booking, for the booker, the Admin and the Pitika
+    of the room's province. It is built from the copies kept when the booking was sent and
+    confirmed, so it never changes."""
+    booking, content = request_slip.get_request_slip(session, settings, current, booking_id)
+    return Response(
+        content=content,
+        media_type=request_slip.DOCX_TYPE,
+        headers={"Content-Disposition": request_slip.content_disposition(booking)},
     )
 
 

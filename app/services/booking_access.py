@@ -74,6 +74,16 @@ def is_door_pass_viewer(current: CurrentUser, booking: Booking) -> bool:
     )
 
 
+def is_slip_viewer(current: CurrentUser, booking: Booking) -> bool:
+    """Who may download the request slip: the booker, the Admin and the Pitika of the room's
+    province. Not the room owner, not IT. The endpoint also checks the booking is CONFIRMED."""
+    return (
+        booking.requester_id == current.id
+        or current.has_role(RoleCode.ADMIN)
+        or _is_pitika_of(current, booking)
+    )
+
+
 def load_booking_for_write(session: Session, booking_id: int) -> Booking:
     """B-31: the booking row read FOR UPDATE, with fresh values (404 when missing).
 
