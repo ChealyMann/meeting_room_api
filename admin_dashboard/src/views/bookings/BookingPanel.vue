@@ -12,10 +12,11 @@ import { useRequestSlip } from '../../composables/useRequestSlip'
 import { downloadBlob } from '../../utils/download'
 import type { AdminActionsOut, BookingDetail, DoorPassOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingFiles from '../../components/BookingFiles.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
 import BookingActionDialog, { type BookingAction } from './BookingActionDialog.vue'
-import BookingHistory from './BookingHistory.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
 import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
@@ -242,6 +243,11 @@ async function downloadIcs() {
         </div>
         <div><dt>Sent</dt><dd class="mono">{{ formatPhnomPenh(booking.created_at) }}</dd></div>
       </dl>
+
+      <template v-if="booking.attachments?.length">
+        <h3>Files</h3>
+        <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
+      </template>
     </section>
 
     <section v-show="tab === 'sessions'" id="tabpanel-sessions" role="tabpanel" aria-labelledby="tab-sessions">

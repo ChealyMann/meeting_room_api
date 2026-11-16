@@ -2,6 +2,7 @@
 
 from app.models.base import Base, utcnow
 from app.models.booking import Booking
+from app.models.booking_attachment import BookingAttachment
 from app.models.booking_door_pass import BookingDoorPass
 from app.models.booking_participant import BookingParticipant
 from app.models.booking_rejection import BookingRejection
@@ -33,6 +34,7 @@ from app.models.user_roles import user_roles
 __all__ = [
     "Base",
     "Booking",
+    "BookingAttachment",
     "BookingDoorPass",
     "BookingParticipant",
     "BookingRejection",

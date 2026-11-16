@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../../api'
 import { getRoomSchedule } from '../../api/bookings'
+import { uploadAttachment } from '../../api/attachments'
 import { getRoom } from '../../api/rooms'
 import type { ServiceOut } from '../../api/services'
 import { ApiError } from '../../api/errors'
@@ -24,11 +25,11 @@ import SideCard from './book/SideCard.vue'
 import StepBar from './book/StepBar.vue'
 import { useBookingDraft } from './book/useBookingDraft'
 import WeekTable from './book/WeekTable.vue'
-import { dayLabel, roomHours, toMin, workdaysFrom, type PickedSession } from './rules'
+import { dayLabel, roomHours, toMin, daysFrom, type PickedSession } from './rules'
 import './staff.css'
 
 const STEPS = ['Schedule', 'Meeting details', 'Food & IT', 'Review']
-const WEEK = 5
+const WEEK = 7
 
 const route = useRoute()
 const router = useRouter()
@@ -68,14 +69,14 @@ const reached = ref(1)
 const now = () => toMin(phnomPenhClock(new Date()))
 const hours = computed(() => (room.value ? roomHours(room.value) : { open: 480, close: 1080 }))
 
-// The week window: page 0 is the next 5 working days from today; the arrows move 5 working days.
+// The week window: page 0 is the next 7 days from today (weekends too); the arrows move 7 days.
 const firstPage = () => {
   if (!first) return 0
-  const index = workdaysFrom(today.value, WEEK * 12).indexOf(first.date)
+  const index = daysFrom(today.value, WEEK * 12).indexOf(first.date)
   return index < 0 ? 0 : Math.floor(index / WEEK)
 }
 const page = ref(firstPage())
-const days = computed(() => workdaysFrom(today.value, WEEK * (page.value + 1)).slice(WEEK * page.value))
+const days = computed(() => daysFrom(today.value, WEEK * (page.value + 1)).slice(WEEK * page.value))
 const range = computed(() => `${dayLabel(days.value[0]!)} – ${dayLabel(days.value[days.value.length - 1]!)}`)
 
 async function loadWeek() {
@@ -179,13 +180,30 @@ const PATH: Record<BookingStep, string> = {
   CONFIRMED: 'Confirmed',
 }
 
+/** The booking is sent; now its files, one by one. A file that fails never undoes the booking:
+ *  the booker adds it again from My bookings. Returns how many failed. */
+async function uploadFiles(bookingId: number): Promise<number> {
+  let failed = 0
+  for (const file of draft.files) {
+    try {
+      await uploadAttachment(api, bookingId, file)
+    } catch {
+      failed += 1
+    }
+  }
+  return failed
+}
+
 async function send() {
   if (!room.value || sending.value) return
   sending.value = true
   message.value = ''
   try {
-    await sendBooking(api, toCreateBody())
-    toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
+    const saved = await sendBooking(api, toCreateBody())
+    // Confirmed when sent (an owner's own room, R3): files are locked already, so none are tried.
+    const failed = saved.status === 'CONFIRMED' ? 0 : await uploadFiles(saved.id)
+    if (failed) toast.show(`Request sent. ${failed} file${failed === 1 ? '' : 's'} could not be added — add ${failed === 1 ? 'it' : 'them'} from My bookings.`)
+    else toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
     await router.push({ name: 'my-bookings' })
   } catch (error) {
     if (!(error instanceof ApiError)) {

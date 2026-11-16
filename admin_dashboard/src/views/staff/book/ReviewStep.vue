@@ -4,6 +4,7 @@
 import { CircleAlert, Lock, Pencil } from 'lucide-vue-next'
 import { computed } from 'vue'
 
+import AttachmentList from '../../../components/AttachmentList.vue'
 import RoomPhoto from '../../../components/RoomPhoto.vue'
 import UserAvatar from '../../../components/UserAvatar.vue'
 import type { ServiceOut } from '../../../api/services'
@@ -113,6 +114,15 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
       </button>
     </div>
 
+    <div v-if="draft.files.length" class="rv-files">
+      <small>Files</small>
+      <AttachmentList :files="draft.files.map((f) => ({ name: f.name, size: f.size }))" />
+      <!-- An owner's own room with no food or IT (R3) is confirmed when sent, and files lock then. -->
+      <p v-if="check?.first_status === 'CONFIRMED'" class="rv-files-off">
+        This booking is confirmed at once, and files lock once a booking is confirmed. The {{ draft.files.length === 1 ? 'file' : 'files' }} will not be added.
+      </p>
+    </div>
+
     <div v-if="session.user" class="by">
       <UserAvatar :path="session.user.avatar_url" :name="session.user.name_en" />
       <span><small>Booked by</small>{{ session.user.name_en }}</span>
@@ -122,6 +132,19 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
 </template>
 
 <style scoped>
+.rv-files {
+  display: grid;
+  gap: 6px;
+}
+.rv-files small {
+  font-size: 12px;
+  color: var(--color-intaglio);
+}
+.rv-files-off {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-warn);
+}
 .rv {
   display: flex;
   flex: 1;

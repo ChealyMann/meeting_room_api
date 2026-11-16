@@ -95,7 +95,20 @@ describe('Room details', () => {
     expect(w.find('h1').text()).toBe('Mekong Room')
     expect(w.findAll('.gal-dots button')).toHaveLength(2)
     expect(w.text()).toContain('Smart TV')
-    expect(calls.some((c) => c.startsWith('/api/v1/rooms/12/schedule?from=2026-11-12&to=2026-11-20'))).toBe(true)
+    expect(calls.some((c) => c.startsWith('/api/v1/rooms/12/schedule?from=2026-11-12&to=2026-11-18'))).toBe(true)
+  })
+
+  it('offers the next 7 days, Saturday and Sunday too', async () => {
+    const w = await open()
+    expect(w.findAll('.tp-days button[data-day]').map((b) => b.attributes('data-day'))).toEqual([
+      '2026-11-12',
+      '2026-11-13',
+      '2026-11-14',
+      '2026-11-15',
+      '2026-11-16',
+      '2026-11-17',
+      '2026-11-18',
+    ])
   })
 
   it('offers only the start times that are free for the chosen length', async () => {

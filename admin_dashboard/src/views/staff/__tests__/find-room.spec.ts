@@ -151,6 +151,14 @@ describe('Find a room', () => {
     expect(lineOf(w, 'Governor Room')).toBe('Free all day')
   })
 
+  it('draws a green border on a free room and a red one on a room in use', async () => {
+    const w = await open()
+    const card = (name: string) => w.findAll('.room-card').find((c) => c.find('h2').text() === name)!.classes()
+    expect(card('Mekong Room')).toContain('ok')
+    expect(card('Bassac Room')).toContain('alert')
+    expect(card('Governor Room')).toContain('ok')
+  })
+
   it('offers Request on a private room and Book on a shared one', async () => {
     const w = await open()
     expect(w.find('[aria-label="Request Governor Room"]').exists()).toBe(true)
@@ -281,14 +289,16 @@ describe('Find a room filter chips', () => {
     expect(router.currentRoute.value.query).toEqual({ dates: '2026-11-16,2026-11-17,2026-11-18', start: '08:00', end: '12:00' })
   })
 
-  it('offers 10 working days in week rows, and no start time that has passed today', async () => {
+  it('offers 14 days (weekends too) in week rows, and no start time that has passed today', async () => {
     const w = await open()
     await openChip(w, 'when')
     const days = w.findAll('.chip-when .day').map((d) => d.attributes('data-day'))
-    expect(days).toHaveLength(10)
+    expect(days).toHaveLength(14)
     expect(days[0]).toBe('2026-11-12')
-    expect(days).not.toContain('2026-11-14') // Saturday
-    expect(w.findAll('.chip-when .row')).toHaveLength(3)
+    expect(days.at(-1)).toBe('2026-11-25')
+    expect(days).toContain('2026-11-14') // Saturday
+    expect(days).toContain('2026-11-15') // Sunday
+    expect(w.findAll('.chip-when .row')).toHaveLength(3) // Thu–Sun, Mon–Sun, Mon–Wed
     const starts = w.findAll('.chip-when select[aria-label="From"] option').map((o) => o.text())
     expect(starts[1]).toBe('10:30') // it is 10:00
     await w.get('.chip-when [data-day="2026-11-13"]').trigger('click')

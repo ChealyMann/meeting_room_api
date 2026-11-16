@@ -57,11 +57,13 @@ async function click(w: VueWrapper, day: string, time: string) {
 const sessions = (w: VueWrapper) => w.findAll('.bf-sess li').map((li) => li.text().replace(/\s+/g, ' '))
 
 describe('Booking step 1: the week table', () => {
-  it('shows the next 5 working days from today', async () => {
+  it('shows the next 7 days from today, Saturday and Sunday too', async () => {
     const w = await open()
     expect(w.findAll('.tbl-col').map((c) => c.attributes('data-day'))).toEqual([
       '2026-11-12',
       '2026-11-13',
+      '2026-11-14',
+      '2026-11-15',
       '2026-11-16',
       '2026-11-17',
       '2026-11-18',

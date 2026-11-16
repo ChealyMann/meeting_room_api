@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     signature_dir: Path = Path("./signatures")
     # Profile photos (R20). Also private: served only to signed-in users, never under /uploads.
     avatar_dir: Path = Path("./avatars")
+    # Booking attachments (PDF, Word, Excel). Private too: served only to those who can see
+    # the booking, never under /uploads.
+    attachment_dir: Path = Path("./attachments")
     max_upload_mb: int = Field(default=5, ge=1)
     max_photos_per_room: int = Field(default=20, ge=1)
+    max_attachment_mb: int = Field(default=10, ge=1)
+    max_attachments_per_booking: int = Field(default=3, ge=1)
     cors_origins: str = ""
 
     # Room bookings (design spec section 4). Services check these, not the schemas.

@@ -158,6 +158,7 @@ def test_error_codes_are_the_complete_spec_list():
         "LAST_ADMIN",
         "SELF_ACTION_NOT_ALLOWED",
         "PHOTO_LIMIT_REACHED",
+        "ATTACHMENT_LIMIT_REACHED",
         "FILE_TOO_LARGE",
         "UNSUPPORTED_FILE_TYPE",
         "VALIDATION_ERROR",

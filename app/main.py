@@ -14,6 +14,7 @@ from app.middleware import RequestIdLogFilter, RequestIdMiddleware
 from app.routers import (
     admin_bookings,
     auth,
+    booking_attachments,
     bookings,
     buildings,
     categories,
@@ -114,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(catering_orders.router)
     api.include_router(public_holidays.router)
     api.include_router(bookings.router)
+    api.include_router(booking_attachments.router)
     api.include_router(admin_bookings.router)
     api.include_router(slip_settings.router)
     app.include_router(api)

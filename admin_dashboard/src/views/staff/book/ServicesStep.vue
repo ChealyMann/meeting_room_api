@@ -42,7 +42,7 @@ function toggle(list: 'foods' | 'its', id: number) {
       search-label="food"
       @toggle="toggle('foods', $event)"
     >
-      <textarea v-if="draft.foods.length" v-model="draft.foodNote" name="foodNote" class="note" rows="1" placeholder="Note for the kitchen" aria-label="Note for the kitchen" />
+      <textarea v-if="draft.foods.length" v-model="draft.foodNote" name="foodNote" class="note" rows="3" placeholder="Note for the kitchen" aria-label="Note for the kitchen" />
     </ServiceList>
     <ServiceList
       kind="it"
@@ -54,7 +54,7 @@ function toggle(list: 'foods' | 'its', id: number) {
       search-label="IT help"
       @toggle="toggle('its', $event)"
     >
-      <textarea v-if="draft.its.length" v-model="draft.itNote" name="itNote" class="note" rows="1" placeholder="Note for IT" aria-label="Note for IT" />
+      <textarea v-if="draft.its.length" v-model="draft.itNote" name="itNote" class="note" rows="3" placeholder="Note for IT" aria-label="Note for IT" />
     </ServiceList>
   </div>
 </template>
@@ -67,12 +67,12 @@ function toggle(list: 'foods' | 'its', id: number) {
   gap: 28px;
   min-height: 0;
 }
-/* The note matches the search field: one line, then it grows with the text (up to 4 lines). */
+/* The note: 3 lines from the start (owner, 16 Nov 2026: "bigger"), then it grows with the text (up to 7 lines). */
 .note {
   flex: none;
   box-sizing: border-box;
-  min-height: 40px;
-  max-height: 112px;
+  min-height: 80px;
+  max-height: 160px;
   margin-top: 10px;
   padding: 10px 14px;
   field-sizing: content;

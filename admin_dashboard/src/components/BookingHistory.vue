@@ -2,7 +2,8 @@
 // The History tab of a booking (owner decisions, 5 Nov 2026): the route's steps as a process
 // bar, then a timeline of what happened. Each step shows its action in its colour (green
 // approved, crimson rejected or cancelled, amber waiting), who did it, and their role as plain
-// text with a small icon; the Admin's role is crimson so a stand-in shows.
+// text with a small icon; the Admin's role is crimson so a stand-in shows. Used in the Admin's
+// booking panel and, as the History tab, in every booking pop-up (owner pick, 16 Nov 2026).
 import {
   CalendarCheck,
   CalendarX2,
@@ -26,10 +27,17 @@ import {
 } from 'lucide-vue-next'
 import { computed, type Component } from 'vue'
 
-import type { BookingDetail } from '../../api/types'
-import { buildHistory, ROLE_LABELS, type EventKind, type RoleKey } from '../../utils/bookingHistory'
+import type { BookingDetail } from '../api/types'
+import { buildHistory, ROLE_LABELS, type EventKind, type RoleKey } from '../utils/bookingHistory'
 
-const props = defineProps<{ booking: BookingDetail }>()
+const props = withDefaults(
+  defineProps<{
+    booking: BookingDetail
+    /** False in a pop-up that already shows the step bar on top (To review, IT setup, My bookings). */
+    bar?: boolean
+  }>(),
+  { bar: true },
+)
 const history = computed(() => buildHistory(props.booking))
 
 const KIND: Record<EventKind, { icon: Component; tone: 'neutral' | 'ok' | 'stop' | 'wait' }> = {
@@ -59,7 +67,7 @@ const ROLE_ICON: Record<RoleKey, Component> = {
 
 <template>
   <div class="history">
-    <ol class="steps" aria-label="Steps">
+    <ol v-if="bar" class="steps" aria-label="Steps">
       <li v-for="(s, i) in history.steps" :key="i" class="step" :class="s.state">
         <span class="c" aria-hidden="true">
           <Check v-if="s.state === 'done'" />

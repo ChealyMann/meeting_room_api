@@ -1,30 +1,35 @@
 <script setup lang="ts">
-// One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
-// on top with the title on it; the status band; the steps bar; a note saying why it stopped
-// (not approved, expired, cancelled); the door pass when confirmed; the sessions with their
-// length; the details in two columns. A status band sits right under the photo. Foot (owner pick, 13 Nov 2026: look C "one main button +
-// menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
+// One of my bookings, in the side panel: a small room photo by the title (look B, owner pick
+// 16 Nov 2026); the status band; a thin step bar; a note saying why it stopped
+// (not approved, expired, cancelled);
+// then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, History. Foot (owner pick, 13 Nov 2026: look C "one main button +
+// menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with the door pass, Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
-import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, X } from 'lucide-vue-next'
+import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, KeyRound, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import { cancelMyBooking } from '../../api/staff'
-import type { BookingDetail, DoorPassOut } from '../../api/types'
-import ProcessBar from '../../components/ProcessBar.vue'
+import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
+import BookingDetails from '../../components/BookingDetails.vue'
+import BookingFiles from '../../components/BookingFiles.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
+import BookingServices from '../../components/BookingServices.vue'
+import BookingTabs from '../../components/BookingTabs.vue'
+import PanelSection from '../../components/PanelSection.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import SecretReveal from '../../components/SecretReveal.vue'
+import StepProgress from '../../components/StepProgress.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import { useToast } from '../../composables/useToast'
-import { MEETING_TYPE_LABELS, statusLabel } from '../../utils/bookingLabels'
+import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
 import { downloadBlob } from '../../utils/download'
-import { dayLabel, lenText } from './rules'
+import { dayLabel } from './rules'
 
 const props = defineProps<{ bookingId: number; cover: string | null }>()
 const emit = defineEmits<{ close: []; changed: [BookingDetail] }>()
@@ -49,8 +54,12 @@ useLiveRefresh(async () => {
   if (!busy.value && fresh.id === props.bookingId) booking.value = fresh
 })
 
+// Files (owner, 16 Nov 2026): the booker adds or removes them until the booking is confirmed.
+function setFiles(files: AttachmentOut[]) {
+  if (booking.value) booking.value = { ...booking.value, attachments: files }
+}
+
 const history = computed(() => (booking.value ? buildHistory(booking.value) : { steps: [], events: [] }))
-const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
 const open = computed(() => !!booking.value && ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'].includes(booking.value.display_status))
 
 // The status band under the photo (owner pick, 13 Nov 2026): "Confirmed · the room is yours" on a
@@ -91,29 +100,60 @@ const stopNote = computed(() => {
   }
 })
 
-// Sessions: day, time, length; the total when there are several.
-const minutes = (t: string) => {
-  const [h, m] = t.split(':')
-  return Number(h) * 60 + Number(m)
-}
-const sessions = computed(() =>
-  (booking.value?.sessions ?? []).map((s) => ({
-    id: s.id,
-    day: dayLabel(s.date),
-    time: `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`,
-    len: minutes(s.end_time) - minutes(s.start_time),
-  })),
+// The days of the booking, for the status band ("Mon 16 Nov", or "3 sessions").
+const sessions = computed(() => (booking.value?.sessions ?? []).map((s) => ({ id: s.id, day: dayLabel(s.date) })))
+
+// Tabs (owner pick, 16 Nov 2026, like To review): the status, the steps and the buttons stay; the
+// rest is split into Details, Food & IT, Files and History. Files shows while files can still be
+// added, or when there are some. A new booking opens on Details.
+type Tab = 'details' | 'services' | 'files' | 'history'
+const tab = ref<Tab>('details')
+watch(
+  () => props.bookingId,
+  () => (tab.value = 'details'),
 )
-const totalLen = computed(() => sessions.value.reduce((sum, s) => sum + s.len, 0))
-const invited = computed(() => {
-  const n = booking.value?.participant_emails.length ?? 0
-  return n ? `${n} by email` : null
+const count = (n: number) => (n ? ` ${n}` : '')
+const showFiles = computed(() => !!booking.value && (booking.value.attachments.length > 0 || booking.value.attachments_open))
+const tabs = computed(() => {
+  const b = booking.value
+  const services = (b?.catering?.packages.length ?? 0) + (b?.it?.items.length ?? 0)
+  const list: Array<{ id: Tab; label: string }> = [
+    { id: 'details', label: 'Details' },
+    { id: 'services', label: `Food & IT${count(services)}` },
+  ]
+  if (showFiles.value) list.push({ id: 'files', label: `Files${count(b?.attachments.length ?? 0)}` })
+  list.push({ id: 'history', label: 'History' })
+  return list
 })
 
+// The door pass (owner pick, 16 Nov 2026: in the ⋯ menu): while confirmed and not over. The code
+// is fetched only when asked, then shows in one line above the buttons with Copy and Hide.
+const hasDoorPass = computed(() => booking.value?.status === 'CONFIRMED' && booking.value.display_status !== 'COMPLETED')
 const doorPass = ref<DoorPassOut | undefined>(undefined)
-async function revealDoorPass(): Promise<string> {
-  doorPass.value = await getDoorPass(api, props.bookingId)
-  return doorPass.value.passcode
+const passError = ref('')
+const passCopied = ref(false)
+async function showDoorPass() {
+  closeMenu()
+  passError.value = ''
+  passCopied.value = false
+  try {
+    doorPass.value = await getDoorPass(api, props.bookingId)
+  } catch (error) {
+    passError.value = error instanceof ApiError ? error.message : 'The door pass could not load.'
+  }
+}
+function hideDoorPass() {
+  doorPass.value = undefined
+  passCopied.value = false
+}
+async function copyDoorPass() {
+  if (!doorPass.value) return
+  try {
+    await navigator.clipboard.writeText(doorPass.value.passcode)
+    passCopied.value = true
+  } catch {
+    passError.value = 'Could not copy. Select the code instead.'
+  }
 }
 
 const icsError = ref('')
@@ -215,11 +255,11 @@ async function reload() {
   <SidePanel
     :open="true"
     :title="booking?.meeting_title ?? 'Booking'"
-    :subtitle="booking ? `${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
+    :subtitle="booking ? `${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
     :serial="booking?.reference_code"
     @close="emit('close')"
   >
-    <template v-if="cover && booking" #cover><RoomPhoto :path="cover" :alt="booking.room.name_en" /></template>
+    <template v-if="booking" #lead><RoomPhoto class="room-thumb" :path="cover" :alt="booking.room.name_en" /></template>
     <p v-if="failed" class="msg" role="alert">{{ failed }}</p>
     <div v-else-if="booking" class="bd">
       <div class="band" :class="tone">
@@ -229,7 +269,7 @@ async function reload() {
         >
         <small v-if="sessions.length">{{ sessions.length > 1 ? `${sessions.length} sessions` : sessions[0]!.day }}</small>
       </div>
-      <ProcessBar :steps="history.steps" size="large" />
+      <StepProgress :steps="history.steps" label="" />
 
       <div v-if="stopNote" class="callout" :class="stopNote.tone">
         <span class="h">{{ stopNote.head }}</span>
@@ -237,59 +277,25 @@ async function reload() {
         <span v-if="stopNote.who" class="who">{{ stopNote.who }}</span>
       </div>
 
-      <div v-if="booking.status === 'CONFIRMED' && booking.display_status !== 'COMPLETED'" class="block">
-        <div class="lbl"><span>Door pass</span></div>
-        <SecretReveal label="door pass" :reveal="revealDoorPass" @hide="doorPass = undefined">
-          <template #extra><span v-if="doorPass?.expired" class="expired">Expired</span></template>
-        </SecretReveal>
-      </div>
+      <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
-      <div class="block">
-        <div class="lbl">
-          <span>{{ sessions.length === 1 ? 'Time' : `${sessions.length} sessions` }}</span>
-          <span v-if="sessions.length > 1">{{ lenText(totalLen) }} in all</span>
-        </div>
-        <table class="sessions">
-          <tbody>
-            <tr v-for="s in sessions" :key="s.id">
-              <td>{{ s.day }}</td>
-              <td class="mono">{{ s.time }}</td>
-              <td class="len">{{ lenText(s.len) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <section v-show="tab === 'details'" id="tabpanel-details" class="pane" role="tabpanel" aria-labelledby="tab-details">
+        <BookingDetails :booking="booking" />
+      </section>
 
-      <dl class="facts">
-        <div>
-          <dt>Meeting</dt>
-          <dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }} · {{ booking.attendees }} people</dd>
-        </div>
-        <div>
-          <dt>Invited</dt>
-          <dd :class="{ none: !invited }">{{ invited ?? 'No one' }}</dd>
-        </div>
-        <div>
-          <dt>Food &amp; drinks</dt>
-          <dd :class="{ none: !booking.catering }">
-            {{ booking.catering ? names(booking.catering.packages) : 'None' }}
-          </dd>
-        </div>
-        <div>
-          <dt>IT help</dt>
-          <dd :class="{ none: !booking.it }">
-            {{ booking.it ? names(booking.it.items) : 'None' }}
-          </dd>
-        </div>
-        <div v-if="booking.private_justification" class="full">
-          <dt>Why this room</dt>
-          <dd>{{ booking.private_justification }}</dd>
-        </div>
-        <div v-if="booking.meeting_purpose" class="full">
-          <dt>Notes</dt>
-          <dd>{{ booking.meeting_purpose }}</dd>
-        </div>
-      </dl>
+      <section v-show="tab === 'services'" id="tabpanel-services" class="pane" role="tabpanel" aria-labelledby="tab-services">
+        <BookingServices :booking="booking" viewer="booker" />
+      </section>
+
+      <section v-if="showFiles" v-show="tab === 'files'" id="tabpanel-files" class="pane" role="tabpanel" aria-labelledby="tab-files">
+        <PanelSection title="Files">
+          <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
+        </PanelSection>
+      </section>
+
+      <section v-show="tab === 'history'" id="tabpanel-history" class="pane" role="tabpanel" aria-labelledby="tab-history">
+        <PanelSection title="History"><BookingHistory :booking="booking" :bar="false" /></PanelSection>
+      </section>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
       <p v-if="slip.error.value" class="msg" role="alert">{{ slip.error.value }}</p>
@@ -306,6 +312,19 @@ async function reload() {
         </div>
       </div>
       <div v-else class="foot">
+        <div v-if="doorPass" class="pass">
+          <KeyRound :size="16" aria-hidden="true" />
+          <span class="pass-label">Door pass</span>
+          <span class="pass-code">{{ doorPass.passcode }}</span>
+          <span v-if="doorPass.expired" class="expired">Expired</span>
+          <span class="pass-sp" />
+          <button type="button" class="round" aria-label="Copy door pass" :title="passCopied ? 'Copied' : 'Copy'" @click="copyDoorPass">
+            <Check v-if="passCopied" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
+          <button type="button" class="round" aria-label="Hide door pass" title="Hide" @click="hideDoorPass"><X :size="15" aria-hidden="true" /></button>
+        </div>
+        <p v-if="passError" class="msg" role="alert">{{ passError }}</p>
         <div class="bar">
           <button v-if="open" type="button" class="main" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
           <button v-if="slip.hasSlip.value" type="button" class="kh" :class="open ? 'cal' : 'main'" :disabled="slip.busy.value" @click="slip.download">
@@ -325,6 +344,7 @@ async function reload() {
             </button>
             <Transition name="menu">
               <div v-if="menuOpen" class="menu" role="menu">
+                <button v-if="hasDoorPass" type="button" role="menuitem" @click="showDoorPass"><KeyRound :size="16" aria-hidden="true" />Show door pass</button>
                 <button type="button" role="menuitem" @click="copyRef"><Copy :size="16" aria-hidden="true" />Copy reference</button>
                 <template v-if="open">
                   <hr />
@@ -340,6 +360,13 @@ async function reload() {
 </template>
 
 <style scoped>
+/* Look B: a small photo by the title (the door tile when the room has none). */
+.room-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+}
 .bd {
   display: grid;
   gap: 18px;
@@ -417,58 +444,53 @@ async function reload() {
   font-size: 12.5px;
   color: var(--color-intaglio);
 }
-.block {
+.tab-bar {
+  margin-block: -16px -4px;
+}
+.pane {
   display: grid;
-  gap: 6px;
+  gap: 18px;
 }
-.lbl {
+/* The door pass, shown from the ⋯ menu: one line above the buttons. */
+.pass {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: var(--color-paper);
   color: var(--color-intaglio);
+  font-size: 13px;
 }
-.sessions {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-.sessions td {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-rule);
+.pass-label {
   white-space: nowrap;
 }
-.sessions tr:last-child td {
-  border-bottom: 0;
+.pass-code {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
 }
-.sessions .len {
-  text-align: right;
-  font-size: 12.5px;
-  color: var(--color-ink-off);
+.pass-sp {
+  flex: 1;
 }
-.facts {
+.round {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 16px;
-  margin: 0;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  cursor: pointer;
 }
-.facts > div {
-  min-width: 0;
-}
-.facts .full {
-  grid-column: 1 / -1;
-}
-dt {
-  font-size: 12px;
-  color: var(--color-intaglio);
-}
-dd {
-  margin: 2px 0 0;
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-dd.none {
-  color: var(--color-ink-off);
+.round:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
 }
 .expired {
   color: var(--color-crimson);

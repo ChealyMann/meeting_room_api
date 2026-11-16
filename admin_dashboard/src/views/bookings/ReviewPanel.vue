@@ -1,19 +1,25 @@
 <script setup lang="ts">
 // One booking waiting for the Pitika (spec 2026-11-05-pitika-review-design, "The side panel"):
-// the room's photo, the full process bar, what is special about it, the meeting, the food and
-// the IT help, then Reject and Approve. Decisions happen in the page's confirm pop-up.
-import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
-import { computed } from 'vue'
+// a small room photo by the title, a thin step bar (look B, owner pick 16 Nov 2026), a one-line
+// warning, then tabs: the meeting, the food and the IT help, history; then Reject and Approve.
+// Decisions happen in the page's confirm pop-up.
+import { Check, Clock, FileText, TriangleAlert } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingDetails from '../../components/BookingDetails.vue'
+import BookingFiles from '../../components/BookingFiles.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
+import BookingServices from '../../components/BookingServices.vue'
+import BookingTabs from '../../components/BookingTabs.vue'
+import PanelSection from '../../components/PanelSection.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
-import ProcessBar from '../../components/ProcessBar.vue'
+import StepProgress from '../../components/StepProgress.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
+import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
-import { formatDay } from '../../utils/time'
 
 const props = defineProps<{
   booking: BookingDetail
@@ -25,6 +31,8 @@ const props = defineProps<{
   readOnly?: boolean
   /** The subtitle while it waits ("Waiting for Pitika", "Waiting for room owner"). */
   waitingLabel?: string
+  /** The Food & IT card this reviewer checks, on a light background (Pitika: food). */
+  leadCard?: 'food' | 'it' | null
   /** One note for the reviewer on amber wash (the R4 note, the Pitika's notes), or null. */
   note?: string | null
 }>()
@@ -34,96 +42,75 @@ const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
-const hhmm = (time: string) => time.slice(0, 5)
-const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
-const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
-/** Every session, in order: a booking can run over several days (up to 20 sessions). */
-const sessions = computed(() =>
-  [...(props.booking.sessions.length ? props.booking.sessions : [props.booking.first_session])].sort((a, b) =>
-    `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`),
-  ),
+
+// Tabs (owner pick, 16 Nov 2026): the photo, the steps and the buttons stay; the rest is split.
+// A count on Food & IT says there is something to check; Files shows only when there are files.
+type Tab = 'details' | 'services' | 'files' | 'history'
+const tab = ref<Tab>('details')
+watch(
+  () => props.booking.id,
+  () => (tab.value = 'details'),
 )
+const count = (n: number) => (n ? ` ${n}` : '')
+const tabs = computed(() => {
+  const services = (props.booking.catering?.packages.length ?? 0) + (props.booking.it?.items.length ?? 0)
+  const files = props.booking.attachments?.length ?? 0
+  const list: Array<{ id: Tab; label: string }> = [
+    { id: 'details', label: 'Details' },
+    { id: 'services', label: `Food & IT${count(services)}` },
+  ]
+  if (files) list.push({ id: 'files', label: `Files${count(files)}` })
+  list.push({ id: 'history', label: 'History' })
+  return list
+})
 </script>
 
 <template>
   <SidePanel
     :open="true"
     :title="booking.meeting_title"
-    :subtitle="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')"
+    :subtitle="`${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}`"
     :serial="booking.reference_code"
     @close="emit('close')"
   >
+    <template #lead><RoomPhoto class="room-thumb" :path="photoPath" :alt="booking.room.name_en" /></template>
     <div class="review-panel">
-      <figure class="hero">
-        <RoomPhoto class="photo" :path="photoPath" :alt="booking.room.name_en" />
-        <figcaption>
-          <span class="kh">{{ booking.room.name_kh }}</span>
-          <span>{{ booking.room.name_en }} · {{ booking.room.location.name_en }}</span>
-        </figcaption>
-      </figure>
+      <StepProgress :steps="steps" :label="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')" />
 
-      <ProcessBar :steps="steps" size="large" />
-
-      <p v-if="startsIn && !readOnly" class="note">
-        <TriangleAlert aria-hidden="true" />
-        <span>{{ startsIn }}. If nobody decides before it starts, it is rejected by the system.</span>
+      <p v-if="startsIn && !readOnly" class="warn" title="If nobody decides before it starts, the system rejects it.">
+        <Clock aria-hidden="true" />
+        <span><b>{{ startsIn }}</b> · decide before, or it is rejected</span>
       </p>
-      <p v-if="note" class="note">
+      <p v-if="note" class="warn">
         <TriangleAlert aria-hidden="true" />
         <span>{{ note }}</span>
       </p>
 
-      <h3 class="sessions-head">
-        When <span>· {{ sessions.length }} {{ sessions.length === 1 ? 'session' : 'sessions' }}</span>
-      </h3>
-      <ul class="sessions">
-        <li v-for="s in sessions" :key="`${s.date} ${s.start_time}`">
-          <span>{{ formatDay(s.date) }}</span>
-          <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
-        </li>
-      </ul>
+      <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
-      <h3>Meeting</h3>
-      <dl class="details">
-        <div><dt>Meeting type</dt><dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }}</dd></div>
-        <div><dt>Attendees</dt><dd class="mono">{{ booking.attendees }}</dd></div>
-        <div><dt>Purpose</dt><dd class="wrap" :class="{ none: !booking.meeting_purpose }">{{ booking.meeting_purpose || 'None' }}</dd></div>
-        <div><dt>Route</dt><dd>{{ ROUTE_LABELS[booking.route] ?? booking.route }}</dd></div>
-        <div v-if="booking.route === 'R2'">
-          <dt>Why private</dt>
-          <dd class="wrap" :class="{ none: !booking.private_justification }">{{ booking.private_justification || 'No reason given' }}</dd>
-        </div>
-        <div>
-          <dt>Booker</dt>
-          <dd>
-            {{ info('name_en') ?? booking.requester.name_en }}
-            <span v-if="info('division')" class="sub">{{ info('division') }}</span>
-          </dd>
-        </div>
-      </dl>
+      <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
+        <BookingDetails :booking="booking" />
+      </section>
 
-      <h3>Food</h3>
-      <p v-if="!booking.catering" class="none">No food ordered.</p>
-      <dl v-else class="details">
-        <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
-        <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
-        <div>
-          <dt>Delivery</dt>
-          <dd v-if="sessions.length > 1" class="delivery">At the start of every session ({{ sessions.length }} times)</dd>
-          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
-        </div>
-        <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
-      </dl>
+      <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
+        <PanelSection title="History"><BookingHistory :booking="booking" :bar="false" /></PanelSection>
+      </section>
 
-      <h3>IT help</h3>
-      <p v-if="!booking.it" class="none">No IT help asked.</p>
-      <dl v-else class="details">
-        <div><dt>Items</dt><dd>{{ names(booking.it.items) }}</dd></div>
-        <div>
-          <dt>Special needs</dt>
-          <dd class="wrap" :class="{ none: !booking.it.special_requirements }">{{ booking.it.special_requirements || 'None' }}</dd>
-        </div>
-      </dl>
+      <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
+        <BookingServices :booking="booking" viewer="staff" :lead="leadCard ?? null" />
+      </section>
+
+      <section
+        v-if="booking.attachments?.length"
+        v-show="tab === 'files'"
+        id="tabpanel-files"
+        role="tabpanel"
+        aria-labelledby="tab-files"
+      >
+        <PanelSection title="Files">
+          <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
+        </PanelSection>
+      </section>
     </div>
 
     <template #foot>
@@ -145,102 +132,35 @@ const sessions = computed(() =>
 </template>
 
 <style scoped>
-.hero {
-  position: relative;
-  margin: -16px -20px 16px;
-}
-.hero .photo {
-  height: 188px;
-}
-.hero figcaption {
-  position: absolute;
-  inset: auto 0 0;
-  display: grid;
-  gap: 1px;
-  padding: 28px 20px 12px;
-  background: linear-gradient(to top, rgba(26, 6, 6, 0.74), rgba(26, 6, 6, 0));
-  color: #fff;
-  font-size: 12.5px;
-}
-.hero .kh {
-  font-family: var(--font-kh);
-  font-size: 15px;
-  font-weight: 500;
-}
-.note {
-  display: flex;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-warn) 10%, var(--color-sheet));
-  color: var(--color-warn);
-  font-size: 12.5px;
-  font-weight: 500;
-}
-.note :deep(svg.lucide) {
+/* Look B (owner pick, 16 Nov 2026): a small photo by the title, and a one-line warning. */
+.room-thumb {
   flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
 }
-h3 {
-  margin: 20px 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.sessions-head span {
-  font-weight: 400;
-  color: var(--color-intaglio);
-}
-/* Every session on its own line: the day, then the times at the end. */
-.sessions {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.sessions li {
+.warn {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-rule);
-  font-size: 13.5px;
-}
-.sessions .mono {
-  font-variant-numeric: tabular-nums;
-}
-.details {
-  margin: 0;
-}
-.details > div {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-rule);
-}
-.details dt {
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.details dd {
-  margin: 0;
-  font-size: 13.5px;
-  overflow-wrap: anywhere;
-}
-.wrap {
-  white-space: pre-line;
-}
-.none {
-  margin: 0;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
   color: var(--color-ink-off);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.5;
 }
-.sub {
-  display: block;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
+.warn b {
+  font-weight: 600;
+  color: var(--color-warn);
+}
+.warn :deep(svg.lucide) {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--color-warn);
+}
+.tab-bar {
+  margin-block: 0 14px;
 }
 .foot {
   display: flex;

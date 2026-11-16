@@ -72,6 +72,7 @@ const SUMMARY = { to_assign: 2, in_progress: 1, ready_today: 1, due_today: 6, du
 const calls: string[] = []
 const bodies: string[] = []
 let summary: Record<string, number>
+let files: unknown[] = []
 let action: () => Response
 
 function json(body: unknown, status = 200) {
@@ -88,6 +89,7 @@ beforeEach(() => {
   calls.length = 0
   bodies.length = 0
   summary = SUMMARY
+  files = []
   TO_ASSIGN = [ticket(5, '2026-11-05'), ticket(6, '2026-11-06')]
   IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]] })]
   action = () => json(TO_ASSIGN[0])
@@ -124,7 +126,7 @@ beforeEach(() => {
           meeting_purpose: null,
           private_justification: null,
           participant_emails: [],
-          sessions: [t.booking.first_session],
+          sessions: (t.setups ?? []).map((s, i) => ({ id: i + 1, date: s.date, start_time: s.start_time, end_time: s.end_time })),
           last_end: { date: t.booking.first_session.date, time: '11:00' },
           catering: null,
           it: { items: t.items, special_requirements: t.special_requirements, status: t.status, staff: t.staff, forwarded_at: t.forwarded_at, assigned_at: null, ready_at: null },
@@ -133,6 +135,8 @@ beforeEach(() => {
           cancelled_at: null,
           cancel_reason: null,
           cancelled_by: null,
+          attachments: files,
+          attachments_open: true,
         })
       }
       return json({ items: [], page: 1, size: 100, total: 0 })
@@ -267,17 +271,61 @@ describe('IT setup', () => {
     expect(bodies).toEqual([JSON.stringify({ version: 1 })])
   })
 
-  it('opens a setup in the panel with Setup and Meeting, and the row buttons', async () => {
+  it('opens a setup in the panel with IT help and Meeting, and the row buttons', async () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
     await row(wrapper, 7).trigger('click')
     await flushPromises()
 
     expect(calls).toContain('GET /api/v1/bookings/107')
-    expect(panel()?.textContent).toContain('Setup')
+    expect(panel()?.textContent).toContain('IT help')
     expect(panel()?.textContent).toContain('Two wireless microphones')
     expect(panel()?.textContent).toContain('Meeting')
     const foot = [...(panel()?.querySelectorAll('.panel-foot button') ?? [])].map((b) => b.textContent?.trim())
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
+  })
+
+  it('uses the same tabs and Food & IT card as the other pop-ups, opening on Food & IT', async () => {
+    IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]], technician_notes: 'Bring the long cable.' })]
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+    await row(wrapper, 7).trigger('click')
+    await flushPromises()
+
+    const tabs = [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+    expect(tabs).toEqual(['Details', 'Food & IT 2', 'History'])
+    expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Food & IT 2')
+    const cards = [...panel()!.querySelectorAll('#tabpanel-services .panel-section > h3 > span:first-child')].map((h) => h.textContent)
+    expect(cards).toEqual(['IT help', 'Food & drinks'])
+    expect(panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!.classList).toContain('lead')
+    expect(panel()!.querySelector('#tabpanel-services .panel-section.lead[data-kind="food"]')).toBeNull()
+    const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
+    expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Projector setup', 'Microphones'])
+    expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Setting up')
+    expect(it.textContent).toContain('Booker’s note')
+    expect(it.textContent).toContain('“Two wireless microphones”')
+    expect(it.textContent).toContain('Sok Pisey')
+    expect(it.textContent).toContain('IT note')
+    expect(it.textContent).toContain('“Bring the long cable.”')
+    expect(panel()!.querySelector('#tabpanel-services')!.textContent).toContain('No food ordered.')
+    expect(panel()!.querySelector('#tabpanel-history')!.textContent).toContain('Waiting for IT to be ready')
+  })
+
+  it('lists the booking files read only in the panel, and downloads one', async () => {
+    files = [{ id: 5, file_name: 'room-plan.pdf', content_type: 'application/pdf', size_bytes: 9000, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/107/attachments/5' }]
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+    await row(wrapper, 7).trigger('click')
+    await flushPromises()
+
+    const name = panel()!.querySelector<HTMLButtonElement>('.att-name')!
+    expect(name.textContent).toBe('room-plan.pdf')
+    expect(panel()!.textContent).not.toContain('Add file')
+    name.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/107/attachments/5')
+    await new Promise((done) => setTimeout(done, 0)) // the download frees its URL on a timer
+    clickSpy.mockRestore()
   })
 
   it('marks each row with its state: needs staff, staff set, ready, missed', async () => {
@@ -397,7 +445,7 @@ describe('IT setup', () => {
     await wrapper.get('[data-ticket="10"]').trigger('click')
     await flushPromises()
 
-    const items = [...panel()!.querySelectorAll('.setups li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
+    const items = [...panel()!.querySelectorAll('#tabpanel-details .sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
     expect(items).toEqual([
       'Thu 5 Nov 2026 08:00–11:00',
       'Fri 6 Nov 2026 08:00–11:00',
@@ -405,5 +453,7 @@ describe('IT setup', () => {
     ])
     expect(panel()!.textContent).not.toMatch(/set up/i)
     expect(panel()!.textContent).not.toContain('07:30')
+    const facts = [...panel()!.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 })

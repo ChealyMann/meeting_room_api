@@ -12,12 +12,12 @@ export interface When {
   end: number | null
 }
 
-/** How many working days the picker offers: today and the next 9. */
-export const PICK_DAYS = 10
+/** How many days the picker offers: today and the next 13 (two weeks, weekends too). */
+export const PICK_DAYS = 14
 
 export const anyTime = (today: string): When => ({ mode: 'one', first: today, last: today, start: null, end: null })
 
-/** The working days from `first` to `last` (the day list has no weekends). */
+/** The days from `first` to `last` in the day list. */
 export function datesOf(when: When, days: string[]): string[] {
   return days.filter((d) => d >= when.first && d <= when.last)
 }

@@ -10,6 +10,9 @@ from app.services import booking_transitions as transitions
 from app.services.request_slip_data import build_slip_data
 from app.services.request_slip_docx import SMALLEST, fit_scale
 
+# The IT line, in the owner's words (16 Nov 2026).
+IT_LINE = "- អ្នកជំនួយបច្ចេកទេសពត៌មានវិទ្យា និងសម្ភារៈប្រើប្រាស់ផ្សេងៗ។"
+
 SENT = datetime(2026, 9, 14, 3, 0)  # UTC: 14 Sep 2026, 10:00 in Phnom Penh
 PASS_UP = "មេត្តាពិនិត្យ និងសម្រេចដោយអនុគ្រោះ។"
 
@@ -121,8 +124,8 @@ def test_different_times_make_a_timetable(slip):
     ("asked", "lines"),
     [
         ({}, ["- មិនមាន។"]),
-        ({"it": True}, ["- អ្នកបច្ចេកទេស IT និងឧបករណ៍ IT។"]),
-        ({"catering": True, "it": True}, ["- នំ ផ្លែឈើ និងភេសជ្ជៈ។", "- អ្នកបច្ចេកទេស IT និងឧបករណ៍ IT។"]),
+        ({"it": True}, [IT_LINE]),
+        ({"catering": True, "it": True}, ["- នំ ផ្លែឈើ និងភេសជ្ជៈ។", IT_LINE]),
     ],
 )
 def test_requests_list_only_what_was_asked(slip, asked, lines):

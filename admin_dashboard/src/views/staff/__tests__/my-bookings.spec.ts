@@ -34,7 +34,10 @@ function stub() {
     const url = new URL(String(input))
     const key = `${init?.method ?? 'GET'} ${url.pathname}`
     calls.push(key)
-    if (init?.body) bodies[key] = JSON.parse(String(init.body))
+    if (typeof init?.body === 'string') bodies[key] = JSON.parse(init.body)
+    if (key === 'POST /api/v1/bookings/8/attachments')
+      return json({ id: 9, file_name: 'notes.pdf', content_type: 'application/pdf', size_bytes: 6, created_at: '2026-11-12T03:00:00Z', url: '/api/v1/bookings/8/attachments/9' }, 201)
+    if (key === 'DELETE /api/v1/bookings/8/attachments/1') return new Response(null, { status: 204 })
     if (key === 'GET /api/v1/bookings/mine' && mineLimited)
       return new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'Too many requests.' } }), {
         status: 429,
@@ -65,6 +68,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   mine = [SOON, WAITING, GONE, DONE]
   mineFails = false
+  mineLimited = false
   rooms = []
   slipFails = false
   detail8 = bookingDetail(WAITING)
@@ -90,12 +94,12 @@ async function open(query = '') {
   await flushPromises()
   return w
 }
-const titles = (w: VueWrapper) => w.findAll('.bk-card h2').map((h) => h.text())
+const titles = (w: VueWrapper) => w.findAll('.bk-card h3').map((h) => h.text())
 const panel = () => document.body.querySelector('.side-panel, [role="dialog"]')
 async function openCard(w: VueWrapper, title: string) {
   await w
     .findAll('.bk-card')
-    .find((c) => c.get('h2').text() === title)!
+    .find((c) => c.get('h3').text() === title)!
     .trigger('click')
   await flushPromises()
 }
@@ -197,7 +201,7 @@ describe('My bookings', () => {
     })
   })
 
-  it('puts the room photo on top with the title and the room on it, and the status band under it', async () => {
+  it('puts a small room photo by the title, the status band, and a thin step bar', async () => {
     rooms = [
       {
         id: 12,
@@ -206,18 +210,45 @@ describe('My bookings', () => {
     ]
     const w = await open()
     await openCard(w, 'Budget review')
-    expect(panel()!.querySelector('.panel-cover img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
-    expect(panel()!.querySelector('.panel-head.on-cover')).not.toBeNull()
+    expect(panel()!.querySelector('.panel-head .room-thumb img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
+    expect(panel()!.querySelector('.panel-cover')).toBeNull()
     expect(panel()!.querySelector('.band.ok .say-status')?.textContent?.trim()).toBe('Confirmed · the room is yours')
     expect(panel()!.querySelector('.band small')?.textContent?.trim()).toBe('Fri 13 Nov')
     expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Mekong Room · NBC')
+    expect(panel()!.querySelector('.step-progress .line')?.textContent?.trim()).toBe('Step 3 of 3')
   })
 
-  it('keeps the plain head and the status band when the room has no photo', async () => {
+  it('shows the door tile by the title, and the status band, when the room has no photo', async () => {
     const w = await open()
     await openCard(w, 'Team sync')
-    expect(panel()!.querySelector('.panel-cover')).toBeNull()
+    expect(panel()!.querySelector('.panel-head .room-thumb.none')).not.toBeNull()
     expect(panel()!.querySelector('.band.wait .say-status')?.textContent?.trim()).toBe('Waiting for Pitika')
+  })
+
+  it('keeps the door pass in the ⋯ menu: it shows the code above the buttons, with Copy and Hide', async () => {
+    const w = await open()
+    await openCard(w, 'Budget review')
+    expect(panel()!.querySelector('.bd')?.textContent).not.toContain('Door pass')
+    await more()
+    const item = buttonIn(panel()!.querySelector('[role="menu"]')!, 'Show door pass')!
+    expect(item.getAttribute('role')).toBe('menuitem')
+    item.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/7/door-pass')
+    expect(panel()!.querySelector('[role="menu"]')).toBeNull()
+    const pass = panel()!.querySelector('.panel-foot .pass')!
+    expect(pass.querySelector('.pass-code')?.textContent).toBe('482913')
+    expect(pass.querySelector('[aria-label="Copy door pass"]')).not.toBeNull()
+    pass.querySelector<HTMLButtonElement>('[aria-label="Hide door pass"]')!.click()
+    await flushPromises()
+    expect(panel()!.querySelector('.panel-foot .pass')).toBeNull()
+  })
+
+  it('offers no door pass while the booking waits, or after the meeting', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    await more()
+    expect(buttonIn(panel()!, 'Show door pass')).toBeUndefined()
   })
 
   it('keeps Add to calendar as the main button and closes the menu with Escape, not the panel', async () => {
@@ -227,7 +258,7 @@ describe('My bookings', () => {
     expect(panel()!.querySelector('[role="menu"]')).toBeNull()
     await more()
     const menu = panel()!.querySelector('[role="menu"]')!
-    expect(document.activeElement?.textContent?.trim()).toBe('Copy reference')
+    expect(document.activeElement?.textContent?.trim()).toBe('Show door pass')
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     await flushPromises()
     expect(panel()!.querySelector('[role="menu"]')).toBeNull()
@@ -306,21 +337,26 @@ describe('My bookings', () => {
     expect(buttonIn(panel()!, 'Cancel booking')).toBeUndefined()
   })
 
-  it('lists each session with its length and the total', async () => {
+  it('shows the same Details as Pitika: every session, the meeting, and the booker', async () => {
     detail8 = bookingDetail(WAITING, {
       sessions: [
         { id: 1, date: '2026-11-16', start_time: '12:30', end_time: '18:00' },
         { id: 2, date: '2026-11-17', start_time: '07:30', end_time: '18:00' },
       ],
+      requester_info: { name_en: 'Sok Dara', staff_id: 'NBC0042', position: 'Officer', department: 'Operations', division: 'Payments' },
+      participant_emails: ['a@nbc.gov.kh'],
     })
     const w = await open()
     await openCard(w, 'Team sync')
-    const rows = [...panel()!.querySelectorAll('.sessions tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()))
-    expect(rows).toEqual([
-      ['Mon 16 Nov', '12:30–18:00', '5 h 30 min'],
-      ['Tue 17 Nov', '07:30–18:00', '10 h 30 min'],
-    ])
-    expect(panel()!.textContent).toContain('16 h in all')
+    const details = panel()!.querySelector('#tabpanel-details')!
+    const rows = [...details.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
+    expect(rows).toEqual(['Mon 16 Nov 2026 12:30–18:00', 'Tue 17 Nov 2026 07:30–18:00'])
+    expect(details.querySelector('.sessions-head')?.textContent).toContain('2 sessions')
+    expect([...details.querySelectorAll('.panel-section > h3')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['When · 2 sessions', 'Meeting', 'Booker'])
+    const facts = [...details.querySelectorAll('.details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(details.textContent).toContain('1 by email')
+    expect(details.textContent).toContain('NBC0042')
   })
 
   describe('quiet refresh', () => {
@@ -388,5 +424,252 @@ describe('My bookings', () => {
     await w.get('button[aria-label="Refresh"]').trigger('click')
     await flushPromises()
     expect(calls.filter((c) => c === 'GET /api/v1/bookings/mine').length).toBe(asked)
+  })
+})
+
+describe('Files on my booking', () => {
+  const AGENDA = { id: 1, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 2048, created_at: '2026-11-10T02:00:00Z', url: '/api/v1/bookings/8/attachments/1' }
+  const names = () => [...panel()!.querySelectorAll('.att-name')].map((n) => n.textContent)
+
+  it('adds and removes files while the booking is waiting', async () => {
+    detail8 = bookingDetail(WAITING, { attachments: [AGENDA] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(names()).toEqual(['agenda.pdf'])
+    const input = panel()!.querySelector<HTMLInputElement>('input[type="file"]')!
+    Object.defineProperty(input, 'files', { value: [new File(['%PDF-1'], 'notes.pdf')], configurable: true })
+    input.dispatchEvent(new Event('change'))
+    await flushPromises()
+    expect(calls).toContain('POST /api/v1/bookings/8/attachments')
+    expect(names()).toEqual(['agenda.pdf', 'notes.pdf'])
+    panel()!.querySelector<HTMLButtonElement>('[aria-label="Remove agenda.pdf"]')!.click()
+    await flushPromises()
+    expect(calls).toContain('DELETE /api/v1/bookings/8/attachments/1')
+    expect(names()).toEqual(['notes.pdf'])
+  })
+
+  it('shows files read only once confirmed', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' }, { attachments: [AGENDA] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(names()).toEqual(['agenda.pdf'])
+    expect(panel()!.textContent).not.toContain('Add file')
+    expect(panel()!.querySelector('[aria-label="Remove agenda.pdf"]')).toBeNull()
+  })
+
+  it('shows no Files block on a confirmed booking with no file', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(panel()!.querySelector('.att')).toBeNull()
+  })
+})
+
+describe('Tabs on my booking', () => {
+  const FOOD = {
+    packages: [
+      { id: 1, name: 'Coffee break' },
+      { id: 2, name: 'តែ' },
+    ],
+    remarks: 'Less sugar, please.',
+    servings: 8,
+    delivery_date: '2026-11-16',
+    delivery_time: '09:00',
+    approver_notes: 'Food is fine for 8.',
+    decided_by: { id: 3, name_en: 'Chan Sophea' },
+    decided_at: '2026-11-12T07:05:00Z',
+  }
+  const IT = {
+    ticket_id: 1,
+    items: [
+      { id: 10, name: 'Video call' },
+      { id: 11, name: 'Projector setup' },
+    ],
+    special_requirements: 'Two microphones.',
+    status: 'READY',
+    technician_notes: 'Sound tested.',
+    staff: [{ id: 20, name_en: 'Keo Rithy', name_kh: 'x' }],
+    setup_date: '2026-11-16',
+    setup_time: '08:30',
+    forwarded_at: '2026-11-12T07:05:00Z',
+    assigned_at: '2026-11-13T02:00:00Z',
+    ready_at: '2026-11-16T01:40:00Z',
+  }
+  const PITIKA_YES = {
+    stage: 'PITIKA',
+    decision: 'APPROVED',
+    reviewer: { id: 3, name_en: 'Chan Sophea' },
+    notes: 'Food is fine for 8.',
+    reviewed_at: '2026-11-12T07:05:00Z',
+    by_admin: false,
+  }
+  const DONE_FULL = () =>
+    bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'COMPLETED', has_catering: true, has_it: true }, { catering: FOOD, it: IT, reviews: [PITIKA_YES] })
+  const tabNames = () => [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+  const tabPanel = (id: string) => panel()!.querySelector<HTMLElement>(`#tabpanel-${id}`)!
+  async function pickTab(id: string) {
+    panel()!.querySelector<HTMLButtonElement>(`#tab-${id}`)!.click()
+    await flushPromises()
+  }
+
+  it('splits the pop-up into Details, Food & IT and History; status, steps and the slip stay', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT 4', 'History'])
+    expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Details')
+    expect(panel()!.querySelector('[role="tabpanel"] .band')).toBeNull()
+    expect(panel()!.querySelector('[role="tabpanel"] .step-progress')).toBeNull()
+    expect(tabPanel('details').textContent).toContain('Sent')
+    expect(tabPanel('details').textContent).toContain('10 Nov 2026, 09:00')
+    expect(tabPanel('services').style.display).toBe('none')
+    await pickTab('services')
+    expect(tabPanel('details').style.display).toBe('none')
+    expect(tabPanel('services').style.display).toBe('')
+    expect(buttonIn(panel()!, 'ប័ណ្ណស្នើ (Word)')).toBeTruthy()
+  })
+
+  it('shows each food item with the amount, the note, and who checked it', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const food = panel()!.querySelector('.svc-card[data-kind="food"]')!
+    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8', 'តែ × 8'])
+    expect(food.querySelector('.pill')?.textContent?.trim()).toBe('Approved')
+    expect(food.textContent).toContain('Mon 16 Nov 2026 · 09:00')
+    expect(food.textContent).toContain('“Less sugar, please.”')
+    expect(food.textContent).toContain('Chan Sophea')
+    expect(food.textContent).toContain('12 Nov 2026, 14:05')
+    expect(food.textContent).toContain('“Food is fine for 8.”')
+  })
+
+  it('shows the IT items, the note, the IT staff and when the room was ready', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const it = panel()!.querySelector('.svc-card[data-kind="it"]')!
+    expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Video call', 'Projector setup'])
+    expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Room ready')
+    expect(it.textContent).toContain('“Two microphones.”')
+    expect(it.textContent).toContain('Keo Rithy')
+    expect(it.textContent).toContain('16 Nov 2026, 08:40')
+    expect(it.textContent).toContain('IT note')
+    expect(it.textContent).toContain('“Sound tested.”')
+  })
+
+  it('says when no food or IT help was asked, and that food waits for a check', async () => {
+    detail8 = bookingDetail(WAITING, { catering: { ...FOOD, approver_notes: null, decided_by: null, decided_at: null } })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toContain('Food & IT 2')
+    expect(panel()!.querySelector('.svc-card[data-kind="food"] .pill')?.textContent?.trim()).toBe('Waiting')
+    expect(tabPanel('services').textContent).toContain('No IT help asked.')
+  })
+
+  it('shows the History timeline: who did what, their role, when, and what it waits for', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'SETUP_IN_PROGRESS', display_status: 'SETUP_IN_PROGRESS' }, { reviews: [PITIKA_YES] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const h = tabPanel('history')
+    const labels = [...h.querySelectorAll('.timeline .label')].map((l) => l.textContent?.trim())
+    expect(labels).toEqual(['Sent', 'Approved', 'Waiting for IT to be ready'])
+    const approved = [...h.querySelectorAll('.timeline li')][1]!
+    expect(approved.querySelector('.name')?.textContent?.trim()).toBe('Chan Sophea')
+    expect(approved.querySelector('.role')?.textContent?.trim()).toBe('Pitika')
+    expect(approved.querySelector('.time')?.textContent?.trim()).toBe('12 Nov 2026, 14:05')
+    expect(approved.querySelector('.note')?.textContent?.trim()).toBe('Food is fine for 8.')
+    expect(h.querySelector('.steps')).toBeNull()
+  })
+
+  it('shows Sent and Waiting for Pitika on a new booking', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toContain('History')
+    const labels = [...tabPanel('history').querySelectorAll('.timeline .label')].map((l) => l.textContent?.trim())
+    expect(labels).toEqual(['Sent', 'Waiting for Pitika'])
+  })
+
+  it('has a Files tab while files can still be added, and none on a confirmed booking with no file', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Files', 'History'])
+    expect(tabPanel('files').querySelector('input[type="file"]')).not.toBeNull()
+    w.unmount()
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' })
+    const w2 = await open()
+    await openCard(w2, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'History'])
+  })
+})
+
+describe('Finding a booking (owner pick, 16 Nov 2026: look A)', () => {
+  // Now: Thu 12 Nov 2026, 10:00 in Phnom Penh.
+  const at = (date: string, start = '09:00', end = '10:00') => ({ id: 1, date, start_time: start, end_time: end })
+  const NOW_ON = bookingItem(21, 'Board talk', 'CONFIRMED', '2026-11-12', { next_session: at('2026-11-12', '09:30', '11:00') })
+  const TOMORROW = bookingItem(22, 'Budget review', 'CONFIRMED', '2026-11-13')
+  const WEEK = bookingItem(23, 'Team sync', 'PENDING_PITIKA', '2026-11-16', { room: { ...SOON.room, name_en: 'Bassac Room' } })
+  const LATER = bookingItem(24, 'Year plan', 'PENDING_OWNER', '2026-11-30')
+  const STARTED = bookingItem(25, 'Long training', 'CONFIRMED', '2026-11-09', { session_count: 5, next_session: at('2026-11-13', '14:00', '16:00') })
+  const groups = (w: VueWrapper) => w.findAll('.group').map((g) => [g.get('h2').text(), g.findAll('.bk-card h3').map((h) => h.text())])
+  const chips = (w: VueWrapper) => w.findAll('.chip').map((c) => c.text().replace(/\s+/g, ' '))
+  beforeEach(() => {
+    mine = [NOW_ON, TOMORROW, WEEK, LATER, STARTED, GONE, DONE]
+  })
+
+  it('groups Coming up by Today, Tomorrow, Later this week and Later, by the next session', async () => {
+    const w = await open()
+    expect(groups(w)).toEqual([
+      ['Today', ['Board talk']],
+      ['Tomorrow', ['Budget review', 'Long training']],
+      ['Later this week', ['Team sync']],
+      ['Later', ['Year plan']],
+    ])
+  })
+
+  it('shows the next session on the card, not the first one, and says when one is under way', async () => {
+    const w = await open()
+    const card = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Long training')!
+    expect(card.findAll('.date > *').map((p) => p.text())).toEqual(['FRI', '13', 'NOV'])
+    expect(card.get('.meta').text()).toContain('14:00–16:00')
+    expect(card.get('.meta').text()).toContain('+4 more')
+    const now = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Board talk')!
+    expect(now.findAll('.pill').map((p) => p.text())).toEqual(['Confirmed'])
+    expect(now.classes()).toContain('is-live')
+    expect(now.get('.now-line').text()).toBe('Now · until 11:00')
+    expect(w.findAll('.now-line')).toHaveLength(1)
+    expect(w.findAll('.bk-card.is-live')).toHaveLength(1)
+  })
+
+  it('filters Coming up by status chips with counts', async () => {
+    const w = await open()
+    expect(chips(w)).toEqual(['All 5', 'Waiting 2', 'Confirmed 3'])
+    await w.findAll('.chip')[1]!.trigger('click')
+    expect(titles(w)).toEqual(['Team sync', 'Year plan'])
+    expect(w.findAll('.chip')[1]!.attributes('aria-pressed')).toBe('true')
+    await w.findAll('.chip')[2]!.trigger('click')
+    expect(titles(w)).toEqual(['Board talk', 'Budget review', 'Long training'])
+  })
+
+  it('searches by title, room or reference, on both tabs', async () => {
+    const w = await open()
+    const search = w.get('input[type="search"]')
+    await search.setValue('bassac')
+    expect(titles(w)).toEqual(['Team sync'])
+    await search.setValue('NBC-26-24')
+    expect(titles(w)).toEqual(['Year plan'])
+    await search.setValue('old')
+    await w.findAll('[role="tab"]')[1]!.trigger('click')
+    expect(titles(w)).toEqual(['Old plan'])
+  })
+
+  it('says when nothing matches, and Clear search brings the list back', async () => {
+    const w = await open()
+    await w.get('input[type="search"]').setValue('zzz')
+    expect(w.text()).toContain('No bookings match “zzz”.')
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Clear search')!
+      .trigger('click')
+    expect(titles(w)).toHaveLength(5)
   })
 })

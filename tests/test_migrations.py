@@ -22,6 +22,7 @@ ALL_TABLES = {
     "users",
     "slip_settings",
     "booking_signers",
+    "booking_attachments",
     "roles",
     "user_roles",
     "catering_packages",

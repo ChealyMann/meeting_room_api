@@ -23,8 +23,8 @@ const ITEMS = [
 ]
 const DETAILS: Record<number, Record<string, unknown>> = {
   21: {
-    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 },
-    it: { items: [{ id: 2, name: 'Projector setup' }] },
+    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25, delivery_date: '2026-11-05', delivery_time: '14:00' },
+    it: { items: [{ id: 2, name: 'Projector setup' }], status: 'RECEIVED', staff: [] },
     sessions: [
       { id: 1, date: '2026-11-05', start_time: '14:00', end_time: '15:30' },
       { id: 2, date: '2026-11-06', start_time: '09:00', end_time: '10:30' },
@@ -215,19 +215,161 @@ describe('Review panel and decisions', () => {
     await flushPromises()
   }
 
-  it('opens a booking in the panel with its photo, the full bar and what to check', async () => {
+  it('opens a booking with a small photo by the title, a thin step bar, a one-line warning, and what to check', async () => {
     const { wrapper } = await mountReview()
     await row(wrapper, 21).trigger('click')
     await flushPromises()
 
     const p = panel()!
-    expect(p.querySelector('.room-photo img')?.getAttribute('src')).toBe('http://localhost:8000/uploads/rooms/12/a.jpg')
+    expect(p.querySelector('.panel-head .room-thumb img')?.getAttribute('src')).toBe('http://localhost:8000/uploads/rooms/12/a.jpg')
+    expect(p.querySelector('.panel-cover')).toBeNull()
     expect(p.textContent).toContain('Payment systems workshop')
     expect(p.textContent).toContain('Waiting for Pitika')
-    expect(p.querySelector('.process-bar.large .step.now .n')?.textContent).toBe('Pitika')
-    expect(p.textContent).toContain('Starts in 4 h 40 min. If nobody decides before it starts, it is rejected by the system.')
+    expect(p.querySelector('.step-progress .line span')?.textContent).toBe('Step 2 of 4')
+    expect(p.querySelector('.step-progress .line b')?.textContent).toBe('Waiting for Pitika')
+    expect(p.querySelectorAll('.step-progress .seg.done')).toHaveLength(1)
+    expect(p.querySelector('.step-progress .seg.now')).not.toBeNull()
+    const warn = p.querySelector('.warn')!
+    expect(warn.textContent?.replace(/\s+/g, ' ').trim()).toBe('Starts in 4 h 40 min · decide before, or it is rejected')
+    expect(warn.getAttribute('title')).toBe('If nobody decides before it starts, the system rejects it.')
     expect(p.textContent).toContain('Lunch box')
     expect(p.textContent).toContain('Projector setup')
+  })
+
+  it("shows the booker's staff ID, name, position and department", async () => {
+    DETAILS[22] = {
+      requester_info: { name_en: 'Sok Dara', name_kh: 'សុខ ដារា', staff_id: 'NBC0042', position: 'Officer', division: 'Payments', department: 'Operations' },
+    }
+    const { wrapper } = await mountReview()
+    await row(wrapper, 22).trigger('click')
+    await flushPromises()
+
+    const rows = [...panel()!.querySelectorAll('.booker div')].map((d) => [d.querySelector('dt')?.textContent, d.querySelector('dd')?.textContent?.trim()])
+    expect(rows).toEqual([
+      ['Staff ID', 'NBC0042'],
+      ['Name', 'Sok Dara សុខ ដារា'],
+      ['Position', 'Officer'],
+      ['Department', 'Operations Payments'],
+    ])
+    delete DETAILS[22]
+  })
+
+  describe('Tabs', () => {
+    const tabs = () => [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+    const shown = () => [...panel()!.querySelectorAll<HTMLElement>('[role="tabpanel"]')].filter((p) => p.style.display !== 'none').map((p) => p.id)
+
+    it('splits the panel into Details, Food & IT with a count, and History; photo, steps and buttons stay', async () => {
+      const { wrapper } = await mountReview()
+      await row(wrapper, 21).trigger('click')
+      await flushPromises()
+
+      expect(tabs()).toEqual(['Details', 'Food & IT 2', 'History'])
+      expect(shown()).toEqual(['tabpanel-details'])
+      expect(panel()!.querySelector('.room-photo')).not.toBeNull()
+      expect(panel()!.querySelector('.step-progress')).not.toBeNull()
+
+      await click(panel()!.querySelector<HTMLButtonElement>('#tab-services')!)
+      expect(shown()).toEqual(['tabpanel-services'])
+      expect(panel()!.querySelector('#tab-services')!.getAttribute('aria-selected')).toBe('true')
+      expect(button(panel(), 'Approve')).toBeTruthy()
+
+      await click(panel()!.querySelector<HTMLButtonElement>('#tab-history')!)
+      expect(panel()!.querySelector('#tabpanel-history')!.textContent).toContain('Waiting for Pitika')
+    })
+
+    it('shows Food & IT with the same cards as the booker: items with the amount, the booker’s notes', async () => {
+      DETAILS[22] = {
+        catering: { packages: [{ id: 1, name: 'Coffee break' }], servings: 8, remarks: 'Less sugar.', delivery_date: '2026-11-05', delivery_time: '14:00' },
+        it: { items: [{ id: 2, name: 'Video call' }], special_requirements: 'Two microphones.', status: 'RECEIVED', staff: [] },
+      }
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+      const food = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
+      expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8'])
+      expect(food.textContent).toContain('Booker’s note')
+      expect(food.textContent).toContain('“Less sugar.”')
+      const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
+      expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Video call'])
+      expect(it.textContent).toContain('“Two microphones.”')
+      expect(food.classList).toContain('lead')
+      expect(it.classList).not.toContain('lead')
+      delete DETAILS[22]
+    })
+
+    it('adds a Files tab with a count only when the booking has files', async () => {
+      DETAILS[22] = {
+        attachments: [{ id: 4, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 100, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/22/attachments/4' }],
+        reviews: [{ stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Chan Sophea' }, notes: null, reviewed_at: '2026-11-12T07:05:00Z', by_admin: false }],
+      }
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+      expect(tabs()).toEqual(['Details', 'Food & IT', 'Files 1', 'History'])
+      delete DETAILS[22]
+    })
+  })
+
+  describe('History', () => {
+    const rows = () =>
+      [...panel()!.querySelectorAll('#tabpanel-history .timeline li')].map((li) => ({
+        label: li.querySelector('.label')?.textContent?.trim(),
+        who: li.querySelector('.name')?.textContent?.trim() ?? null,
+        role: [...li.querySelectorAll('.role')].map((r) => r.textContent?.trim()).join(' for '),
+        at: li.querySelector('.time')?.textContent?.trim() ?? null,
+        note: li.querySelector('.note')?.textContent?.trim() ?? null,
+      }))
+    async function openWith(extra: Record<string, unknown>) {
+      DETAILS[22] = extra
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+    }
+    afterEach(() => {
+      delete DETAILS[22]
+    })
+
+    it('shows the timeline like the Admin’s History: who did what, their role, when, and the note', async () => {
+      await openWith({
+        status: 'PENDING_OWNER',
+        reviews: [
+          { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Chan Sophea' }, notes: 'Food is fine for 24 people.', reviewed_at: '2026-11-12T07:05:00Z', by_admin: false },
+        ],
+      })
+      const r = rows()
+      expect(r.map((x) => x.label)).toEqual(['Sent', 'Approved', 'Waiting for the room owner'])
+      expect(r[0]).toMatchObject({ role: 'Booker' })
+      expect(r[1]).toEqual({ label: 'Approved', who: 'Chan Sophea', role: 'Pitika', at: '12 Nov 2026, 14:05', note: 'Food is fine for 24 people.' })
+      expect(r[2]).toMatchObject({ role: 'Room owner', at: null })
+    })
+
+    it('shows the Admin standing in, and a step that was not needed', async () => {
+      await openWith({
+        status: 'SETUP_IN_PROGRESS',
+        reviews: [
+          { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 9, name_en: 'Pich Visal' }, notes: null, reviewed_at: '2026-11-14T01:15:00Z', by_admin: true },
+          { stage: 'OWNER', decision: 'NOT_REQUIRED', reviewer: null, notes: null, reviewed_at: '2026-11-14T01:15:00Z', by_admin: false },
+        ],
+      })
+      const r = rows()
+      expect(r.find((x) => x.label === 'Approved')).toMatchObject({ who: 'Pich Visal', role: 'Admin for Pitika', at: '14 Nov 2026, 08:15' })
+      expect(r.map((x) => x.label)).toContain('Room owner not needed')
+    })
+
+    it('has no second step bar inside the tab: the one on top is enough', async () => {
+      await openWith({ reviews: [] })
+      expect(panel()!.querySelector('#tabpanel-history .timeline')).not.toBeNull()
+      expect(panel()!.querySelector('#tabpanel-history .steps')).toBeNull()
+    })
+  })
+
+  it('says None for booker details the booking does not have', async () => {
+    const { wrapper } = await mountReview()
+    await row(wrapper, 22).trigger('click')
+    await flushPromises()
+
+    const values = [...panel()!.querySelectorAll('.booker dd')].map((d) => d.textContent?.trim())
+    expect(values).toEqual(['None', 'Sok Dara', 'None', 'Payments'])
   })
 
   it('lists every session in the panel, and says the food comes at each of them', async () => {
@@ -239,7 +381,9 @@ describe('Review panel and decisions', () => {
     const sessions = [...p.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent).join(' '))
     expect(sessions).toEqual(['Thu 5 Nov 2026 14:00–15:30', 'Fri 6 Nov 2026 09:00–10:30', 'Sat 7 Nov 2026 09:00–10:30'])
     expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
-    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('At the start of every session (3 times)')
+    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('The start of every session (3 times)')
+    const facts = [...p.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {
@@ -249,6 +393,29 @@ describe('Review panel and decisions', () => {
     await flushPromises()
 
     expect(panel()!.textContent).toContain('The owner books their own room: you check the food and IT only.')
+  })
+
+  it('lists the booking files read only, and downloads one', async () => {
+    DETAILS[21] = {
+      ...DETAILS[21],
+      attachments: [{ id: 4, file_name: 'guest-list.xlsx', content_type: 'x', size_bytes: 4096, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/21/attachments/4' }],
+    }
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const { wrapper } = await mountReview()
+    await row(wrapper, 21).trigger('click')
+    await flushPromises()
+
+    const name = panel()!.querySelector<HTMLButtonElement>('.att-name')!
+    expect(name.textContent).toBe('guest-list.xlsx')
+    expect(panel()!.textContent).not.toContain('Add file')
+    name.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/21/attachments/4')
+    await new Promise((done) => setTimeout(done, 0)) // the download frees its URL on a timer
+    clickSpy.mockRestore()
+    delete DETAILS[21]!.attachments
   })
 
   it('approves from the row with optional notes, then the row leaves', async () => {

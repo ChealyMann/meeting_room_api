@@ -119,4 +119,10 @@ describe('Booking step 3: food and IT', () => {
     expect(food(w).get('.row.on').text()).toContain('Coffee and tea')
     expect(food(w).find('textarea[name="foodNote"]').exists()).toBe(true)
   })
+
+  it('gives the kitchen and IT notes room for 3 lines from the start', async () => {
+    const w = await step3()
+    await food(w).get('.row').trigger('click')
+    expect(food(w).get('textarea[name="foodNote"]').attributes('rows')).toBe('3')
+  })
 })

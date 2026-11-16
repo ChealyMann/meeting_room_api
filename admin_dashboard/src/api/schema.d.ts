@@ -1502,6 +1502,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a booking's files
+         * @description For everyone who can see the booking (else 404), in the order they were added.
+         */
+        get: operations["list_attachments_api_v1_bookings__booking_id__attachments_get"];
+        put?: never;
+        /**
+         * Add a file (PDF, Word or Excel)
+         * @description Only the booker, while the booking is not confirmed, rejected or cancelled. The type is
+         *     checked from the content. The booking's version does not change.
+         */
+        post: operations["add_attachment_api_v1_bookings__booking_id__attachments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a file
+         * @description For everyone who can see the booking (else 404). Never cached.
+         */
+        get: operations["get_attachment_api_v1_bookings__booking_id__attachments__attachment_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove a file
+         * @description Only the booker, while the booking is not confirmed, rejected or cancelled.
+         */
+        delete: operations["remove_attachment_api_v1_bookings__booking_id__attachments__attachment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/bookings/{booking_id}/actions": {
         parameters: {
             query?: never;
@@ -1654,6 +1703,29 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * AttachmentOut
+         * @description A document on a booking. `url` downloads it (signed in, and able to see the booking).
+         */
+        AttachmentOut: {
+            /** Id */
+            id: number;
+            /** File Name */
+            file_name: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Created At */
+            created_at: string;
+            /** Url */
+            url: string;
+        };
+        /** Body_add_attachment_api_v1_bookings__booking_id__attachments_post */
+        Body_add_attachment_api_v1_bookings__booking_id__attachments_post: {
+            /** File */
+            file: string;
+        };
         /** Body_set_avatar_api_v1_users__user_id__avatar_put */
         Body_set_avatar_api_v1_users__user_id__avatar_put: {
             /** File */
@@ -1749,6 +1821,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -1784,6 +1857,10 @@ export interface components {
             cancelled_by: components["schemas"]["PersonRef"] | null;
             /** Updated At */
             updated_at: string;
+            /** Attachments */
+            attachments: components["schemas"]["AttachmentOut"][];
+            /** Attachments Open */
+            attachments_open: boolean;
         };
         /** BookingListItem */
         BookingListItem: {
@@ -1802,6 +1879,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -1851,6 +1929,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -1886,6 +1965,10 @@ export interface components {
             cancelled_by: components["schemas"]["PersonRef"] | null;
             /** Updated At */
             updated_at: string;
+            /** Attachments */
+            attachments: components["schemas"]["AttachmentOut"][];
+            /** Attachments Open */
+            attachments_open: boolean;
             /** Warnings */
             warnings: {
                 [key: string]: unknown;
@@ -2241,6 +2324,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -2769,6 +2853,13 @@ export interface components {
             special_requirements?: string | null;
             /** Service Ids */
             service_ids?: unknown;
+        };
+        /** ItemList[AttachmentOut] */
+        ItemList_AttachmentOut_: {
+            /** Items */
+            items: components["schemas"]["AttachmentOut"][];
+            /** Total */
+            total: number;
         };
         /** ItemList[CateringOrderItem] */
         ItemList_CateringOrderItem_: {
@@ -7458,6 +7549,158 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BookingDetail"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attachments_api_v1_bookings__booking_id__attachments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemList_AttachmentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_attachment_api_v1_bookings__booking_id__attachments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_attachment_api_v1_bookings__booking_id__attachments_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentOut"];
+                };
+            };
+            /** @description FORBIDDEN: only the booker */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ATTACHMENT_LIMIT_REACHED or INVALID_TRANSITION (locked) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description FILE_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNSUPPORTED_FILE_TYPE */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description VALIDATION_ERROR: empty file */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_attachment_api_v1_bookings__booking_id__attachments__attachment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_attachment_api_v1_bookings__booking_id__attachments__attachment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: number;
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

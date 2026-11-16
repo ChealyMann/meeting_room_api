@@ -31,7 +31,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function step4(answers: StubAnswers = {}, extra: Record<string, unknown> = {}) {
+async function step4(answers: StubAnswers = {}, extra: Record<string, unknown> = {}, files: File[] = []) {
   const stubs = bookingStubs(roomDetail(12, 'Mekong Room', extra), { foods: [service(1, 'Coffee and tea', 'BREAKS')], ...answers })
   vi.stubGlobal('fetch', stubs.fetch)
   await router.push('/book/12?date=2026-11-13&start=09:00&end=10:00')
@@ -40,6 +40,11 @@ async function step4(answers: StubAnswers = {}, extra: Record<string, unknown> =
   await w.get('button.next').trigger('click')
   await w.get('input[name="title"]').setValue('Budget review')
   if (extra.is_private) await w.get('textarea[name="justification"]').setValue('Board papers')
+  for (const file of files) {
+    const input = w.get('.ms input[type="file"]')
+    Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
+    await input.trigger('change')
+  }
   await w.get('button.next').trigger('click')
   await flushPromises()
   await w.get('button.next').trigger('click')
@@ -146,6 +151,45 @@ describe('Booking step 4: review, check and send', () => {
     })
     expect(router.currentRoute.value.name).toBe('my-bookings')
     expect(useToast().toasts.value.map((t) => t.title)).toContain('Request sent. Pitika checks it next.')
+  })
+
+  it('lists the files on the review', async () => {
+    const { w } = await step4({}, {}, [new File(['%PDF-1'], 'agenda.pdf'), new File(['x'], 'budget.xlsx')])
+    expect(w.findAll('.rv .att-name').map((n) => n.text())).toEqual(['agenda.pdf', 'budget.xlsx'])
+    expect(w.find('.rv [aria-label="Remove agenda.pdf"]').exists()).toBe(false)
+  })
+
+  it('sends the booking, then each file', async () => {
+    const { w, stubs } = await step4({}, {}, [new File(['%PDF-1'], 'agenda.pdf'), new File(['x'], 'budget.xlsx')])
+    await press(w)
+    const posts = stubs.calls.filter((c) => c.startsWith('POST /api/v1/bookings') && !c.endsWith('/check'))
+    expect(posts).toEqual(['POST /api/v1/bookings', 'POST /api/v1/bookings/77/attachments', 'POST /api/v1/bookings/77/attachments'])
+    expect(useToast().toasts.value.map((t) => t.title)).toContain('Request sent. Pitika checks it next.')
+  })
+
+  it('still sends when a file fails, and says so', async () => {
+    const failSecond = (n: number): [unknown, number?] =>
+      n === 1 ? [{ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'Only PDF, Word or Excel files.', fields: {} } }, 415] : [{ id: 1, file_name: 'a.pdf', content_type: 'application/pdf', size_bytes: 6, created_at: '2026-11-12T03:00:00Z', url: '/x' }, 201]
+    const { w } = await step4({ upload: failSecond }, {}, [new File(['%PDF-1'], 'agenda.pdf'), new File(['x'], 'budget.xlsx')])
+    await press(w)
+    expect(router.currentRoute.value.name).toBe('my-bookings')
+    expect(useToast().toasts.value.map((t) => t.title)).toContain('Request sent. 1 file could not be added — add it from My bookings.')
+  })
+
+  it('warns that files cannot go on a booking confirmed at once, and does not send them', async () => {
+    const { w, stubs } = await step4(
+      {
+        check: () => [{ route: 'R3', first_status: 'CONFIRMED', steps: ['CONFIRMED'], problem: null, warnings: [] }],
+        send: () => [{ id: 77, reference_code: 'NBC-26-77', status: 'CONFIRMED', version: 1 }],
+      },
+      { is_private: true },
+      [new File(['%PDF-1'], 'agenda.pdf')],
+    )
+    expect(w.get('.rv-files-off').text()).toBe('This booking is confirmed at once, and files lock once a booking is confirmed. The file will not be added.')
+    await press(w)
+    expect(stubs.calls.filter((c) => c.endsWith('/attachments'))).toEqual([])
+    expect(router.currentRoute.value.name).toBe('my-bookings')
+    expect(useToast().toasts.value.map((t) => t.title).join(' ')).not.toContain('could not be added')
   })
 
   it('says the room owner checks too on a private room', async () => {
