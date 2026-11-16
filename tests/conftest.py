@@ -139,6 +139,7 @@ def settings(tmp_path):
         upload_dir=tmp_path / "uploads",
         signature_dir=tmp_path / "signatures",
         avatar_dir=tmp_path / "avatars",
+        attachment_dir=tmp_path / "attachments",
         cors_origins="https://rooms.company.com",
         expiry_job_enabled=False,
     )

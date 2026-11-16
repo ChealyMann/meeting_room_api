@@ -8,6 +8,7 @@ from app.constants.booking import BookingRoute, BookingStatus, MeetingType
 from app.models.base import MYSQL_TABLE, Base, IdMixin, TimestampMixin, UnsignedInt, enum_check
 
 if TYPE_CHECKING:
+    from app.models.booking_attachment import BookingAttachment
     from app.models.booking_door_pass import BookingDoorPass
     from app.models.booking_participant import BookingParticipant
     from app.models.booking_rejection import BookingRejection
@@ -68,3 +69,4 @@ class Booking(IdMixin, TimestampMixin, Base):
     reviews: Mapped[list["BookingReview"]] = relationship(order_by="BookingReview.id")
     rejection: Mapped["BookingRejection | None"] = relationship(uselist=False)
     door_pass: Mapped["BookingDoorPass | None"] = relationship(uselist=False)
+    attachments: Mapped[list["BookingAttachment"]] = relationship(order_by="BookingAttachment.id")

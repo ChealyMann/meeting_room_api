@@ -9,6 +9,7 @@ htmlcov/
 uploads/
 signatures/
 avatars/
+attachments/
 
 # Design tool session files (screenshots, choice-page logs)
 .impeccable/review/
