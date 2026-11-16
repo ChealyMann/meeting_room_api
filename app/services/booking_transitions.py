@@ -83,6 +83,13 @@ def last_end_sql():
     )
 
 
+def next_session(booking: Booking) -> BookingSession | None:
+    """The first session that has not ended yet (one under way counts); None once all ended."""
+    now = clock.now_local()
+    ahead = [s for s in booking.sessions if clock.session_end(s) > now]
+    return min(ahead, key=clock.session_start, default=None)
+
+
 def has_started(booking: Booking) -> bool:
     return clock.now_local() >= first_start(booking)
 

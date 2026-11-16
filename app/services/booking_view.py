@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
 from app.constants.booking import ATTACHMENTS_OPEN, ReviewDecision, ReviewStage
-from app.models import Booking, Building, Floor, Room, User
+from app.models import Booking, BookingSession, Building, Floor, Room, User
 from app.schemas.booking import (
     BookingDetail,
     BookingListItem,
@@ -61,6 +61,10 @@ def _person(user: User | None) -> PersonRef | None:
     return PersonRef.model_validate(user) if user else None
 
 
+def _session_out(session: BookingSession | None) -> SessionOut | None:
+    return SessionOut.model_validate(session) if session is not None else None
+
+
 def _list_item_fields(booking: Booking) -> dict[str, Any]:
     return {
         "id": booking.id,
@@ -74,6 +78,7 @@ def _list_item_fields(booking: Booking) -> dict[str, Any]:
         "requester": NamedRef.model_validate(booking.requester),
         "first_session": SessionOut.model_validate(booking.sessions[0]),
         "session_count": len(booking.sessions),
+        "next_session": _session_out(transitions.next_session(booking)),
         "attendees": booking.attendees,
         "has_catering": booking.catering_order is not None,
         "has_it": booking.it_ticket is not None,

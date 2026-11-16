@@ -82,8 +82,9 @@ def test_detail_shape(client, frozen, make_user, make_bookable_room, make_bookin
     data = client.get(f"{URL}/{booking.id}", headers=auth_headers(booker)).json()
     assert set(data) == {
         "id", "reference_code", "room", "meeting_title", "meeting_type", "route", "status",
-        "display_status", "requester", "first_session", "session_count", "attendees",
-        "has_catering", "has_it", "created_at", "version", "requester_info", "meeting_purpose",
+        "display_status", "requester", "first_session", "session_count", "next_session",
+        "attendees", "has_catering", "has_it", "created_at", "version", "requester_info",
+        "meeting_purpose",
         "private_justification", "participant_emails", "sessions", "last_end", "catering", "it",
         "reviews", "rejection", "cancelled_at", "cancel_reason", "cancelled_by", "updated_at",
         "attachments", "attachments_open",
@@ -165,7 +166,7 @@ def test_mine_item_shape(client, frozen, make_user, make_bookable_room, make_boo
     assert set(item) == {
         "id", "reference_code", "room", "meeting_title", "meeting_type", "route", "status",
         "display_status", "requester", "first_session", "session_count", "attendees",
-        "has_catering", "has_it", "created_at", "version",
+        "has_catering", "has_it", "created_at", "version", "next_session",
     }  # fmt: skip
     assert item["id"] == booking.id
 
@@ -255,3 +256,32 @@ def test_mine_query_count_does_not_grow(
     assert (few[1], many[1]) == (2, 6)
     assert many[0] == few[0]
     assert few[0] <= 15
+
+
+def test_mine_next_session_is_the_first_one_not_ended(
+    client, freeze_now, frozen, make_user, make_bookable_room, make_booking, auth_headers
+):
+    """The card shows the next session, not the first (owner, 16 Nov 2026): a session counts
+    until it ends, and there is none once the last one ended."""
+    booker = make_user(roles=["STAFF"])
+    booking = make_booking(
+        make_bookable_room(),
+        booker,
+        status=BookingStatus.CONFIRMED,
+        sessions=((NEXT_DAY, time(9), time(10)), (DAY, time(9), time(10))),
+    )
+    headers = auth_headers(booker)
+
+    def next_session():
+        items = client.get(f"{URL}/mine", headers=headers).json()["items"]
+        found = next(i for i in items if i["id"] == booking.id)["next_session"]
+        return found and (found["date"], found["start_time"])
+
+    day, next_day = DAY.isoformat(), NEXT_DAY.isoformat()
+    assert next_session() == (day, "09:00")
+    freeze_now(datetime.combine(DAY, time(9, 30)))  # under way: still this one
+    assert next_session() == (day, "09:00")
+    freeze_now(datetime.combine(DAY, time(10)))  # ended: the next day's
+    assert next_session() == (next_day, "09:00")
+    freeze_now(datetime.combine(NEXT_DAY, time(10)))  # all ended
+    assert next_session() is None

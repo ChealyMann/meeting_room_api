@@ -222,6 +222,8 @@ class BookingListItem(ResponseModel):
     requester: NamedRef
     first_session: SessionOut
     session_count: int
+    # The first session not ended yet (owner, 16 Nov 2026: the card shows it); null once all ended.
+    next_session: SessionOut | None
     attendees: int
     has_catering: bool
     has_it: bool

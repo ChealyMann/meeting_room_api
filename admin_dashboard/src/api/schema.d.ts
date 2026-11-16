@@ -1821,6 +1821,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -1878,6 +1879,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -1927,6 +1929,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
@@ -2321,6 +2324,7 @@ export interface components {
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
+            next_session: components["schemas"]["SessionOut"] | null;
             /** Attendees */
             attendees: number;
             /** Has Catering */
