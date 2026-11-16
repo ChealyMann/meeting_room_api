@@ -293,6 +293,8 @@ describe('IT setup', () => {
     const tabs = [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
     expect(tabs).toEqual(['Details', 'Food & IT 2', 'History'])
     expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Food & IT 2')
+    const cards = [...panel()!.querySelectorAll('#tabpanel-services .panel-section > h3 > span:first-child')].map((h) => h.textContent)
+    expect(cards).toEqual(['IT help', 'Food & drinks'])
     const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
     expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Projector setup', 'Microphones'])
     expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Setting up')

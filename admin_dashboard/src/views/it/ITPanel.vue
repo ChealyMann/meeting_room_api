@@ -96,7 +96,7 @@ const tabs = computed(() => {
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
-        <BookingServices :booking="services" viewer="staff" :food="!!detail" />
+        <BookingServices :booking="services" viewer="staff" :food="!!detail" it-first />
       </section>
 
       <section v-if="files.length && detail" v-show="tab === 'files'" id="tabpanel-files" role="tabpanel" aria-labelledby="tab-files">

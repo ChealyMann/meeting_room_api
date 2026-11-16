@@ -15,9 +15,16 @@ const props = withDefaults(
     viewer: 'booker' | 'staff'
     /** False while the food is not known yet (IT's panel before the booking loads). */
     food?: boolean
+    /** IT help on top (the IT setup panel, owner pick 16 Nov 2026); food first everywhere else. */
+    itFirst?: boolean
   }>(),
-  { food: true },
+  { food: true, itFirst: false },
 )
+/** The cards in the order they show (and are read). */
+const order = computed(() => {
+  const kinds: Array<'food' | 'it'> = props.itFirst ? ['it', 'food'] : ['food', 'it']
+  return kinds.filter((k) => k === 'it' || props.food)
+})
 
 const OPEN = ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED']
 const open = computed(() => OPEN.includes(props.booking.display_status))
@@ -44,59 +51,63 @@ const itPill = computed<Pill | null>(() => {
 
 <template>
   <div class="svc">
-    <template v-if="food">
-      <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" data-kind="food">
-        <template v-if="foodPill" #extra><span class="pill" :class="foodPill.tone">{{ foodPill.text }}</span></template>
-        <ul class="svc-items">
-          <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
-        </ul>
-        <dl class="svc-rows">
-          <div>
-            <dt>Bring it at</dt>
-            <dd v-if="sessionCount > 1" class="delivery">The start of every session ({{ sessionCount }} times)</dd>
-            <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
-          </div>
-          <div v-if="booking.catering.remarks">
-            <dt>{{ noteLabel }}</dt>
-            <dd class="quote">“{{ booking.catering.remarks }}”</dd>
-          </div>
-          <div v-if="booking.catering.decided_by && booking.catering.decided_at">
-            <dt>Checked by</dt>
-            <dd>
-              {{ booking.catering.decided_by.name_en }} · <span class="mono">{{ formatPhnomPenh(booking.catering.decided_at) }}</span>
-              <span v-if="booking.catering.approver_notes" class="sub quote">“{{ booking.catering.approver_notes }}”</span>
-            </dd>
-          </div>
-        </dl>
-      </PanelSection>
-      <PanelSection v-else title="Food & drinks"><p class="none-line">No food ordered.</p></PanelSection>
+    <template v-for="kind in order" :key="kind">
+      <template v-if="kind === 'food'">
+        <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" data-kind="food">
+          <template v-if="foodPill" #extra><span class="pill" :class="foodPill.tone">{{ foodPill.text }}</span></template>
+          <ul class="svc-items">
+            <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
+          </ul>
+          <dl class="svc-rows">
+            <div>
+              <dt>Bring it at</dt>
+              <dd v-if="sessionCount > 1" class="delivery">The start of every session ({{ sessionCount }} times)</dd>
+              <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
+            </div>
+            <div v-if="booking.catering.remarks">
+              <dt>{{ noteLabel }}</dt>
+              <dd class="quote">“{{ booking.catering.remarks }}”</dd>
+            </div>
+            <div v-if="booking.catering.decided_by && booking.catering.decided_at">
+              <dt>Checked by</dt>
+              <dd>
+                {{ booking.catering.decided_by.name_en }} · <span class="mono">{{ formatPhnomPenh(booking.catering.decided_at) }}</span>
+                <span v-if="booking.catering.approver_notes" class="sub quote">“{{ booking.catering.approver_notes }}”</span>
+              </dd>
+            </div>
+          </dl>
+        </PanelSection>
+        <PanelSection v-else title="Food & drinks"><p class="none-line">No food ordered.</p></PanelSection>
+      </template>
+  
+      <template v-else>
+        <PanelSection v-if="booking.it" title="IT help" class="svc-card" data-kind="it">
+          <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
+          <ul class="svc-items">
+            <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
+          </ul>
+          <dl class="svc-rows">
+            <div v-if="booking.it.special_requirements">
+              <dt>{{ noteLabel }}</dt>
+              <dd class="quote">“{{ booking.it.special_requirements }}”</dd>
+            </div>
+            <div v-if="booking.it.staff.length">
+              <dt>IT staff</dt>
+              <dd>{{ booking.it.staff.map((s) => s.name_en).join(', ') }}</dd>
+            </div>
+            <div v-if="booking.it.technician_notes">
+              <dt>IT note</dt>
+              <dd class="quote">“{{ booking.it.technician_notes }}”</dd>
+            </div>
+            <div v-if="booking.it.ready_at">
+              <dt>Ready at</dt>
+              <dd class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</dd>
+            </div>
+          </dl>
+        </PanelSection>
+        <PanelSection v-else title="IT help"><p class="none-line">No IT help asked.</p></PanelSection>
+      </template>
     </template>
-
-    <PanelSection v-if="booking.it" title="IT help" class="svc-card" data-kind="it">
-      <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
-      <ul class="svc-items">
-        <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
-      </ul>
-      <dl class="svc-rows">
-        <div v-if="booking.it.special_requirements">
-          <dt>{{ noteLabel }}</dt>
-          <dd class="quote">“{{ booking.it.special_requirements }}”</dd>
-        </div>
-        <div v-if="booking.it.staff.length">
-          <dt>IT staff</dt>
-          <dd>{{ booking.it.staff.map((s) => s.name_en).join(', ') }}</dd>
-        </div>
-        <div v-if="booking.it.technician_notes">
-          <dt>IT note</dt>
-          <dd class="quote">“{{ booking.it.technician_notes }}”</dd>
-        </div>
-        <div v-if="booking.it.ready_at">
-          <dt>Ready at</dt>
-          <dd class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</dd>
-        </div>
-      </dl>
-    </PanelSection>
-    <PanelSection v-else title="IT help"><p class="none-line">No IT help asked.</p></PanelSection>
   </div>
 </template>
 
