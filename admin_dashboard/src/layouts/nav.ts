@@ -2,8 +2,10 @@ import {
   Briefcase,
   Building2,
   CalendarCheck,
+  CalendarClock,
   CalendarDays,
   DoorOpen,
+  FileText,
   GitFork,
   Inbox,
   Landmark,
@@ -12,6 +14,7 @@ import {
   ListChecks,
   Network,
   Projector,
+  Search,
   ShieldCheck,
   Tags,
   Users,
@@ -44,6 +47,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Daily',
     items: [
+      // Every Staff user books here, so these two come first (owner decision, 12 Nov 2026).
+      { label: 'Find a room', icon: 'search', route: 'find-room', roles: ['STAFF'] },
+      { label: 'My bookings', icon: 'calendar-clock', route: 'my-bookings', roles: ['STAFF'] },
       { label: 'To review', icon: 'inbox', route: 'review', roles: ['PITIKA'] },
       { label: 'To review', icon: 'inbox', route: 'owner-review', roles: ['ROOM_OWNER'] },
       { label: 'IT setup', icon: 'wrench', route: 'it-setup', roles: ['IT_LEAD'] },
@@ -83,6 +89,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Departments', icon: 'network', route: 'departments' },
       { label: 'Divisions', icon: 'git-fork', route: 'divisions' },
       { label: 'Positions', icon: 'briefcase', route: 'positions' },
+      { label: 'Request slip', icon: 'file-text', route: 'slip-settings' },
     ],
   },
   {
@@ -108,6 +115,8 @@ export const NAV_ICONS: Record<string, Component> = {
   'utensils-crossed': UtensilsCrossed,
   'monitor-cog': MonitorCog,
   'calendar-check': CalendarCheck,
+  'calendar-clock': CalendarClock,
+  search: Search,
   'calendar-days': CalendarDays,
   network: Network,
   'git-fork': GitFork,
@@ -115,6 +124,7 @@ export const NAV_ICONS: Record<string, Component> = {
   wrench: Wrench,
   'list-checks': ListChecks,
   briefcase: Briefcase,
+  'file-text': FileText,
   users: Users,
   'shield-check': ShieldCheck,
 }
@@ -135,6 +145,7 @@ export function roleTitle(roles: string[]): string {
   if (roles.includes('ROOM_OWNER')) return 'Room owner'
   if (roles.includes('IT_LEAD')) return 'IT Lead'
   if (roles.includes('IT_STAFF')) return 'IT Staff'
+  if (roles.includes('STAFF')) return 'Staff'
   return ''
 }
 

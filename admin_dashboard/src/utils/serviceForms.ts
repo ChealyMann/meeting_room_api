@@ -28,18 +28,47 @@ export const SERVICE_KINDS: Record<
   },
 }
 
+/** The groups Staff see food and IT help under (owner decision, 12 Nov 2026). No group = "Other". */
+export const SERVICE_GROUPS: Record<ServiceKind, { value: string; label: string }[]> = {
+  catering: [
+    { value: 'BREAKFAST', label: 'Breakfast' },
+    { value: 'MEALS', label: 'Meals' },
+    { value: 'BREAKS', label: 'Breaks & drinks' },
+  ],
+  it: [
+    { value: 'SCREENS', label: 'Screens & video' },
+    { value: 'SOUND', label: 'Sound & language' },
+    { value: 'DEVICES', label: 'Devices & network' },
+    { value: 'SUPPORT', label: 'Support' },
+  ],
+}
+
+/** A group's words; an unknown code shows as it is, no group as null. */
+export function groupLabel(kind: ServiceKind, group: string | null | undefined): string | null {
+  if (!group) return null
+  return SERVICE_GROUPS[kind].find((g) => g.value === group)?.label ?? group
+}
+
 export interface ServiceForm {
   name: string
   description: string
   sort_order: string
+  group: string | null
+  icon: string | null
 }
 
 export function emptyServiceForm(): ServiceForm {
-  return { name: '', description: '', sort_order: '' }
+  return { name: '', description: '', sort_order: '', group: null, icon: null }
 }
 
 export function serviceFormOf(service: ServiceOut): ServiceForm {
-  return { name: service.name, description: service.description ?? '', sort_order: String(service.sort_order) }
+  return {
+    name: service.name,
+    description: service.description ?? '',
+    sort_order: String(service.sort_order),
+    group: service.group ?? null,
+    icon: service.icon ?? null,
+  }
 }
 
 /** Problems to show before sending, by field. Empty when the form can be sent. */
@@ -61,7 +90,9 @@ export function serviceCreateBody(form: ServiceForm): ServiceCreate {
     ...(description ? { description } : {}),
     sort_order: orderValue(form.sort_order),
     is_active: true,
-  }
+    ...(form.group ? { group: form.group } : {}),
+    ...(form.icon ? { icon: form.icon } : {}),
+  } as ServiceCreate
 }
 
 /** PATCH: only what changed, with the version that was read; `{}` when nothing changed. */
@@ -71,5 +102,7 @@ export function serviceChanges(form: ServiceForm, service: ServiceOut): Partial<
   if (form.name.trim() !== service.name) changes.name = form.name.trim()
   if (description !== (service.description ?? null)) changes.description = description
   if (orderValue(form.sort_order) !== service.sort_order) changes.sort_order = orderValue(form.sort_order)
+  if (form.group !== (service.group ?? null)) (changes as Record<string, unknown>).group = form.group
+  if (form.icon !== (service.icon ?? null)) changes.icon = form.icon
   return Object.keys(changes).length ? { ...changes, version: service.version } : {}
 }

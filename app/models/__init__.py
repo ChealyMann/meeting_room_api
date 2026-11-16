@@ -7,6 +7,7 @@ from app.models.booking_participant import BookingParticipant
 from app.models.booking_rejection import BookingRejection
 from app.models.booking_review import BookingReview
 from app.models.booking_session import BookingSession
+from app.models.booking_signer import BookingSigner
 from app.models.building import Building
 from app.models.category import Category
 from app.models.catering_order import CateringOrder
@@ -25,6 +26,7 @@ from app.models.role import Role
 from app.models.room import Room
 from app.models.room_equipment import room_equipment
 from app.models.room_photo import RoomPhoto
+from app.models.slip_settings import SlipSettings
 from app.models.user import User
 from app.models.user_roles import user_roles
 
@@ -36,6 +38,7 @@ __all__ = [
     "BookingRejection",
     "BookingReview",
     "BookingSession",
+    "BookingSigner",
     "Building",
     "CateringOrder",
     "CateringPackage",
@@ -52,6 +55,7 @@ __all__ = [
     "Role",
     "Room",
     "RoomPhoto",
+    "SlipSettings",
     "User",
     "it_ticket_staff",
     "room_equipment",

@@ -121,6 +121,11 @@ def test_requester_info_copied(
         "office": "Head Office",
         "email": booker.email,
         "phone": "012 345 678",
+        # For the request slip (R20): the office and department as they were when sent.
+        "division_id": division.id,
+        "division_kh": division.name_kh,
+        "department_id": division.department_id,
+        "department_kh": division.department.name_kh,
     }
     assert data["requester_info"] == expected
 

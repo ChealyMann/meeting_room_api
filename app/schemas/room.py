@@ -88,6 +88,7 @@ class RoomListItem(ResponseModel):
     province: ProvinceRef
     owner: NamedRef | None
     cover_photo: CoverPhoto | None
+    photo_count: int
     is_active: bool
     is_bookable: bool  # computed (R12), never stored
     is_private: bool  # picks the booking route (private: the owner approves)

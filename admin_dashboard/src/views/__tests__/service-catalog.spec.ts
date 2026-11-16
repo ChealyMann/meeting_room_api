@@ -7,6 +7,7 @@ import { useToast } from '../../composables/useToast'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { answerConfirm, mountConfirmHost } from '../../test-utils/confirm'
+import { choosePicker, pickerOptions } from '../../test-utils/picker'
 import ServiceCatalogView from '../ServiceCatalogView.vue'
 
 enableAutoUnmount(afterEach)
@@ -15,6 +16,8 @@ const service = (id: number, changes: Record<string, unknown> = {}) => ({
   id,
   name: 'Coffee break',
   description: 'Coffee and cake',
+  group: null,
+  icon: null,
   sort_order: 1,
   is_active: true,
   version: 2,
@@ -174,6 +177,42 @@ describe('ServiceCatalogView', () => {
     expect(wrapper.get('h1').text()).toBe('IT services')
     expect(wrapper.findAll('button').some((b) => b.text() === 'New service')).toBe(true)
     expect(wrapper.find('tbody tr').text()).toContain('IS·0003')
+  })
+
+  it('offers the food groups and No group on a package', async () => {
+    await mountAt('/catering-packages?id=new')
+    expect(await pickerOptions('group')).toEqual(['No group', 'Breakfast', 'Meals', 'Breaks & drinks'])
+  })
+
+  it('offers the IT groups on a service', async () => {
+    await mountAt('/it-services?id=new')
+    expect(await pickerOptions('group')).toEqual(['No group', 'Screens & video', 'Sound & language', 'Devices & network', 'Support'])
+  })
+
+  it('sends the group and the icon', async () => {
+    await mountAt('/catering-packages?id=new')
+    setValue('#name', 'Lunch box')
+    await choosePicker('group', 'Meals')
+    inPanel<HTMLElement>('[role="radio"][aria-label="Catering"]')!.click()
+    await submitPanel()
+
+    expect(JSON.parse(writes[0]!.body)).toEqual({ name: 'Lunch box', sort_order: 0, is_active: true, group: 'MEALS', icon: 'utensils' })
+  })
+
+  it('sends only a changed group on edit', async () => {
+    await mountAt('/catering-packages?id=3')
+    await choosePicker('group', 'Breaks & drinks')
+    await submitPanel()
+
+    expect(writes[0]!.body).toBe(JSON.stringify({ group: 'BREAKS', version: 2 }))
+  })
+
+  it('shows the group in the list', async () => {
+    listItems = () => [service(3, { group: 'MEALS' }), service(5, { group: null })]
+    const { wrapper } = await mountAt('/catering-packages')
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows[0]!.find('.col-group').text()).toBe('Meals')
+    expect(rows[1]!.find('.col-group').text()).toBe('—')
   })
 
   it('are real pages in the sidebar', () => {

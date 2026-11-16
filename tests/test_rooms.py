@@ -24,6 +24,7 @@ LIST_FIELDS = {
     "province",
     "owner",
     "cover_photo",
+    "photo_count",
     "is_active",
     "is_bookable",
     "is_private",
@@ -291,7 +292,8 @@ def test_create_missing_required_fields(client, as_admin):
 
 
 @pytest.mark.parametrize(
-    "field", ["id", "is_active", "is_bookable", "created_at", "cover_photo", "private"]
+    "field",
+    ["id", "is_active", "is_bookable", "created_at", "cover_photo", "photo_count", "private"],
 )
 def test_create_refuses_unknown_and_server_fields(client, as_admin, floor, category, field):
     response = client.post(URL, json=new(floor, category, **{field: True}), headers=as_admin)
@@ -420,7 +422,7 @@ def test_list_item(client, as_staff, rooms, owner):
     item = client.get(URL, params={"search": "Mekong"}, headers=as_staff).json()["items"][0]
     assert item["owner"]["id"] == owner.id
     assert (item["start_time"], item["end_time"]) == ("08:00", "18:00")
-    assert item["cover_photo"] is None
+    assert (item["cover_photo"], item["photo_count"]) == (None, 0)
     assert item["is_bookable"] is True
 
 
@@ -438,6 +440,7 @@ def test_list_cover_photo(client, as_staff, rooms, db_session):
     db_session.flush()
     item = client.get(URL, params={"search": "Mekong"}, headers=as_staff).json()["items"][0]
     assert item["cover_photo"] == {"url": "/u/first.jpg", "thumbnail_url": "/u/first_t.jpg"}
+    assert item["photo_count"] == 3
 
 
 @pytest.mark.parametrize(
@@ -937,3 +940,115 @@ def test_times_stored_without_seconds(client, as_admin, floor, category, db_sess
     room_id = client.post(URL, json=body, headers=as_admin).json()["id"]
     room = db_session.get(Room, room_id)
     assert (room.start_time, room.end_time) == (time(8, 15), time(17, 0))
+
+
+# --- Free at a time on some days (Staff "Find a room") ----------------------------------
+
+MON, TUE = "2026-11-16", "2026-11-17"
+
+
+@pytest.fixture
+def booked(rooms, make_user, make_booking):
+    """Mekong: Mon 09:00-10:00. Tonle: Tue 08:00-12:00. Angkor: a cancelled Mon 09:00-10:00."""
+    from datetime import date
+
+    from app.constants.booking import BookingStatus
+
+    booker = make_user(roles=["STAFF"])
+    mon, tue = date(2026, 11, 16), date(2026, 11, 17)
+    make_booking(
+        rooms["mekong"],
+        booker,
+        status=BookingStatus.CONFIRMED,
+        sessions=((mon, time(9), time(10)),),
+    )
+    make_booking(
+        rooms["tonle"],
+        booker,
+        status=BookingStatus.PENDING_PITIKA,
+        sessions=((tue, time(8), time(12)),),
+    )
+    make_booking(
+        rooms["angkor"],
+        booker,
+        status=BookingStatus.CANCELLED,
+        sessions=((mon, time(9), time(10)),),
+    )
+    return rooms
+
+
+def _free(client, headers, dates, start, end, **more):
+    params = {
+        "is_bookable": "true",
+        "free_dates": dates,
+        "free_from": start,
+        "free_to": end,
+        **more,
+    }
+    return client.get(URL, params=params, headers=headers)
+
+
+def test_free_hides_rooms_booked_at_that_time(client, as_staff, booked):
+    names = _names(_free(client, as_staff, MON, "09:00", "10:00"))
+    assert "Mekong Room" not in names
+    assert {"Tonle Room", "Angkor Room"} <= set(names)  # Angkor's booking was cancelled
+
+
+def test_free_on_every_day_of_a_range(client, as_staff, booked):
+    names = _names(_free(client, as_staff, f"{MON},{TUE}", "08:00", "12:00"))
+    assert "Mekong Room" not in names and "Tonle Room" not in names
+    assert "Angkor Room" in names
+
+
+def test_back_to_back_is_free(client, as_staff, booked):
+    assert "Mekong Room" in _names(_free(client, as_staff, MON, "10:00", "11:00"))
+    assert "Tonle Room" in _names(_free(client, as_staff, TUE, "12:00", "13:00"))
+
+
+def test_free_only_inside_the_room_hours(client, as_staff, booked, db_session):
+    booked["angkor"].start_time = time(7, 0)
+    db_session.flush()
+    assert _names(_free(client, as_staff, MON, "07:00", "08:00")) == ["Angkor Room"]
+    assert _names(_free(client, as_staff, MON, "17:30", "18:30")) == []
+
+
+def test_free_combines_with_other_filters(client, as_staff, booked):
+    response = _free(client, as_staff, MON, "09:00", "10:00", min_capacity=10)
+    assert "Tonle Room" in _names(response)
+    assert "Angkor Room" not in _names(response)  # 6 seats
+
+
+@pytest.mark.parametrize(
+    ("params", "fields"),
+    [
+        ({"free_dates": MON}, {"free_from": "Give free_from and free_to with free_dates."}),
+        (
+            {"free_from": "09:00", "free_to": "10:00"},
+            {"free_dates": "Give free_dates with free_from and free_to."},
+        ),
+        (
+            {"free_dates": MON, "free_from": "10:00", "free_to": "09:00"},
+            {"free_to": "Must be after free_from."},
+        ),
+        (
+            {"free_dates": "16-11-2026", "free_from": "09:00", "free_to": "10:00"},
+            {"free_dates": "Must be a comma-separated list of dates, e.g. 2026-11-16,2026-11-17."},
+        ),
+        (
+            {
+                "free_dates": ",".join(f"2026-12-{d:02d}" for d in range(1, 23)),
+                "free_from": "09:00",
+                "free_to": "10:00",
+            },
+            {"free_dates": "Give at most 20 dates."},
+        ),
+    ],
+)
+def test_free_needs_all_three_and_a_real_time(client, as_staff, rooms, params, fields):
+    assert _fields(client.get(URL, params=params, headers=as_staff)) == fields
+
+
+@pytest.mark.parametrize("value", ["9:00", "25:00", "09:60", "nine"])
+def test_free_times_are_hh_mm(client, as_staff, rooms, value):
+    params = {"free_dates": MON, "free_from": value, "free_to": "23:00"}
+    assert "free_from" in _fields(client.get(URL, params=params, headers=as_staff))

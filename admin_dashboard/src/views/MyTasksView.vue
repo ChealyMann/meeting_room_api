@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // IT Staff's My tasks (spec 2026-11-05-owner-and-it-pages-design, Part B): the setups assigned
 // to me that are not ready yet, by setup day, read only (only the IT Lead marks ready).
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../api'
 import { listAllRooms } from '../api/references'
+import OfflineNote from '../components/list/OfflineNote.vue'
+import RefreshButton from '../components/list/RefreshButton.vue'
 import type { RoomListItem } from '../api/types'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
@@ -23,6 +25,10 @@ onMounted(async () => {
   }
 })
 
+// The queue hands up its refresh status for the button and the note.
+const queue = ref<InstanceType<typeof ITQueue> | null>(null)
+const live = computed(() => queue.value?.live ?? null)
+
 function onLoaded(items: SetupRow[], total: number) {
   line.value = myTasksLine(items, today.value)
   reportWaiting('my-tasks', total) // the menu agrees
@@ -32,10 +38,14 @@ function onLoaded(items: SetupRow[], total: number) {
 <template>
   <div class="places-page my-tasks">
     <div class="head">
-      <h1>My tasks</h1>
-      <p v-if="line" class="sub">{{ line }}</p>
+      <div>
+        <h1>My tasks</h1>
+        <p v-if="line" class="sub">{{ line }}</p>
+      </div>
+      <RefreshButton v-if="live" :live="live" />
     </div>
-    <ITQueue tab="mine" :rooms="rooms" :actions="false" @loaded="onLoaded" />
+    <OfflineNote v-if="live" :live="live" />
+    <ITQueue ref="queue" tab="mine" :rooms="rooms" :actions="false" @loaded="onLoaded" />
   </div>
 </template>
 
@@ -43,6 +53,10 @@ function onLoaded(items: SetupRow[], total: number) {
 
 <style scoped>
 .head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 18px;
 }
 .sub {

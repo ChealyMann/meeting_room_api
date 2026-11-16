@@ -12,4 +12,6 @@ class ITService(IdMixin, ActiveMixin, SortOrderMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(String(1000))
+    group: Mapped[str | None] = mapped_column(String(20))  # FoodGroup / ITGroup; None = Other
+    icon: Mapped[str | None] = mapped_column(String(1000))  # icon name chosen by the client app
     version: Mapped[int] = mapped_column(Integer, default=1)  # optimistic lock

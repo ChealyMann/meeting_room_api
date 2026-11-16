@@ -11,6 +11,7 @@ import { ApiError } from '../../api/errors'
 import type { ScheduleItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
+import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { statusLabel } from '../../utils/bookingLabels'
 import { addDays, formatDay } from '../../utils/time'
 
@@ -30,20 +31,25 @@ const error = ref('')
 const loading = ref(false)
 let latest = 0
 
-async function load() {
+/** `quiet` (only a real `true`): the live refresh — no spinner, a failure keeps what is shown. */
+async function load(quietRefresh?: unknown) {
+  const quiet = quietRefresh === true
   const request = ++latest
-  loading.value = true
-  error.value = ''
+  if (!quiet) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const answer = await getRoomSchedule(api, props.roomId, from.value, to.value)
     if (request === latest) items.value = answer.items
   } catch (err) {
-    if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
+    if (request === latest && !quiet) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
     if (request === latest) loading.value = false
   }
 }
-watch(from, load, { immediate: true })
+watch(from, () => load(), { immediate: true })
+useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 /** The sessions by day, in the API's order (date, then start). */
 const days = computed(() => {

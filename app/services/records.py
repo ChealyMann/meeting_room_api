@@ -3,6 +3,7 @@
 - `get_or_404`: the record in the path, or 404 NOT_FOUND.
 - `get_reference` (R2): a record linked by id must exist (else 422 on that field) and be
   active (else 409 INACTIVE_REFERENCE).
+- `check_head` (R2 for a head): a department's or office's head is an existing, active user.
 - `check_parent_active` (R3): a record cannot be turned on again under an inactive parent.
 - `check_and_bump_version`: the version a person saw must still be current (STALE_VERSION).
 - `save` (R4): flush and commit; a unique-key clash becomes 409 DUPLICATE on its field.
@@ -17,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError, ErrorCode
-from app.models import Base
+from app.models import Base, User
 
 _ER_DUP_ENTRY = 1062
 _DUPLICATE_KEY = re.compile(r"for key '(?:[^'.]+\.)?([^']+)'")
@@ -71,6 +72,12 @@ def get_reference(session: Session, model, record_id: int, field: str, label: st
         message = f"This {label.lower()} is inactive."
         raise AppError(ErrorCode.INACTIVE_REFERENCE, 409, message, {field: message})
     return record
+
+
+def check_head(session: Session, data: dict) -> None:
+    """`head_user_id`, when given and not null, is an existing, active user (request slip)."""
+    if data.get("head_user_id") is not None:
+        get_reference(session, User, data["head_user_id"], "head_user_id", "User")
 
 
 def check_parent_active(parent, label: str) -> None:

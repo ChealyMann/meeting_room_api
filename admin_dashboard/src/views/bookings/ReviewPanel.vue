@@ -2,13 +2,14 @@
 // One booking waiting for the Pitika (spec 2026-11-05-pitika-review-design, "The side panel"):
 // the room's photo, the full process bar, what is special about it, the meeting, the food and
 // the IT help, then Reject and Approve. Decisions happen in the page's confirm pop-up.
-import { Check, TriangleAlert } from 'lucide-vue-next'
+import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
+import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
@@ -28,6 +29,9 @@ const props = defineProps<{
   note?: string | null
 }>()
 const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
+
+// The request slip (ប័ណ្ណស្នើ): only on a decided, confirmed booking.
+const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
 const hhmm = (time: string) => time.slice(0, 5)
@@ -125,6 +129,11 @@ const sessions = computed(() =>
     <template #foot>
       <div class="foot">
         <BaseButton variant="quiet" @click="emit('close')">Close</BaseButton>
+        <template v-if="slip.hasSlip.value">
+          <span class="spacer" />
+          <span v-if="slip.error.value" class="slip-error" role="alert">{{ slip.error.value }}</span>
+          <BaseButton class="kh" :busy="slip.busy.value" @click="slip.download"><FileText aria-hidden="true" />{{ SLIP_LABEL }}</BaseButton>
+        </template>
         <template v-if="!readOnly">
           <span class="spacer" />
           <BaseButton variant="danger" @click="emit('reject')">Reject</BaseButton>
@@ -240,5 +249,10 @@ h3 {
 }
 .spacer {
   flex: 1;
+}
+.slip-error {
+  align-self: center;
+  font-size: 13px;
+  color: var(--color-crimson);
 }
 </style>

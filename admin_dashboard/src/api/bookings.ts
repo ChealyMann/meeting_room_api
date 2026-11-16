@@ -105,6 +105,11 @@ export function getBookingIcs(client: ApiClient, id: number): Promise<Blob> {
   return client.requestBlob(`/api/v1/bookings/${id}/ics`)
 }
 
+/** The request slip (ប័ណ្ណស្នើ) as a Word file. Only for a confirmed booking (else 404). */
+export function getRequestSlip(client: ApiClient, id: number): Promise<Blob> {
+  return client.requestBlob(`/api/v1/bookings/${id}/request-slip`)
+}
+
 // The Admin's actions (B-33, B-34): cancel any open booking; approve or reject as a backup.
 const ADMIN = '/api/v1/admin/bookings'
 

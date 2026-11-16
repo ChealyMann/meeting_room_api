@@ -87,3 +87,13 @@ export type ResetPasswordRequest = Schemas['ResetPasswordRequest']
 export type SetRolesRequest = Schemas['SetRolesRequest']
 export type RoleOut = Schemas['RoleOut']
 export type RoleUpdate = Schemas['RoleUpdate']
+
+// Staff booking pages (12 Nov 2026)
+export type RoomDaySchedule = Schemas['RoomDaySchedule']
+export type BookingCheck = Schemas['BookingCheck']
+export type BookingCheckResult = Schemas['BookingCheckResult']
+export type BookingCreate = Schemas['BookingCreate']
+export type BookingSaved = Schemas['BookingSaved']
+export type BookingStep = Schemas['BookingStep']
+export type MeetingType = Schemas['MeetingType']
+export type SessionIn = Schemas['SessionIn']

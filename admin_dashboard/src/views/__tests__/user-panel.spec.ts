@@ -229,13 +229,13 @@ describe('UserPanel', () => {
     await mountAt('/users?id=7&tab=password')
 
     const input = document.getElementById('reset_password') as HTMLInputElement
-    input.value = 'Secret-123'
+    input.value = 'Kite@Mekong'
     input.dispatchEvent(new Event('input'))
     await click(button('Set temporary password'))
     expect(confirmDialog()?.textContent).toContain('Set a temporary password for Sok Dara?')
     await answerConfirm('Set password')
 
-    expect(calls).toEqual([{ method: 'POST', path: '/api/v1/users/7/reset-password', body: { temporary_password: 'Secret-123' } }])
+    expect(calls).toEqual([{ method: 'POST', path: '/api/v1/users/7/reset-password', body: { temporary_password: 'Kite@Mekong' } }])
     expect((document.getElementById('reset_password') as HTMLInputElement).value).toBe('')
   })
 

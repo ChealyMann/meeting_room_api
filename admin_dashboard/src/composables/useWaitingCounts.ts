@@ -8,6 +8,7 @@ import { api } from '../api'
 import { getOwnerSummary, getPitikaSummary } from '../api/bookings'
 import { getItSummary, listTicketPage } from '../api/it'
 import { useSessionStore } from '../stores/session'
+import { useLiveRefresh } from './useLiveRefresh'
 
 export const REVIEW_SUMMARY_EVENT = 'review:summary'
 
@@ -55,6 +56,11 @@ export function useWaitingCounts(): Ref<Record<string, number>> {
   onMounted(() => {
     window.addEventListener(REVIEW_SUMMARY_EVENT, onReport)
     void loadFirst()
+  })
+  // Quiet refresh: ask again; only a page report that comes in while this one is on its way wins.
+  useLiveRefresh(() => {
+    reported.clear()
+    return loadFirst()
   })
   onBeforeUnmount(() => window.removeEventListener(REVIEW_SUMMARY_EVENT, onReport))
   return counts

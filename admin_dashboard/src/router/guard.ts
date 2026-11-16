@@ -25,6 +25,7 @@ export function homeFor(roles: string[]): string {
   if (roles.includes('ROOM_OWNER')) return 'owner-review'
   if (roles.includes('IT_LEAD')) return 'it-setup'
   if (roles.includes('IT_STAFF')) return 'my-tasks'
+  if (roles.includes('STAFF')) return 'find-room'
   return 'no-access'
 }
 

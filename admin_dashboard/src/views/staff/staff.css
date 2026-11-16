@@ -1,0 +1,159 @@
+/* Staff pages: the "Calm" look the owner chose (12 Nov 2026), on the dashboard's own tokens.
+   Soft surfaces, few borders, crimson only for the main button and what was picked.
+   Every class starts with st- so it never meets a Tailwind class. */
+.st-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 28px 32px 48px;
+  overflow: auto;
+}
+.st-head h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+.st-head p {
+  margin: 6px 0 0;
+  color: var(--color-intaglio);
+  font-size: 15px;
+}
+.st-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--color-field-disabled);
+}
+.st-seg button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-intaglio);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.st-seg button.on {
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(42, 28, 19, 0.12);
+}
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 999px;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out-quint);
+}
+.st-chip:active {
+  transform: scale(0.96);
+}
+.st-chip.on {
+  border-color: var(--color-crimson);
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+  font-weight: 500;
+}
+.st-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  min-width: 280px;
+  padding: 0 16px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 999px;
+  background: var(--color-sheet);
+  color: var(--color-ink-off);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.st-search:focus-within {
+  border-color: var(--color-intaglio);
+  box-shadow: 0 0 0 4px rgba(42, 28, 19, 0.07);
+}
+.st-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14.5px;
+}
+.st-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.st-now svg {
+  flex: none;
+}
+.st-now.ok {
+  color: var(--color-ok);
+}
+.st-now.alert {
+  color: var(--color-crimson);
+}
+.st-now.off {
+  color: var(--color-ink-off);
+}
+.st-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 64px 20px;
+  color: var(--color-intaglio);
+  text-align: center;
+}
+.st-empty b {
+  color: var(--color-ink);
+  font-size: 16px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .st-seg button:not(.on):hover {
+    color: var(--color-ink);
+  }
+  .st-chip:not(.on):hover {
+    border-color: var(--color-intaglio);
+  }
+}
+@media (max-width: 760px) {
+  .st-page {
+    padding: 20px 16px 40px;
+  }
+  .st-head h1 {
+    font-size: 26px;
+  }
+  .st-search {
+    width: 100%;
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-seg button,
+  .st-chip,
+  .st-search {
+    transition-duration: 1ms;
+  }
+}

@@ -19,10 +19,12 @@ export interface DepartmentForm {
   name_kh: string
   name_en: string
   sort_order: string
+  /** Who signs the request slip's box for this department; null = nobody. */
+  head_user_id: number | null
 }
 
 export function emptyDepartmentForm(locationId: number | null = null): DepartmentForm {
-  return { location_id: locationId, name_kh: '', name_en: '', sort_order: '' }
+  return { location_id: locationId, name_kh: '', name_en: '', sort_order: '', head_user_id: null }
 }
 
 export function departmentFormOf(department: DepartmentOut): DepartmentForm {
@@ -31,6 +33,7 @@ export function departmentFormOf(department: DepartmentOut): DepartmentForm {
     name_kh: department.name_kh,
     name_en: department.name_en,
     sort_order: String(department.sort_order),
+    head_user_id: department.head?.id ?? null,
   }
 }
 
@@ -45,12 +48,14 @@ export function departmentProblems(form: DepartmentForm): Record<string, string>
 
 /** POST /departments. An empty order is sent as 0, the API's default. */
 export function departmentCreateBody(form: DepartmentForm): DepartmentCreate {
-  return {
+  const body: DepartmentCreate = {
     location_id: form.location_id!,
     name_kh: form.name_kh.trim(),
     name_en: form.name_en.trim(),
     sort_order: orderValue(form.sort_order),
   }
+  if (form.head_user_id !== null) body.head_user_id = form.head_user_id
+  return body
 }
 
 /** PATCH /departments/{id}: only what changed. A new office moves the department. */
@@ -60,6 +65,7 @@ export function departmentChanges(form: DepartmentForm, department: DepartmentOu
   if (form.name_kh.trim() !== department.name_kh) changes.name_kh = form.name_kh.trim()
   if (form.name_en.trim() !== department.name_en) changes.name_en = form.name_en.trim()
   if (orderValue(form.sort_order) !== department.sort_order) changes.sort_order = orderValue(form.sort_order)
+  if (form.head_user_id !== (department.head?.id ?? null)) changes.head_user_id = form.head_user_id
   return changes
 }
 
@@ -69,10 +75,12 @@ export interface DivisionForm {
   name_en: string
   short_name: string
   sort_order: string
+  /** Who signs the request slip's box for this office; null = nobody. */
+  head_user_id: number | null
 }
 
 export function emptyDivisionForm(departmentId: number | null = null): DivisionForm {
-  return { department_id: departmentId, name_kh: '', name_en: '', short_name: '', sort_order: '' }
+  return { department_id: departmentId, name_kh: '', name_en: '', short_name: '', sort_order: '', head_user_id: null }
 }
 
 export function divisionFormOf(division: DivisionOut): DivisionForm {
@@ -82,6 +90,7 @@ export function divisionFormOf(division: DivisionOut): DivisionForm {
     name_en: division.name_en,
     short_name: division.short_name ?? '',
     sort_order: String(division.sort_order),
+    head_user_id: division.head?.id ?? null,
   }
 }
 
@@ -103,6 +112,7 @@ export function divisionCreateBody(form: DivisionForm): DivisionCreate {
     sort_order: orderValue(form.sort_order),
   }
   if (optional(form.short_name)) body.short_name = optional(form.short_name)
+  if (form.head_user_id !== null) body.head_user_id = form.head_user_id
   return body
 }
 
@@ -114,6 +124,7 @@ export function divisionChanges(form: DivisionForm, division: DivisionOut): Divi
   if (form.name_en.trim() !== division.name_en) changes.name_en = form.name_en.trim()
   if (optional(form.short_name) !== optional(division.short_name ?? '')) changes.short_name = optional(form.short_name)
   if (orderValue(form.sort_order) !== division.sort_order) changes.sort_order = orderValue(form.sort_order)
+  if (form.head_user_id !== (division.head?.id ?? null)) changes.head_user_id = form.head_user_id
   return changes
 }
 

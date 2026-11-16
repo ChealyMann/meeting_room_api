@@ -16,3 +16,10 @@ class ScheduleItem(ResponseModel):
     requester_name: str | None
     status: str
     is_masked: bool
+
+
+class RoomDaySchedule(ResponseModel):
+    """One room's blocking sessions on one day; `items` is empty when the room is free all day."""
+
+    room_id: int
+    items: list[ScheduleItem]

@@ -8,6 +8,7 @@ from app.models import Department, Division
 from app.services.listing import apply_active_filter, apply_default_order, apply_search, paginate
 from app.services.records import (
     apply_changes,
+    check_head,
     check_parent_active,
     get_or_404,
     get_reference,
@@ -41,6 +42,7 @@ def create_division(session: Session, data: dict) -> Division:
     department = get_reference(
         session, Department, data["department_id"], "department_id", DEPARTMENT
     )
+    check_head(session, data)
     division = Division(**data)
     division.department = department
     session.add(division)
@@ -58,6 +60,7 @@ def update_division(session: Session, division_id: int, changes: dict) -> Divisi
         )
     if changes.get("is_active") is True and not division.is_active:
         check_parent_active(department, DEPARTMENT)
+    check_head(session, changes)
     apply_changes(division, changes)
     division.department = department
     save(session)

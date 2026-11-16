@@ -20,6 +20,8 @@ ALL_TABLES = {
     "divisions",
     "positions",
     "users",
+    "slip_settings",
+    "booking_signers",
     "roles",
     "user_roles",
     "catering_packages",

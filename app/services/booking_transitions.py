@@ -26,7 +26,7 @@ from app.models import (
     BookingReview,
     BookingSession,
 )
-from app.services import booking_codes, clock
+from app.services import booking_codes, booking_signers, clock
 
 STALE_MESSAGE = "This booking changed. Reload it."
 
@@ -235,9 +235,11 @@ def reject(
 
 
 def make_confirmed(session: Session, booking: Booking, version: int) -> None:
-    """T5, T8, T11, T17: confirmed, with a door pass."""
-    advance(session, booking, version, status=BookingStatus.CONFIRMED)
+    """T5, T8, T11, T17: confirmed, with a door pass, the confirm time and the request slip's
+    signers (copied now, so the slip never changes)."""
+    advance(session, booking, version, status=BookingStatus.CONFIRMED, confirmed_at=clock.now_utc())
     add_door_pass(session, booking)
+    booking_signers.record_signers(session, booking)
 
 
 def forward_it(session: Session, booking: Booking, version: int) -> None:

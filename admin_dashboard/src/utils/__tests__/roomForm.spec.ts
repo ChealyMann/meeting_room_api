@@ -20,6 +20,7 @@ const ROOM = {
   province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
   owner: { id: 2, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' },
   cover_photo: null,
+  photo_count: 0,
   is_active: true,
   is_bookable: true,
   is_private: false,

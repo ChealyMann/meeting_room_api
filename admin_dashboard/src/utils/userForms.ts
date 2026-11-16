@@ -83,7 +83,7 @@ export function userProblems(form: UserForm, creating: boolean): Record<string, 
   tooLong(form.phone, 20, 'phone', problems)
   if (form.position_id === null) problems.position_id = 'Choose a position.'
   if (creating) {
-    const problem = temporaryPasswordProblem(form.temporary_password)
+    const problem = temporaryPasswordProblem(form.temporary_password, form.email, form.name_en)
     if (problem) problems.temporary_password = problem
   }
   return problems

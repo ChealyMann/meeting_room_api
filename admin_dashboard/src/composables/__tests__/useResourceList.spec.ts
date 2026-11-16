@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
@@ -85,5 +85,41 @@ describe('useResourceList', () => {
 
     expect(fetchPage).toHaveBeenCalledTimes(2)
     expect(api.savedId.value).toBe(7)
+  })
+
+  describe('quiet refresh', () => {
+    afterEach(() => vi.useRealTimers())
+
+    it('reloads every 15 seconds with no spinner', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      let resolveQuiet!: (p: Page<Item>) => void
+      const fetchPage = vi
+        .fn<Fetcher>()
+        .mockResolvedValueOnce(pageOf([{ id: 1 }]))
+        .mockImplementationOnce(() => new Promise<Page<Item>>((resolve) => (resolveQuiet = resolve)))
+      const { api } = await setup('/', fetchPage)
+
+      vi.advanceTimersByTime(15_000)
+      await flushPromises()
+      expect(fetchPage).toHaveBeenCalledTimes(2)
+      expect(api.loading.value).toBe(false)
+      resolveQuiet(pageOf([{ id: 1 }, { id: 2 }]))
+      await flushPromises()
+      expect(api.result.value?.items).toEqual([{ id: 1 }, { id: 2 }])
+    })
+
+    it('keeps the list and shows no error when a quiet reload fails', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const fetchPage = vi
+        .fn<Fetcher>()
+        .mockResolvedValueOnce(pageOf([{ id: 1 }]))
+        .mockRejectedValueOnce(new ApiError(0, 'NETWORK_ERROR', 'Offline.'))
+      const { api } = await setup('/', fetchPage)
+
+      vi.advanceTimersByTime(15_000)
+      await flushPromises()
+      expect(api.result.value?.items).toEqual([{ id: 1 }])
+      expect(api.error.value).toBe('')
+    })
   })
 })

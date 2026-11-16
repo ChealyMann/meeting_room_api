@@ -14,7 +14,10 @@ import BaseButton from '../components/base/BaseButton.vue'
 import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
+import OfflineNote from '../components/list/OfflineNote.vue'
+import RefreshButton from '../components/list/RefreshButton.vue'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
+import { useLiveRefresh } from '../composables/useLiveRefresh'
 import { statusLabel } from '../utils/bookingLabels'
 import { addDays, formatDay } from '../utils/time'
 
@@ -37,20 +40,26 @@ const loading = ref(false)
 const error = ref('')
 let latest = 0
 
-async function load() {
+/** `quiet` (only a real `true`): the live refresh — no spinner, a failure keeps what is shown. */
+async function load(quietRefresh?: unknown) {
+  const quiet = quietRefresh === true
   const request = ++latest
-  loading.value = true
-  error.value = ''
+  if (!quiet) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const answer = await getFoodList(api, day.value)
     if (request === latest) items.value = answer.items
   } catch (err) {
+    if (request === latest && quiet) throw err // what is shown stays; the refresh button learns it failed
     if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
     if (request === latest) loading.value = false
   }
 }
-watch(day, load, { immediate: true })
+watch(day, () => load(), { immediate: true })
+const live = useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 const packages = (order: CateringOrderItem) => order.packages.map((p) => String(p.name)).join(', ')
 const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96px']
@@ -61,6 +70,7 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
     <div class="page-head">
       <h1>Food list</h1>
       <span class="mono count">{{ formatDay(day) }}</span>
+      <RefreshButton class="new" :live="live" />
     </div>
 
     <div class="filters days">
@@ -78,6 +88,7 @@ const SKELETON_COLUMNS = ['64px', '2fr', '2fr', '64px', '2fr', '2fr', '2fr', '96
       </div>
     </div>
 
+    <OfflineNote :live="live" />
     <div class="sheet">
       <div v-if="error" class="summary load-error" role="alert">
         <CircleAlert aria-hidden="true" />

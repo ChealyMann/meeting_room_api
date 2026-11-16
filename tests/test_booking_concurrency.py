@@ -25,6 +25,7 @@ from app.models import (
     BookingRejection,
     BookingReview,
     BookingSession,
+    BookingSigner,
     CateringOrder,
     ITTicket,
     User,
@@ -40,6 +41,7 @@ from tests.booking_helpers import NOW, body
 
 # Booking child tables, deleted before the bookings themselves.
 BOOKING_CHILDREN = [
+    BookingSigner,  # the request slip copies, written at confirm
     BookingDoorPass,
     BookingParticipant,
     BookingRejection,

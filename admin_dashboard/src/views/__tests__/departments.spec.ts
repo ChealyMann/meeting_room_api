@@ -49,6 +49,8 @@ beforeEach(() => {
         return saveAnswer()
       }
       if (url.pathname === '/api/v1/locations') return json({ items: OFFICES, page: 1, size: 100, total: 2 })
+      if (url.pathname === '/api/v1/users' && url.searchParams.get('size') === '100')
+        return json({ items: [{ id: 21, name_en: 'Chan Sophea', name_kh: 'ចាន់ សុភា', is_active: true }], page: 1, size: 100, total: 1 })
       if (url.pathname === '/api/v1/departments/3') return json(department(3))
       if (url.pathname === '/api/v1/departments') {
         listCalls.push(url.search)
@@ -115,6 +117,17 @@ describe('DepartmentsView', () => {
 
     expect(router.currentRoute.value.query).toEqual({ location_id: '3', id: 'new' })
     expect(pickerLabel('location_id')).toBe('Head Office')
+  })
+
+  it('sets the head who signs the request slip', async () => {
+    await mountAt('/departments?id=3')
+    expect(inPanel('label[for="head_user_id"]')?.textContent).toContain('Head')
+
+    await choosePicker('head_user_id', 'Chan Sophea')
+    ;[...panel()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save changes')!.click()
+    await flushPromises()
+
+    expect(writes).toEqual([{ method: 'PATCH', path: '/api/v1/departments/3', body: JSON.stringify({ head_user_id: 21 }) }])
   })
 
   it('shows a duplicate name under the English name when a move is refused', async () => {

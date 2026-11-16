@@ -33,12 +33,14 @@ const props = defineProps<{
   rooms: RoomListItem[]
   /** false: read only (My tasks). */
   actions: boolean
+  /** More to reload with each refresh (the page's summary). */
+  alsoRefresh?: () => unknown
 }>()
 const emit = defineEmits<{ changed: []; loaded: [items: SetupRow[], total: number] }>()
 
 const paged = props.tab === 'ready'
 const STATE = { to_assign: 'to_assign', in_progress: 'in_progress', ready: 'done', mine: 'in_progress' } as const
-const { list, result, loading, error, filtered, load } = useResourceList<ITTicketItem>(
+const { list, result, loading, error, filtered, load, live } = useResourceList<ITTicketItem>(
   { from: 'string', to: 'string', q: 'string' },
   // To assign, In progress and My tasks on one page (short, grouped); Ready is paged.
   (params) =>
@@ -51,7 +53,7 @@ const { list, result, loading, error, filtered, load } = useResourceList<ITTicke
       page: paged ? (params.page as number) : 1,
       size: paged ? (params.size as number) : 100,
     }),
-  { activeFilter: false, paged },
+  { activeFilter: false, paged, alsoRefresh: () => props.alsoRefresh?.() },
 )
 const items = computed(() => result.value?.items ?? [])
 
@@ -205,6 +207,8 @@ async function save() {
     busy.value = false
   }
 }
+// The page's refresh button reads this (IT setup, My tasks).
+defineExpose({ live })
 </script>
 
 <template>

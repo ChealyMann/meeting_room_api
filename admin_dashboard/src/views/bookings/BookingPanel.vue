@@ -2,12 +2,14 @@
 // One booking (DSH-B02 to B04): details, sessions, services and history. There is no form; the
 // Admin's only changes are the actions the API allows (cancel, and approve or reject as backup
 // reviewer). The door pass shows only when the Admin asks, and only for a confirmed booking.
-import { CalendarArrowDown, CircleAlert } from 'lucide-vue-next'
+import { CalendarArrowDown, CircleAlert, FileText } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '../../api'
 import { adminApprove, adminCancel, adminReject, getAdminActions, getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
+import { useRequestSlip } from '../../composables/useRequestSlip'
+import { downloadBlob } from '../../utils/download'
 import type { AdminActionsOut, BookingDetail, DoorPassOut } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -154,22 +156,16 @@ async function confirmStep() {
   }
 }
 
+// The request slip (ប័ណ្ណស្នើ) of a confirmed booking, as a Word file.
+const slip = useRequestSlip(() => props.booking)
+
 const icsBusy = ref(false)
 const icsError = ref('')
 async function downloadIcs() {
   icsBusy.value = true
   icsError.value = ''
   try {
-    const blob = await getBookingIcs(api, props.booking.id)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${props.booking.reference_code}.ics`
-    // Safari needs the link in the page, and the file URL alive until the download starts.
-    document.body.append(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    downloadBlob(await getBookingIcs(api, props.booking.id), `${props.booking.reference_code}.ics`)
   } catch (err) {
     icsError.value = err instanceof ApiError ? err.message : 'Something went wrong.'
   } finally {
@@ -298,9 +294,9 @@ async function downloadIcs() {
       <BookingHistory :booking="booking" />
     </section>
 
-    <div v-if="icsError" class="summary" role="alert">
+    <div v-if="icsError || slip.error.value" class="summary" role="alert">
       <CircleAlert aria-hidden="true" />
-      <b>{{ icsError }}</b>
+      <b>{{ icsError || slip.error.value }}</b>
     </div>
 
     <template #actions>
@@ -315,6 +311,18 @@ async function downloadIcs() {
         @click="downloadIcs"
       >
         <CalendarArrowDown aria-hidden="true" />
+      </button>
+      <button
+        v-if="slip.hasSlip.value"
+        type="button"
+        class="icon-btn"
+        aria-label="Request slip"
+        title="Download the request slip (Word)"
+        :disabled="slip.busy.value"
+        :aria-busy="slip.busy.value ? 'true' : undefined"
+        @click="slip.download"
+      >
+        <FileText aria-hidden="true" />
       </button>
     </template>
 

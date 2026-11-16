@@ -66,6 +66,21 @@ describe('waiting counts in the menu', () => {
     expect(calls).toEqual(['/api/v1/pitika/bookings/summary'])
   })
 
+  it('follows new bookings with no click (quiet refresh)', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    try {
+      const wrapper = await mountRail(['PITIKA'])
+      expect(count(wrapper, 'review')).toBe('3')
+      reportWaiting('review', 3) // the page reported once; a later refresh still wins
+      waiting.pitika = 5
+      vi.advanceTimersByTime(15_000)
+      await flushPromises()
+      expect(count(wrapper, 'review')).toBe('5')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('shows nothing at 0', async () => {
     const wrapper = await mountRail(['ROOM_OWNER'])
     expect(count(wrapper, 'owner-review')).toBeNull()

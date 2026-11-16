@@ -25,7 +25,9 @@ import {
   emptyDivisionForm,
   type DivisionForm,
 } from '../../utils/orgForms'
+import { FIELD_WORDS } from '../../utils/pickerWords'
 import { serial } from '../../utils/serial'
+import HeadPicker from './HeadPicker.vue'
 
 const props = defineProps<{ division: DivisionOut | null; defaultDepartmentId?: number | null }>()
 const emit = defineEmits<{ saved: [division: DivisionOut]; close: [] }>()
@@ -36,6 +38,7 @@ const LABELS: Record<string, string> = {
   name_en: 'English name',
   short_name: 'Short name',
   sort_order: 'Order',
+  head_user_id: 'Head',
 }
 
 const drafts = useDraftsStore()
@@ -203,6 +206,22 @@ async function turn(active: boolean) {
             </template>
           </BaseField>
         </div>
+      </section>
+
+      <section class="group" aria-labelledby="g-slip">
+        <h3 id="g-slip">Request slip</h3>
+        <BaseField id="head_user_id" label="Head" hint="Signs this office's box" :error="errors.head_user_id">
+          <template #default="{ describedBy, invalid }">
+            <HeadPicker
+              id="head_user_id"
+              v-model="form.head_user_id"
+              :current="division?.head ?? null"
+              :words="FIELD_WORDS.head"
+              :invalid="invalid"
+              :described-by="describedBy"
+            />
+          </template>
+        </BaseField>
       </section>
     </form>
 

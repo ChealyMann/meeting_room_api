@@ -92,7 +92,12 @@ defineExpose({ focusFirst })
         aria-modal="false"
         :aria-labelledby="titleId"
       >
-        <header class="panel-head">
+        <!-- With a cover (a booking's room photo) the title sits on the photo, white on a soft
+             shade, and the X floats at its top right. -->
+        <div v-if="$slots.cover" class="panel-cover">
+          <slot name="cover" />
+        </div>
+        <header class="panel-head" :class="{ 'on-cover': $slots.cover }">
           <slot name="lead" />
           <div class="titles">
             <h2 :id="titleId">{{ title }}</h2>
@@ -174,6 +179,67 @@ h2 {
   flex: none;
   gap: 2px;
   margin-left: auto;
+}
+.panel-cover {
+  position: relative;
+  flex: none;
+  height: 210px;
+  overflow: hidden;
+  background: var(--color-paper);
+}
+.panel-cover :deep(img),
+.panel-cover :deep(.room-photo) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.panel-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 6, 4, 0.32) 0%, rgba(10, 6, 4, 0) 34%, rgba(10, 6, 4, 0.74) 100%);
+  pointer-events: none;
+}
+/* The head lies over the cover's lower part; the photo is 210px tall. */
+.panel-head.on-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 210px;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 16px 20px;
+  border-bottom: 0;
+  color: #fff;
+  pointer-events: none;
+}
+.on-cover > * {
+  pointer-events: auto;
+}
+.on-cover h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.on-cover .subtitle,
+.on-cover .serial,
+.on-cover .serial .prefix {
+  color: rgba(255, 255, 255, 0.9);
+}
+.on-cover .head-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.on-cover .head-actions .icon-btn {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2a1c13;
+}
+.on-cover .head-actions .icon-btn:hover {
+  background: #fff;
 }
 .panel-body {
   flex: 1;

@@ -18,6 +18,8 @@ import BaseButton from '../components/base/BaseButton.vue'
 import EmptyState from '../components/list/EmptyState.vue'
 import PagingFoot from '../components/list/PagingFoot.vue'
 import TableSkeleton from '../components/list/TableSkeleton.vue'
+import OfflineNote from '../components/list/OfflineNote.vue'
+import RefreshButton from '../components/list/RefreshButton.vue'
 import { usePanelParam } from '../composables/usePanelParam'
 import { usePanelRecord } from '../composables/usePanelRecord'
 import { useResourceList } from '../composables/useResourceList'
@@ -33,7 +35,7 @@ import { BOOKING_FILTERS } from './bookings/bookingFilters'
 const source = useSessionStore().bookingsSource
 const isAdminList = source === 'admin'
 const LISTS = { admin: listBookingPage, pitika: listPitikaBookingPage, owner: listOwnerBookingPage }
-const { list, result, loading, error, errorFields, filtered, load, refresh } = useResourceList<BookingListItem>(
+const { list, result, loading, error, errorFields, filtered, load, refresh, live } = useResourceList<BookingListItem>(
   BOOKING_FILTERS,
   (params) => LISTS[source](api, params as BookingFilterParams),
   { activeFilter: false },
@@ -65,6 +67,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
     <div class="page-head">
       <h1>Bookings</h1>
       <span v-if="result" class="mono count">{{ count }}</span>
+      <RefreshButton class="new" :live="live" />
     </div>
 
     <BookingFilters :province-filter="isAdminList" :rooms-of="source === 'owner' ? 'owned' : 'all'" @summary="words = $event" />
@@ -78,6 +81,7 @@ const SKELETON_COLUMNS = ['120px', '2fr', '2fr', '1fr', '1.5fr', '1fr', '56px', 
       </div>
     </div>
 
+    <OfflineNote :live="live" />
     <div class="sheet">
       <div v-if="error" class="summary load-error" role="alert">
         <CircleAlert aria-hidden="true" />

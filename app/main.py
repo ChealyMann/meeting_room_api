@@ -35,10 +35,12 @@ from app.routers import (
     provinces,
     public_holidays,
     roles,
+    room_day_schedule,
     room_equipment,
     room_photos,
     room_schedule,
     rooms,
+    slip_settings,
     users,
 )
 from app.services.login_rate_limit import LoginRateLimiter
@@ -101,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(rooms.router)
     api.include_router(room_photos.router)
     api.include_router(room_schedule.router)
+    api.include_router(room_day_schedule.router)
     api.include_router(room_equipment.router)
     api.include_router(catering_packages.router)
     api.include_router(it_services.router)
@@ -112,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(public_holidays.router)
     api.include_router(bookings.router)
     api.include_router(admin_bookings.router)
+    api.include_router(slip_settings.router)
     app.include_router(api)
 
     settings.upload_dir.mkdir(parents=True, exist_ok=True)

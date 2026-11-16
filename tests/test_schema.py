@@ -34,6 +34,8 @@ CATALOG = {
     "description": ("varchar(1000)", True),
     "version": ("int", False),
 }
+# Food packages and IT services: Staff pages group them and show an icon (None = Other / no icon).
+SERVICE = {"group": ("varchar(20)", True), "icon": ("varchar(1000)", True)}
 NAMES = {"name_en": ("varchar(100)", False), "name_kh": ("varchar(100)", False)}
 
 # table -> column -> (MySQL column type, nullable)
@@ -94,13 +96,20 @@ EXPECTED_COLUMNS = {
         "room_id": ("int unsigned", False),
         "equipment_id": ("int unsigned", False),
     },
-    "departments": {**COMMON, **SORT_ORDER, **NAMES, "location_id": ("int unsigned", False)},
+    "departments": {
+        **COMMON,
+        **SORT_ORDER,
+        **NAMES,
+        "location_id": ("int unsigned", False),
+        "head_user_id": ("int unsigned", True),
+    },
     "divisions": {
         **COMMON,
         **SORT_ORDER,
         **NAMES,
         "department_id": ("int unsigned", False),
         "short_name": ("varchar(20)", True),
+        "head_user_id": ("int unsigned", True),
     },
     "positions": {**COMMON, **SORT_ORDER, **NAMES},
     "users": {
@@ -122,8 +131,25 @@ EXPECTED_COLUMNS = {
     },
     "roles": {**COMMON, **NAMES, "code": ("varchar(50)", False)},
     "user_roles": {"user_id": ("int unsigned", False), "role_id": ("int unsigned", False)},
-    "catering_packages": {**COMMON, **SORT_ORDER, **CATALOG},
-    "it_services": {**COMMON, **SORT_ORDER, **CATALOG},
+    "catering_packages": {**COMMON, **SORT_ORDER, **CATALOG, **SERVICE},
+    "it_services": {**COMMON, **SORT_ORDER, **CATALOG, **SERVICE},
+    "booking_signers": {
+        "id": ("int unsigned", False),
+        "booking_id": ("int unsigned", False),
+        "role": ("varchar(20)", False),
+        "user_id": ("int unsigned", True),
+        "name_kh": ("varchar(100)", False),
+        "title": ("varchar(20)", True),
+        "signature_path": ("varchar(3000)", True),
+        "signed_at": ("datetime", False),
+    },
+    "slip_settings": {
+        "id": ("int unsigned", False),
+        "created_at": ("datetime", False),
+        "updated_at": ("datetime", False),
+        "director_user_id": ("int unsigned", True),
+        "address_kh": ("varchar(500)", False),
+    },
     "public_holidays": {
         "id": ("int unsigned", False),
         "created_at": ("datetime", False),
@@ -148,6 +174,7 @@ EXPECTED_COLUMNS = {
         "private_justification": ("varchar(1000)", True),
         "route": ("varchar(2)", False),
         "status": ("varchar(20)", False),
+        "confirmed_at": ("datetime", True),
         "cancelled_at": ("datetime", True),
         "cancel_reason": ("varchar(500)", True),
         "cancelled_by": ("int unsigned", True),
@@ -236,6 +263,7 @@ EXPECTED_UNIQUE_KEYS = {
     ("it_services", ("name",)),
     ("public_holidays", ("holiday_date",)),
     ("bookings", ("reference_code",)),
+    ("booking_signers", ("booking_id", "role")),
     ("booking_rejections", ("booking_id",)),
     ("booking_door_passes", ("booking_id",)),
     ("booking_participants", ("booking_id", "email")),
@@ -257,6 +285,11 @@ EXPECTED_FOREIGN_KEYS = {
     ("rooms", "floor_id", "floors"),
     ("rooms", "category_id", "categories"),
     ("rooms", "room_owner_id", "users"),
+    ("departments", "head_user_id", "users"),
+    ("divisions", "head_user_id", "users"),
+    ("slip_settings", "director_user_id", "users"),
+    ("booking_signers", "booking_id", "bookings"),
+    ("booking_signers", "user_id", "users"),
     ("room_photos", "room_id", "rooms"),
     ("room_equipment", "room_id", "rooms"),
     ("room_equipment", "equipment_id", "equipment"),
@@ -292,6 +325,11 @@ EXPECTED_INDEXED = {
     ("rooms", "floor_id"),
     ("rooms", "category_id"),
     ("rooms", "room_owner_id"),
+    ("departments", "head_user_id"),
+    ("divisions", "head_user_id"),
+    ("slip_settings", "director_user_id"),
+    ("booking_signers", "booking_id"),
+    ("booking_signers", "user_id"),
     ("room_photos", "room_id"),
     ("room_equipment", "equipment_id"),
     ("departments", "location_id"),

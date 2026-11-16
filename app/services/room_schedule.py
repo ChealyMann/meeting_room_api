@@ -9,7 +9,7 @@ from app.config import Settings
 from app.constants.booking import MASKED_TITLE
 from app.errors import AppError, ErrorCode
 from app.models import Booking, BookingSession, Room
-from app.schemas.room_schedule import ScheduleItem
+from app.schemas.room_schedule import RoomDaySchedule, ScheduleItem
 from app.security import CurrentUser
 from app.services import booking_access
 from app.services.clock import now_local
@@ -77,3 +77,43 @@ def get_schedule(
         )
     ).all()
     return [_item(session, current, row, booking) for row, booking in rows]
+
+
+MAX_DAY_ROOMS = 200
+
+
+def get_day_schedule(
+    session: Session, current: CurrentUser, day: date | None, room_ids: list[int] | None
+) -> list[RoomDaySchedule]:
+    """Every room's blocking sessions on one day, in one query (Staff room cards). Without
+    `room_ids`, every active room. Masking is the same as `get_schedule`."""
+    if room_ids is not None and len(room_ids) > MAX_DAY_ROOMS:
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            422,
+            "Invalid request.",
+            {"room_ids": f"At most {MAX_DAY_ROOMS} rooms."},
+        )
+    the_day = day or now_local().date()
+    room_query = select(Room.id).order_by(Room.id)
+    room_query = (
+        room_query.where(Room.id.in_(room_ids))
+        if room_ids is not None
+        else room_query.where(Room.is_active.is_(True))
+    )
+    ids = list(session.scalars(room_query))
+    rows = session.execute(
+        select(BookingSession, Booking)
+        .join(Booking, Booking.id == BookingSession.booking_id)
+        .where(
+            BookingSession.room_id.in_(ids),
+            BookingSession.is_blocking.is_(True),
+            BookingSession.date == the_day,
+        )
+        .options(selectinload(Booking.it_ticket))
+        .order_by(BookingSession.start_time, BookingSession.end_time, BookingSession.id)
+    ).all()
+    by_room: dict[int, list[ScheduleItem]] = {room_id: [] for room_id in ids}
+    for row, booking in rows:
+        by_room[row.room_id].append(_item(session, current, row, booking))
+    return [RoomDaySchedule(room_id=room_id, items=items) for room_id, items in by_room.items()]

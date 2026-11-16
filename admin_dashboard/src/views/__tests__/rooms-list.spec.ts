@@ -40,6 +40,7 @@ function room(id: number, overrides: Record<string, unknown> = {}) {
     province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
     owner: null,
     cover_photo: null,
+    photo_count: 0,
     is_active: true,
     is_bookable: true,
     is_private: false,
@@ -128,6 +129,39 @@ describe('RoomsView list', () => {
     expect(first.text()).toContain('No owner')
     expect(wrapper.findAll('tbody tr')[1]!.text()).toContain('Sok Dara')
     expect(wrapper.get('.count').text()).toBe('002 rooms')
+  })
+
+  it('shows a small room photo with the photo count, or a dashed box without one', async () => {
+    const cover = { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_thumb.jpg' }
+    roomsAnswer = () =>
+      json(
+        page([
+          room(12, { cover_photo: cover, photo_count: 4 }),
+          room(13, { cover_photo: { ...cover, thumbnail_url: '/uploads/rooms/13/b_thumb.jpg' }, photo_count: 1 }),
+          room(14),
+        ]),
+      )
+    const { wrapper } = await mountAt('/')
+    const thumbs = wrapper.findAll('tbody .room-thumb')
+
+    expect(thumbs[0]!.get('img').attributes('src')).toBe('http://localhost:8000/uploads/rooms/12/a_thumb.jpg')
+    expect(thumbs[0]!.get('.photo-count').text()).toBe('4')
+    expect(thumbs[0]!.get('.photo-count').attributes('aria-label')).toBe('4 photos')
+    expect(thumbs[1]!.find('.photo-count').exists()).toBe(false)
+    expect(thumbs[2]!.find('img').exists()).toBe(false)
+    expect(thumbs[2]!.classes()).toContain('none')
+    expect(thumbs[2]!.attributes('title')).toBe('No photo')
+  })
+
+  it('shows the dashed box when the photo file does not load', async () => {
+    roomsAnswer = () =>
+      json(page([room(12, { cover_photo: { url: '/u/a.jpg', thumbnail_url: '/u/gone.jpg' }, photo_count: 2 })]))
+    const { wrapper } = await mountAt('/')
+
+    await wrapper.get('tbody .room-thumb img').trigger('error')
+
+    expect(wrapper.get('tbody .room-thumb').classes()).toContain('none')
+    expect(wrapper.find('tbody .room-thumb img').exists()).toBe(false)
   })
 
   it('clears building and floor when the office changes', async () => {

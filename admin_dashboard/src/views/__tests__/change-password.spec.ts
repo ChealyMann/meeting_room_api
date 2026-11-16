@@ -85,6 +85,38 @@ describe('ChangePasswordView', () => {
     expect(wrapper.get('#new_password-error').text()).toBe('Password cannot be your email.')
   })
 
+  it('refuses a pattern, a common password or the name before calling the API', async () => {
+    const { wrapper, session } = await mountView()
+    session.user = { ...session.user!, name_en: 'Sok Dara' }
+    const change = vi.spyOn(session, 'changePassword')
+
+    for (const [next, message] of [
+      ['qwerty123', 'Do not use keys or letters in a row, like 12345678, abcdefgh or qwerty.'],
+      ['P@ssw0rd2026!', 'This password is too common. Pick one that is hard to guess.'],
+      ['Dara@2026!', 'Do not use your name or email in the password.'],
+    ]) {
+      await fill(wrapper, 'old password', next!)
+      expect(wrapper.get('#new_password-error').text()).toBe(message)
+    }
+    expect(change).not.toHaveBeenCalled()
+  })
+
+  it('shows how strong the new password is while typing, and why when it is weak', async () => {
+    const { wrapper } = await mountView()
+    const bar = () => wrapper.find('.pw-strength')
+
+    expect(bar().exists()).toBe(false)
+    await wrapper.get('#new_password').setValue('12345678')
+    expect(bar().classes()).toContain('weak')
+    expect(bar().text()).toContain('Weak')
+    expect(bar().text()).toContain('Do not use keys or letters in a row')
+    await wrapper.get('#new_password').setValue('Kite@Mekong')
+    expect(bar().text()).toBe('Good')
+    await wrapper.get('#new_password').setValue('Kite@Mekong-7')
+    expect(bar().text()).toBe('Strong')
+    expect(bar().findAll('.bars i.on')).toHaveLength(3)
+  })
+
   it('says when the two new passwords do not match, without calling the API', async () => {
     const { wrapper, session } = await mountView()
     const change = vi.spyOn(session, 'changePassword')

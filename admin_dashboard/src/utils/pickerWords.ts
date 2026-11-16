@@ -9,6 +9,8 @@ export const FIELD_WORDS = {
   floor: { all: 'Choose a floor', search: 'Search floors', unknown: 'Unknown floor', none: 'No floor matches' },
   roomType: { all: 'Choose a room type', search: 'Search room types', unknown: 'Unknown room type', none: 'No room type matches' },
   owner: { all: 'No owner', search: 'Search people', unknown: 'Unknown owner', none: 'No one matches' },
+  head: { all: 'No head', search: 'Search people', unknown: 'Unknown person', none: 'No one matches' },
+  director: { all: 'No director', search: 'Search people', unknown: 'Unknown person', none: 'No one matches' },
   province: { all: 'Choose a province', search: 'Search provinces', unknown: 'Unknown province', none: 'No province matches' },
   department: { all: 'Choose a department', search: 'Search departments', unknown: 'Unknown department', none: 'No department matches' },
   title: { all: 'No title', search: 'Search titles', unknown: 'Unknown title', none: 'No title matches' },

@@ -34,6 +34,8 @@ import { formatDay } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
 import DecidedList from './review/DecidedList.vue'
+import OfflineNote from '../components/list/OfflineNote.vue'
+import RefreshButton from '../components/list/RefreshButton.vue'
 import ReviewHead from './review/ReviewHead.vue'
 import { REVIEWERS, type ReviewerKey } from './review/reviewers'
 
@@ -42,7 +44,7 @@ const props = withDefaults(defineProps<{ reviewer?: ReviewerKey }>(), { reviewer
 const R = computed(() => REVIEWERS[props.reviewer])
 
 // Filters in the address, like the other lists: room, a day range (any session in it), search.
-const { list, result, loading, error, load } = useResourceList<BookingListItem>(
+const { list, result, loading, error, load, live } = useResourceList<BookingListItem>(
   { room_id: 'int', from: 'string', to: 'string', q: 'string' },
   // Every waiting booking on one page: the queue is short, and it is grouped, not paged.
   (params) =>
@@ -56,7 +58,8 @@ const { list, result, loading, error, load } = useResourceList<BookingListItem>(
       size: 100,
     }),
   // Not paged: turning a page on the Approved or Rejected tab does not reload this list.
-  { activeFilter: false, paged: false },
+  // The ring and the tab counts reload with the list (quiet refresh and the refresh button).
+  { activeFilter: false, paged: false, alsoRefresh: () => loadSummary() },
 )
 const f = computed(() => list.filters.value as Record<string, string | number | undefined>)
 const anyFilter = computed(() => Object.keys(list.filters.value).length > 0)
@@ -226,7 +229,10 @@ async function decide() {
 
 <template>
   <div class="places-page review">
-    <ReviewHead :summary="summary" :tab="tab" :title="pageTitle" @select="selectTab" />
+    <ReviewHead :summary="summary" :tab="tab" :title="pageTitle" @select="selectTab">
+      <template #actions><RefreshButton :live="live" /></template>
+    </ReviewHead>
+    <OfflineNote :live="live" class="offline" />
 
     <div class="filters" role="search">
       <ListSearch
@@ -375,6 +381,9 @@ async function decide() {
 <style scoped src="./listPage.css"></style>
 
 <style scoped>
+.offline {
+  margin: 16px 0 0;
+}
 .filters > .narrow {
   width: 184px;
 }

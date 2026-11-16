@@ -39,9 +39,18 @@ def list_rooms(
     is_bookable: Annotated[bool | None, Query()] = None,
     is_private: Annotated[bool | None, Query(description="true = private, false = public")] = None,
     search: SearchQuery = None,
+    free_dates: Annotated[
+        str | None,
+        Query(description="Comma list of dates, e.g. 2026-11-16,2026-11-17 (at most 20)"),
+    ] = None,
+    free_from: Annotated[str | None, Query(description="HH:MM, with free_dates")] = None,
+    free_to: Annotated[str | None, Query(description="HH:MM, after free_from")] = None,
 ) -> Page[RoomListItem]:
     """All filters combine with AND. Search matches English name, Khmer name and short
-    description. Sorted by English name."""
+    description. Sorted by English name.
+
+    `free_dates` + `free_from` + `free_to` (all three or none): only rooms open at that time
+    and with no blocking booking meeting it on any of those dates."""
     result = room_service.list_rooms(
         session,
         paging.page,
@@ -59,6 +68,9 @@ def list_rooms(
         is_bookable,
         search,
         is_private,
+        free_dates,
+        free_from,
+        free_to,
     )
     items = room_service.build_room_list_items(session, result["items"])
     return Page[RoomListItem](**{**result, "items": items})

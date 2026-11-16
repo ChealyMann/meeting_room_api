@@ -1,4 +1,13 @@
-from app.schemas.common import RefId, RequestModel, ResponseModel, SortOrder, Text, UtcDateTime
+from app.schemas.common import (
+    OptionalRefId,
+    RefId,
+    RequestModel,
+    ResponseModel,
+    SortOrder,
+    Text,
+    UtcDateTime,
+)
+from app.schemas.refs import NamedRef
 
 
 class DepartmentCreate(RequestModel):
@@ -6,6 +15,7 @@ class DepartmentCreate(RequestModel):
     name_en: Text(100)
     name_kh: Text(100)
     sort_order: SortOrder = 0
+    head_user_id: OptionalRefId = None  # who signs the request slip box
 
 
 class DepartmentUpdate(RequestModel):
@@ -16,6 +26,7 @@ class DepartmentUpdate(RequestModel):
     name_en: Text(100) = None
     name_kh: Text(100) = None
     sort_order: SortOrder = None
+    head_user_id: OptionalRefId = None
     is_active: bool = None
 
 
@@ -26,5 +37,6 @@ class DepartmentOut(ResponseModel):
     name_kh: str
     sort_order: int
     is_active: bool
+    head: NamedRef | None
     created_at: UtcDateTime
     updated_at: UtcDateTime

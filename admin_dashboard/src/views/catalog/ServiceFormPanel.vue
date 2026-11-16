@@ -12,7 +12,9 @@ import BaseButton from '../../components/base/BaseButton.vue'
 import BaseField from '../../components/base/BaseField.vue'
 import FormErrorSummary from '../../components/base/FormErrorSummary.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
+import IconPicker from '../../components/IconPicker.vue'
 import ActiveToggle from '../../components/list/ActiveToggle.vue'
+import SearchPicker, { type PickerItem } from '../../components/list/SearchPicker.vue'
 import { useFieldErrors } from '../../composables/useFieldErrors'
 import { useToast } from '../../composables/useToast'
 import { useDraftsStore } from '../../stores/drafts'
@@ -23,6 +25,7 @@ import {
   serviceChanges,
   serviceCreateBody,
   serviceFormOf,
+  SERVICE_GROUPS,
   serviceProblems,
   type ServiceForm,
 } from '../../utils/serviceForms'
@@ -35,7 +38,11 @@ const LABELS: Record<string, string> = {
   name: 'Name',
   description: 'Description',
   sort_order: 'Order',
+  group: 'Group',
+  icon: 'Icon',
 }
+const GROUP_WORDS = { all: 'No group', search: 'Search groups', unknown: 'Unknown group', none: 'No group matches' }
+const groupItems = computed<PickerItem[]>(() => SERVICE_GROUPS[props.kind])
 
 const drafts = useDraftsStore()
 const toast = useToast()
@@ -199,6 +206,30 @@ async function turn(active: boolean) {
             <input id="sort_order" v-model="form.sort_order" class="input mono order" inputmode="numeric" placeholder="0" :aria-describedby="describedBy" :aria-invalid="invalid || undefined" />
           </template>
         </BaseField>
+      </section>
+
+      <section class="group" aria-labelledby="g-staff">
+        <h3 id="g-staff">For Staff</h3>
+        <BaseField id="group" label="Group" hint="No group shows under Other, last" :error="errors.group">
+          <template #default="{ describedBy, invalid }">
+            <SearchPicker
+              id="group"
+              v-model="form.group"
+              mode="field"
+              nullable
+              :items="groupItems"
+              :words="GROUP_WORDS"
+              :invalid="invalid"
+              :described-by="describedBy"
+            />
+          </template>
+        </BaseField>
+      </section>
+
+      <section class="group" aria-labelledby="g-icon">
+        <h3 id="g-icon">Icon</h3>
+        <IconPicker id="icon" v-model="form.icon" />
+        <p v-if="errors.icon" id="icon-error" class="error" role="alert">{{ errors.icon }}</p>
       </section>
     </form>
 

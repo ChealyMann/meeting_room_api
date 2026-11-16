@@ -7,6 +7,7 @@ import pytest
 
 URL = "/api/v1/divisions"
 DIVISION_FIELDS = {
+    "head",
     "id",
     "department_id",
     "name_en",
@@ -486,3 +487,39 @@ def test_patch_needs_a_token(client, division):
 def test_method_not_allowed(client, as_admin, division, method):
     response = client.request(method, f"{URL}/{division.id}", headers=as_admin)
     assert _error(response) == (405, "METHOD_NOT_ALLOWED")
+
+
+# --- Head (request slip: who signs this office's opinion box) ---------------------------
+
+
+def test_create_with_a_head(client, as_admin, department, make_user):
+    head = make_user(name_en="Chan Sophea", name_kh="ចាន់ សុភា")
+    body = client.post(URL, json=new(department, head_user_id=head.id), headers=as_admin).json()
+    assert body["head"] == {"id": head.id, "name_en": "Chan Sophea", "name_kh": "ចាន់ សុភា"}
+
+
+def test_no_head_by_default(client, as_admin, department):
+    assert client.post(URL, json=new(department), headers=as_admin).json()["head"] is None
+
+
+def test_change_and_clear_the_head(client, as_admin, department, make_user):
+    first, second = make_user(), make_user()
+    item = client.post(URL, json=new(department, head_user_id=first.id), headers=as_admin).json()
+    url = f"{URL}/{item['id']}"
+    changed = client.patch(url, json={"head_user_id": second.id}, headers=as_admin).json()
+    assert changed["head"]["id"] == second.id
+    cleared = client.patch(url, json={"head_user_id": None}, headers=as_admin).json()
+    assert cleared["head"] is None
+
+
+def test_unknown_head(client, as_admin, department):
+    response = client.post(URL, json=new(department, head_user_id=999999), headers=as_admin)
+    assert _error(response) == (422, "VALIDATION_ERROR")
+    assert _fields(response) == {"head_user_id": "User not found."}
+
+
+def test_inactive_head(client, as_admin, department, make_user):
+    gone = make_user(is_active=False)
+    response = client.post(URL, json=new(department, head_user_id=gone.id), headers=as_admin)
+    assert _error(response) == (409, "INACTIVE_REFERENCE")
+    assert _fields(response) == {"head_user_id": "This user is inactive."}

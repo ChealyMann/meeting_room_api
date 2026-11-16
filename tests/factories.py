@@ -8,7 +8,7 @@ from datetime import date, datetime, time
 from itertools import count
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.constants.booking import FINAL, BookingRoute, BookingStatus, ITStatus, MeetingType
 from app.constants.roles import RoleCode
@@ -244,6 +244,19 @@ def _requester_info(user: User) -> dict:
         "office": None,
         "email": user.email,
         "phone": None,
+        **_slip_offices(user),
+    }
+
+
+def _slip_offices(user: User) -> dict:
+    """The booker's office and department for the request slip, like the app copies them."""
+    division = object_session(user).get(Division, user.division_id) if user.division_id else None
+    department = division.department if division else None
+    return {
+        "division_id": division.id if division else None,
+        "division_kh": division.name_kh if division else None,
+        "department_id": department.id if department else None,
+        "department_kh": department.name_kh if department else None,
     }
 
 
@@ -312,6 +325,7 @@ def make_booking(
         _save(session, ticket)
         ticket.staff.extend(assigned_staff)
     if status == BookingStatus.CONFIRMED:
+        booking.confirmed_at = booking.confirmed_at or clock.now_utc()
         last_end = max(datetime.combine(day, end) for day, _start, end in sessions)
         session.add(
             BookingDoorPass(

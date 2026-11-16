@@ -39,7 +39,7 @@ describe('department form', () => {
   })
 
   it('sends order 0 when it is empty', () => {
-    expect(departmentCreateBody({ location_id: 3, name_kh: ' ក ', name_en: ' Audit ', sort_order: '' })).toEqual({
+    expect(departmentCreateBody({ location_id: 3, name_kh: ' ក ', name_en: ' Audit ', sort_order: '', head_user_id: null })).toEqual({
       location_id: 3,
       name_kh: 'ក',
       name_en: 'Audit',
@@ -72,7 +72,7 @@ describe('division form', () => {
   })
 
   it('leaves out an empty short name on create', () => {
-    expect(divisionCreateBody({ department_id: 3, name_kh: 'ក', name_en: 'Audit', short_name: ' ', sort_order: '' })).toEqual({
+    expect(divisionCreateBody({ department_id: 3, name_kh: 'ក', name_en: 'Audit', short_name: ' ', sort_order: '', head_user_id: null })).toEqual({
       department_id: 3,
       name_kh: 'ក',
       name_en: 'Audit',
@@ -101,5 +101,33 @@ describe('position form', () => {
     expect(positionCreateBody({ name_kh: 'ក', name_en: ' Clerk ', sort_order: '' })).toEqual({ name_kh: 'ក', name_en: 'Clerk', sort_order: 0 })
     expect(positionChanges(positionFormOf(POSITION), POSITION)).toEqual({})
     expect(positionChanges({ ...positionFormOf(POSITION), sort_order: '3' }, POSITION)).toEqual({ sort_order: 3 })
+  })
+})
+
+// The head signs the request slip's opinion box for this department or office.
+describe('head of a department or office', () => {
+  const HEAD = { id: 21, name_en: 'Chan Sophea', name_kh: 'ចាន់ សុភា' }
+
+  it('starts with no head, and reads the head of what is edited', () => {
+    expect(emptyDepartmentForm().head_user_id).toBeNull()
+    expect(emptyDivisionForm().head_user_id).toBeNull()
+    expect(departmentFormOf({ ...DEPARTMENT, head: HEAD }).head_user_id).toBe(21)
+    expect(divisionFormOf({ ...DIVISION, head: null }).head_user_id).toBeNull()
+  })
+
+  it('sends the head on create only when one is chosen', () => {
+    const form = { ...departmentFormOf(DEPARTMENT), head_user_id: 21 }
+    expect(departmentCreateBody(form).head_user_id).toBe(21)
+    expect('head_user_id' in departmentCreateBody({ ...form, head_user_id: null })).toBe(false)
+    expect(divisionCreateBody({ ...divisionFormOf(DIVISION), head_user_id: 21 }).head_user_id).toBe(21)
+  })
+
+  it('sends a changed head, and null when it is cleared', () => {
+    const department = { ...DEPARTMENT, head: HEAD }
+    expect(departmentChanges({ ...departmentFormOf(department), head_user_id: 30 }, department)).toEqual({ head_user_id: 30 })
+    expect(departmentChanges({ ...departmentFormOf(department), head_user_id: null }, department)).toEqual({ head_user_id: null })
+    expect(departmentChanges(departmentFormOf(department), department)).toEqual({})
+    const division = { ...DIVISION, head: null }
+    expect(divisionChanges({ ...divisionFormOf(division), head_user_id: 21 }, division)).toEqual({ head_user_id: 21 })
   })
 })

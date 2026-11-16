@@ -5,11 +5,15 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { ApiError } from '../api/errors'
 import type { Page } from '../api/types'
 import { useListQuery, type FilterSpec, type ListQueryOptions } from './useListQuery'
+import { useLiveRefresh } from './useLiveRefresh'
 
 export function useResourceList<T>(
   spec: FilterSpec,
   fetchPage: (params: Record<string, unknown>) => Promise<Page<T>>,
-  options: ListQueryOptions = {},
+  options: ListQueryOptions & {
+    /** More to reload with each quiet refresh and the refresh button (a page's summary). */
+    alsoRefresh?: () => unknown
+  } = {},
 ) {
   const list = useListQuery(spec, options)
   const result = ref<Page<T> | null>(null) as Ref<Page<T> | null>
@@ -20,11 +24,16 @@ export function useResourceList<T>(
   const savedId = ref<number | null>(null)
   let latest = 0
 
-  async function load() {
+  /** `quiet`: the live refresh — no spinner, and a failure keeps what is shown with no message. */
+  async function load(quietRefresh?: unknown) {
+    // Only a real `true` is quiet: `@click="load"` passes the click event.
+    const quiet = quietRefresh === true
     const request = ++latest
-    loading.value = true
-    error.value = ''
-    errorFields.value = {}
+    if (!quiet) {
+      loading.value = true
+      error.value = ''
+      errorFields.value = {}
+    }
     try {
       const page = await fetchPage(list.apiParams.value)
       if (request !== latest) return
@@ -37,6 +46,8 @@ export function useResourceList<T>(
       result.value = page
     } catch (err) {
       if (request !== latest) return
+      // Quiet: what is shown stays, with no message; the refresh button learns it failed.
+      if (quiet) throw err
       // The old page no longer matches the filters the API refused: drop it, so the count and
       // the paging foot do not show numbers from before.
       result.value = null
@@ -47,7 +58,13 @@ export function useResourceList<T>(
     }
   }
 
-  watch(() => JSON.stringify(list.apiParams.value), load, { immediate: true })
+  watch(() => JSON.stringify(list.apiParams.value), () => load(), { immediate: true })
+  // New, changed and deleted records show with no click; a load already on its way goes first.
+  // `live` drives the refresh button (run now, refreshing, last updated, can't reach the server).
+  const live = useLiveRefresh(async () => {
+    options.alsoRefresh?.()
+    if (!loading.value) await load(true)
+  })
 
   const filtered = computed(
     () =>
@@ -61,5 +78,5 @@ export function useResourceList<T>(
     await load()
   }
 
-  return { list, result, loading, error, errorFields, filtered, savedId, load, refresh }
+  return { list, result, loading, error, errorFields, filtered, savedId, load, refresh, live }
 }

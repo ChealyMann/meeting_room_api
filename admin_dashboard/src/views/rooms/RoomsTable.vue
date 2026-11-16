@@ -4,6 +4,7 @@ import { Ellipsis } from 'lucide-vue-next'
 
 import type { RoomListItem } from '../../api/types'
 import StateMarks from '../../components/list/StateMarks.vue'
+import RoomThumb from './RoomThumb.vue'
 
 defineProps<{ rooms: RoomListItem[]; savedId?: number | null }>()
 const emit = defineEmits<{ open: [id: number] }>()
@@ -38,9 +39,14 @@ const digits = (id: number) => String(id).padStart(4, '0')
         @keydown.enter="emit('open', room.id)"
       >
         <td class="col-serial"><span class="serial"><span class="prefix">RM</span>·{{ digits(room.id) }}</span></td>
-        <td class="name-plate">
-          <span class="kh">{{ room.name_kh }}</span>
-          <span class="en">{{ room.name_en }}</span>
+        <td>
+          <div class="room-cell">
+            <RoomThumb :path="room.cover_photo?.thumbnail_url ?? null" :count="room.photo_count" />
+            <div class="name-plate">
+              <span class="kh">{{ room.name_kh }}</span>
+              <span class="en">{{ room.name_en }}</span>
+            </div>
+          </div>
         </td>
         <td class="col-type">{{ room.category.name_en }}</td>
         <td class="place">
@@ -69,6 +75,14 @@ const digits = (id: number) => String(id).padStart(4, '0')
 </template>
 
 <style scoped>
+.room-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.room-cell .name-plate {
+  min-width: 0;
+}
 @media (max-width: 1100px) {
   .col-type,
   .col-owner {
