@@ -15,10 +15,16 @@ function pick(wrapper: ReturnType<typeof mount>, file: File) {
 }
 
 describe('AttachmentList', () => {
-  it('lists the files with their size', () => {
+  it('shows each file as a chip, with its size on hover', () => {
     const w = mount(AttachmentList, { props: { files: FILES } })
+    expect(w.findAll('.att-chip').length).toBe(2)
     expect(w.findAll('.att-name').map((n) => n.text())).toEqual(['agenda.pdf', 'budget.xlsx'])
-    expect(w.findAll('.att-size').map((n) => n.text())).toEqual(['820 KB', '1.2 MB'])
+    expect(w.findAll('.att-name').map((n) => n.attributes('title'))).toEqual(['agenda.pdf · 820 KB', 'budget.xlsx · 1.2 MB'])
+  })
+
+  it('says what is allowed under the chips when editable', () => {
+    const w = mount(AttachmentList, { props: { files: FILES, editable: true } })
+    expect(w.get('.att-note').text()).toBe('PDF, Word or Excel · up to 3 · 10 MB each')
   })
 
   it('shows nothing when there is no file and it is read only', () => {
