@@ -3,7 +3,7 @@
 // the room's photo, the full process bar, what is special about it, the meeting, the food and
 // the IT help, then Reject and Approve. Decisions happen in the page's confirm pop-up.
 import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
@@ -57,6 +57,27 @@ const approvals = computed(() =>
     }),
 )
 const waiting = computed(() => WAITING[props.booking.status] ?? null)
+
+// Tabs (owner pick, 16 Nov 2026): the photo, the steps and the buttons stay; the rest is split.
+// A count on Food & IT says there is something to check; Files shows only when there are files.
+type Tab = 'details' | 'services' | 'files' | 'approvals'
+const tab = ref<Tab>('details')
+watch(
+  () => props.booking.id,
+  () => (tab.value = 'details'),
+)
+const count = (n: number) => (n ? ` ${n}` : '')
+const tabs = computed(() => {
+  const services = (props.booking.catering?.packages.length ?? 0) + (props.booking.it?.items.length ?? 0)
+  const files = props.booking.attachments?.length ?? 0
+  const list: Array<{ id: Tab; label: string }> = [
+    { id: 'details', label: 'Details' },
+    { id: 'services', label: `Food & IT${count(services)}` },
+  ]
+  if (files) list.push({ id: 'files', label: `Files${count(files)}` })
+  list.push({ id: 'approvals', label: `Approvals${count(approvals.value.length)}` })
+  return list
+})
 /** Every session, in order: a booking can run over several days (up to 20 sessions). */
 const sessions = computed(() =>
   [...(props.booking.sessions.length ? props.booking.sessions : [props.booking.first_session])].sort((a, b) =>
@@ -93,46 +114,64 @@ const sessions = computed(() =>
         <span>{{ note }}</span>
       </p>
 
-      <h3 class="sessions-head">
-        When <span>· {{ sessions.length }} {{ sessions.length === 1 ? 'session' : 'sessions' }}</span>
-      </h3>
-      <ul class="sessions">
-        <li v-for="s in sessions" :key="`${s.date} ${s.start_time}`">
-          <span>{{ formatDay(s.date) }}</span>
-          <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
-        </li>
-      </ul>
+      <div class="tabs" role="tablist" aria-label="Booking">
+        <button
+          v-for="t in tabs"
+          :id="`tab-${t.id}`"
+          :key="t.id"
+          type="button"
+          role="tab"
+          :aria-selected="tab === t.id"
+          :aria-controls="`tabpanel-${t.id}`"
+          @click="tab = t.id"
+        >
+          {{ t.label }}
+        </button>
+      </div>
 
-      <h3>Meeting</h3>
-      <dl class="details">
-        <div><dt>Meeting type</dt><dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }}</dd></div>
-        <div><dt>Attendees</dt><dd class="mono">{{ booking.attendees }}</dd></div>
-        <div><dt>Purpose</dt><dd class="wrap" :class="{ none: !booking.meeting_purpose }">{{ booking.meeting_purpose || 'None' }}</dd></div>
-        <div><dt>Route</dt><dd>{{ ROUTE_LABELS[booking.route] ?? booking.route }}</dd></div>
-        <div v-if="booking.route === 'R2'">
-          <dt>Why private</dt>
-          <dd class="wrap" :class="{ none: !booking.private_justification }">{{ booking.private_justification || 'No reason given' }}</dd>
-        </div>
-      </dl>
+      <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
+        <h3 class="sessions-head">
+          When <span>· {{ sessions.length }} {{ sessions.length === 1 ? 'session' : 'sessions' }}</span>
+        </h3>
+        <ul class="sessions">
+          <li v-for="s in sessions" :key="`${s.date} ${s.start_time}`">
+            <span>{{ formatDay(s.date) }}</span>
+            <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
+          </li>
+        </ul>
 
-      <!-- Who asks (owner, 16 Nov 2026): ID, name, position and department, as kept when sent. -->
-      <h3>Booker</h3>
-      <dl class="details booker">
-        <div><dt>Staff ID</dt><dd class="mono" :class="{ none: !info('staff_id') }">{{ info('staff_id') ?? 'None' }}</dd></div>
-        <div>
-          <dt>Name</dt>
-          <dd>{{ info('name_en') ?? booking.requester.name_en }} <span v-if="info('name_kh')" class="sub kh">{{ info('name_kh') }}</span></dd>
-        </div>
-        <div><dt>Position</dt><dd :class="{ none: !info('position') }">{{ info('position') ?? 'None' }}</dd></div>
-        <div>
-          <dt>Department</dt>
-          <dd :class="{ none: !info('department') && !info('division') }">{{ info('department') ?? info('division') ?? 'None' }} <span v-if="info('department') && info('division')" class="sub">{{ info('division') }}</span></dd>
-        </div>
-      </dl>
+        <h3>Meeting</h3>
+        <dl class="details">
+          <div><dt>Meeting type</dt><dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }}</dd></div>
+          <div><dt>Attendees</dt><dd class="mono">{{ booking.attendees }}</dd></div>
+          <div><dt>Purpose</dt><dd class="wrap" :class="{ none: !booking.meeting_purpose }">{{ booking.meeting_purpose || 'None' }}</dd></div>
+          <div><dt>Route</dt><dd>{{ ROUTE_LABELS[booking.route] ?? booking.route }}</dd></div>
+          <div v-if="booking.route === 'R2'">
+            <dt>Why private</dt>
+            <dd class="wrap" :class="{ none: !booking.private_justification }">{{ booking.private_justification || 'No reason given' }}</dd>
+          </div>
+        </dl>
 
-      <template v-if="approvals.length">
+        <!-- Who asks (owner, 16 Nov 2026): ID, name, position and department, as kept when sent. -->
+        <h3>Booker</h3>
+        <dl class="details booker">
+          <div><dt>Staff ID</dt><dd class="mono" :class="{ none: !info('staff_id') }">{{ info('staff_id') ?? 'None' }}</dd></div>
+          <div>
+            <dt>Name</dt>
+            <dd>{{ info('name_en') ?? booking.requester.name_en }} <span v-if="info('name_kh')" class="sub kh">{{ info('name_kh') }}</span></dd>
+          </div>
+          <div><dt>Position</dt><dd :class="{ none: !info('position') }">{{ info('position') ?? 'None' }}</dd></div>
+          <div>
+            <dt>Department</dt>
+            <dd :class="{ none: !info('department') && !info('division') }">{{ info('department') ?? info('division') ?? 'None' }} <span v-if="info('department') && info('division')" class="sub">{{ info('division') }}</span></dd>
+          </div>
+        </dl>
+      </section>
+
+      <section v-show="tab === 'approvals'" id="tabpanel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
         <h3>Approved by</h3>
-        <ul class="approvals">
+        <p v-if="!approvals.length" class="none">No one has approved yet.</p>
+        <ul v-else class="approvals">
           <li v-for="(a, i) in approvals" :key="i">
             <span class="ap-mark" aria-hidden="true"><Check /></span>
             <span class="ap-text">
@@ -147,35 +186,43 @@ const sessions = computed(() =>
             <span class="ap-text"><span class="ap-who">{{ waiting }}</span></span>
           </li>
         </ul>
-      </template>
+      </section>
 
-      <h3>Food</h3>
-      <p v-if="!booking.catering" class="none">No food ordered.</p>
-      <dl v-else class="details">
-        <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
-        <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
-        <div>
-          <dt>Delivery</dt>
-          <dd v-if="sessions.length > 1" class="delivery">At the start of every session ({{ sessions.length }} times)</dd>
-          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
-        </div>
-        <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
-      </dl>
+      <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
+        <h3>Food</h3>
+        <p v-if="!booking.catering" class="none">No food ordered.</p>
+        <dl v-else class="details">
+          <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
+          <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
+          <div>
+            <dt>Delivery</dt>
+            <dd v-if="sessions.length > 1" class="delivery">At the start of every session ({{ sessions.length }} times)</dd>
+            <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
+          </div>
+          <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
+        </dl>
 
-      <h3>IT help</h3>
-      <p v-if="!booking.it" class="none">No IT help asked.</p>
-      <dl v-else class="details">
-        <div><dt>Items</dt><dd>{{ names(booking.it.items) }}</dd></div>
-        <div>
-          <dt>Special needs</dt>
-          <dd class="wrap" :class="{ none: !booking.it.special_requirements }">{{ booking.it.special_requirements || 'None' }}</dd>
-        </div>
-      </dl>
+        <h3>IT help</h3>
+        <p v-if="!booking.it" class="none">No IT help asked.</p>
+        <dl v-else class="details">
+          <div><dt>Items</dt><dd>{{ names(booking.it.items) }}</dd></div>
+          <div>
+            <dt>Special needs</dt>
+            <dd class="wrap" :class="{ none: !booking.it.special_requirements }">{{ booking.it.special_requirements || 'None' }}</dd>
+          </div>
+        </dl>
+      </section>
 
-      <template v-if="booking.attachments?.length">
+      <section
+        v-if="booking.attachments?.length"
+        v-show="tab === 'files'"
+        id="tabpanel-files"
+        role="tabpanel"
+        aria-labelledby="tab-files"
+      >
         <h3>Files</h3>
         <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
-      </template>
+      </section>
     </div>
 
     <template #foot>
@@ -288,6 +335,38 @@ h3 {
   margin: 0;
   color: var(--color-ink-off);
   font-size: 13px;
+}
+/* Tabs, like the Admin's booking panel; the bar sticks to the top while the panel scrolls. */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-sheet);
+}
+.tabs button {
+  flex: none;
+  margin-bottom: -1px;
+  padding: 9px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-intaglio);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--color-crimson);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+[role='tabpanel'] > h3:first-child {
+  margin-top: 0;
 }
 /* Approved by: a green tick, the name over the role (and the note), the time on the right. */
 .approvals {

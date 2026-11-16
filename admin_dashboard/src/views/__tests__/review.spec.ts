@@ -248,6 +248,42 @@ describe('Review panel and decisions', () => {
     delete DETAILS[22]
   })
 
+  describe('Tabs', () => {
+    const tabs = () => [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+    const shown = () => [...panel()!.querySelectorAll<HTMLElement>('[role="tabpanel"]')].filter((p) => p.style.display !== 'none').map((p) => p.id)
+
+    it('splits the panel into Details, Food & IT with a count, and Approvals; photo, steps and buttons stay', async () => {
+      const { wrapper } = await mountReview()
+      await row(wrapper, 21).trigger('click')
+      await flushPromises()
+
+      expect(tabs()).toEqual(['Details', 'Food & IT 2', 'Approvals'])
+      expect(shown()).toEqual(['tabpanel-details'])
+      expect(panel()!.querySelector('.room-photo')).not.toBeNull()
+      expect(panel()!.querySelector('.process-bar')).not.toBeNull()
+
+      await click(panel()!.querySelector<HTMLButtonElement>('#tab-services')!)
+      expect(shown()).toEqual(['tabpanel-services'])
+      expect(panel()!.querySelector('#tab-services')!.getAttribute('aria-selected')).toBe('true')
+      expect(button(panel(), 'Approve')).toBeTruthy()
+
+      await click(panel()!.querySelector<HTMLButtonElement>('#tab-approvals')!)
+      expect(panel()!.querySelector('#tabpanel-approvals')!.textContent).toContain('No one has approved yet.')
+    })
+
+    it('adds a Files tab with a count only when the booking has files', async () => {
+      DETAILS[22] = {
+        attachments: [{ id: 4, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 100, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/22/attachments/4' }],
+        reviews: [{ stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Chan Sophea' }, notes: null, reviewed_at: '2026-11-12T07:05:00Z', by_admin: false }],
+      }
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+      expect(tabs()).toEqual(['Details', 'Food & IT', 'Files 1', 'Approvals 1'])
+      delete DETAILS[22]
+    })
+  })
+
   describe('Approved by', () => {
     const approvals = () =>
       [...panel()!.querySelectorAll('.approvals li')].map((li) => ({
