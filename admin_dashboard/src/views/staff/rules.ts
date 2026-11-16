@@ -37,7 +37,6 @@ export function lenText(min: number): string {
 
 const dayOf = (iso: string) => new Date(`${iso}T00:00:00Z`)
 const isoOf = (d: Date) => d.toISOString().slice(0, 10)
-export const isWeekend = (iso: string) => [0, 6].includes(dayOf(iso).getUTCDay())
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -50,13 +49,11 @@ export const weekdayShort = (iso: string) => WEEKDAYS[dayOf(iso).getUTCDay()]!
 export const monthShort = (iso: string) => MONTHS[dayOf(iso).getUTCMonth()]!
 export const dateNumber = (iso: string) => dayOf(iso).getUTCDate()
 
-/** `count` working days from `day` (that day included when it is a working day). */
-export function workdaysFrom(day: string, count: number): string[] {
+/** `count` days from `day`, that day first. Saturday and Sunday are bookable too (owner,
+ *  16 Nov 2026), so no day is skipped. */
+export function daysFrom(day: string, count: number): string[] {
   const out: string[] = []
-  for (const d = dayOf(day); out.length < count; d.setUTCDate(d.getUTCDate() + 1)) {
-    const iso = isoOf(d)
-    if (!isWeekend(iso)) out.push(iso)
-  }
+  for (const d = dayOf(day); out.length < count; d.setUTCDate(d.getUTCDate() + 1)) out.push(isoOf(d))
   return out
 }
 

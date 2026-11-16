@@ -21,7 +21,7 @@ import RoomCard from './RoomCard.vue'
 import FilterChip from './find/FilterChip.vue'
 import WhenPicker from './find/WhenPicker.vue'
 import { anyTime, bookQuery, datesOf, freeQuery, hasTime, isRange, PICK_DAYS, whenLabel, whenSet, type When } from './find/when'
-import { busySpans, nowLine, roomHours, toMin, toTime, workdaysFrom, type NowLine } from './rules'
+import { busySpans, nowLine, roomHours, toMin, toTime, daysFrom, type NowLine } from './rules'
 import './staff.css'
 
 const PAGE_SIZE = 24 // four rows of a wide screen
@@ -43,8 +43,8 @@ let request = 0 // the newest search; older answers are dropped
 const q = ref('')
 const query = ref('') // q, once typing stops
 const kind = ref<'all' | 'shared' | 'private'>('all')
-const pickDays = computed(() => workdaysFrom(today.value, PICK_DAYS))
-const firstDay = computed(() => pickDays.value[0]!) // today, or Monday at a weekend
+const pickDays = computed(() => daysFrom(today.value, PICK_DAYS))
+const firstDay = computed(() => pickDays.value[0]!)
 const when = ref<When>(anyTime(firstDay.value))
 const people = ref(0)
 const office = ref<'all' | number>('all')

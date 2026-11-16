@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The week table: half-hour rows in the room's hours, one column per working day. Click a free
+// The week table: half-hour rows in the room's hours, one column per day (weekends too). Click a free
 // cell for 1 hour, or press and drag down for any length; click a picked block to remove it.
 // Busy (masked private ones too) shows "Busy", past is striped, a holiday is marked softly.
 import { X } from 'lucide-vue-next'
@@ -266,7 +266,7 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
 }
 @media (max-width: 1000px) {
   .tbl {
-    min-width: 560px;
+    min-width: 700px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

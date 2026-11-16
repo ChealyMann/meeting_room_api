@@ -15,7 +15,7 @@ import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { iconFor } from '../../utils/equipmentIcons'
 import { phnomPenhClock } from '../../utils/time'
 import PhotoGallery from './PhotoGallery.vue'
-import { busySpans, nowLine, roomHours, toMin, toTime, workdaysFrom } from './rules'
+import { busySpans, nowLine, roomHours, toMin, toTime, daysFrom } from './rules'
 import TimePick from './TimePick.vue'
 import './staff.css'
 
@@ -30,9 +30,9 @@ const failed = ref(false)
 
 const now = () => toMin(phnomPenhClock(new Date()))
 const hours = computed(() => (room.value ? roomHours(room.value) : { open: 480, close: 1080 }))
-/** Seven working days from today; today is left out when less than 30 minutes stay open. */
+/** The next seven days, weekends too; today is left out when less than 30 minutes stay open. */
 const days = computed(() =>
-  workdaysFrom(today.value, 8)
+  daysFrom(today.value, 8)
     .filter((d) => d !== today.value || now() < hours.value.close - 30)
     .slice(0, 7),
 )

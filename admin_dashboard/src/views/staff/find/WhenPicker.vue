@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Inside the When chip: One day / Day to day, the next 10 working days in week rows, and a time
+// Inside the When chip: One day / Day to day, the next 14 days in week rows, and a time
 // that is the same every day. Day to day: the first click sets the first day, the next click the
 // last day; a click after that starts again.
 import { computed, ref } from 'vue'
@@ -71,7 +71,7 @@ const quick = computed(() => QUICK.filter((q) => starts.value.includes(q[1])))
 const hint = computed(() => {
   if (when.value.mode !== 'range') return ''
   if (picking.value === 'last') return `From ${dayLabel(when.value.first)}. Now pick the last day.`
-  if (isRange(when.value)) return `${datesOf(when.value, props.days).length} working days. Click a day to start again.`
+  if (isRange(when.value)) return `${datesOf(when.value, props.days).length} days. Click a day to start again.`
   return 'Pick the first day, then the last day.'
 })
 </script>

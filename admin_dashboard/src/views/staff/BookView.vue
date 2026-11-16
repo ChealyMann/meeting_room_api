@@ -24,11 +24,11 @@ import SideCard from './book/SideCard.vue'
 import StepBar from './book/StepBar.vue'
 import { useBookingDraft } from './book/useBookingDraft'
 import WeekTable from './book/WeekTable.vue'
-import { dayLabel, roomHours, toMin, workdaysFrom, type PickedSession } from './rules'
+import { dayLabel, roomHours, toMin, daysFrom, type PickedSession } from './rules'
 import './staff.css'
 
 const STEPS = ['Schedule', 'Meeting details', 'Food & IT', 'Review']
-const WEEK = 5
+const WEEK = 7
 
 const route = useRoute()
 const router = useRouter()
@@ -68,14 +68,14 @@ const reached = ref(1)
 const now = () => toMin(phnomPenhClock(new Date()))
 const hours = computed(() => (room.value ? roomHours(room.value) : { open: 480, close: 1080 }))
 
-// The week window: page 0 is the next 5 working days from today; the arrows move 5 working days.
+// The week window: page 0 is the next 7 days from today (weekends too); the arrows move 7 days.
 const firstPage = () => {
   if (!first) return 0
-  const index = workdaysFrom(today.value, WEEK * 12).indexOf(first.date)
+  const index = daysFrom(today.value, WEEK * 12).indexOf(first.date)
   return index < 0 ? 0 : Math.floor(index / WEEK)
 }
 const page = ref(firstPage())
-const days = computed(() => workdaysFrom(today.value, WEEK * (page.value + 1)).slice(WEEK * page.value))
+const days = computed(() => daysFrom(today.value, WEEK * (page.value + 1)).slice(WEEK * page.value))
 const range = computed(() => `${dayLabel(days.value[0]!)} – ${dayLabel(days.value[days.value.length - 1]!)}`)
 
 async function loadWeek() {

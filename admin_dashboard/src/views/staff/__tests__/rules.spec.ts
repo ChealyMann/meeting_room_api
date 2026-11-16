@@ -16,7 +16,7 @@ import {
   toMeetingType,
   toMin,
   toTime,
-  workdaysFrom,
+  daysFrom,
 } from '../rules'
 
 const D = '2026-11-13' // a Friday
@@ -49,9 +49,9 @@ describe('times', () => {
   })
 })
 
-describe('workdaysFrom', () => {
-  it('skips Saturday and Sunday', () => {
-    expect(workdaysFrom(D, 3)).toEqual(['2026-11-13', '2026-11-16', '2026-11-17'])
+describe('daysFrom', () => {
+  it('takes every day, Saturday and Sunday too', () => {
+    expect(daysFrom(D, 4)).toEqual(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16'])
   })
 })
 
