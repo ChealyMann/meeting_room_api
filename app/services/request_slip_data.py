@@ -3,8 +3,9 @@
 It reads the booking's copies only (the snapshot rule): the booker's office names kept when the
 booking was sent (`requester_info`), and the signers kept when it was confirmed
 (`booking_signers`). People moving, offices renamed, heads or signatures changed later do not
-change a slip. A booking from before the copies existed falls back to the booker's profile now
-and gets empty opinion boxes.
+change a slip. One exception (owner, 13 Nov 2026, "fill empty ones only"): a signer who had no
+signature when the booking was confirmed gets the one they have now. A booking from before the
+copies existed falls back to the booker's profile now and gets empty opinion boxes.
 
 Wording follows the owner's signed paper (13 Nov 2026); see docs/superpowers/plans/
 2026-11-13-request-slip.md, "Owner decisions".
@@ -19,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.constants.booking import SignerRole
-from app.models import Booking, BookingSigner
+from app.models import Booking, BookingSigner, User
 from app.services.clock import LOCAL_OFFSET
 from app.services.khmer_calendar import lunar_line
 from app.services.khmer_text import (
@@ -29,6 +30,7 @@ from app.services.khmer_text import (
     khmer_time,
     khmer_title,
     khmer_weekday,
+    khmer_weekday_short,
 )
 from app.services.slip_settings import get_slip_settings
 
@@ -38,6 +40,12 @@ DIRECTOR = "នាយកខុទ្ទកាល័យ"
 FOOD_LINE = "- នំ ផ្លែឈើ និងភេសជ្ជៈ។"
 IT_LINE = "- អ្នកបច្ចេកទេស IT និងឧបករណ៍ IT។"
 NOTHING_LINE = "- មិនមាន។"
+
+
+def _pass_up(to: str) -> str:
+    """A head's comment, passing the request up: always the same three lines in both boxes, as
+    on the paper (owner, 13 Nov 2026), whoever it goes to."""
+    return f"សូមគោរពជូន\n{to} មេត្តាពិនិត្យ\nនិងសម្រេចដោយអនុគ្រោះ។"
 
 
 @dataclass(frozen=True)
@@ -60,6 +68,9 @@ class SlipData:
     office_line: str
     subject: str  # the whole sentence; ends with the people when there is no timetable
     timetable: list[tuple[str, str, str]]  # (ល.រ, កាលបរិច្ឆេទ, វេលាម៉ោង); only when times differ
+    # The same rows, short ("សុ ១៣/១១/២០២៦", "១២:៣០–១៨:០០"), for a long booking printed two
+    # sessions to a row so the slip stays on one page.
+    timetable_short: list[tuple[str, str, str]]
     people_line: str | None  # only with a timetable
     requests: list[str]
     closing: list[str]
@@ -88,6 +99,17 @@ def _signature_file(settings: Settings, stored: str | None) -> Path | None:
 def _short_time(value) -> str:
     """A time in a timetable cell, like ១២:៣០ ថ្ងៃត្រង់."""
     return khmer_time(value).removeprefix("ម៉ោង ").replace(" នាទី", " ")
+
+
+def _short_rows(sessions: list) -> list[tuple[str, str, str]]:
+    return [
+        (
+            khmer_digits(number),
+            f"{khmer_weekday_short(s.date)} {khmer_digits(s.date.strftime('%d/%m/%Y'))}",
+            khmer_digits(f"{s.start_time:%H:%M}–{s.end_time:%H:%M}"),
+        )
+        for number, s in enumerate(sessions, start=1)
+    ]
 
 
 def _when(sessions: list) -> tuple[str, list[tuple[str, str, str]]]:
@@ -145,6 +167,14 @@ def build_slip_data(session: Session, settings: Settings, booking: Booking) -> S
         title_of(SignerRole.OFFICE_HEAD),
     )
 
+    def signature_of(row: BookingSigner) -> Path | None:
+        """The signature kept at confirm time. Fill empty ones only (owner, 13 Nov 2026): a
+        signer who had none then gets the one they have now; a kept one never changes."""
+        if row.signature_path:
+            return _signature_file(settings, row.signature_path)
+        user = session.get(User, row.user_id) if row.user_id else None
+        return _signature_file(settings, user.user_signature if user else None)
+
     def box(role: SignerRole, comment: str) -> SlipSigner | None:
         row = signers.get(role)
         if row is None:
@@ -153,7 +183,7 @@ def build_slip_data(session: Session, settings: Settings, booking: Booking) -> S
             comment=comment,
             name=row.name_kh,
             title=khmer_title(row.title),
-            signature=_signature_file(settings, row.signature_path),
+            signature=signature_of(row),
             date=khmer_short_date(_local_day(row.signed_at)),
         )
 
@@ -162,9 +192,10 @@ def build_slip_data(session: Session, settings: Settings, booking: Booking) -> S
         comment=None,
         name=maker_row.name_kh if maker_row else booking.requester.name_kh,
         title="",
-        signature=_signature_file(
-            settings,
-            maker_row.signature_path if maker_row else booking.requester.user_signature,
+        signature=(
+            signature_of(maker_row)
+            if maker_row
+            else _signature_file(settings, booking.requester.user_signature)
         ),
         date=None,
     )
@@ -191,6 +222,7 @@ def build_slip_data(session: Session, settings: Settings, booking: Booking) -> S
         office_line=f"{office_title}ប្រធាន{division_kh or 'ការិយាល័យ ' + DOTS}",
         subject=subject if timetable else f"{subject} {people}",
         timetable=timetable,
+        timetable_short=_short_rows(sessions) if timetable else [],
         people_line=people if timetable else None,
         requests=requests,
         closing=[
@@ -202,10 +234,6 @@ def build_slip_data(session: Session, settings: Settings, booking: Booking) -> S
         address=slip_settings.address_kh,
         maker=maker,
         director=box(SignerRole.DIRECTOR, "ឯកភាពតាមសំណើ។"),
-        department_head=box(
-            SignerRole.DEPARTMENT_HEAD, f"សូមគោរពជូន {director_title}{DIRECTOR} {PASS_UP}"
-        ),
-        office_head=box(
-            SignerRole.OFFICE_HEAD, f"សូមគោរពជូន {department_title}ប្រធាននាយកដ្ឋាន {PASS_UP}"
-        ),
+        department_head=box(SignerRole.DEPARTMENT_HEAD, _pass_up(f"{director_title}{DIRECTOR}")),
+        office_head=box(SignerRole.OFFICE_HEAD, _pass_up(f"{department_title}ប្រធាននាយកដ្ឋាន")),
     )

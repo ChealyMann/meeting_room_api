@@ -16,6 +16,9 @@ SENT = datetime(2026, 9, 14, 3, 0)  # 14 Sep 2026, 10:00 in Phnom Penh
 PAPER_LUNAR = "ថ្ងៃចន្ទ ៣កើត ខែភទ្របទ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០"
 
 
+W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
 def url(booking) -> str:
     return f"/api/v1/bookings/{booking.id}/request-slip"
 
@@ -158,20 +161,100 @@ def test_no_signature_files_means_no_pictures_but_the_words_stay(
     assert "លោក ចាន់ សុភក្ត្រ" in _all_text(document)
 
 
+def _size_of(document, text: str) -> int:
+    """The Khmer font size (half-points) of the first run holding `text`."""
+    for run in document.element.iter("{*}r"):
+        if text in "".join(t.text or "" for t in run.iter("{*}t")):
+            return int(run.find("{*}rPr/{*}szCs").get(f"{{{W}}}val"))
+    raise AssertionError(text)
+
+
 def test_twenty_sessions(client, auth_headers, confirmed, maker, org):
-    """A long booking: a 200-character title and 20 sessions at different times."""
+    """The longest booking the app allows: a 200-character title and 20 sessions at different
+    times. The timetable prints two sessions to a row, and the whole slip shrinks to one page."""
     sessions = tuple(
         (date(2026, 11, 10 + n // 2), time(8 + n % 2 * 5), time(11 + n % 2 * 5)) for n in range(20)
     )
-    document = _open(
+    long = _open(
         client.get(
             url(confirmed(sessions=sessions, meeting_title="ក" * 200)), headers=auth_headers(maker)
         )
     )
     timetable = [
         t
-        for t in document.element.iter()
-        if t.tag.endswith("}tbl") and len(t.findall(".//{*}tr")) == 21
+        for t in long.element.iter()
+        if t.tag.endswith("}tbl") and len(t.findall(".//{*}tr")) == 11
     ]
     assert len(timetable) == 1
-    assert "ក" * 200 in _all_text(document)
+    assert len(timetable[0].find("{*}tr").findall("{*}tc")) == 6
+    assert "ក" * 200 in _all_text(long)
+    short = _open(client.get(url(confirmed()), headers=auth_headers(maker)))
+    assert _size_of(long, "ស្នើសុំរៀបចំ") < _size_of(short, "ស្នើសុំរៀបចំ")
+
+
+def test_opinions_are_written_in_a_pen_font(client, auth_headers, confirmed, maker, org):
+    """The opinion boxes' comments and dates look hand-written (Khmer OS Freehand); the rest of
+    the slip keeps the paper's fonts."""
+    document = _open(client.get(url(confirmed()), headers=auth_headers(maker)))
+
+    def fonts_of(text: str) -> set[str]:
+        found = set()
+        for run in document.element.iter("{*}r"):
+            if text in "".join(t.text or "" for t in run.iter("{*}t")):
+                fonts = run.find("{*}rPr/{*}rFonts")
+                found.add(fonts.get(f"{{{W}}}cs"))
+        return found
+
+    assert fonts_of("ឯកភាពតាមសំណើ។") == {"Khmer OS Freehand"}
+    assert fonts_of("០៩/១១/២០២៦") == {"Khmer OS Freehand"}
+    assert fonts_of("សមាជិកចូលរួមចំនួន") == {"Khmer OS Battambang"}
+    assert fonts_of("ពេជ្រ វិសាល") == {"Khmer OS Muol Light"}
+
+
+def test_both_heads_comments_are_three_lines_of_one_size(
+    client, auth_headers, confirmed, maker, org
+):
+    """The department head's and the office head's comments: three lines each (two breaks), in
+    one shared size, so the two boxes look the same (owner, 13 Nov 2026)."""
+    document = _open(client.get(url(confirmed()), headers=auth_headers(maker)))
+    boxes = [
+        p
+        for p in document.element.iter("{*}p")
+        if "សូមគោរពជូន" in "".join(t.text or "" for t in p.iter("{*}t"))
+    ]
+    assert len(boxes) == 2
+    for box in boxes:
+        assert len(list(box.iter("{*}br"))) == 2
+    sizes = {s.get(f"{{{W}}}val") for box in boxes for s in box.iter("{*}szCs")}
+    assert len(sizes) == 1
+
+
+def test_a_long_title_shrinks_the_heads_comments_and_labels():
+    """A long title (លោកជំទាវ) would wrap the comments to four lines and the office head's label
+    to two, pushing the slip onto a second page: both get smaller instead."""
+    from app.services.request_slip_data import SlipSigner, _pass_up
+    from app.services.request_slip_docx import (
+        LABEL_CM_PER_LETTER,
+        OFFICE_BOX_CM,
+        PEN_SIZE,
+        _fit_size,
+        heads_comment_size,
+    )
+
+    def head(to):
+        return SlipSigner(comment=_pass_up(to), name="x", title="", signature=None, date="")
+
+    class Data:
+        department_head = head("នាយកខុទ្ទកាល័យ")
+        office_head = head("ប្រធាននាយកដ្ឋាន")
+
+    assert heads_comment_size(Data) == PEN_SIZE
+    # At the small pen size even លោកជំទាវ fits; a line longer than the box still shrinks.
+    Data.department_head, Data.office_head = (
+        head("លោកជំទាវនាយកខុទ្ទកាល័យ"),
+        head("លោកជំទាវប្រធាននាយកដ្ឋាន ប្រធាននាយកដ្ឋាន"),
+    )
+    assert heads_comment_size(Data) < PEN_SIZE
+    label = "មតិលោកជំទាវប្រធានការិយាល័យ"
+    assert _fit_size([label], 10.5, OFFICE_BOX_CM, LABEL_CM_PER_LETTER) < 10.5
+    assert _fit_size(["មតិប្រធានការិយាល័យ"], 10.5, OFFICE_BOX_CM, LABEL_CM_PER_LETTER) == 10.5

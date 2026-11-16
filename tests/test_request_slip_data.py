@@ -1,5 +1,6 @@
 """Every value on the request slip, in Khmer, built from the booking's copies."""
 
+from dataclasses import replace
 from datetime import date, datetime, time
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from app.constants.booking import BookingStatus
 from app.services import booking_transitions as transitions
 from app.services.request_slip_data import build_slip_data
+from app.services.request_slip_docx import SMALLEST, fit_scale
 
 SENT = datetime(2026, 9, 14, 3, 0)  # UTC: 14 Sep 2026, 10:00 in Phnom Penh
 PASS_UP = "មេត្តាពិនិត្យ និងសម្រេចដោយអនុគ្រោះ។"
@@ -62,8 +64,17 @@ def test_dates_come_from_the_day_it_was_sent(slip):
 def test_opinion_boxes_are_signed_on_the_confirm_day(slip, org):
     data = slip()
     office, department, director = data.office_head, data.department_head, data.director
-    assert office.comment == f"សូមគោរពជូន លោកប្រធាននាយកដ្ឋាន {PASS_UP}"
-    assert department.comment == f"សូមគោរពជូន លោកនាយកខុទ្ទកាល័យ {PASS_UP}"
+    # Both heads write the same three lines, as on the paper (owner, 13 Nov 2026).
+    assert office.comment.split("\n") == [
+        "សូមគោរពជូន",
+        "លោកប្រធាននាយកដ្ឋាន មេត្តាពិនិត្យ",
+        "និងសម្រេចដោយអនុគ្រោះ។",
+    ]
+    assert department.comment.split("\n") == [
+        "សូមគោរពជូន",
+        "លោកនាយកខុទ្ទកាល័យ មេត្តាពិនិត្យ",
+        "និងសម្រេចដោយអនុគ្រោះ។",
+    ]
     assert director.comment == "ឯកភាពតាមសំណើ។"
     assert (office.title, office.name) == ("លោកស្រី", "ហេង សុខលីណា")
     assert (department.title, department.name) == ("លោក", "ចាន់ សុភក្ត្រ")
@@ -129,6 +140,33 @@ def test_signature_files(slip, settings, org):
     assert data.maker.signature is None
 
 
+def _png(settings, stored: str):
+    file = settings.signature_dir / stored
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_bytes(b"png")
+    return file.resolve()
+
+
+def test_an_empty_signature_is_filled_with_the_new_one(slip, db_session, settings, maker, org):
+    """Fill empty ones only (owner, 13 Nov 2026): who had no signature at confirm time gets the
+    one they upload later; a signature kept at confirm time never changes."""
+    office_then = _png(settings, "users/2/office.png")
+    org["dept_head"].user_signature = None
+    maker.user_signature = None
+    db_session.flush()
+    slip()
+
+    org["dept_head"].user_signature = "users/1/new.png"
+    maker.user_signature = "users/9/new.png"
+    org["office_head"].user_signature = "users/2/new.png"
+    new = {k: _png(settings, f"users/{k}/new.png") for k in (1, 2, 9)}
+    db_session.flush()
+    data = build_slip_data(db_session, settings, slip.booking)
+    assert data.department_head.signature == new[1]  # was empty: filled
+    assert data.maker.signature == new[9]  # was empty: filled
+    assert data.office_head.signature == office_then  # was kept: stays
+
+
 def test_slip_reads_only_copies(slip, db_session, settings, make_user, org):
     slip()
     org["department"].name_kh = "នាយកដ្ឋានថ្មី"
@@ -162,3 +200,33 @@ def test_old_booking_without_copies(db_session, settings, make_bookable_room, ma
     assert data.maker.signature == file.resolve()
     assert data.office_line == "ប្រធានការិយាល័យគោលនយោបាយ"
     assert data.director_title == "លោក"
+
+
+def test_timetable_has_a_short_form_for_long_bookings(slip):
+    """Many sessions print two to a row on the slip: the short weekday, the date in numbers,
+    24-hour times."""
+    days = (
+        (date(2026, 11, 13), time(12, 30), time(18)),
+        (date(2026, 11, 17), time(7, 30), time(18)),
+    )
+    assert slip(sessions=days).timetable_short == [
+        ("១", "សុ ១៣/១១/២០២៦", "១២:៣០–១៨:០០"),
+        ("២", "អ ១៧/១១/២០២៦", "០៧:៣០–១៨:០០"),
+    ]
+
+
+def test_no_timetable_no_short_form(slip):
+    assert slip().timetable_short == []
+
+
+def test_a_short_slip_stays_near_full_size(slip):
+    assert 0.9 <= fit_scale(slip(catering=True, it=True)) <= 1.0
+
+
+def test_a_long_slip_shrinks_but_never_below_the_smallest(slip):
+    days = tuple(
+        (date(2026, 11, 2 + n), time(8 + n % 2 * 5), time(11 + n % 2 * 5)) for n in range(20)
+    )
+    data = slip(sessions=days, meeting_title="ក" * 200)
+    assert SMALLEST < fit_scale(data) < 0.8
+    assert fit_scale(replace(data, requests=["- ក"] * 100)) == SMALLEST

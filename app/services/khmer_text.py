@@ -23,6 +23,8 @@ KH_MONTHS = (
 )
 # Monday first, like date.weekday().
 _WEEKDAYS = ("ចន្ទ", "អង្គារ", "ពុធ", "ព្រហស្បតិ៍", "សុក្រ", "សៅរ៍", "អាទិត្យ")
+# Short weekdays, Monday first, as Khmer calendars print them.
+_WEEKDAYS_SHORT = ("ច", "អ", "ព", "ព្រ", "សុ", "ស", "អា")
 _TITLES = {"Mr.": "លោក", "Ms.": "លោកស្រី", "Mrs.": "លោកស្រី", "Dr.": "បណ្ឌិត"}
 
 
@@ -42,6 +44,11 @@ def khmer_short_date(day: date) -> str:
 
 def khmer_weekday(day: date) -> str:
     return _WEEKDAYS[day.weekday()]
+
+
+def khmer_weekday_short(day: date) -> str:
+    """Like សុ for Friday."""
+    return _WEEKDAYS_SHORT[day.weekday()]
 
 
 def _part_of_day(hour: int) -> str:

@@ -12,6 +12,7 @@ from app.services.khmer_text import (
     khmer_time,
     khmer_title,
     khmer_weekday,
+    khmer_weekday_short,
 )
 
 
@@ -24,6 +25,7 @@ def test_dates():
     assert khmer_date(date(2026, 9, 14)) == "ថ្ងៃទី១៤ ខែកញ្ញា ឆ្នាំ២០២៦"
     assert khmer_short_date(date(2026, 9, 5)) == "០៥/០៩/២០២៦"
     assert khmer_weekday(date(2026, 9, 14)) == "ចន្ទ"  # as on the signed paper
+    assert khmer_weekday_short(date(2026, 11, 13)) == "សុ"
     assert KH_MONTHS[10] == "វិច្ឆិកា"
 
 
