@@ -94,12 +94,20 @@ const sessions = computed(() =>
           <dt>Why private</dt>
           <dd class="wrap" :class="{ none: !booking.private_justification }">{{ booking.private_justification || 'No reason given' }}</dd>
         </div>
+      </dl>
+
+      <!-- Who asks (owner, 16 Nov 2026): ID, name, position and department, as kept when sent. -->
+      <h3>Booker</h3>
+      <dl class="details booker">
+        <div><dt>Staff ID</dt><dd class="mono" :class="{ none: !info('staff_id') }">{{ info('staff_id') ?? 'None' }}</dd></div>
         <div>
-          <dt>Booker</dt>
-          <dd>
-            {{ info('name_en') ?? booking.requester.name_en }}
-            <span v-if="info('division')" class="sub">{{ info('division') }}</span>
-          </dd>
+          <dt>Name</dt>
+          <dd>{{ info('name_en') ?? booking.requester.name_en }} <span v-if="info('name_kh')" class="sub kh">{{ info('name_kh') }}</span></dd>
+        </div>
+        <div><dt>Position</dt><dd :class="{ none: !info('position') }">{{ info('position') ?? 'None' }}</dd></div>
+        <div>
+          <dt>Department</dt>
+          <dd :class="{ none: !info('department') && !info('division') }">{{ info('department') ?? info('division') ?? 'None' }} <span v-if="info('department') && info('division')" class="sub">{{ info('division') }}</span></dd>
         </div>
       </dl>
 

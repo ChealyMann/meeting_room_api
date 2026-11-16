@@ -230,6 +230,33 @@ describe('Review panel and decisions', () => {
     expect(p.textContent).toContain('Projector setup')
   })
 
+  it("shows the booker's staff ID, name, position and department", async () => {
+    DETAILS[22] = {
+      requester_info: { name_en: 'Sok Dara', name_kh: 'សុខ ដារា', staff_id: 'NBC0042', position: 'Officer', division: 'Payments', department: 'Operations' },
+    }
+    const { wrapper } = await mountReview()
+    await row(wrapper, 22).trigger('click')
+    await flushPromises()
+
+    const rows = [...panel()!.querySelectorAll('.booker div')].map((d) => [d.querySelector('dt')?.textContent, d.querySelector('dd')?.textContent?.trim()])
+    expect(rows).toEqual([
+      ['Staff ID', 'NBC0042'],
+      ['Name', 'Sok Dara សុខ ដារា'],
+      ['Position', 'Officer'],
+      ['Department', 'Operations Payments'],
+    ])
+    delete DETAILS[22]
+  })
+
+  it('says None for booker details the booking does not have', async () => {
+    const { wrapper } = await mountReview()
+    await row(wrapper, 22).trigger('click')
+    await flushPromises()
+
+    const values = [...panel()!.querySelectorAll('.booker dd')].map((d) => d.textContent?.trim())
+    expect(values).toEqual(['None', 'Sok Dara', 'None', 'Payments'])
+  })
+
   it('lists every session in the panel, and says the food comes at each of them', async () => {
     const { wrapper } = await mountReview()
     await row(wrapper, 21).trigger('click')
