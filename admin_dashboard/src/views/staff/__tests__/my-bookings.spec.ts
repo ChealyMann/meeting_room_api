@@ -29,8 +29,7 @@ let slipFails = false
 function stub() {
   calls = []
   bodies = {}
-  const json = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
     const key = `${init?.method ?? 'GET'} ${url.pathname}`
@@ -94,11 +93,19 @@ async function open(query = '') {
 const titles = (w: VueWrapper) => w.findAll('.bk-card h2').map((h) => h.text())
 const panel = () => document.body.querySelector('.side-panel, [role="dialog"]')
 async function openCard(w: VueWrapper, title: string) {
-  await w.findAll('.bk-card').find((c) => c.get('h2').text() === title)!.trigger('click')
+  await w
+    .findAll('.bk-card')
+    .find((c) => c.get('h2').text() === title)!
+    .trigger('click')
   await flushPromises()
 }
 function buttonIn(root: Element, text: string) {
   return [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === text) as HTMLButtonElement | undefined
+}
+// Cancel booking sits in the ⋯ menu of the panel foot.
+async function more() {
+  panel()!.querySelector<HTMLButtonElement>('button[aria-label="More actions"]')!.click()
+  await flushPromises()
 }
 
 describe('My bookings', () => {
@@ -132,6 +139,7 @@ describe('My bookings', () => {
     const w = await open()
     await openCard(w, 'Budget review')
     expect(panel()!.querySelector('textarea')).toBeNull()
+    await more()
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
     expect(panel()!.textContent).toContain('Cancel this booking?')
@@ -148,6 +156,7 @@ describe('My bookings', () => {
     cancelAnswer = () => [{ error: { code: 'STALE_VERSION', message: 'Stale.' } }, 409]
     const w = await open()
     await openCard(w, 'Budget review')
+    await more()
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
     buttonIn(panel()!, 'Yes, cancel booking')!.click()
@@ -158,6 +167,7 @@ describe('My bookings', () => {
   it('asks for the cancel reason only after Cancel booking, and Keep it closes the question', async () => {
     const w = await open()
     await openCard(w, 'Budget review')
+    await more()
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
     const reason = panel()!.querySelector('textarea')!
@@ -173,6 +183,7 @@ describe('My bookings', () => {
   it('sends the cancel reason when one is written', async () => {
     const w = await open()
     await openCard(w, 'Budget review')
+    await more()
     buttonIn(panel()!, 'Cancel booking')!.click()
     await flushPromises()
     const reason = panel()!.querySelector('textarea')!
@@ -180,25 +191,47 @@ describe('My bookings', () => {
     reason.dispatchEvent(new Event('input'))
     buttonIn(panel()!, 'Yes, cancel booking')!.click()
     await flushPromises()
-    expect(bodies['POST /api/v1/bookings/7/cancel']).toEqual({ version: 3, reason: 'The date moved.' })
+    expect(bodies['POST /api/v1/bookings/7/cancel']).toEqual({
+      version: 3,
+      reason: 'The date moved.',
+    })
   })
 
-  it('puts the room photo on top with the title, the room and a status pill on it', async () => {
-    rooms = [{ id: 12, cover_photo: { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_t.jpg' } }]
+  it('puts the room photo on top with the title and the room on it, and the status band under it', async () => {
+    rooms = [
+      {
+        id: 12,
+        cover_photo: { url: '/uploads/rooms/12/a.jpg', thumbnail_url: '/uploads/rooms/12/a_t.jpg' },
+      },
+    ]
     const w = await open()
     await openCard(w, 'Budget review')
     expect(panel()!.querySelector('.panel-cover img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
     expect(panel()!.querySelector('.panel-head.on-cover')).not.toBeNull()
-    expect(panel()!.querySelector('.pill')?.textContent?.trim()).toBe('Confirmed')
+    expect(panel()!.querySelector('.band.ok .say-status')?.textContent?.trim()).toBe('Confirmed · the room is yours')
+    expect(panel()!.querySelector('.band small')?.textContent?.trim()).toBe('Fri 13 Nov')
     expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Mekong Room · NBC')
   })
 
-  it('keeps the plain head with the status when the room has no photo', async () => {
+  it('keeps the plain head and the status band when the room has no photo', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(panel()!.querySelector('.panel-cover')).toBeNull()
+    expect(panel()!.querySelector('.band.wait .say-status')?.textContent?.trim()).toBe('Waiting for Pitika')
+  })
+
+  it('keeps Add to calendar as the main button and closes the menu with Escape, not the panel', async () => {
     const w = await open()
     await openCard(w, 'Budget review')
-    expect(panel()!.querySelector('.panel-cover')).toBeNull()
-    expect(panel()!.querySelector('.pill')).toBeNull()
-    expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Confirmed')
+    expect(panel()!.querySelector('.panel-foot .main')?.textContent?.trim()).toBe('Add to calendar')
+    expect(panel()!.querySelector('[role="menu"]')).toBeNull()
+    await more()
+    const menu = panel()!.querySelector('[role="menu"]')!
+    expect(document.activeElement?.textContent?.trim()).toBe('Copy reference')
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(panel()!.querySelector('[role="menu"]')).toBeNull()
+    expect(panel()?.textContent).toContain('Budget review')
   })
 
   describe('request slip', () => {
@@ -235,6 +268,8 @@ describe('My bookings', () => {
       const w = await open()
       await openCard(w, 'Team sync')
       expect(buttonIn(panel()!, SLIP)).toBeTruthy()
+      await more()
+      expect(panel()!.textContent).toContain('Copy reference')
       expect(buttonIn(panel()!, 'Cancel booking')).toBeUndefined()
     })
 
@@ -305,7 +340,12 @@ describe('My bookings', () => {
     it('updates an open booking when someone decides it', async () => {
       await open('?booking=8')
       expect(panel()?.textContent).toContain('Waiting for Pitika')
-      detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED', version: 4 })
+      detail8 = bookingDetail({
+        ...WAITING,
+        status: 'CONFIRMED',
+        display_status: 'CONFIRMED',
+        version: 4,
+      })
       vi.advanceTimersByTime(15_000)
       await flushPromises()
       expect(panel()?.textContent).toContain('Confirmed')

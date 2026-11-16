@@ -91,8 +91,9 @@ const status = computed(() => {
       <span v-if="ticket.special_requirements" class="soft-tag note" :title="ticket.special_requirements">
         Note<span class="sr-only">: {{ ticket.special_requirements }}</span>
       </span>
-      <span v-if="!staffNames.length" class="soft-tag warn staff">No staff yet</span>
-      <span v-else class="soft-tag ink people" :title="staffNames.join(', ')">
+      <span v-if="!staffNames.length" class="soft-tag warn"><span class="who">IT Support</span><span class="staff">No staff yet</span></span>
+      <span v-else class="soft-tag ink people" :title="`IT Support: ${staffNames.join(', ')}`">
+        <span class="who">IT Support</span>
         <span class="faces"><StaffAvatar v-for="s in ticket.staff" :key="s.id" :name="s.name_en" :photo="s.avatar_url ?? null" :size="18" /></span>
         <span class="staff">{{ staffNames.join(', ') }}</span>
       </span>
@@ -123,6 +124,14 @@ const status = computed(() => {
 }
 .faces {
   display: inline-flex;
+}
+/* "IT Support" leads the staff tag (owner, 13 Nov 2026), quieter than the names, with a thin
+   line after it. */
+.who {
+  padding-right: 7px;
+  border-right: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  font-weight: 500;
+  opacity: 0.75;
 }
 .faces > :deep(.staff-avatar) {
   box-shadow: 0 0 0 2px var(--color-field-disabled);

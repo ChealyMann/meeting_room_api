@@ -15,12 +15,19 @@ const USERS = [
   { id: 21, name_en: 'Pich Visal', name_kh: 'ពេជ្រ វិសាល', is_active: true },
   { id: 22, name_en: 'Chan Sophea', name_kh: 'ចាន់ សុភា', is_active: true },
 ]
-let settings: { director: { id: number; name_en: string; name_kh: string } | null; address_kh: string; updated_at: string }
+let settings: {
+  director: { id: number; name_en: string; name_kh: string } | null
+  address_kh: string
+  updated_at: string
+}
 let writes: Array<{ method: string; body: unknown }>
 let saveAnswer: (() => Response) | null
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 beforeEach(() => {
@@ -39,7 +46,11 @@ beforeEach(() => {
         const body = JSON.parse(String(init.body))
         writes.push({ method: 'PUT', body })
         if (saveAnswer) return saveAnswer()
-        settings = { ...settings, address_kh: body.address_kh, director: USERS.find((u) => u.id === body.director_user_id) ?? null }
+        settings = {
+          ...settings,
+          address_kh: body.address_kh,
+          director: USERS.find((u) => u.id === body.director_user_id) ?? null,
+        }
         return json(settings)
       }
       if (url.pathname === '/api/v1/slip-settings') return json(settings)
@@ -53,7 +64,10 @@ afterEach(() => {
 })
 
 async function open() {
-  const wrapper = mount(SlipSettingsView, { attachTo: document.body })
+  const wrapper = mount(SlipSettingsView, {
+    attachTo: document.body,
+    global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+  })
   await flushPromises()
   return wrapper
 }
@@ -69,6 +83,23 @@ describe('Request slip settings', () => {
     expect(w.get('h1').text()).toBe('Request slip')
     expect(pickerLabel('director_user_id')).toBe('Pich Visal')
     expect((w.get('#address_kh').element as HTMLTextAreaElement).value).toBe(ADDRESS)
+  })
+
+  it('keeps Save off until something changes', async () => {
+    const w = await open()
+    const button = () => w.get('button[type="submit"]').element as HTMLButtonElement
+    expect(button().disabled).toBe(true)
+    await w.get('#address_kh').setValue(`${ADDRESS}, ទូរស័ព្ទ`)
+    expect(button().disabled).toBe(false)
+    expect(w.text()).toContain('Not saved yet')
+    await w.get('#address_kh').setValue(`${ADDRESS}  `)
+    expect(button().disabled).toBe(true)
+  })
+
+  it('links to the pages that set the heads', async () => {
+    const w = await open()
+    expect(w.text()).toContain('Departments')
+    expect(w.text()).toContain('Offices')
   })
 
   it('saves the director and the address, and says so', async () => {
@@ -98,7 +129,16 @@ describe('Request slip settings', () => {
 
   it('shows what the API refuses under its field', async () => {
     saveAnswer = () =>
-      json({ error: { code: 'INACTIVE_REFERENCE', message: 'This user is inactive.', fields: { director_user_id: 'This user is inactive.' } } }, 409)
+      json(
+        {
+          error: {
+            code: 'INACTIVE_REFERENCE',
+            message: 'This user is inactive.',
+            fields: { director_user_id: 'This user is inactive.' },
+          },
+        },
+        409,
+      )
     const w = await open()
     await choosePicker('director_user_id', 'Chan Sophea')
     await save(w)

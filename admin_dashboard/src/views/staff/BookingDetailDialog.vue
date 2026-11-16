@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
-// on top with the title and a status pill on it; the steps bar; a note saying why it stopped
+// on top with the title on it; the status band; the steps bar; a note saying why it stopped
 // (not approved, expired, cancelled); the door pass when confirmed; the sessions with their
-// length; the details in two columns. Foot: Add to calendar, and Cancel booking, which asks
-// right there (reason optional) and sends the version that was read; if someone saved first it
-// says so and offers Reload.
-import { Ban, CalendarPlus, Check, Clock, FileText, X } from 'lucide-vue-next'
-import { computed, nextTick, ref, watch } from 'vue'
+// length; the details in two columns. A status band sits right under the photo. Foot (owner pick, 13 Nov 2026: look C "one main button +
+// menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
+// and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
+// read; if someone saved first it says so and offers Reload.
+import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { api } from '../../api'
 import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
@@ -50,17 +51,22 @@ useLiveRefresh(async () => {
 
 const history = computed(() => (booking.value ? buildHistory(booking.value) : { steps: [], events: [] }))
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
-const open = computed(
-  () => !!booking.value && ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'].includes(booking.value.display_status),
-)
+const open = computed(() => !!booking.value && ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'].includes(booking.value.display_status))
 
-// The status pill on the photo.
+// The status band under the photo (owner pick, 13 Nov 2026): "Confirmed · the room is yours" on a
+// soft tone colour, with the day (or the number of sessions) at the end.
 type Tone = 'ok' | 'bad' | 'off' | 'wait'
 const tone = computed<Tone>(() => {
   const s = booking.value?.display_status
   return s === 'CONFIRMED' || s === 'COMPLETED' ? 'ok' : s === 'REJECTED' ? 'bad' : s === 'CANCELLED' ? 'off' : 'wait'
 })
 const TONE_ICON = { ok: Check, bad: X, off: Ban, wait: Clock } as const
+const STATUS_LINES: Record<string, string> = {
+  CONFIRMED: 'the room is yours',
+  COMPLETED: 'the meeting is over',
+  SETUP_IN_PROGRESS: 'IT is getting the room ready',
+}
+const statusLine = computed(() => STATUS_LINES[booking.value?.display_status ?? ''] ?? '')
 
 // Why it stopped: the last rejection, expiry or cancel in the history, with who and when.
 const STOPS = ['rejected', 'expired', 'cancelled']
@@ -124,6 +130,36 @@ async function addToCalendar() {
 // The request slip (ប័ណ្ណស្នើ): for a confirmed booking, also after the meeting is over.
 const slip = useRequestSlip(booking)
 
+// The ⋯ menu: a click outside or Escape closes it (Escape closes only the menu, not the panel).
+const menuOpen = ref(false)
+const moreBox = ref<HTMLElement | null>(null)
+const moreBtn = ref<HTMLButtonElement | null>(null)
+function onOutside(event: PointerEvent) {
+  if (!moreBox.value?.contains(event.target as Node)) closeMenu()
+}
+async function openMenu() {
+  menuOpen.value = true
+  document.addEventListener('pointerdown', onOutside)
+  await nextTick()
+  moreBox.value?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+}
+function closeMenu(refocus = false) {
+  menuOpen.value = false
+  document.removeEventListener('pointerdown', onOutside)
+  if (refocus) moreBtn.value?.focus()
+}
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
+async function copyRef() {
+  closeMenu()
+  if (!booking.value) return
+  try {
+    await navigator.clipboard.writeText(booking.value.reference_code)
+    toast.show('Reference copied', booking.value.reference_code)
+  } catch {
+    toast.show('Could not copy', booking.value.reference_code)
+  }
+}
+
 // Cancel: "Cancel booking" opens the question in the foot (an optional reason, 5 characters or
 // more when given); "Yes, cancel booking" sends it, "Keep it" closes the question.
 const asking = ref(false)
@@ -134,6 +170,7 @@ const stale = ref(false)
 const busy = ref(false)
 const reasonBad = computed(() => reason.value.trim().length > 0 && reason.value.trim().length < 5)
 async function ask() {
+  closeMenu()
   asking.value = true
   await nextTick()
   reasonBox.value?.focus()
@@ -178,19 +215,20 @@ async function reload() {
   <SidePanel
     :open="true"
     :title="booking?.meeting_title ?? 'Booking'"
-    :subtitle="booking ? (cover ? `${booking.room.name_en} · ${booking.room.location.name_en}` : statusLabel(booking.display_status)) : undefined"
+    :subtitle="booking ? `${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
     :serial="booking?.reference_code"
     @close="emit('close')"
   >
     <template v-if="cover && booking" #cover><RoomPhoto :path="cover" :alt="booking.room.name_en" /></template>
-    <template v-if="cover && booking" #lead>
-      <span class="pill" :class="tone"
-        ><component :is="TONE_ICON[tone]" :size="13" aria-hidden="true" />{{ statusLabel(booking.display_status) }}</span
-      >
-    </template>
-
     <p v-if="failed" class="msg" role="alert">{{ failed }}</p>
     <div v-else-if="booking" class="bd">
+      <div class="band" :class="tone">
+        <span class="dot"><component :is="TONE_ICON[tone]" :size="13" :stroke-width="2.5" aria-hidden="true" /></span>
+        <span class="say-status"
+          >{{ statusLabel(booking.display_status) }}<template v-if="statusLine"> · {{ statusLine }}</template></span
+        >
+        <small v-if="sessions.length">{{ sessions.length > 1 ? `${sessions.length} sessions` : sessions[0]!.day }}</small>
+      </div>
       <ProcessBar :steps="history.steps" size="large" />
 
       <div v-if="stopNote" class="callout" :class="stopNote.tone">
@@ -233,11 +271,15 @@ async function reload() {
         </div>
         <div>
           <dt>Food &amp; drinks</dt>
-          <dd :class="{ none: !booking.catering }">{{ booking.catering ? names(booking.catering.packages) : 'None' }}</dd>
+          <dd :class="{ none: !booking.catering }">
+            {{ booking.catering ? names(booking.catering.packages) : 'None' }}
+          </dd>
         </div>
         <div>
           <dt>IT help</dt>
-          <dd :class="{ none: !booking.it }">{{ booking.it ? names(booking.it.items) : 'None' }}</dd>
+          <dd :class="{ none: !booking.it }">
+            {{ booking.it ? names(booking.it.items) : 'None' }}
+          </dd>
         </div>
         <div v-if="booking.private_justification" class="full">
           <dt>Why this room</dt>
@@ -256,30 +298,41 @@ async function reload() {
     <template v-if="booking && (open || slip.hasSlip.value)" #foot>
       <div v-if="asking" class="foot">
         <p class="ask">Cancel this booking? <span>This cannot be undone.</span></p>
-        <textarea
-          ref="reasonBox"
-          v-model="reason"
-          class="reason"
-          rows="2"
-          placeholder="Reason (optional)"
-          aria-label="Reason to cancel (optional)"
-        />
-        <p v-if="cancelError" class="msg" role="alert">
-          {{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button>
-        </p>
+        <textarea ref="reasonBox" v-model="reason" class="reason" rows="2" placeholder="Reason (optional)" aria-label="Reason to cancel (optional)" />
+        <p v-if="cancelError" class="msg" role="alert">{{ cancelError }}<button v-if="stale" type="button" class="reload" @click="reload">Reload</button></p>
         <div class="row">
           <button type="button" class="cal" :disabled="busy" @click="keep">Keep it</button>
           <button type="button" class="danger" :disabled="busy" @click="cancel">Yes, cancel booking</button>
         </div>
       </div>
       <div v-else class="foot">
-        <div class="row">
-          <button v-if="open" type="button" class="quiet" @click="ask">Cancel booking</button>
-          <span class="push" />
-          <button v-if="slip.hasSlip.value" type="button" class="cal kh" :disabled="slip.busy.value" @click="slip.download">
+        <div class="bar">
+          <button v-if="open" type="button" class="main" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+          <button v-if="slip.hasSlip.value" type="button" class="kh" :class="open ? 'cal' : 'main'" :disabled="slip.busy.value" @click="slip.download">
             <FileText :size="16" aria-hidden="true" />{{ SLIP_LABEL }}
           </button>
-          <button v-if="open" type="button" class="cal" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
+          <div ref="moreBox" class="more" @keydown.esc.prevent="closeMenu(true)">
+            <button
+              ref="moreBtn"
+              type="button"
+              class="cal sq"
+              aria-label="More actions"
+              aria-haspopup="menu"
+              :aria-expanded="menuOpen"
+              @click="menuOpen ? closeMenu() : openMenu()"
+            >
+              <Ellipsis :size="18" aria-hidden="true" />
+            </button>
+            <Transition name="menu">
+              <div v-if="menuOpen" class="menu" role="menu">
+                <button type="button" role="menuitem" @click="copyRef"><Copy :size="16" aria-hidden="true" />Copy reference</button>
+                <template v-if="open">
+                  <hr />
+                  <button type="button" role="menuitem" class="red" @click="ask"><CircleX :size="16" aria-hidden="true" />Cancel booking</button>
+                </template>
+              </div>
+            </Transition>
+          </div>
         </div>
       </div>
     </template>
@@ -291,29 +344,48 @@ async function reload() {
   display: grid;
   gap: 18px;
 }
-/* On the photo, above the title. White, so it reads on any photo. */
-.pill {
-  display: inline-flex;
+/* Full width right under the photo (it cancels the body's padding): a soft wash of the tone,
+   a filled dot with the icon, the status, and the day at the end. */
+.band {
+  --tone: var(--color-ok);
+  display: flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #fff;
-  font-size: 12px;
+  gap: 10px;
+  margin: -16px -20px 0;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--tone) 11%, var(--color-sheet));
+  color: var(--tone);
+  font-size: 13.5px;
   font-weight: 500;
 }
-.pill.ok {
-  color: #2f6b3f;
+.band.bad {
+  --tone: var(--color-crimson);
 }
-.pill.bad {
-  color: #991b1b;
+.band.wait {
+  --tone: var(--color-warn);
 }
-.pill.wait {
-  color: #9a4a06;
+.band.off {
+  --tone: var(--color-intaglio);
 }
-.pill.off {
-  color: #6b5243;
+.band .dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tone);
+  color: var(--color-sheet);
+}
+.band .say-status {
+  min-width: 0;
+}
+.band small {
+  flex: none;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-intaglio);
 }
 .callout {
   display: grid;
@@ -403,8 +475,8 @@ dd.none {
   font-size: 12.5px;
 }
 .cal,
-.danger,
-.quiet {
+.main,
+.danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -417,27 +489,98 @@ dd.none {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms var(--ease-out-quint);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms var(--ease-out-quint);
 }
 .cal {
   background: var(--color-field-disabled);
   color: var(--color-ink);
 }
-/* Cancel is a quiet text button at the start of the foot; Add to calendar at the end. */
-.push {
-  margin-right: auto;
-}
-.quiet {
-  padding: 0 12px;
-  background: none;
-  color: var(--color-intaglio);
+/* One main button (dark ink) that takes the free width, the slip beside it, then ⋯. */
+.main {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-ink);
+  color: var(--color-sheet);
+  white-space: nowrap;
 }
 .danger {
   margin-left: auto;
   background: var(--color-crimson-fill);
   color: #fff;
 }
+.bar {
+  display: flex;
+  gap: 8px;
+}
+.bar .cal {
+  white-space: nowrap;
+}
+.more {
+  position: relative;
+  flex: none;
+}
+.sq {
+  width: 42px;
+  padding: 0;
+}
+/* The menu opens above the ⋯ button, from its corner. */
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  display: grid;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: var(--color-sheet);
+  box-shadow: var(--shadow-toast);
+  transform-origin: bottom right;
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.menu button:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: -2px;
+}
+.menu .red {
+  color: var(--color-crimson);
+}
+.menu hr {
+  margin: 4px 2px;
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}
+.menu-enter-active,
+.menu-leave-active {
+  transition:
+    opacity 150ms ease,
+    transform 150ms var(--ease-out-quint);
+}
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
 .cal:disabled,
+.main:disabled,
 .danger:disabled {
   opacity: 0.6;
   cursor: default;
@@ -482,8 +625,8 @@ dd.none {
   box-shadow: 0 0 0 1.5px var(--color-ink);
 }
 .cal:active:not(:disabled),
-.danger:active:not(:disabled),
-.quiet:active {
+.main:active:not(:disabled),
+.danger:active:not(:disabled) {
   transform: scale(0.97);
 }
 .msg {
@@ -506,9 +649,14 @@ dd.none {
   .cal:not(:disabled):hover {
     background: var(--color-rule);
   }
-  .quiet:hover {
+  .main:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-ink) 86%, var(--color-sheet));
+  }
+  .menu button:hover {
+    background: var(--color-row-hover);
+  }
+  .menu .red:hover {
     background: var(--color-crimson-wash);
-    color: var(--color-crimson);
   }
   .danger:not(:disabled):hover {
     background: var(--color-crimson-deep);
@@ -516,8 +664,10 @@ dd.none {
 }
 @media (prefers-reduced-motion: reduce) {
   .cal,
+  .main,
   .danger,
-  .quiet {
+  .menu-enter-active,
+  .menu-leave-active {
     transition: none;
   }
 }
