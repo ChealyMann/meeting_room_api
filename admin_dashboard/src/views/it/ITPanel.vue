@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One IT setup in the side panel (spec Part B, "Panel"): the room photo, the booking's full
-// process bar, then the same tabs as the other booking pop-ups (owner pick, 16 Nov 2026):
+// One IT setup in the side panel (spec Part B, "Panel"): a small room photo by the title and the
+// booking's thin step bar (look B), then the same tabs as the other booking pop-ups (16 Nov 2026):
 // Details, Food & IT, Files, History. It opens on Food & IT, where IT's work is. The IT card
 // takes the ticket from the list, so a new assign shows at once. The times are the meeting's
 // only. The foot has Close and the row's buttons.
@@ -14,8 +14,9 @@ import BookingFiles from '../../components/BookingFiles.vue'
 import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
+import PanelSection from '../../components/PanelSection.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
-import ProcessBar from '../../components/ProcessBar.vue'
+import StepProgress from '../../components/StepProgress.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { buildHistory } from '../../utils/bookingHistory'
 import { hasSessionAhead } from '../../utils/itQueue'
@@ -34,7 +35,10 @@ const b = computed(() => props.ticket.booking)
 const steps = computed(() => (live.value ? buildHistory(live.value).steps : []))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
 /** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
+/** The room line by the photo: Khmer name, name, and where it is. */
+const room = computed(() => [b.value.room.name_kh, b.value.room.name_en, props.place].filter(Boolean).join(' · '))
 const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
+/** Where the setup is, beside the step bar. */
 const subtitle = computed(() => {
   if (props.ticket.missed) return 'Missed · not marked ready'
   if (props.ticket.status === 'READY') return 'Ready'
@@ -79,17 +83,10 @@ const tabs = computed(() => {
 </script>
 
 <template>
-  <SidePanel :open="true" :title="b.meeting_title" :subtitle="subtitle" :serial="b.reference_code" @close="emit('close')">
+  <SidePanel :open="true" :title="b.meeting_title" :subtitle="room" :serial="b.reference_code" @close="emit('close')">
+    <template #lead><RoomPhoto class="room-thumb" :path="photo" :alt="b.room.name_en" /></template>
     <div class="it-panel">
-      <figure class="hero">
-        <RoomPhoto class="photo" :path="photo" :alt="b.room.name_en" />
-        <figcaption>
-          <span class="kh">{{ b.room.name_kh }}</span>
-          <span>{{ b.room.name_en }}<template v-if="place"> · {{ place }}</template></span>
-        </figcaption>
-      </figure>
-
-      <ProcessBar v-if="steps.length" :steps="steps" size="large" />
+      <StepProgress v-if="steps.length" :steps="steps" :label="subtitle" />
 
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
@@ -103,11 +100,11 @@ const tabs = computed(() => {
       </section>
 
       <section v-if="files.length && detail" v-show="tab === 'files'" id="tabpanel-files" role="tabpanel" aria-labelledby="tab-files">
-        <BookingFiles :booking-id="detail.id" :files="files" />
+        <PanelSection title="Files"><BookingFiles :booking-id="detail.id" :files="files" /></PanelSection>
       </section>
 
       <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
-        <BookingHistory v-if="live" :booking="live" :bar="false" />
+        <PanelSection v-if="live" title="History"><BookingHistory :booking="live" :bar="false" /></PanelSection>
         <p v-else class="none">Loading…</p>
       </section>
     </div>
@@ -129,27 +126,12 @@ const tabs = computed(() => {
 </template>
 
 <style scoped>
-.hero {
-  position: relative;
-  margin: -16px -20px 16px;
-}
-.hero .photo {
-  height: 188px;
-}
-.hero figcaption {
-  position: absolute;
-  inset: auto 0 0;
-  display: grid;
-  gap: 1px;
-  padding: 28px 20px 12px;
-  background: linear-gradient(to top, rgba(26, 6, 6, 0.74), rgba(26, 6, 6, 0));
-  color: #fff;
-  font-size: 12.5px;
-}
-.hero .kh {
-  font-family: var(--font-kh);
-  font-size: 15px;
-  font-weight: 500;
+/* Look B (owner pick, 16 Nov 2026): a small photo by the title. */
+.room-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
 }
 .tab-bar {
   margin-block: 16px 14px;

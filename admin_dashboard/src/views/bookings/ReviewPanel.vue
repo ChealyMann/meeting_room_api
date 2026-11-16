@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // One booking waiting for the Pitika (spec 2026-11-05-pitika-review-design, "The side panel"):
-// the room's photo, the full process bar, what is special about it, the meeting, the food and
-// the IT help, then Reject and Approve. Decisions happen in the page's confirm pop-up.
-import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
+// a small room photo by the title, a thin step bar (look B, owner pick 16 Nov 2026), a one-line
+// warning, then tabs: the meeting, the food and the IT help, history; then Reject and Approve.
+// Decisions happen in the page's confirm pop-up.
+import { Check, Clock, FileText, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
@@ -12,8 +13,9 @@ import BookingFiles from '../../components/BookingFiles.vue'
 import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
+import PanelSection from '../../components/PanelSection.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
-import ProcessBar from '../../components/ProcessBar.vue'
+import StepProgress from '../../components/StepProgress.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { statusLabel } from '../../utils/bookingLabels'
@@ -38,7 +40,6 @@ const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
-
 
 // Tabs (owner pick, 16 Nov 2026): the photo, the steps and the buttons stay; the rest is split.
 // A count on Food & IT says there is something to check; Files shows only when there are files.
@@ -66,26 +67,19 @@ const tabs = computed(() => {
   <SidePanel
     :open="true"
     :title="booking.meeting_title"
-    :subtitle="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')"
+    :subtitle="`${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}`"
     :serial="booking.reference_code"
     @close="emit('close')"
   >
+    <template #lead><RoomPhoto class="room-thumb" :path="photoPath" :alt="booking.room.name_en" /></template>
     <div class="review-panel">
-      <figure class="hero">
-        <RoomPhoto class="photo" :path="photoPath" :alt="booking.room.name_en" />
-        <figcaption>
-          <span class="kh">{{ booking.room.name_kh }}</span>
-          <span>{{ booking.room.name_en }} · {{ booking.room.location.name_en }}</span>
-        </figcaption>
-      </figure>
+      <StepProgress :steps="steps" :label="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')" />
 
-      <ProcessBar :steps="steps" size="large" />
-
-      <p v-if="startsIn && !readOnly" class="note">
-        <TriangleAlert aria-hidden="true" />
-        <span>{{ startsIn }}. If nobody decides before it starts, it is rejected by the system.</span>
+      <p v-if="startsIn && !readOnly" class="warn" title="If nobody decides before it starts, the system rejects it.">
+        <Clock aria-hidden="true" />
+        <span><b>{{ startsIn }}</b> · decide before, or it is rejected</span>
       </p>
-      <p v-if="note" class="note">
+      <p v-if="note" class="warn">
         <TriangleAlert aria-hidden="true" />
         <span>{{ note }}</span>
       </p>
@@ -97,7 +91,7 @@ const tabs = computed(() => {
       </section>
 
       <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
-        <BookingHistory :booking="booking" :bar="false" />
+        <PanelSection title="History"><BookingHistory :booking="booking" :bar="false" /></PanelSection>
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
@@ -111,8 +105,9 @@ const tabs = computed(() => {
         role="tabpanel"
         aria-labelledby="tab-files"
       >
-        <h3>Files</h3>
-        <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
+        <PanelSection title="Files">
+          <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
+        </PanelSection>
       </section>
     </div>
 
@@ -135,55 +130,35 @@ const tabs = computed(() => {
 </template>
 
 <style scoped>
-.hero {
-  position: relative;
-  margin: -16px -20px 16px;
-}
-.hero .photo {
-  height: 188px;
-}
-.hero figcaption {
-  position: absolute;
-  inset: auto 0 0;
-  display: grid;
-  gap: 1px;
-  padding: 28px 20px 12px;
-  background: linear-gradient(to top, rgba(26, 6, 6, 0.74), rgba(26, 6, 6, 0));
-  color: #fff;
-  font-size: 12.5px;
-}
-.hero .kh {
-  font-family: var(--font-kh);
-  font-size: 15px;
-  font-weight: 500;
-}
-.note {
-  display: flex;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-warn) 10%, var(--color-sheet));
-  color: var(--color-warn);
-  font-size: 12.5px;
-  font-weight: 500;
-}
-.note :deep(svg.lucide) {
+/* Look B (owner pick, 16 Nov 2026): a small photo by the title, and a one-line warning. */
+.room-thumb {
   flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
 }
-h3 {
-  margin: 20px 0 4px;
-  font-size: 13px;
+.warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 0 0;
+  color: var(--color-ink-off);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.warn b {
   font-weight: 600;
+  color: var(--color-warn);
+}
+.warn :deep(svg.lucide) {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  color: var(--color-warn);
 }
 .tab-bar {
   margin-block: 16px 14px;
-}
-[role='tabpanel'] > h3:first-child {
-  margin-top: 0;
 }
 .foot {
   display: flex;

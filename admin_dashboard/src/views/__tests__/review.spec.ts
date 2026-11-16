@@ -215,17 +215,23 @@ describe('Review panel and decisions', () => {
     await flushPromises()
   }
 
-  it('opens a booking in the panel with its photo, the full bar and what to check', async () => {
+  it('opens a booking with a small photo by the title, a thin step bar, a one-line warning, and what to check', async () => {
     const { wrapper } = await mountReview()
     await row(wrapper, 21).trigger('click')
     await flushPromises()
 
     const p = panel()!
-    expect(p.querySelector('.room-photo img')?.getAttribute('src')).toBe('http://localhost:8000/uploads/rooms/12/a.jpg')
+    expect(p.querySelector('.panel-head .room-thumb img')?.getAttribute('src')).toBe('http://localhost:8000/uploads/rooms/12/a.jpg')
+    expect(p.querySelector('.panel-cover')).toBeNull()
     expect(p.textContent).toContain('Payment systems workshop')
     expect(p.textContent).toContain('Waiting for Pitika')
-    expect(p.querySelector('.process-bar.large .step.now .n')?.textContent).toBe('Pitika')
-    expect(p.textContent).toContain('Starts in 4 h 40 min. If nobody decides before it starts, it is rejected by the system.')
+    expect(p.querySelector('.step-progress .line span')?.textContent).toBe('Step 2 of 4')
+    expect(p.querySelector('.step-progress .line b')?.textContent).toBe('Waiting for Pitika')
+    expect(p.querySelectorAll('.step-progress .seg.done')).toHaveLength(1)
+    expect(p.querySelector('.step-progress .seg.now')).not.toBeNull()
+    const warn = p.querySelector('.warn')!
+    expect(warn.textContent?.replace(/\s+/g, ' ').trim()).toBe('Starts in 4 h 40 min · decide before, or it is rejected')
+    expect(warn.getAttribute('title')).toBe('If nobody decides before it starts, the system rejects it.')
     expect(p.textContent).toContain('Lunch box')
     expect(p.textContent).toContain('Projector setup')
   })
@@ -260,7 +266,7 @@ describe('Review panel and decisions', () => {
       expect(tabs()).toEqual(['Details', 'Food & IT 2', 'History'])
       expect(shown()).toEqual(['tabpanel-details'])
       expect(panel()!.querySelector('.room-photo')).not.toBeNull()
-      expect(panel()!.querySelector('.process-bar')).not.toBeNull()
+      expect(panel()!.querySelector('.step-progress')).not.toBeNull()
 
       await click(panel()!.querySelector<HTMLButtonElement>('#tab-services')!)
       expect(shown()).toEqual(['tabpanel-services'])

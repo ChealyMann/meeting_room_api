@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
-// on top with the title on it; the status band; the steps bar; a note saying why it stopped
+// One of my bookings, in the side panel: a small room photo by the title (look B, owner pick
+// 16 Nov 2026); the status band; a thin step bar; a note saying why it stopped
 // (not approved, expired, cancelled); the door pass when confirmed;
 // then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, History. Foot (owner pick, 13 Nov 2026: look C "one main button +
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
@@ -19,8 +19,9 @@ import BookingFiles from '../../components/BookingFiles.vue'
 import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
-import ProcessBar from '../../components/ProcessBar.vue'
+import PanelSection from '../../components/PanelSection.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
+import StepProgress from '../../components/StepProgress.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
@@ -231,11 +232,11 @@ async function reload() {
   <SidePanel
     :open="true"
     :title="booking?.meeting_title ?? 'Booking'"
-    :subtitle="booking ? `${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
+    :subtitle="booking ? `${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
     :serial="booking?.reference_code"
     @close="emit('close')"
   >
-    <template v-if="cover && booking" #cover><RoomPhoto :path="cover" :alt="booking.room.name_en" /></template>
+    <template v-if="booking" #lead><RoomPhoto class="room-thumb" :path="cover" :alt="booking.room.name_en" /></template>
     <p v-if="failed" class="msg" role="alert">{{ failed }}</p>
     <div v-else-if="booking" class="bd">
       <div class="band" :class="tone">
@@ -245,7 +246,7 @@ async function reload() {
         >
         <small v-if="sessions.length">{{ sessions.length > 1 ? `${sessions.length} sessions` : sessions[0]!.day }}</small>
       </div>
-      <ProcessBar :steps="history.steps" size="large" />
+      <StepProgress :steps="history.steps" label="" />
 
       <div v-if="stopNote" class="callout" :class="stopNote.tone">
         <span class="h">{{ stopNote.head }}</span>
@@ -271,11 +272,13 @@ async function reload() {
       </section>
 
       <section v-if="showFiles" v-show="tab === 'files'" id="tabpanel-files" class="pane" role="tabpanel" aria-labelledby="tab-files">
-        <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
+        <PanelSection title="Files">
+          <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
+        </PanelSection>
       </section>
 
       <section v-show="tab === 'history'" id="tabpanel-history" class="pane" role="tabpanel" aria-labelledby="tab-history">
-        <BookingHistory :booking="booking" :bar="false" />
+        <PanelSection title="History"><BookingHistory :booking="booking" :bar="false" /></PanelSection>
       </section>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
@@ -327,6 +330,13 @@ async function reload() {
 </template>
 
 <style scoped>
+/* Look B: a small photo by the title (the door tile when the room has none). */
+.room-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+}
 .bd {
   display: grid;
   gap: 18px;

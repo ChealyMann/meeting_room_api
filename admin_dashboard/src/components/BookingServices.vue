@@ -6,6 +6,7 @@ import { computed } from 'vue'
 
 import type { BookingDetail } from '../api/types'
 import { formatDay, formatPhnomPenh } from '../utils/time'
+import PanelSection from './PanelSection.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -44,11 +45,8 @@ const itPill = computed<Pill | null>(() => {
 <template>
   <div class="svc">
     <template v-if="food">
-      <div v-if="booking.catering" class="svc-card" data-kind="food">
-        <div class="svc-h">
-          <h3>Food &amp; drinks</h3>
-          <span v-if="foodPill" class="pill" :class="foodPill.tone">{{ foodPill.text }}</span>
-        </div>
+      <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" data-kind="food">
+        <template v-if="foodPill" #extra><span class="pill" :class="foodPill.tone">{{ foodPill.text }}</span></template>
         <ul class="svc-items">
           <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
         </ul>
@@ -70,15 +68,12 @@ const itPill = computed<Pill | null>(() => {
             </dd>
           </div>
         </dl>
-      </div>
-      <p v-else class="none-line">No food ordered.</p>
+      </PanelSection>
+      <PanelSection v-else title="Food & drinks"><p class="none-line">No food ordered.</p></PanelSection>
     </template>
 
-    <div v-if="booking.it" class="svc-card" data-kind="it">
-      <div class="svc-h">
-        <h3>IT help</h3>
-        <span v-if="itPill" class="pill" :class="itPill.tone">{{ itPill.text }}</span>
-      </div>
+    <PanelSection v-if="booking.it" title="IT help" class="svc-card" data-kind="it">
+      <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
       <ul class="svc-items">
         <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
       </ul>
@@ -100,35 +95,15 @@ const itPill = computed<Pill | null>(() => {
           <dd class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</dd>
         </div>
       </dl>
-    </div>
-    <p v-else class="none-line">No IT help asked.</p>
+    </PanelSection>
+    <PanelSection v-else title="IT help"><p class="none-line">No IT help asked.</p></PanelSection>
   </div>
 </template>
 
 <style scoped>
-.svc {
-  display: grid;
-  gap: 12px;
-}
-.svc-card {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--color-rule);
-  border-radius: 12px;
-}
-.svc-h {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.svc-h h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
 .pill {
+  letter-spacing: 0;
+  text-transform: none;
   flex: none;
   padding: 2px 9px;
   border-radius: 999px;
@@ -171,13 +146,13 @@ const itPill = computed<Pill | null>(() => {
 }
 .svc-rows > div {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px;
-  padding: 7px 0;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
   border-top: 1px solid var(--color-rule);
 }
 .svc-rows dt {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--color-intaglio);
 }
 .svc-rows dd {

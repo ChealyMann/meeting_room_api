@@ -201,7 +201,7 @@ describe('My bookings', () => {
     })
   })
 
-  it('puts the room photo on top with the title and the room on it, and the status band under it', async () => {
+  it('puts a small room photo by the title, the status band, and a thin step bar', async () => {
     rooms = [
       {
         id: 12,
@@ -210,17 +210,18 @@ describe('My bookings', () => {
     ]
     const w = await open()
     await openCard(w, 'Budget review')
-    expect(panel()!.querySelector('.panel-cover img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
-    expect(panel()!.querySelector('.panel-head.on-cover')).not.toBeNull()
+    expect(panel()!.querySelector('.panel-head .room-thumb img')?.getAttribute('src')).toContain('/uploads/rooms/12/a.jpg')
+    expect(panel()!.querySelector('.panel-cover')).toBeNull()
     expect(panel()!.querySelector('.band.ok .say-status')?.textContent?.trim()).toBe('Confirmed · the room is yours')
     expect(panel()!.querySelector('.band small')?.textContent?.trim()).toBe('Fri 13 Nov')
     expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Mekong Room · NBC')
+    expect(panel()!.querySelector('.step-progress .line')?.textContent?.trim()).toBe('Step 3 of 3')
   })
 
-  it('keeps the plain head and the status band when the room has no photo', async () => {
+  it('shows the door tile by the title, and the status band, when the room has no photo', async () => {
     const w = await open()
     await openCard(w, 'Team sync')
-    expect(panel()!.querySelector('.panel-cover')).toBeNull()
+    expect(panel()!.querySelector('.panel-head .room-thumb.none')).not.toBeNull()
     expect(panel()!.querySelector('.band.wait .say-status')?.textContent?.trim()).toBe('Waiting for Pitika')
   })
 
@@ -325,6 +326,7 @@ describe('My bookings', () => {
     const rows = [...details.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
     expect(rows).toEqual(['Mon 16 Nov 2026 12:30–18:00', 'Tue 17 Nov 2026 07:30–18:00'])
     expect(details.querySelector('.sessions-head')?.textContent).toContain('2 sessions')
+    expect([...details.querySelectorAll('.panel-section > h3')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['When · 2 sessions', 'Meeting', 'Booker'])
     const facts = [...details.querySelectorAll('.details dt')].map((d) => d.textContent?.trim())
     expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
     expect(details.textContent).toContain('1 by email')
@@ -491,7 +493,7 @@ describe('Tabs on my booking', () => {
     expect(tabNames()).toEqual(['Details', 'Food & IT 4', 'History'])
     expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Details')
     expect(panel()!.querySelector('[role="tabpanel"] .band')).toBeNull()
-    expect(panel()!.querySelector('[role="tabpanel"] .process-bar')).toBeNull()
+    expect(panel()!.querySelector('[role="tabpanel"] .step-progress')).toBeNull()
     expect(tabPanel('details').textContent).toContain('Sent')
     expect(tabPanel('details').textContent).toContain('10 Nov 2026, 09:00')
     expect(tabPanel('services').style.display).toBe('none')
