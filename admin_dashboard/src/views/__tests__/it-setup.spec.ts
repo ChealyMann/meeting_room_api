@@ -295,6 +295,8 @@ describe('IT setup', () => {
     expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Food & IT 2')
     const cards = [...panel()!.querySelectorAll('#tabpanel-services .panel-section > h3 > span:first-child')].map((h) => h.textContent)
     expect(cards).toEqual(['IT help', 'Food & drinks'])
+    expect(panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!.classList).toContain('lead')
+    expect(panel()!.querySelector('#tabpanel-services .panel-section.lead[data-kind="food"]')).toBeNull()
     const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
     expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Projector setup', 'Microphones'])
     expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Setting up')

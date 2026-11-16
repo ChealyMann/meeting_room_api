@@ -15,7 +15,7 @@ const props = withDefaults(
     viewer: 'booker' | 'staff'
     /** False while the food is not known yet (IT's panel before the booking loads). */
     food?: boolean
-    /** IT help on top (the IT setup panel, owner pick 16 Nov 2026); food first everywhere else. */
+    /** IT help on top, on a light background (the IT setup panel, owner pick 16 Nov 2026); food first everywhere else. */
     itFirst?: boolean
   }>(),
   { food: true, itFirst: false },
@@ -81,7 +81,7 @@ const itPill = computed<Pill | null>(() => {
       </template>
   
       <template v-else>
-        <PanelSection v-if="booking.it" title="IT help" class="svc-card" data-kind="it">
+        <PanelSection v-if="booking.it" title="IT help" class="svc-card" :class="{ lead: itFirst }" data-kind="it">
           <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
           <ul class="svc-items">
             <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
@@ -112,6 +112,11 @@ const itPill = computed<Pill | null>(() => {
 </template>
 
 <style scoped>
+/* The card the reader works on (IT help for IT): a light wash so it stands out. */
+.svc-card.lead {
+  border-color: color-mix(in srgb, var(--color-intaglio) 18%, var(--color-rule));
+  background: var(--color-paper);
+}
 .pill {
   letter-spacing: 0;
   text-transform: none;
