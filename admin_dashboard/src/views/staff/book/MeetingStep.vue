@@ -4,6 +4,7 @@
 import { FileText, Lock, Mail, Minus, Plus, Type, Users, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
+import AttachmentList from '../../../components/AttachmentList.vue'
 import UserAvatar from '../../../components/UserAvatar.vue'
 import type { RoomDetail } from '../../../api/types'
 import { useSessionStore } from '../../../stores/session'
@@ -22,6 +23,11 @@ function bump(by: number) {
 }
 
 const titleFocus = ref(false)
+
+// Files (optional): kept in the draft, uploaded right after Send.
+const files = computed(() => draft.value.files.map((f) => ({ name: f.name, size: f.size })))
+const addFile = (file: File) => draft.value.files.push(file)
+const removeFile = (index: number) => draft.value.files.splice(index, 1)
 
 // Emails: Enter or a comma turns the typed text into a chip; Backspace on empty takes the last back.
 const email = ref('')
@@ -158,6 +164,11 @@ const removeEmail = (e: string) => (draft.value.emails = draft.value.emails.filt
       <label for="bf-notes">Agenda or notes</label>
     </div>
 
+    <div class="files">
+      <span class="files-lbl">Files (optional)</span>
+      <AttachmentList :files="files" editable @add="addFile" @remove="removeFile" />
+    </div>
+
     <div v-if="session.user" class="by">
       <UserAvatar :path="session.user.avatar_url" :name="session.user.name_en" />
       <span><small>Booked by</small>{{ session.user.name_en }}</span>
@@ -167,6 +178,15 @@ const removeEmail = (e: string) => (draft.value.emails = draft.value.emails.filt
 </template>
 
 <style scoped>
+.files {
+  display: grid;
+  gap: 6px;
+}
+.files-lbl {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-intaglio);
+}
 .ms {
   display: flex;
   flex-direction: column;

@@ -128,3 +128,29 @@ describe('Meeting type and emails', () => {
     expect(booking.draft.emails).toHaveLength(2)
   })
 })
+
+describe('Files (optional)', () => {
+  async function pick(w: VueWrapper, file: File) {
+    const input = w.get('.ms input[type="file"]')
+    Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
+    await input.trigger('change')
+  }
+
+  it('adds and removes files, and goes on with none', async () => {
+    const w = await step2()
+    await w.get('input[name="title"]').setValue('Budget review')
+    await pick(w, new File(['%PDF-1'], 'agenda.pdf'))
+    expect(w.findAll('.ms .att-name').map((n) => n.text())).toEqual(['agenda.pdf'])
+    await w.get('[aria-label="Remove agenda.pdf"]').trigger('click')
+    expect(w.find('.ms .att-name').exists()).toBe(false)
+    await next(w)
+    expect(onStep(w)).toContain('Food')
+  })
+
+  it('refuses a picture with the reason', async () => {
+    const w = await step2()
+    await pick(w, new File(['x'], 'photo.png'))
+    expect(w.find('.ms .att-name').exists()).toBe(false)
+    expect(w.get('.ms .att-problem').text()).toBe('Only PDF, Word or Excel files.')
+  })
+})

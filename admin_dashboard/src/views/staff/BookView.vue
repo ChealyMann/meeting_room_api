@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../../api'
 import { getRoomSchedule } from '../../api/bookings'
+import { uploadAttachment } from '../../api/attachments'
 import { getRoom } from '../../api/rooms'
 import type { ServiceOut } from '../../api/services'
 import { ApiError } from '../../api/errors'
@@ -179,13 +180,29 @@ const PATH: Record<BookingStep, string> = {
   CONFIRMED: 'Confirmed',
 }
 
+/** The booking is sent; now its files, one by one. A file that fails never undoes the booking:
+ *  the booker adds it again from My bookings. Returns how many failed. */
+async function uploadFiles(bookingId: number): Promise<number> {
+  let failed = 0
+  for (const file of draft.files) {
+    try {
+      await uploadAttachment(api, bookingId, file)
+    } catch {
+      failed += 1
+    }
+  }
+  return failed
+}
+
 async function send() {
   if (!room.value || sending.value) return
   sending.value = true
   message.value = ''
   try {
-    await sendBooking(api, toCreateBody())
-    toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
+    const saved = await sendBooking(api, toCreateBody())
+    const failed = await uploadFiles(saved.id)
+    if (failed) toast.show(`Request sent. ${failed} file${failed === 1 ? '' : 's'} could not be added — add ${failed === 1 ? 'it' : 'them'} from My bookings.`)
+    else toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
     await router.push({ name: 'my-bookings' })
   } catch (error) {
     if (!(error instanceof ApiError)) {

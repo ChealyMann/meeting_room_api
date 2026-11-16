@@ -19,6 +19,8 @@ export interface BookingDraft {
   foodNote: string
   its: number[]
   itNote: string
+  /** Optional documents, uploaded right after the booking is sent. */
+  files: File[]
 }
 
 /** `first`: the time or times picked before the form opened (the room page, Find a room). */
@@ -37,6 +39,7 @@ export function useBookingDraft(roomId: number, first?: PickedSession | PickedSe
     foodNote: '',
     its: [],
     itNote: '',
+    files: [],
   })
 
   const addSession = (s: PickedSession) => {

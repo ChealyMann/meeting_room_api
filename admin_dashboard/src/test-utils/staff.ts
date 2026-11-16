@@ -66,6 +66,8 @@ export interface StubAnswers {
   its?: unknown[]
   check?: () => [unknown, number?]
   send?: () => [unknown, number?]
+  /** The answer to the n-th file upload (0 first); a 201 with the file by default. */
+  upload?: (n: number) => [unknown, number?]
 }
 
 /** A fetch for the booking pages: the room, its week, holidays, food and IT, check and send.
@@ -73,6 +75,7 @@ export interface StubAnswers {
 export function bookingStubs(room: { id: number }, answers: StubAnswers = {}) {
   const calls: string[] = []
   const bodies: Record<string, unknown> = {}
+  let uploads = 0
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   const page = (items: unknown[]) => json({ items, page: 1, size: 100, total: items.length })
@@ -81,7 +84,14 @@ export function bookingStubs(room: { id: number }, answers: StubAnswers = {}) {
     const method = init?.method ?? 'GET'
     const key = `${method} ${url.pathname}`
     calls.push(`${key}${url.search}`)
-    if (init?.body) bodies[key] = JSON.parse(String(init.body))
+    if (typeof init?.body === 'string') bodies[key] = JSON.parse(init.body)
+    if (method === 'POST' && /^\/api\/v1\/bookings\/\d+\/attachments$/.test(url.pathname)) {
+      const file = (init?.body as FormData).get('file') as File
+      const n = uploads++
+      const made = { id: n + 1, file_name: file.name, content_type: 'application/pdf', size_bytes: file.size, created_at: '2026-11-12T03:00:00Z', url: `${url.pathname}/${n + 1}` }
+      const [body, status] = answers.upload?.(n) ?? [made, 201]
+      return json(body, status)
+    }
     if (key === `GET /api/v1/rooms/${room.id}`) return json(room)
     if (key === `GET /api/v1/rooms/${room.id}/schedule`) {
       const items = answers.schedule ?? [scheduleItem('2026-11-13', '10:00', '11:00', true)]
@@ -142,5 +152,7 @@ export const bookingDetail = (item: ReturnType<typeof bookingItem>, extra: Recor
   cancel_reason: null,
   cancelled_by: null,
   updated_at: '2026-11-10T02:00:00Z',
+  attachments: [],
+  attachments_open: ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS'].includes(item.status),
   ...extra,
 })
