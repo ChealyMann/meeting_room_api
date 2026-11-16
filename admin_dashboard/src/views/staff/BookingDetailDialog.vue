@@ -2,7 +2,7 @@
 // One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
 // on top with the title on it; the status band; the steps bar; a note saying why it stopped
 // (not approved, expired, cancelled); the door pass when confirmed; the sessions with their
-// length; the details in two columns. A status band sits right under the photo. Foot (owner pick, 13 Nov 2026: look C "one main button +
+// length; then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, Approvals. Foot (owner pick, 13 Nov 2026: look C "one main button +
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
@@ -14,6 +14,7 @@ import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import { cancelMyBooking } from '../../api/staff'
 import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
+import ApprovedBy from '../../components/ApprovedBy.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
@@ -22,9 +23,11 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import { useToast } from '../../composables/useToast'
+import { approvedBy } from '../../utils/approvals'
 import { MEETING_TYPE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
 import { downloadBlob } from '../../utils/download'
+import { formatPhnomPenh } from '../../utils/time'
 import { dayLabel, lenText } from './rules'
 
 const props = defineProps<{ bookingId: number; cover: string | null }>()
@@ -56,7 +59,6 @@ function setFiles(files: AttachmentOut[]) {
 }
 
 const history = computed(() => (booking.value ? buildHistory(booking.value) : { steps: [], events: [] }))
-const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
 const open = computed(() => !!booking.value && ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED'].includes(booking.value.display_status))
 
 // The status band under the photo (owner pick, 13 Nov 2026): "Confirmed · the room is yours" on a
@@ -114,6 +116,48 @@ const totalLen = computed(() => sessions.value.reduce((sum, s) => sum + s.len, 0
 const invited = computed(() => {
   const n = booking.value?.participant_emails.length ?? 0
   return n ? `${n} by email` : null
+})
+
+// Tabs (owner pick, 16 Nov 2026, like To review): the status, the steps and the buttons stay; the
+// rest is split into Details, Food & IT, Files and Approvals. Files shows while files can still be
+// added, or when there are some. A new booking opens on Details.
+type Tab = 'details' | 'services' | 'files' | 'approvals'
+const tab = ref<Tab>('details')
+watch(
+  () => props.bookingId,
+  () => (tab.value = 'details'),
+)
+const count = (n: number) => (n ? ` ${n}` : '')
+const showFiles = computed(() => !!booking.value && (booking.value.attachments.length > 0 || booking.value.attachments_open))
+const tabs = computed(() => {
+  const b = booking.value
+  const services = (b?.catering?.packages.length ?? 0) + (b?.it?.items.length ?? 0)
+  const list: Array<{ id: Tab; label: string }> = [
+    { id: 'details', label: 'Details' },
+    { id: 'services', label: `Food & IT${count(services)}` },
+  ]
+  if (showFiles.value) list.push({ id: 'files', label: `Files${count(b?.attachments.length ?? 0)}` })
+  list.push({ id: 'approvals', label: `Approvals${count(b ? approvedBy(b).length : 0)}` })
+  return list
+})
+const hhmm = (time: string) => time.slice(0, 5)
+
+// Food & IT (owner pick, 16 Nov 2026): each item, the booker's note, and the answer. Food is
+// checked by Pitika when they approve; IT moves from received to the room being ready.
+type Pill = { text: string; tone: 'ok' | 'wait' }
+const foodPill = computed<Pill | null>(() => {
+  const c = booking.value?.catering
+  if (!c) return null
+  if (c.decided_at) return { text: 'Approved', tone: 'ok' }
+  return open.value ? { text: 'Waiting', tone: 'wait' } : null
+})
+const itPill = computed<Pill | null>(() => {
+  const it = booking.value?.it
+  if (!it) return null
+  if (it.status === 'READY') return { text: 'Room ready', tone: 'ok' }
+  if (!open.value) return null
+  if (it.status === 'ASSIGNED') return { text: 'Setting up', tone: 'wait' }
+  return { text: it.forwarded_at ? 'Sent to IT' : 'Waiting', tone: 'wait' }
 })
 
 const doorPass = ref<DoorPassOut | undefined>(undefined)
@@ -250,57 +294,132 @@ async function reload() {
         </SecretReveal>
       </div>
 
-      <div class="block">
-        <div class="lbl">
-          <span>{{ sessions.length === 1 ? 'Time' : `${sessions.length} sessions` }}</span>
-          <span v-if="sessions.length > 1">{{ lenText(totalLen) }} in all</span>
-        </div>
-        <table class="sessions">
-          <tbody>
-            <tr v-for="s in sessions" :key="s.id">
-              <td>{{ s.day }}</td>
-              <td class="mono">{{ s.time }}</td>
-              <td class="len">{{ lenText(s.len) }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="tabs" role="tablist" aria-label="Booking">
+        <button
+          v-for="t in tabs"
+          :id="`tab-${t.id}`"
+          :key="t.id"
+          type="button"
+          role="tab"
+          :aria-selected="tab === t.id"
+          :aria-controls="`tabpanel-${t.id}`"
+          @click="tab = t.id"
+        >
+          {{ t.label }}
+        </button>
       </div>
 
-      <dl class="facts">
-        <div>
-          <dt>Meeting</dt>
-          <dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }} · {{ booking.attendees }} people</dd>
+      <section v-show="tab === 'details'" id="tabpanel-details" class="pane" role="tabpanel" aria-labelledby="tab-details">
+        <div class="block">
+          <div class="lbl">
+            <span>{{ sessions.length === 1 ? 'Time' : `${sessions.length} sessions` }}</span>
+            <span v-if="sessions.length > 1">{{ lenText(totalLen) }} in all</span>
+          </div>
+          <table class="sessions">
+            <tbody>
+              <tr v-for="s in sessions" :key="s.id">
+                <td>{{ s.day }}</td>
+                <td class="mono">{{ s.time }}</td>
+                <td class="len">{{ lenText(s.len) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div>
-          <dt>Invited</dt>
-          <dd :class="{ none: !invited }">{{ invited ?? 'No one' }}</dd>
-        </div>
-        <div>
-          <dt>Food &amp; drinks</dt>
-          <dd :class="{ none: !booking.catering }">
-            {{ booking.catering ? names(booking.catering.packages) : 'None' }}
-          </dd>
-        </div>
-        <div>
-          <dt>IT help</dt>
-          <dd :class="{ none: !booking.it }">
-            {{ booking.it ? names(booking.it.items) : 'None' }}
-          </dd>
-        </div>
-        <div v-if="booking.private_justification" class="full">
-          <dt>Why this room</dt>
-          <dd>{{ booking.private_justification }}</dd>
-        </div>
-        <div v-if="booking.meeting_purpose" class="full">
-          <dt>Notes</dt>
-          <dd>{{ booking.meeting_purpose }}</dd>
-        </div>
-      </dl>
 
-      <div v-if="booking.attachments.length || booking.attachments_open" class="block">
-        <div class="lbl"><span>Files</span></div>
+        <dl class="facts">
+          <div>
+            <dt>Meeting</dt>
+            <dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }} · {{ booking.attendees }} people</dd>
+          </div>
+          <div>
+            <dt>Invited</dt>
+            <dd :class="{ none: !invited }">{{ invited ?? 'No one' }}</dd>
+          </div>
+          <div v-if="booking.private_justification" class="full">
+            <dt>Why this room</dt>
+            <dd>{{ booking.private_justification }}</dd>
+          </div>
+          <div v-if="booking.meeting_purpose" class="full">
+            <dt>Notes</dt>
+            <dd>{{ booking.meeting_purpose }}</dd>
+          </div>
+          <div class="full">
+            <dt>Sent</dt>
+            <dd class="mono">{{ formatPhnomPenh(booking.created_at) }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section v-show="tab === 'services'" id="tabpanel-services" class="pane" role="tabpanel" aria-labelledby="tab-services">
+        <div v-if="booking.catering" class="svc-card" data-kind="food">
+          <div class="svc-h">
+            <h3>Food &amp; drinks</h3>
+            <span v-if="foodPill" class="pill" :class="foodPill.tone">{{ foodPill.text }}</span>
+          </div>
+          <ul class="svc-items">
+            <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
+          </ul>
+          <dl class="svc-rows">
+            <div>
+              <dt>Bring it at</dt>
+              <dd v-if="sessions.length > 1">The start of every session ({{ sessions.length }} times)</dd>
+              <dd v-else>{{ dayLabel(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
+            </div>
+            <div v-if="booking.catering.remarks">
+              <dt>Your note</dt>
+              <dd class="quote">“{{ booking.catering.remarks }}”</dd>
+            </div>
+            <div v-if="booking.catering.decided_by && booking.catering.decided_at">
+              <dt>Checked by</dt>
+              <dd>
+                {{ booking.catering.decided_by.name_en }} · <span class="mono">{{ formatPhnomPenh(booking.catering.decided_at) }}</span>
+                <span v-if="booking.catering.approver_notes" class="sub quote">“{{ booking.catering.approver_notes }}”</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <p v-else class="none-line">No food ordered.</p>
+
+        <div v-if="booking.it" class="svc-card" data-kind="it">
+          <div class="svc-h">
+            <h3>IT help</h3>
+            <span v-if="itPill" class="pill" :class="itPill.tone">{{ itPill.text }}</span>
+          </div>
+          <ul class="svc-items">
+            <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
+          </ul>
+          <dl class="svc-rows">
+            <div v-if="booking.it.special_requirements">
+              <dt>Your note</dt>
+              <dd class="quote">“{{ booking.it.special_requirements }}”</dd>
+            </div>
+            <div v-if="booking.it.staff.length">
+              <dt>IT staff</dt>
+              <dd>{{ booking.it.staff.map((s) => s.name_en).join(', ') }}</dd>
+            </div>
+            <div v-if="booking.it.ready_at">
+              <dt>Ready at</dt>
+              <dd>
+                <span class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</span>
+                <span v-if="booking.it.technician_notes" class="sub quote">“{{ booking.it.technician_notes }}”</span>
+              </dd>
+            </div>
+            <div v-else-if="open">
+              <dt>Setup starts</dt>
+              <dd>{{ dayLabel(booking.it.setup_date) }} · <span class="mono">{{ hhmm(booking.it.setup_time) }}</span></dd>
+            </div>
+          </dl>
+        </div>
+        <p v-else class="none-line">No IT help asked.</p>
+      </section>
+
+      <section v-if="showFiles" v-show="tab === 'files'" id="tabpanel-files" class="pane" role="tabpanel" aria-labelledby="tab-files">
         <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
-      </div>
+      </section>
+
+      <section v-show="tab === 'approvals'" id="tabpanel-approvals" class="pane" role="tabpanel" aria-labelledby="tab-approvals">
+        <ApprovedBy :booking="booking" />
+      </section>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
       <p v-if="slip.error.value" class="msg" role="alert">{{ slip.error.value }}</p>
@@ -480,6 +599,134 @@ dd {
 }
 dd.none {
   color: var(--color-ink-off);
+}
+/* Tabs, like To review; the bar sticks to the top while the panel scrolls. */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  margin: 0 -20px -4px;
+  padding: 0 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-sheet);
+}
+.tabs button {
+  flex: none;
+  margin-bottom: -1px;
+  padding: 10px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-intaglio);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--color-ink);
+  color: var(--color-ink);
+  font-weight: 500;
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: -2px;
+}
+.pane {
+  display: grid;
+  gap: 18px;
+}
+/* Food & IT: one card each, the items, then the notes and the answer. */
+.svc-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+}
+.svc-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.svc-h h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pill {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill.ok {
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
+  color: var(--color-ok);
+}
+.pill.wait {
+  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
+  color: var(--color-warn);
+}
+.svc-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.svc-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.svc-items li + li {
+  border-top: 1px solid var(--color-rule);
+}
+.svc-items .q {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--color-ink-off);
+}
+.svc-rows {
+  display: grid;
+  margin: 0;
+}
+.svc-rows > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--color-rule);
+}
+.svc-rows dd {
+  margin: 0;
+  font-size: 13.5px;
+}
+.quote {
+  color: var(--color-intaglio);
+}
+.sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+}
+.none-line {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-off);
+}
+@media (max-width: 420px) {
+  .svc-rows > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 .expired {
   color: var(--color-crimson);

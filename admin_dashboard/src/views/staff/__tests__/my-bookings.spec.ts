@@ -432,3 +432,135 @@ describe('Files on my booking', () => {
     expect(panel()!.querySelector('.att')).toBeNull()
   })
 })
+
+describe('Tabs on my booking', () => {
+  const FOOD = {
+    packages: [
+      { id: 1, name: 'Coffee break' },
+      { id: 2, name: 'តែ' },
+    ],
+    remarks: 'Less sugar, please.',
+    servings: 8,
+    delivery_date: '2026-11-16',
+    delivery_time: '09:00',
+    approver_notes: 'Food is fine for 8.',
+    decided_by: { id: 3, name_en: 'Chan Sophea' },
+    decided_at: '2026-11-12T07:05:00Z',
+  }
+  const IT = {
+    ticket_id: 1,
+    items: [
+      { id: 10, name: 'Video call' },
+      { id: 11, name: 'Projector setup' },
+    ],
+    special_requirements: 'Two microphones.',
+    status: 'READY',
+    technician_notes: 'Sound tested.',
+    staff: [{ id: 20, name_en: 'Keo Rithy', name_kh: 'x' }],
+    setup_date: '2026-11-16',
+    setup_time: '08:30',
+    forwarded_at: '2026-11-12T07:05:00Z',
+    assigned_at: '2026-11-13T02:00:00Z',
+    ready_at: '2026-11-16T01:40:00Z',
+  }
+  const PITIKA_YES = {
+    stage: 'PITIKA',
+    decision: 'APPROVED',
+    reviewer: { id: 3, name_en: 'Chan Sophea' },
+    notes: 'Food is fine for 8.',
+    reviewed_at: '2026-11-12T07:05:00Z',
+    by_admin: false,
+  }
+  const DONE_FULL = () =>
+    bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'COMPLETED', has_catering: true, has_it: true }, { catering: FOOD, it: IT, reviews: [PITIKA_YES] })
+  const tabNames = () => [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+  const tabPanel = (id: string) => panel()!.querySelector<HTMLElement>(`#tabpanel-${id}`)!
+  async function pickTab(id: string) {
+    panel()!.querySelector<HTMLButtonElement>(`#tab-${id}`)!.click()
+    await flushPromises()
+  }
+
+  it('splits the pop-up into Details, Food & IT and Approvals; status, steps and the slip stay', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT 4', 'Approvals 1'])
+    expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Details')
+    expect(panel()!.querySelector('[role="tabpanel"] .band')).toBeNull()
+    expect(panel()!.querySelector('[role="tabpanel"] .process-bar')).toBeNull()
+    expect(tabPanel('details').textContent).toContain('Sent')
+    expect(tabPanel('details').textContent).toContain('10 Nov 2026, 09:00')
+    expect(tabPanel('services').style.display).toBe('none')
+    await pickTab('services')
+    expect(tabPanel('details').style.display).toBe('none')
+    expect(tabPanel('services').style.display).toBe('')
+    expect(buttonIn(panel()!, 'ប័ណ្ណស្នើ (Word)')).toBeTruthy()
+  })
+
+  it('shows each food item with the amount, the note, and who checked it', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const food = panel()!.querySelector('.svc-card[data-kind="food"]')!
+    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8', 'តែ × 8'])
+    expect(food.querySelector('.pill')?.textContent?.trim()).toBe('Approved')
+    expect(food.textContent).toContain('Mon 16 Nov · 09:00')
+    expect(food.textContent).toContain('“Less sugar, please.”')
+    expect(food.textContent).toContain('Chan Sophea')
+    expect(food.textContent).toContain('12 Nov 2026, 14:05')
+    expect(food.textContent).toContain('“Food is fine for 8.”')
+  })
+
+  it('shows the IT items, the note, the IT staff and when the room was ready', async () => {
+    detail8 = DONE_FULL()
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const it = panel()!.querySelector('.svc-card[data-kind="it"]')!
+    expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Video call', 'Projector setup'])
+    expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Room ready')
+    expect(it.textContent).toContain('“Two microphones.”')
+    expect(it.textContent).toContain('Keo Rithy')
+    expect(it.textContent).toContain('16 Nov 2026, 08:40')
+    expect(it.textContent).toContain('“Sound tested.”')
+  })
+
+  it('says when no food or IT help was asked, and that food waits for a check', async () => {
+    detail8 = bookingDetail(WAITING, { catering: { ...FOOD, approver_notes: null, decided_by: null, decided_at: null } })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toContain('Food & IT 2')
+    expect(panel()!.querySelector('.svc-card[data-kind="food"] .pill')?.textContent?.trim()).toBe('Waiting')
+    expect(tabPanel('services').textContent).toContain('No IT help asked.')
+  })
+
+  it('lists who approved, and what it still waits for', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'SETUP_IN_PROGRESS', display_status: 'SETUP_IN_PROGRESS' }, { reviews: [PITIKA_YES] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    const ap = tabPanel('approvals')
+    expect(ap.querySelector('.ap-who')?.textContent?.trim()).toBe('Chan Sophea')
+    expect(ap.querySelector('.ap-role')?.textContent?.trim()).toBe('Pitika')
+    expect(ap.querySelector('.ap-when')?.textContent?.trim()).toBe('12 Nov 2026, 14:05')
+    expect(ap.querySelector('.ap-note')?.textContent?.trim()).toBe('“Food is fine for 8.”')
+    expect(ap.querySelector('.ap-wait')?.textContent?.trim()).toBe('IT is setting up the room')
+  })
+
+  it('says no one has approved yet while it waits for Pitika', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toContain('Approvals')
+    expect(tabPanel('approvals').textContent).toContain('No one has approved yet.')
+  })
+
+  it('has a Files tab while files can still be added, and none on a confirmed booking with no file', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Files', 'Approvals'])
+    expect(tabPanel('files').querySelector('input[type="file"]')).not.toBeNull()
+    w.unmount()
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' })
+    const w2 = await open()
+    await openCard(w2, 'Team sync')
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Approvals'])
+  })
+})
