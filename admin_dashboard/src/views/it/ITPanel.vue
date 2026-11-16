@@ -10,6 +10,7 @@ import { computed, ref } from 'vue'
 import type { BookingDetail, ITTicketItem } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
@@ -18,8 +19,7 @@ import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { approvedBy } from '../../utils/approvals'
 import { buildHistory } from '../../utils/bookingHistory'
-import { hasSessionAhead, sessionDate } from '../../utils/itQueue'
-import { formatDay, formatPhnomPenh } from '../../utils/time'
+import { hasSessionAhead } from '../../utils/itQueue'
 
 const props = defineProps<{
   ticket: ITTicketItem
@@ -33,16 +33,9 @@ const emit = defineEmits<{ close: []; assign: []; ready: [] }>()
 
 const b = computed(() => props.ticket.booking)
 const steps = computed(() => (props.detail ? buildHistory(props.detail).steps : []))
-const hhmm = (time: string) => time.slice(0, 5)
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
 /** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
 const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
-/** IT sets up before every session (owner decision, 6 Nov 2026): all of them, in order. */
-const setups = computed(() =>
-  props.ticket.setups?.length
-    ? props.ticket.setups
-    : [{ session_number: 1, date: props.ticket.setup_date, setup_time: props.ticket.setup_time, start_time: b.value.first_session.start_time, end_time: b.value.first_session.end_time }],
-)
 const subtitle = computed(() => {
   if (props.ticket.missed) return 'Missed · not marked ready'
   if (props.ticket.status === 'READY') return 'Ready'
@@ -100,20 +93,8 @@ const tabs = computed(() => {
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
-        <h3>When <span class="count">· {{ setups.length }} {{ setups.length === 1 ? 'session' : 'sessions' }}</span></h3>
-        <ul class="setups">
-          <li v-for="s in setups" :key="s.session_number">
-            <span>{{ formatDay(sessionDate(s)) }}</span>
-            <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
-          </li>
-        </ul>
-
-        <h3>Meeting</h3>
-        <dl class="details">
-          <div><dt>Attendees</dt><dd>{{ b.attendees }}</dd></div>
-          <div><dt>Booker</dt><dd>{{ b.requester.name_en }}</dd></div>
-          <div><dt>Sent</dt><dd class="mono">{{ formatPhnomPenh(b.created_at) }}</dd></div>
-        </dl>
+        <BookingDetails v-if="detail" :booking="detail" />
+        <p v-else class="none">Loading…</p>
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
@@ -172,55 +153,8 @@ const tabs = computed(() => {
 .tab-bar {
   margin-block: 16px 14px;
 }
-[role='tabpanel'] > h3:first-child {
-  margin-top: 0;
-}
-h3 {
-  margin: 20px 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-}
-h3 .count {
-  font-weight: 400;
-  color: var(--color-intaglio);
-}
-.setups {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.setups li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-rule);
-  font-size: 13.5px;
-}
-.details {
-  margin: 0;
-}
-.details > div {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-rule);
-}
-.details dt {
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.details dd {
-  margin: 0;
-  font-size: 13.5px;
-  overflow-wrap: anywhere;
-}
 .none {
   color: var(--color-ink-off);
-}
-.mono {
-  font-family: var(--font-mono);
 }
 .foot {
   display: flex;

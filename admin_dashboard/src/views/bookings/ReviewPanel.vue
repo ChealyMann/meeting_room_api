@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue'
 import type { BookingDetail } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
@@ -15,10 +16,9 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
+import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
 import { approvedBy } from '../../utils/approvals'
-import { formatDay } from '../../utils/time'
 
 const props = defineProps<{
   booking: BookingDetail
@@ -39,8 +39,6 @@ const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
-const hhmm = (time: string) => time.slice(0, 5)
-const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
 
 const approvals = computed(() => approvedBy(props.booking))
 
@@ -64,12 +62,6 @@ const tabs = computed(() => {
   list.push({ id: 'approvals', label: `Approvals${count(approvals.value.length)}` })
   return list
 })
-/** Every session, in order: a booking can run over several days (up to 20 sessions). */
-const sessions = computed(() =>
-  [...(props.booking.sessions.length ? props.booking.sessions : [props.booking.first_session])].sort((a, b) =>
-    `${a.date} ${a.start_time}`.localeCompare(`${b.date} ${b.start_time}`),
-  ),
-)
 </script>
 
 <template>
@@ -103,42 +95,7 @@ const sessions = computed(() =>
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
-        <h3 class="sessions-head">
-          When <span>· {{ sessions.length }} {{ sessions.length === 1 ? 'session' : 'sessions' }}</span>
-        </h3>
-        <ul class="sessions">
-          <li v-for="s in sessions" :key="`${s.date} ${s.start_time}`">
-            <span>{{ formatDay(s.date) }}</span>
-            <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
-          </li>
-        </ul>
-
-        <h3>Meeting</h3>
-        <dl class="details">
-          <div><dt>Meeting type</dt><dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }}</dd></div>
-          <div><dt>Attendees</dt><dd class="mono">{{ booking.attendees }}</dd></div>
-          <div><dt>Purpose</dt><dd class="wrap" :class="{ none: !booking.meeting_purpose }">{{ booking.meeting_purpose || 'None' }}</dd></div>
-          <div><dt>Route</dt><dd>{{ ROUTE_LABELS[booking.route] ?? booking.route }}</dd></div>
-          <div v-if="booking.route === 'R2'">
-            <dt>Why private</dt>
-            <dd class="wrap" :class="{ none: !booking.private_justification }">{{ booking.private_justification || 'No reason given' }}</dd>
-          </div>
-        </dl>
-
-        <!-- Who asks (owner, 16 Nov 2026): ID, name, position and department, as kept when sent. -->
-        <h3>Booker</h3>
-        <dl class="details booker">
-          <div><dt>Staff ID</dt><dd class="mono" :class="{ none: !info('staff_id') }">{{ info('staff_id') ?? 'None' }}</dd></div>
-          <div>
-            <dt>Name</dt>
-            <dd>{{ info('name_en') ?? booking.requester.name_en }} <span v-if="info('name_kh')" class="sub kh">{{ info('name_kh') }}</span></dd>
-          </div>
-          <div><dt>Position</dt><dd :class="{ none: !info('position') }">{{ info('position') ?? 'None' }}</dd></div>
-          <div>
-            <dt>Department</dt>
-            <dd :class="{ none: !info('department') && !info('division') }">{{ info('department') ?? info('division') ?? 'None' }} <span v-if="info('department') && info('division')" class="sub">{{ info('division') }}</span></dd>
-          </div>
-        </dl>
+        <BookingDetails :booking="booking" />
       </section>
 
       <section v-show="tab === 'approvals'" id="tabpanel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
@@ -225,64 +182,11 @@ h3 {
   font-size: 13px;
   font-weight: 600;
 }
-.sessions-head span {
-  font-weight: 400;
-  color: var(--color-intaglio);
-}
-/* Every session on its own line: the day, then the times at the end. */
-.sessions {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.sessions li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-rule);
-  font-size: 13.5px;
-}
-.sessions .mono {
-  font-variant-numeric: tabular-nums;
-}
-.details {
-  margin: 0;
-}
-.details > div {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-rule);
-}
-.details dt {
-  font-size: 12.5px;
-  color: var(--color-intaglio);
-}
-.details dd {
-  margin: 0;
-  font-size: 13.5px;
-  overflow-wrap: anywhere;
-}
-.wrap {
-  white-space: pre-line;
-}
-.none {
-  margin: 0;
-  color: var(--color-ink-off);
-  font-size: 13px;
-}
 .tab-bar {
   margin-block: 16px 14px;
 }
 [role='tabpanel'] > h3:first-child {
   margin-top: 0;
-}
-.sub {
-  display: block;
-  font-size: 12.5px;
-  color: var(--color-intaglio);
 }
 .foot {
   display: flex;

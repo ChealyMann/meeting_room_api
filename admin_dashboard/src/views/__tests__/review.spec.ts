@@ -372,6 +372,8 @@ describe('Review panel and decisions', () => {
     expect(sessions).toEqual(['Thu 5 Nov 2026 14:00–15:30', 'Fri 6 Nov 2026 09:00–10:30', 'Sat 7 Nov 2026 09:00–10:30'])
     expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
     expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('The start of every session (3 times)')
+    const facts = [...p.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {

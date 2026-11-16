@@ -126,7 +126,7 @@ beforeEach(() => {
           meeting_purpose: null,
           private_justification: null,
           participant_emails: [],
-          sessions: [t.booking.first_session],
+          sessions: (t.setups ?? []).map((s, i) => ({ id: i + 1, date: s.date, start_time: s.start_time, end_time: s.end_time })),
           last_end: { date: t.booking.first_session.date, time: '11:00' },
           catering: null,
           it: { items: t.items, special_requirements: t.special_requirements, status: t.status, staff: t.staff, forwarded_at: t.forwarded_at, assigned_at: null, ready_at: null },
@@ -441,7 +441,7 @@ describe('IT setup', () => {
     await wrapper.get('[data-ticket="10"]').trigger('click')
     await flushPromises()
 
-    const items = [...panel()!.querySelectorAll('.setups li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
+    const items = [...panel()!.querySelectorAll('#tabpanel-details .sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
     expect(items).toEqual([
       'Thu 5 Nov 2026 08:00–11:00',
       'Fri 6 Nov 2026 08:00–11:00',
@@ -449,5 +449,7 @@ describe('IT setup', () => {
     ])
     expect(panel()!.textContent).not.toMatch(/set up/i)
     expect(panel()!.textContent).not.toContain('07:30')
+    const facts = [...panel()!.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 })

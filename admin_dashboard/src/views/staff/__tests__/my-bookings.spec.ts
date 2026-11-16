@@ -310,21 +310,25 @@ describe('My bookings', () => {
     expect(buttonIn(panel()!, 'Cancel booking')).toBeUndefined()
   })
 
-  it('lists each session with its length and the total', async () => {
+  it('shows the same Details as Pitika: every session, the meeting, and the booker', async () => {
     detail8 = bookingDetail(WAITING, {
       sessions: [
         { id: 1, date: '2026-11-16', start_time: '12:30', end_time: '18:00' },
         { id: 2, date: '2026-11-17', start_time: '07:30', end_time: '18:00' },
       ],
+      requester_info: { name_en: 'Sok Dara', staff_id: 'NBC0042', position: 'Officer', department: 'Operations', division: 'Payments' },
+      participant_emails: ['a@nbc.gov.kh'],
     })
     const w = await open()
     await openCard(w, 'Team sync')
-    const rows = [...panel()!.querySelectorAll('.sessions tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent?.trim()))
-    expect(rows).toEqual([
-      ['Mon 16 Nov', '12:30–18:00', '5 h 30 min'],
-      ['Tue 17 Nov', '07:30–18:00', '10 h 30 min'],
-    ])
-    expect(panel()!.textContent).toContain('16 h in all')
+    const details = panel()!.querySelector('#tabpanel-details')!
+    const rows = [...details.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
+    expect(rows).toEqual(['Mon 16 Nov 2026 12:30–18:00', 'Tue 17 Nov 2026 07:30–18:00'])
+    expect(details.querySelector('.sessions-head')?.textContent).toContain('2 sessions')
+    const facts = [...details.querySelectorAll('.details dt')].map((d) => d.textContent?.trim())
+    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(details.textContent).toContain('1 by email')
+    expect(details.textContent).toContain('NBC0042')
   })
 
   describe('quiet refresh', () => {

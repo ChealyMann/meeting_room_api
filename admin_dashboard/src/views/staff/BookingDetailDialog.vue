@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
 // on top with the title on it; the status band; the steps bar; a note saying why it stopped
-// (not approved, expired, cancelled); the door pass when confirmed; the sessions with their
-// length; then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, Approvals. Foot (owner pick, 13 Nov 2026: look C "one main button +
+// (not approved, expired, cancelled); the door pass when confirmed;
+// then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, Approvals. Foot (owner pick, 13 Nov 2026: look C "one main button +
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
@@ -15,6 +15,7 @@ import { ApiError } from '../../api/errors'
 import { cancelMyBooking } from '../../api/staff'
 import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
+import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
@@ -26,11 +27,10 @@ import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import { useToast } from '../../composables/useToast'
 import { approvedBy } from '../../utils/approvals'
-import { MEETING_TYPE_LABELS, statusLabel } from '../../utils/bookingLabels'
+import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
 import { downloadBlob } from '../../utils/download'
-import { formatPhnomPenh } from '../../utils/time'
-import { dayLabel, lenText } from './rules'
+import { dayLabel } from './rules'
 
 const props = defineProps<{ bookingId: number; cover: string | null }>()
 const emit = defineEmits<{ close: []; changed: [BookingDetail] }>()
@@ -101,24 +101,8 @@ const stopNote = computed(() => {
   }
 })
 
-// Sessions: day, time, length; the total when there are several.
-const minutes = (t: string) => {
-  const [h, m] = t.split(':')
-  return Number(h) * 60 + Number(m)
-}
-const sessions = computed(() =>
-  (booking.value?.sessions ?? []).map((s) => ({
-    id: s.id,
-    day: dayLabel(s.date),
-    time: `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`,
-    len: minutes(s.end_time) - minutes(s.start_time),
-  })),
-)
-const totalLen = computed(() => sessions.value.reduce((sum, s) => sum + s.len, 0))
-const invited = computed(() => {
-  const n = booking.value?.participant_emails.length ?? 0
-  return n ? `${n} by email` : null
-})
+// The days of the booking, for the status band ("Mon 16 Nov", or "3 sessions").
+const sessions = computed(() => (booking.value?.sessions ?? []).map((s) => ({ id: s.id, day: dayLabel(s.date) })))
 
 // Tabs (owner pick, 16 Nov 2026, like To review): the status, the steps and the buttons stay; the
 // rest is split into Details, Food & IT, Files and Approvals. Files shows while files can still be
@@ -280,44 +264,7 @@ async function reload() {
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" class="pane" role="tabpanel" aria-labelledby="tab-details">
-        <div class="block">
-          <div class="lbl">
-            <span>{{ sessions.length === 1 ? 'Time' : `${sessions.length} sessions` }}</span>
-            <span v-if="sessions.length > 1">{{ lenText(totalLen) }} in all</span>
-          </div>
-          <table class="sessions">
-            <tbody>
-              <tr v-for="s in sessions" :key="s.id">
-                <td>{{ s.day }}</td>
-                <td class="mono">{{ s.time }}</td>
-                <td class="len">{{ lenText(s.len) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <dl class="facts">
-          <div>
-            <dt>Meeting</dt>
-            <dd>{{ MEETING_TYPE_LABELS[booking.meeting_type] ?? booking.meeting_type }} · {{ booking.attendees }} people</dd>
-          </div>
-          <div>
-            <dt>Invited</dt>
-            <dd :class="{ none: !invited }">{{ invited ?? 'No one' }}</dd>
-          </div>
-          <div v-if="booking.private_justification" class="full">
-            <dt>Why this room</dt>
-            <dd>{{ booking.private_justification }}</dd>
-          </div>
-          <div v-if="booking.meeting_purpose" class="full">
-            <dt>Notes</dt>
-            <dd>{{ booking.meeting_purpose }}</dd>
-          </div>
-          <div class="full">
-            <dt>Sent</dt>
-            <dd class="mono">{{ formatPhnomPenh(booking.created_at) }}</dd>
-          </div>
-        </dl>
+        <BookingDetails :booking="booking" />
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" class="pane" role="tabpanel" aria-labelledby="tab-services">
@@ -468,48 +415,6 @@ async function reload() {
   gap: 12px;
   font-size: 12px;
   color: var(--color-intaglio);
-}
-.sessions {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-.sessions td {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-rule);
-  white-space: nowrap;
-}
-.sessions tr:last-child td {
-  border-bottom: 0;
-}
-.sessions .len {
-  text-align: right;
-  font-size: 12.5px;
-  color: var(--color-ink-off);
-}
-.facts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 16px;
-  margin: 0;
-}
-.facts > div {
-  min-width: 0;
-}
-.facts .full {
-  grid-column: 1 / -1;
-}
-dt {
-  font-size: 12px;
-  color: var(--color-intaglio);
-}
-dd {
-  margin: 2px 0 0;
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-dd.none {
-  color: var(--color-ink-off);
 }
 .tab-bar {
   margin-block: 0 -4px;
