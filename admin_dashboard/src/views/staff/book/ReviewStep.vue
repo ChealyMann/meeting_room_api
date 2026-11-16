@@ -117,6 +117,10 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
     <div v-if="draft.files.length" class="rv-files">
       <small>Files</small>
       <AttachmentList :files="draft.files.map((f) => ({ name: f.name, size: f.size }))" />
+      <!-- An owner's own room with no food or IT (R3) is confirmed when sent, and files lock then. -->
+      <p v-if="check?.first_status === 'CONFIRMED'" class="rv-files-off">
+        This booking is confirmed at once, and files lock once a booking is confirmed. The {{ draft.files.length === 1 ? 'file' : 'files' }} will not be added.
+      </p>
     </div>
 
     <div v-if="session.user" class="by">
@@ -135,6 +139,11 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
 .rv-files small {
   font-size: 12px;
   color: var(--color-intaglio);
+}
+.rv-files-off {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-warn);
 }
 .rv {
   display: flex;

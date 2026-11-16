@@ -200,7 +200,8 @@ async function send() {
   message.value = ''
   try {
     const saved = await sendBooking(api, toCreateBody())
-    const failed = await uploadFiles(saved.id)
+    // Confirmed when sent (an owner's own room, R3): files are locked already, so none are tried.
+    const failed = saved.status === 'CONFIRMED' ? 0 : await uploadFiles(saved.id)
     if (failed) toast.show(`Request sent. ${failed} file${failed === 1 ? '' : 's'} could not be added — add ${failed === 1 ? 'it' : 'them'} from My bookings.`)
     else toast.show(room.value.is_private ? 'Request sent. Pitika and the room owner check it next.' : 'Request sent. Pitika checks it next.')
     await router.push({ name: 'my-bookings' })

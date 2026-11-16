@@ -176,6 +176,22 @@ describe('Booking step 4: review, check and send', () => {
     expect(useToast().toasts.value.map((t) => t.title)).toContain('Request sent. 1 file could not be added — add it from My bookings.')
   })
 
+  it('warns that files cannot go on a booking confirmed at once, and does not send them', async () => {
+    const { w, stubs } = await step4(
+      {
+        check: () => [{ route: 'R3', first_status: 'CONFIRMED', steps: ['CONFIRMED'], problem: null, warnings: [] }],
+        send: () => [{ id: 77, reference_code: 'NBC-26-77', status: 'CONFIRMED', version: 1 }],
+      },
+      { is_private: true },
+      [new File(['%PDF-1'], 'agenda.pdf')],
+    )
+    expect(w.get('.rv-files-off').text()).toBe('This booking is confirmed at once, and files lock once a booking is confirmed. The file will not be added.')
+    await press(w)
+    expect(stubs.calls.filter((c) => c.endsWith('/attachments'))).toEqual([])
+    expect(router.currentRoute.value.name).toBe('my-bookings')
+    expect(useToast().toasts.value.map((t) => t.title).join(' ')).not.toContain('could not be added')
+  })
+
   it('says the room owner checks too on a private room', async () => {
     const { w } = await step4({}, { is_private: true })
     await press(w)
