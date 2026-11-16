@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // One room on Find a room: the photo, the names, the facts, a live line ("Free until 14:00"),
 // then Details and Book (shared) or Request (private: Pitika and the owner both check it).
+// The border takes the live line's tone (owner pick, 16 Nov 2026): green free, red in use or
+// busy soon, the plain rule when closed or there is nothing to say.
 import { CalendarPlus, Clock, Lock } from 'lucide-vue-next'
 
 import type { RoomListItem } from '../../api/types'
@@ -14,7 +16,7 @@ const bookWord = () => (props.room.is_private ? 'Request' : 'Book')
 </script>
 
 <template>
-  <article class="room-card">
+  <article class="room-card" :class="now.tone">
     <button type="button" class="photo" tabindex="-1" aria-hidden="true" @click="emit('details')">
       <RoomPhoto :path="room.cover_photo?.url ?? null" :alt="room.name_en" />
       <span v-if="room.is_private" class="tag"><Lock :size="12" aria-hidden="true" />Private</span>
@@ -42,6 +44,16 @@ const bookWord = () => (props.room.is_private ? 'Request' : 'Book')
 .room-card {
   display: flex;
   flex-direction: column;
+  padding: 8px 8px 10px;
+  border: 2px solid var(--color-rule);
+  border-radius: 22px;
+  transition: border-color 200ms var(--ease-out-quint);
+}
+.room-card.ok {
+  border-color: color-mix(in srgb, var(--color-ok) 70%, transparent);
+}
+.room-card.alert {
+  border-color: color-mix(in srgb, var(--color-crimson) 70%, transparent);
 }
 .photo {
   position: relative;
@@ -49,7 +61,7 @@ const bookWord = () => (props.room.is_private ? 'Request' : 'Book')
   overflow: hidden;
   padding: 0;
   border: 0;
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--color-field-disabled);
   cursor: pointer;
 }
@@ -121,6 +133,7 @@ h2 {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .room-card,
   .photo :deep(img) {
     transition: none;
   }

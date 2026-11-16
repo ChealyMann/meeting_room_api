@@ -151,6 +151,14 @@ describe('Find a room', () => {
     expect(lineOf(w, 'Governor Room')).toBe('Free all day')
   })
 
+  it('draws a green border on a free room and a red one on a room in use', async () => {
+    const w = await open()
+    const card = (name: string) => w.findAll('.room-card').find((c) => c.find('h2').text() === name)!.classes()
+    expect(card('Mekong Room')).toContain('ok')
+    expect(card('Bassac Room')).toContain('alert')
+    expect(card('Governor Room')).toContain('ok')
+  })
+
   it('offers Request on a private room and Book on a shared one', async () => {
     const w = await open()
     expect(w.find('[aria-label="Request Governor Room"]').exists()).toBe(true)
