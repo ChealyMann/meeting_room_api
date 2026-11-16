@@ -248,6 +248,57 @@ describe('Review panel and decisions', () => {
     delete DETAILS[22]
   })
 
+  describe('Approved by', () => {
+    const approvals = () =>
+      [...panel()!.querySelectorAll('.approvals li')].map((li) => ({
+        who: li.querySelector('.ap-who')?.textContent?.trim(),
+        role: li.querySelector('.ap-role')?.textContent?.trim(),
+        when: li.querySelector('.ap-when')?.textContent?.trim() ?? null,
+        note: li.querySelector('.ap-note')?.textContent?.trim() ?? null,
+      }))
+    async function openWith(extra: Record<string, unknown>) {
+      DETAILS[22] = extra
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+    }
+    afterEach(() => {
+      delete DETAILS[22]
+    })
+
+    it('lists each approval with name, role, time and note, then what is waiting', async () => {
+      await openWith({
+        status: 'PENDING_OWNER',
+        reviews: [
+          { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Chan Sophea' }, notes: 'Food is fine for 24 people.', reviewed_at: '2026-11-12T07:05:00Z', by_admin: false },
+        ],
+      })
+      expect(approvals()).toEqual([
+        { who: 'Chan Sophea', role: 'Pitika', when: '12 Nov 2026, 14:05', note: '“Food is fine for 24 people.”' },
+        { who: 'Waiting for the room owner', role: undefined, when: null, note: null },
+      ])
+    })
+
+    it('says when the Admin approved for a reviewer, and leaves out rejections', async () => {
+      await openWith({
+        status: 'SETUP_IN_PROGRESS',
+        reviews: [
+          { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 9, name_en: 'Pich Visal' }, notes: null, reviewed_at: '2026-11-14T01:15:00Z', by_admin: true },
+          { stage: 'OWNER', decision: 'NOT_REQUIRED', reviewer: null, notes: null, reviewed_at: '2026-11-14T01:15:00Z', by_admin: false },
+        ],
+      })
+      expect(approvals()).toEqual([
+        { who: 'Pich Visal', role: 'Admin, for Pitika', when: '14 Nov 2026, 08:15', note: null },
+        { who: 'IT is setting up the room', role: undefined, when: null, note: null },
+      ])
+    })
+
+    it('has no Approved by block before anyone approved', async () => {
+      await openWith({ reviews: [] })
+      expect(panel()!.querySelector('.approvals')).toBeNull()
+    })
+  })
+
   it('says None for booker details the booking does not have', async () => {
     const { wrapper } = await mountReview()
     await row(wrapper, 22).trigger('click')

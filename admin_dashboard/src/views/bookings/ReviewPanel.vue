@@ -14,7 +14,7 @@ import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
-import { formatDay } from '../../utils/time'
+import { formatDay, formatPhnomPenh } from '../../utils/time'
 
 const props = defineProps<{
   booking: BookingDetail
@@ -38,6 +38,25 @@ const steps = computed(() => buildHistory(props.booking).steps)
 const hhmm = (time: string) => time.slice(0, 5)
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
 const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
+
+// Approved by (owner, 16 Nov 2026): every approval with name, role, time and note, then the step
+// still waiting. Rejections and "not required" steps are not approvals, so they are left out.
+const STAGE_ROLE: Record<string, string> = { PITIKA: 'Pitika', OWNER: 'Room owner' }
+const WAITING: Record<string, string> = { PENDING_OWNER: 'Waiting for the room owner', SETUP_IN_PROGRESS: 'IT is setting up the room' }
+const approvals = computed(() =>
+  (props.booking.reviews ?? [])
+    .filter((r) => r.decision === 'APPROVED')
+    .map((r) => {
+      const role = STAGE_ROLE[r.stage] ?? r.stage
+      return {
+        who: r.reviewer?.name_en ?? 'Unknown',
+        role: r.by_admin ? `Admin, for ${role}` : role,
+        when: formatPhnomPenh(r.reviewed_at),
+        note: r.notes,
+      }
+    }),
+)
+const waiting = computed(() => WAITING[props.booking.status] ?? null)
 /** Every session, in order: a booking can run over several days (up to 20 sessions). */
 const sessions = computed(() =>
   [...(props.booking.sessions.length ? props.booking.sessions : [props.booking.first_session])].sort((a, b) =>
@@ -110,6 +129,25 @@ const sessions = computed(() =>
           <dd :class="{ none: !info('department') && !info('division') }">{{ info('department') ?? info('division') ?? 'None' }} <span v-if="info('department') && info('division')" class="sub">{{ info('division') }}</span></dd>
         </div>
       </dl>
+
+      <template v-if="approvals.length">
+        <h3>Approved by</h3>
+        <ul class="approvals">
+          <li v-for="(a, i) in approvals" :key="i">
+            <span class="ap-mark" aria-hidden="true"><Check /></span>
+            <span class="ap-text">
+              <span class="ap-who">{{ a.who }}</span>
+              <span class="ap-role">{{ a.role }}</span>
+              <span v-if="a.note" class="ap-note">“{{ a.note }}”</span>
+            </span>
+            <span class="ap-when mono">{{ a.when }}</span>
+          </li>
+          <li v-if="waiting" class="ap-wait">
+            <span class="ap-mark" aria-hidden="true"><span class="ap-dot" /></span>
+            <span class="ap-text"><span class="ap-who">{{ waiting }}</span></span>
+          </li>
+        </ul>
+      </template>
 
       <h3>Food</h3>
       <p v-if="!booking.catering" class="none">No food ordered.</p>
@@ -250,6 +288,73 @@ h3 {
   margin: 0;
   color: var(--color-ink-off);
   font-size: 13px;
+}
+/* Approved by: a green tick, the name over the role (and the note), the time on the right. */
+.approvals {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.approvals li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 9px 0;
+}
+.approvals li + li {
+  border-top: 1px solid var(--color-rule);
+}
+.ap-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
+  color: var(--color-ok);
+}
+.ap-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.ap-wait .ap-mark {
+  background: var(--color-field-disabled);
+}
+.ap-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-ink-off);
+}
+.ap-text {
+  display: grid;
+  min-width: 0;
+}
+.ap-who {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.ap-wait .ap-who {
+  color: var(--color-ink-off);
+  font-weight: 400;
+}
+.ap-role {
+  font-size: 12px;
+  color: var(--color-ink-off);
+}
+.ap-note {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--color-intaglio);
+  overflow-wrap: anywhere;
+}
+.ap-when {
+  padding-top: 2px;
+  font-size: 12px;
+  color: var(--color-ink-off);
+  white-space: nowrap;
 }
 .sub {
   display: block;
