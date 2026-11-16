@@ -1,0 +1,204 @@
+<script setup lang="ts">
+// Food & IT (owner pick, 16 Nov 2026): one card each, with every item, the booker's note, and the
+// answer. Food is checked by Pitika when they approve; IT moves from received to the room being
+// ready. The same cards in the booker's pop-up and in the To review drawer.
+import { computed } from 'vue'
+
+import type { BookingDetail } from '../api/types'
+import { formatDay, formatPhnomPenh } from '../utils/time'
+
+const props = defineProps<{
+  booking: BookingDetail
+  /** Who looks: the booker reads "Your note", everyone else "Booker’s note". */
+  viewer: 'booker' | 'staff'
+}>()
+
+const OPEN = ['PENDING_PITIKA', 'PENDING_OWNER', 'SETUP_IN_PROGRESS', 'CONFIRMED']
+const open = computed(() => OPEN.includes(props.booking.display_status))
+const noteLabel = computed(() => (props.viewer === 'booker' ? 'Your note' : 'Booker’s note'))
+const sessionCount = computed(() => props.booking.sessions.length)
+const hhmm = (time: string) => time.slice(0, 5)
+
+type Pill = { text: string; tone: 'ok' | 'wait' }
+const foodPill = computed<Pill | null>(() => {
+  const c = props.booking.catering
+  if (!c) return null
+  if (c.decided_at) return { text: 'Approved', tone: 'ok' }
+  return open.value ? { text: 'Waiting', tone: 'wait' } : null
+})
+const itPill = computed<Pill | null>(() => {
+  const it = props.booking.it
+  if (!it) return null
+  if (it.status === 'READY') return { text: 'Room ready', tone: 'ok' }
+  if (!open.value) return null
+  if (it.status === 'ASSIGNED') return { text: 'Setting up', tone: 'wait' }
+  return { text: it.forwarded_at ? 'Sent to IT' : 'Waiting', tone: 'wait' }
+})
+</script>
+
+<template>
+  <div class="svc">
+    <div v-if="booking.catering" class="svc-card" data-kind="food">
+      <div class="svc-h">
+        <h3>Food &amp; drinks</h3>
+        <span v-if="foodPill" class="pill" :class="foodPill.tone">{{ foodPill.text }}</span>
+      </div>
+      <ul class="svc-items">
+        <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
+      </ul>
+      <dl class="svc-rows">
+        <div>
+          <dt>Bring it at</dt>
+          <dd v-if="sessionCount > 1" class="delivery">The start of every session ({{ sessionCount }} times)</dd>
+          <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
+        </div>
+        <div v-if="booking.catering.remarks">
+          <dt>{{ noteLabel }}</dt>
+          <dd class="quote">“{{ booking.catering.remarks }}”</dd>
+        </div>
+        <div v-if="booking.catering.decided_by && booking.catering.decided_at">
+          <dt>Checked by</dt>
+          <dd>
+            {{ booking.catering.decided_by.name_en }} · <span class="mono">{{ formatPhnomPenh(booking.catering.decided_at) }}</span>
+            <span v-if="booking.catering.approver_notes" class="sub quote">“{{ booking.catering.approver_notes }}”</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+    <p v-else class="none-line">No food ordered.</p>
+  
+    <div v-if="booking.it" class="svc-card" data-kind="it">
+      <div class="svc-h">
+        <h3>IT help</h3>
+        <span v-if="itPill" class="pill" :class="itPill.tone">{{ itPill.text }}</span>
+      </div>
+      <ul class="svc-items">
+        <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
+      </ul>
+      <dl class="svc-rows">
+        <div v-if="booking.it.special_requirements">
+          <dt>{{ noteLabel }}</dt>
+          <dd class="quote">“{{ booking.it.special_requirements }}”</dd>
+        </div>
+        <div v-if="booking.it.staff.length">
+          <dt>IT staff</dt>
+          <dd>{{ booking.it.staff.map((s) => s.name_en).join(', ') }}</dd>
+        </div>
+        <div v-if="booking.it.ready_at">
+          <dt>Ready at</dt>
+          <dd>
+            <span class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</span>
+            <span v-if="booking.it.technician_notes" class="sub quote">“{{ booking.it.technician_notes }}”</span>
+          </dd>
+        </div>
+        <div v-else-if="open && booking.it.setup_date">
+          <dt>Setup starts</dt>
+          <dd>{{ formatDay(booking.it.setup_date) }} · <span class="mono">{{ hhmm(booking.it.setup_time) }}</span></dd>
+        </div>
+      </dl>
+    </div>
+    <p v-else class="none-line">No IT help asked.</p>
+  </div>
+</template>
+
+<style scoped>
+.svc {
+  display: grid;
+  gap: 12px;
+}
+.svc-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+}
+.svc-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.svc-h h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pill {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill.ok {
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
+  color: var(--color-ok);
+}
+.pill.wait {
+  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
+  color: var(--color-warn);
+}
+.svc-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.svc-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.svc-items li + li {
+  border-top: 1px solid var(--color-rule);
+}
+.svc-items .q {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--color-ink-off);
+}
+.svc-rows {
+  display: grid;
+  margin: 0;
+}
+.svc-rows > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--color-rule);
+}
+.svc-rows dt {
+  font-size: 12px;
+  color: var(--color-intaglio);
+}
+.svc-rows dd {
+  margin: 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.quote {
+  color: var(--color-intaglio);
+  white-space: pre-line;
+}
+.sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+}
+.none-line {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-ink-off);
+}
+@media (max-width: 420px) {
+  .svc-rows > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+</style>

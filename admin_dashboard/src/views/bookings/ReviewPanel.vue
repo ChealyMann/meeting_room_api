@@ -9,6 +9,7 @@ import type { BookingDetail } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingServices from '../../components/BookingServices.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
@@ -38,7 +39,6 @@ const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
 const hhmm = (time: string) => time.slice(0, 5)
-const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
 const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
 
 const approvals = computed(() => approvedBy(props.booking))
@@ -159,28 +159,7 @@ const sessions = computed(() =>
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
-        <h3>Food</h3>
-        <p v-if="!booking.catering" class="none">No food ordered.</p>
-        <dl v-else class="details">
-          <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
-          <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
-          <div>
-            <dt>Delivery</dt>
-            <dd v-if="sessions.length > 1" class="delivery">At the start of every session ({{ sessions.length }} times)</dd>
-            <dd v-else>{{ formatDay(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
-          </div>
-          <div><dt>Remarks</dt><dd class="wrap" :class="{ none: !booking.catering.remarks }">{{ booking.catering.remarks || 'None' }}</dd></div>
-        </dl>
-
-        <h3>IT help</h3>
-        <p v-if="!booking.it" class="none">No IT help asked.</p>
-        <dl v-else class="details">
-          <div><dt>Items</dt><dd>{{ names(booking.it.items) }}</dd></div>
-          <div>
-            <dt>Special needs</dt>
-            <dd class="wrap" :class="{ none: !booking.it.special_requirements }">{{ booking.it.special_requirements || 'None' }}</dd>
-          </div>
-        </dl>
+        <BookingServices :booking="booking" viewer="staff" />
       </section>
 
       <section

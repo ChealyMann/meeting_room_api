@@ -504,7 +504,7 @@ describe('Tabs on my booking', () => {
     const food = panel()!.querySelector('.svc-card[data-kind="food"]')!
     expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8', 'តែ × 8'])
     expect(food.querySelector('.pill')?.textContent?.trim()).toBe('Approved')
-    expect(food.textContent).toContain('Mon 16 Nov · 09:00')
+    expect(food.textContent).toContain('Mon 16 Nov 2026 · 09:00')
     expect(food.textContent).toContain('“Less sugar, please.”')
     expect(food.textContent).toContain('Chan Sophea')
     expect(food.textContent).toContain('12 Nov 2026, 14:05')

@@ -16,6 +16,7 @@ import { cancelMyBooking } from '../../api/staff'
 import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingServices from '../../components/BookingServices.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
@@ -139,25 +140,6 @@ const tabs = computed(() => {
   if (showFiles.value) list.push({ id: 'files', label: `Files${count(b?.attachments.length ?? 0)}` })
   list.push({ id: 'approvals', label: `Approvals${count(b ? approvedBy(b).length : 0)}` })
   return list
-})
-const hhmm = (time: string) => time.slice(0, 5)
-
-// Food & IT (owner pick, 16 Nov 2026): each item, the booker's note, and the answer. Food is
-// checked by Pitika when they approve; IT moves from received to the room being ready.
-type Pill = { text: string; tone: 'ok' | 'wait' }
-const foodPill = computed<Pill | null>(() => {
-  const c = booking.value?.catering
-  if (!c) return null
-  if (c.decided_at) return { text: 'Approved', tone: 'ok' }
-  return open.value ? { text: 'Waiting', tone: 'wait' } : null
-})
-const itPill = computed<Pill | null>(() => {
-  const it = booking.value?.it
-  if (!it) return null
-  if (it.status === 'READY') return { text: 'Room ready', tone: 'ok' }
-  if (!open.value) return null
-  if (it.status === 'ASSIGNED') return { text: 'Setting up', tone: 'wait' }
-  return { text: it.forwarded_at ? 'Sent to IT' : 'Waiting', tone: 'wait' }
 })
 
 const doorPass = ref<DoorPassOut | undefined>(undefined)
@@ -351,66 +333,7 @@ async function reload() {
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" class="pane" role="tabpanel" aria-labelledby="tab-services">
-        <div v-if="booking.catering" class="svc-card" data-kind="food">
-          <div class="svc-h">
-            <h3>Food &amp; drinks</h3>
-            <span v-if="foodPill" class="pill" :class="foodPill.tone">{{ foodPill.text }}</span>
-          </div>
-          <ul class="svc-items">
-            <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
-          </ul>
-          <dl class="svc-rows">
-            <div>
-              <dt>Bring it at</dt>
-              <dd v-if="sessions.length > 1">The start of every session ({{ sessions.length }} times)</dd>
-              <dd v-else>{{ dayLabel(booking.catering.delivery_date) }} · <span class="mono">{{ hhmm(booking.catering.delivery_time) }}</span></dd>
-            </div>
-            <div v-if="booking.catering.remarks">
-              <dt>Your note</dt>
-              <dd class="quote">“{{ booking.catering.remarks }}”</dd>
-            </div>
-            <div v-if="booking.catering.decided_by && booking.catering.decided_at">
-              <dt>Checked by</dt>
-              <dd>
-                {{ booking.catering.decided_by.name_en }} · <span class="mono">{{ formatPhnomPenh(booking.catering.decided_at) }}</span>
-                <span v-if="booking.catering.approver_notes" class="sub quote">“{{ booking.catering.approver_notes }}”</span>
-              </dd>
-            </div>
-          </dl>
-        </div>
-        <p v-else class="none-line">No food ordered.</p>
-
-        <div v-if="booking.it" class="svc-card" data-kind="it">
-          <div class="svc-h">
-            <h3>IT help</h3>
-            <span v-if="itPill" class="pill" :class="itPill.tone">{{ itPill.text }}</span>
-          </div>
-          <ul class="svc-items">
-            <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
-          </ul>
-          <dl class="svc-rows">
-            <div v-if="booking.it.special_requirements">
-              <dt>Your note</dt>
-              <dd class="quote">“{{ booking.it.special_requirements }}”</dd>
-            </div>
-            <div v-if="booking.it.staff.length">
-              <dt>IT staff</dt>
-              <dd>{{ booking.it.staff.map((s) => s.name_en).join(', ') }}</dd>
-            </div>
-            <div v-if="booking.it.ready_at">
-              <dt>Ready at</dt>
-              <dd>
-                <span class="mono">{{ formatPhnomPenh(booking.it.ready_at) }}</span>
-                <span v-if="booking.it.technician_notes" class="sub quote">“{{ booking.it.technician_notes }}”</span>
-              </dd>
-            </div>
-            <div v-else-if="open">
-              <dt>Setup starts</dt>
-              <dd>{{ dayLabel(booking.it.setup_date) }} · <span class="mono">{{ hhmm(booking.it.setup_time) }}</span></dd>
-            </div>
-          </dl>
-        </div>
-        <p v-else class="none-line">No IT help asked.</p>
+        <BookingServices :booking="booking" viewer="booker" />
       </section>
 
       <section v-if="showFiles" v-show="tab === 'files'" id="tabpanel-files" class="pane" role="tabpanel" aria-labelledby="tab-files">
@@ -637,96 +560,6 @@ dd.none {
 .pane {
   display: grid;
   gap: 18px;
-}
-/* Food & IT: one card each, the items, then the notes and the answer. */
-.svc-card {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--color-rule);
-  border-radius: 12px;
-}
-.svc-h {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.svc-h h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-.pill {
-  flex: none;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.pill.ok {
-  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
-  color: var(--color-ok);
-}
-.pill.wait {
-  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
-  color: var(--color-warn);
-}
-.svc-items {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.svc-items li {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
-  font-size: 13.5px;
-  overflow-wrap: anywhere;
-}
-.svc-items li + li {
-  border-top: 1px solid var(--color-rule);
-}
-.svc-items .q {
-  flex: none;
-  font-size: 12.5px;
-  color: var(--color-ink-off);
-}
-.svc-rows {
-  display: grid;
-  margin: 0;
-}
-.svc-rows > div {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px;
-  padding: 7px 0;
-  border-top: 1px solid var(--color-rule);
-}
-.svc-rows dd {
-  margin: 0;
-  font-size: 13.5px;
-}
-.quote {
-  color: var(--color-intaglio);
-}
-.sub {
-  display: block;
-  margin-top: 2px;
-  font-size: 12.5px;
-}
-.none-line {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-ink-off);
-}
-@media (max-width: 420px) {
-  .svc-rows > div {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
 }
 .expired {
   color: var(--color-crimson);

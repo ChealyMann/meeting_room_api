@@ -23,8 +23,8 @@ const ITEMS = [
 ]
 const DETAILS: Record<number, Record<string, unknown>> = {
   21: {
-    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25 },
-    it: { items: [{ id: 2, name: 'Projector setup' }] },
+    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25, delivery_date: '2026-11-05', delivery_time: '14:00' },
+    it: { items: [{ id: 2, name: 'Projector setup' }], status: 'RECEIVED', staff: [] },
     sessions: [
       { id: 1, date: '2026-11-05', start_time: '14:00', end_time: '15:30' },
       { id: 2, date: '2026-11-06', start_time: '09:00', end_time: '10:30' },
@@ -271,6 +271,24 @@ describe('Review panel and decisions', () => {
       expect(panel()!.querySelector('#tabpanel-approvals')!.textContent).toContain('No one has approved yet.')
     })
 
+    it('shows Food & IT with the same cards as the booker: items with the amount, the booker’s notes', async () => {
+      DETAILS[22] = {
+        catering: { packages: [{ id: 1, name: 'Coffee break' }], servings: 8, remarks: 'Less sugar.', delivery_date: '2026-11-05', delivery_time: '14:00' },
+        it: { items: [{ id: 2, name: 'Video call' }], special_requirements: 'Two microphones.', status: 'RECEIVED', staff: [] },
+      }
+      const { wrapper } = await mountReview()
+      await row(wrapper, 22).trigger('click')
+      await flushPromises()
+      const food = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
+      expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8'])
+      expect(food.textContent).toContain('Booker’s note')
+      expect(food.textContent).toContain('“Less sugar.”')
+      const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
+      expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Video call'])
+      expect(it.textContent).toContain('“Two microphones.”')
+      delete DETAILS[22]
+    })
+
     it('adds a Files tab with a count only when the booking has files', async () => {
       DETAILS[22] = {
         attachments: [{ id: 4, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 100, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/22/attachments/4' }],
@@ -353,7 +371,7 @@ describe('Review panel and decisions', () => {
     const sessions = [...p.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent).join(' '))
     expect(sessions).toEqual(['Thu 5 Nov 2026 14:00–15:30', 'Fri 6 Nov 2026 09:00–10:30', 'Sat 7 Nov 2026 09:00–10:30'])
     expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
-    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('At the start of every session (3 times)')
+    expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('The start of every session (3 times)')
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {
