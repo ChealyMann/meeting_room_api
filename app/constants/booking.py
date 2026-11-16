@@ -73,6 +73,8 @@ class BookingStep(StrEnum):
 # A final booking never changes again. A pending one is still waiting for a reviewer.
 FINAL = {BookingStatus.REJECTED, BookingStatus.CANCELLED}
 PENDING = {BookingStatus.PENDING_PITIKA, BookingStatus.PENDING_OWNER}
+# The booker can add or remove files until the booking is confirmed (owner, 16 Nov 2026).
+ATTACHMENTS_OPEN = {*PENDING, BookingStatus.SETUP_IN_PROGRESS}
 
 MASKED_TITLE = "Reserved (Private Session)"
 EXPIRY_REASON = "Expired: not approved before the meeting time."

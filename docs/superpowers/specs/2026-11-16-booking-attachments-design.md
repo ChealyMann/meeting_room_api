@@ -134,8 +134,10 @@ An attachment id that belongs to another booking is 404.
 `AttachmentOut`: `id`, `file_name`, `content_type`, `size_bytes`, `created_at`, `url` (the GET
 path above).
 
-`BookingDetail` gets `attachments: list[AttachmentOut]` and `can_edit_attachments: bool` (booker
-and open status), so every pop-up has the list without a second call.
+`BookingDetail` gets `attachments: list[AttachmentOut]` and `attachments_open: bool` (the status
+still lets files change), so every pop-up has the list without a second call. It is not a
+per-user flag: the detail builder has no current user, and only My bookings (the booker's own
+list) shows Add/remove. The server checks the booker on every write.
 
 Code lives in one file per resource: `app/routers/booking_attachments.py`,
 `app/schemas/booking_attachment.py`, `app/services/booking_attachment.py`.
@@ -152,12 +154,12 @@ server is still the judge). Messages are short: "Only PDF, Word or Excel files."
 **Book → Meeting details step:** a new optional field "Files (optional)" under Notes, using the
 same component on files kept in the draft (not yet uploaded). The Review step lists them. On
 **Send**, the booking is created first, then each file is uploaded one by one. If an upload fails,
-the booking is still sent: the done screen says "Booking sent. 1 file could not be added — add it
+the booking is still sent: the toast says "Request sent. 1 file could not be added — add it
 from My bookings." Leaving the flow drops the files, like the rest of the draft.
 
 **Where files show (read only, unless editable):**
 
-- Staff: `BookingDetailDialog` (My bookings) — editable when `can_edit_attachments`.
+- Staff: `BookingDetailDialog` (My bookings) — editable when `attachments_open`.
 - Pitika and room owner: `ReviewPanel`.
 - Admin: `BookingPanel`.
 - IT: `ITPanel`.

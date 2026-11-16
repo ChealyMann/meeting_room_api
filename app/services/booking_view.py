@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings
-from app.constants.booking import ReviewDecision, ReviewStage
+from app.constants.booking import ATTACHMENTS_OPEN, ReviewDecision, ReviewStage
 from app.models import Booking, Building, Floor, Room, User
 from app.schemas.booking import (
     BookingDetail,
@@ -24,6 +24,7 @@ from app.schemas.booking import (
     ReviewOut,
     SessionOut,
 )
+from app.schemas.booking_attachment import attachment_out
 from app.schemas.booking_review import DecidedBookingItem
 from app.schemas.refs import NamedRef, ProvinceRef
 from app.services import booking_transitions as transitions
@@ -194,4 +195,6 @@ def build_booking_detail(session: Session, booking: Booking, settings: Settings)
         cancel_reason=booking.cancel_reason,
         cancelled_by=_person(users.get(booking.cancelled_by)),
         updated_at=booking.updated_at,
+        attachments=[attachment_out(row) for row in booking.attachments],
+        attachments_open=booking.status in ATTACHMENTS_OPEN,
     )

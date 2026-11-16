@@ -20,6 +20,7 @@ from app.constants.booking import (
     ReviewDecision,
     ReviewStage,
 )
+from app.schemas.booking_attachment import AttachmentOut
 from app.schemas.common import (
     BookingText,
     Email,
@@ -243,6 +244,8 @@ class BookingDetail(BookingListItem):
     cancel_reason: str | None
     cancelled_by: PersonRef | None  # null: the system cancelled it (B-27)
     updated_at: UtcDateTime
+    attachments: list[AttachmentOut]
+    attachments_open: bool  # the booker can still add or remove files
 
 
 class DoorPassOut(ResponseModel):
