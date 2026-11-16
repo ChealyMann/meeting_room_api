@@ -94,12 +94,12 @@ async function open(query = '') {
   await flushPromises()
   return w
 }
-const titles = (w: VueWrapper) => w.findAll('.bk-card h2').map((h) => h.text())
+const titles = (w: VueWrapper) => w.findAll('.bk-card h3').map((h) => h.text())
 const panel = () => document.body.querySelector('.side-panel, [role="dialog"]')
 async function openCard(w: VueWrapper, title: string) {
   await w
     .findAll('.bk-card')
-    .find((c) => c.get('h2').text() === title)!
+    .find((c) => c.get('h3').text() === title)!
     .trigger('click')
   await flushPromises()
 }
@@ -599,5 +599,77 @@ describe('Tabs on my booking', () => {
     const w2 = await open()
     await openCard(w2, 'Team sync')
     expect(tabNames()).toEqual(['Details', 'Food & IT', 'History'])
+  })
+})
+
+describe('Finding a booking (owner pick, 16 Nov 2026: look A)', () => {
+  // Now: Thu 12 Nov 2026, 10:00 in Phnom Penh.
+  const at = (date: string, start = '09:00', end = '10:00') => ({ id: 1, date, start_time: start, end_time: end })
+  const NOW_ON = bookingItem(21, 'Board talk', 'CONFIRMED', '2026-11-12', { next_session: at('2026-11-12', '09:30', '11:00') })
+  const TOMORROW = bookingItem(22, 'Budget review', 'CONFIRMED', '2026-11-13')
+  const WEEK = bookingItem(23, 'Team sync', 'PENDING_PITIKA', '2026-11-16', { room: { ...SOON.room, name_en: 'Bassac Room' } })
+  const LATER = bookingItem(24, 'Year plan', 'PENDING_OWNER', '2026-11-30')
+  const STARTED = bookingItem(25, 'Long training', 'CONFIRMED', '2026-11-09', { session_count: 5, next_session: at('2026-11-13', '14:00', '16:00') })
+  const groups = (w: VueWrapper) => w.findAll('.group').map((g) => [g.get('h2').text(), g.findAll('.bk-card h3').map((h) => h.text())])
+  const chips = (w: VueWrapper) => w.findAll('.chip').map((c) => c.text().replace(/\s+/g, ' '))
+  beforeEach(() => {
+    mine = [NOW_ON, TOMORROW, WEEK, LATER, STARTED, GONE, DONE]
+  })
+
+  it('groups Coming up by Today, Tomorrow, Later this week and Later, by the next session', async () => {
+    const w = await open()
+    expect(groups(w)).toEqual([
+      ['Today', ['Board talk']],
+      ['Tomorrow', ['Budget review', 'Long training']],
+      ['Later this week', ['Team sync']],
+      ['Later', ['Year plan']],
+    ])
+  })
+
+  it('shows the next session on the card, not the first one, and says when one is under way', async () => {
+    const w = await open()
+    const card = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Long training')!
+    expect(card.findAll('.date > *').map((p) => p.text())).toEqual(['FRI', '13', 'NOV'])
+    expect(card.get('.meta').text()).toContain('14:00–16:00')
+    expect(card.get('.meta').text()).toContain('+4 more')
+    const now = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Board talk')!
+    expect(now.findAll('.pill').map((p) => p.text())).toEqual(['Confirmed'])
+    expect(now.classes()).toContain('is-live')
+    expect(now.get('.now-line').text()).toBe('Now · until 11:00')
+    expect(w.findAll('.now-line')).toHaveLength(1)
+    expect(w.findAll('.bk-card.is-live')).toHaveLength(1)
+  })
+
+  it('filters Coming up by status chips with counts', async () => {
+    const w = await open()
+    expect(chips(w)).toEqual(['All 5', 'Waiting 2', 'Confirmed 3'])
+    await w.findAll('.chip')[1]!.trigger('click')
+    expect(titles(w)).toEqual(['Team sync', 'Year plan'])
+    expect(w.findAll('.chip')[1]!.attributes('aria-pressed')).toBe('true')
+    await w.findAll('.chip')[2]!.trigger('click')
+    expect(titles(w)).toEqual(['Board talk', 'Budget review', 'Long training'])
+  })
+
+  it('searches by title, room or reference, on both tabs', async () => {
+    const w = await open()
+    const search = w.get('input[type="search"]')
+    await search.setValue('bassac')
+    expect(titles(w)).toEqual(['Team sync'])
+    await search.setValue('NBC-26-24')
+    expect(titles(w)).toEqual(['Year plan'])
+    await search.setValue('old')
+    await w.findAll('[role="tab"]')[1]!.trigger('click')
+    expect(titles(w)).toEqual(['Old plan'])
+  })
+
+  it('says when nothing matches, and Clear search brings the list back', async () => {
+    const w = await open()
+    await w.get('input[type="search"]').setValue('zzz')
+    expect(w.text()).toContain('No bookings match “zzz”.')
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Clear search')!
+      .trigger('click')
+    expect(titles(w)).toHaveLength(5)
   })
 })

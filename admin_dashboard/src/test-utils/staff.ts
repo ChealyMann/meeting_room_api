@@ -126,6 +126,8 @@ export const bookingItem = (id: number, title: string, status: string, date: str
   display_status: status,
   requester: { id: 5, name_en: 'Sok Dara', name_kh: 'x' },
   first_session: { id: id * 10, date, start_time: '09:00', end_time: '10:00' },
+  // The first session not ended yet; none once the booking is over or stopped.
+  next_session: ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(status) ? null : { id: id * 10, date, start_time: '09:00', end_time: '10:00' },
   session_count: 1,
   attendees: 8,
   has_catering: false,

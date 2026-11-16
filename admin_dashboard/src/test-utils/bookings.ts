@@ -17,6 +17,7 @@ export const listItem = (id: number, changes: Record<string, unknown> = {}) => (
   display_status: 'PENDING_PITIKA',
   requester: { id: 4, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' },
   first_session: { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' },
+  next_session: { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' },
   session_count: 3,
   attendees: 10,
   has_catering: true,
