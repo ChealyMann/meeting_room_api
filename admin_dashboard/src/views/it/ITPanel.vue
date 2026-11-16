@@ -134,7 +134,7 @@ const tabs = computed(() => {
   border-radius: 12px;
 }
 .tab-bar {
-  margin-block: 16px 14px;
+  margin-block: 0 14px;
 }
 .none {
   color: var(--color-ink-off);

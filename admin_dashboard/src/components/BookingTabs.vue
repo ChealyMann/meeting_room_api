@@ -38,14 +38,17 @@ function move(event: KeyboardEvent, step: number) {
 </template>
 
 <style scoped>
+/* Sticky 16px higher than the panel body's top padding, with that strip filled by the bar's own
+   background: rows scrolled under it never peek out above the tabs. Pop-ups take 16px off the
+   space above the bar, so nothing moves before scrolling. */
 .tabs {
   position: sticky;
-  top: 0;
+  top: -16px;
   z-index: 2;
   display: flex;
   gap: 4px;
   margin-inline: -20px;
-  padding-inline: 20px;
+  padding: 16px 20px 0;
   overflow-x: auto;
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-sheet);

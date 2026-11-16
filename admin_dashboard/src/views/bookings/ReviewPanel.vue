@@ -158,7 +158,7 @@ const tabs = computed(() => {
   color: var(--color-warn);
 }
 .tab-bar {
-  margin-block: 16px 14px;
+  margin-block: 0 14px;
 }
 .foot {
   display: flex;

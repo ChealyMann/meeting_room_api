@@ -445,7 +445,7 @@ async function reload() {
   color: var(--color-intaglio);
 }
 .tab-bar {
-  margin-block: 0 -4px;
+  margin-block: -16px -4px;
 }
 .pane {
   display: grid;
