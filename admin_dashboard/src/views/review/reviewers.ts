@@ -48,6 +48,8 @@ export interface Reviewer {
   /** `seats`: the room's capacity, or null when not known. */
   labels(detail: BookingDetail, seats: number | null): ReviewLabel[]
   nextStepText(detail: BookingDetail): string
+  /** The Food & IT card this reviewer checks, on a light background (owner pick, 16 Nov 2026). */
+  leadCard: 'food' | null
   /** One note on amber wash in the panel, or null. */
   panelNote(detail: BookingDetail): string | null
   /** The rooms of the room filter. */
@@ -68,6 +70,7 @@ export const REVIEWERS: Record<ReviewerKey, Reviewer> = {
     rowSteps,
     labels: (detail) => checkLabels(detail),
     nextStepText,
+    leadCard: 'food',
     panelNote: (detail) => (detail.route === 'R4' ? 'The owner books their own room: you check the food and IT only.' : null),
     rooms: (all, user) => {
       const province = user?.province?.code
@@ -87,6 +90,7 @@ export const REVIEWERS: Record<ReviewerKey, Reviewer> = {
     rowSteps: ownerRowSteps,
     labels: ownerCheckLabels,
     nextStepText: ownerNextStepText,
+    leadCard: null,
     panelNote: (detail) => {
       const notes = pitikaNotes(detail)
       return notes ? `The Pitika wrote: “${notes}”` : null

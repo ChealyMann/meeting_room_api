@@ -292,7 +292,8 @@ describe('Review panel and decisions', () => {
       const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
       expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Video call'])
       expect(it.textContent).toContain('“Two microphones.”')
-      expect(panel()!.querySelector('#tabpanel-services .lead')).toBeNull()
+      expect(food.classList).toContain('lead')
+      expect(it.classList).not.toContain('lead')
       delete DETAILS[22]
     })
 

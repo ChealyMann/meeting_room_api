@@ -31,6 +31,8 @@ const props = defineProps<{
   readOnly?: boolean
   /** The subtitle while it waits ("Waiting for Pitika", "Waiting for room owner"). */
   waitingLabel?: string
+  /** The Food & IT card this reviewer checks, on a light background (Pitika: food). */
+  leadCard?: 'food' | 'it' | null
   /** One note for the reviewer on amber wash (the R4 note, the Pitika's notes), or null. */
   note?: string | null
 }>()
@@ -95,7 +97,7 @@ const tabs = computed(() => {
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
-        <BookingServices :booking="booking" viewer="staff" />
+        <BookingServices :booking="booking" viewer="staff" :lead="leadCard ?? null" />
       </section>
 
       <section

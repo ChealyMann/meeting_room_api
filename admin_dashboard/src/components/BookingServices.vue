@@ -15,10 +15,12 @@ const props = withDefaults(
     viewer: 'booker' | 'staff'
     /** False while the food is not known yet (IT's panel before the booking loads). */
     food?: boolean
-    /** IT help on top, on a light background (the IT setup panel, owner pick 16 Nov 2026); food first everywhere else. */
+    /** IT help on top (the IT setup panel, owner pick 16 Nov 2026); food first everywhere else. */
     itFirst?: boolean
+    /** The card the reader checks, on a light background: food for Pitika, IT for IT. */
+    lead?: 'food' | 'it' | null
   }>(),
-  { food: true, itFirst: false },
+  { food: true, itFirst: false, lead: null },
 )
 /** The cards in the order they show (and are read). */
 const order = computed(() => {
@@ -53,7 +55,7 @@ const itPill = computed<Pill | null>(() => {
   <div class="svc">
     <template v-for="kind in order" :key="kind">
       <template v-if="kind === 'food'">
-        <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" data-kind="food">
+        <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" :class="{ lead: lead === 'food' }" data-kind="food">
           <template v-if="foodPill" #extra><span class="pill" :class="foodPill.tone">{{ foodPill.text }}</span></template>
           <ul class="svc-items">
             <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
@@ -81,7 +83,7 @@ const itPill = computed<Pill | null>(() => {
       </template>
   
       <template v-else>
-        <PanelSection v-if="booking.it" title="IT help" class="svc-card" :class="{ lead: itFirst }" data-kind="it">
+        <PanelSection v-if="booking.it" title="IT help" class="svc-card" :class="{ lead: lead === 'it' }" data-kind="it">
           <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
           <ul class="svc-items">
             <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>

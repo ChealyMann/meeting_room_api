@@ -161,6 +161,7 @@ describe('Owner To review', () => {
     const food = p.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
     expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Lunch box × 25'])
     expect(p.querySelector('#tabpanel-services .svc-card[data-kind="it"] .svc-items')?.textContent?.trim()).toBe('Projector setup')
+    expect(p.querySelector('#tabpanel-services .lead')).toBeNull()
     const labels = [...p.querySelectorAll('#tabpanel-history .timeline .label')].map((l) => l.textContent?.trim())
     expect(labels).toEqual(['Sent', 'Approved', 'Waiting for the room owner'])
     expect([...p.querySelectorAll('#tabpanel-history .timeline .name')].map((n) => n.textContent?.trim())).toContain('Chan Sophea')

@@ -348,6 +348,7 @@ async function decide() {
       :photo-path="covers[openItem.room.id]?.url ?? null"
       :starts-in="openItem.first_session.date <= today ? startsIn(openItem, now) : null"
       :waiting-label="R.waitingLabel"
+      :lead-card="R.leadCard"
       :note="R.panelNote(openDetail)"
       @close="panel.close"
       @approve="ask('approve', openItem)"
