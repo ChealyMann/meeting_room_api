@@ -252,12 +252,12 @@ describe('Review panel and decisions', () => {
     const tabs = () => [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
     const shown = () => [...panel()!.querySelectorAll<HTMLElement>('[role="tabpanel"]')].filter((p) => p.style.display !== 'none').map((p) => p.id)
 
-    it('splits the panel into Details, Food & IT with a count, and Approvals; photo, steps and buttons stay', async () => {
+    it('splits the panel into Details, Food & IT with a count, and History; photo, steps and buttons stay', async () => {
       const { wrapper } = await mountReview()
       await row(wrapper, 21).trigger('click')
       await flushPromises()
 
-      expect(tabs()).toEqual(['Details', 'Food & IT 2', 'Approvals'])
+      expect(tabs()).toEqual(['Details', 'Food & IT 2', 'History'])
       expect(shown()).toEqual(['tabpanel-details'])
       expect(panel()!.querySelector('.room-photo')).not.toBeNull()
       expect(panel()!.querySelector('.process-bar')).not.toBeNull()
@@ -267,8 +267,8 @@ describe('Review panel and decisions', () => {
       expect(panel()!.querySelector('#tab-services')!.getAttribute('aria-selected')).toBe('true')
       expect(button(panel(), 'Approve')).toBeTruthy()
 
-      await click(panel()!.querySelector<HTMLButtonElement>('#tab-approvals')!)
-      expect(panel()!.querySelector('#tabpanel-approvals')!.textContent).toContain('No one has approved yet.')
+      await click(panel()!.querySelector<HTMLButtonElement>('#tab-history')!)
+      expect(panel()!.querySelector('#tabpanel-history')!.textContent).toContain('Waiting for Pitika')
     })
 
     it('shows Food & IT with the same cards as the booker: items with the amount, the booker’s notes', async () => {
@@ -297,18 +297,19 @@ describe('Review panel and decisions', () => {
       const { wrapper } = await mountReview()
       await row(wrapper, 22).trigger('click')
       await flushPromises()
-      expect(tabs()).toEqual(['Details', 'Food & IT', 'Files 1', 'Approvals 1'])
+      expect(tabs()).toEqual(['Details', 'Food & IT', 'Files 1', 'History'])
       delete DETAILS[22]
     })
   })
 
-  describe('Approved by', () => {
-    const approvals = () =>
-      [...panel()!.querySelectorAll('.approvals li')].map((li) => ({
-        who: li.querySelector('.ap-who')?.textContent?.trim(),
-        role: li.querySelector('.ap-role')?.textContent?.trim(),
-        when: li.querySelector('.ap-when')?.textContent?.trim() ?? null,
-        note: li.querySelector('.ap-note')?.textContent?.trim() ?? null,
+  describe('History', () => {
+    const rows = () =>
+      [...panel()!.querySelectorAll('#tabpanel-history .timeline li')].map((li) => ({
+        label: li.querySelector('.label')?.textContent?.trim(),
+        who: li.querySelector('.name')?.textContent?.trim() ?? null,
+        role: [...li.querySelectorAll('.role')].map((r) => r.textContent?.trim()).join(' for '),
+        at: li.querySelector('.time')?.textContent?.trim() ?? null,
+        note: li.querySelector('.note')?.textContent?.trim() ?? null,
       }))
     async function openWith(extra: Record<string, unknown>) {
       DETAILS[22] = extra
@@ -320,20 +321,21 @@ describe('Review panel and decisions', () => {
       delete DETAILS[22]
     })
 
-    it('lists each approval with name, role, time and note, then what is waiting', async () => {
+    it('shows the timeline like the Admin’s History: who did what, their role, when, and the note', async () => {
       await openWith({
         status: 'PENDING_OWNER',
         reviews: [
           { stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 3, name_en: 'Chan Sophea' }, notes: 'Food is fine for 24 people.', reviewed_at: '2026-11-12T07:05:00Z', by_admin: false },
         ],
       })
-      expect(approvals()).toEqual([
-        { who: 'Chan Sophea', role: 'Pitika', when: '12 Nov 2026, 14:05', note: '“Food is fine for 24 people.”' },
-        { who: 'Waiting for the room owner', role: undefined, when: null, note: null },
-      ])
+      const r = rows()
+      expect(r.map((x) => x.label)).toEqual(['Sent', 'Approved', 'Waiting for the room owner'])
+      expect(r[0]).toMatchObject({ role: 'Booker' })
+      expect(r[1]).toEqual({ label: 'Approved', who: 'Chan Sophea', role: 'Pitika', at: '12 Nov 2026, 14:05', note: 'Food is fine for 24 people.' })
+      expect(r[2]).toMatchObject({ role: 'Room owner', at: null })
     })
 
-    it('says when the Admin approved for a reviewer, and leaves out rejections', async () => {
+    it('shows the Admin standing in, and a step that was not needed', async () => {
       await openWith({
         status: 'SETUP_IN_PROGRESS',
         reviews: [
@@ -341,15 +343,15 @@ describe('Review panel and decisions', () => {
           { stage: 'OWNER', decision: 'NOT_REQUIRED', reviewer: null, notes: null, reviewed_at: '2026-11-14T01:15:00Z', by_admin: false },
         ],
       })
-      expect(approvals()).toEqual([
-        { who: 'Pich Visal', role: 'Admin, for Pitika', when: '14 Nov 2026, 08:15', note: null },
-        { who: 'IT is setting up the room', role: undefined, when: null, note: null },
-      ])
+      const r = rows()
+      expect(r.find((x) => x.label === 'Approved')).toMatchObject({ who: 'Pich Visal', role: 'Admin for Pitika', at: '14 Nov 2026, 08:15' })
+      expect(r.map((x) => x.label)).toContain('Room owner not needed')
     })
 
-    it('has no Approved by block before anyone approved', async () => {
+    it('has no second step bar inside the tab: the one on top is enough', async () => {
       await openWith({ reviews: [] })
-      expect(panel()!.querySelector('.approvals')).toBeNull()
+      expect(panel()!.querySelector('#tabpanel-history .timeline')).not.toBeNull()
+      expect(panel()!.querySelector('#tabpanel-history .steps')).toBeNull()
     })
   })
 

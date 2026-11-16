@@ -152,19 +152,18 @@ describe('Owner To review', () => {
     expect(panel()?.textContent).toContain('The Pitika wrote: “Check the projector”')
   })
 
-  it('has the same tabs, Food & IT cards and Approved by as the Pitika’s drawer', async () => {
+  it('has the same tabs, Food & IT cards and History as the Pitika’s drawer', async () => {
     const { wrapper } = await mountOwner()
     await row(wrapper).trigger('click')
     await flushPromises()
     const p = panel()!
-    expect([...p.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())).toEqual(['Details', 'Food & IT 2', 'Approvals 1'])
+    expect([...p.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())).toEqual(['Details', 'Food & IT 2', 'History'])
     const food = p.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
     expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Lunch box × 25'])
     expect(p.querySelector('#tabpanel-services .svc-card[data-kind="it"] .svc-items')?.textContent?.trim()).toBe('Projector setup')
-    const approvals = p.querySelector('#tabpanel-approvals')!
-    expect(approvals.querySelector('.ap-who')?.textContent?.trim()).toBe('Chan Sophea')
-    expect(approvals.querySelector('.ap-role')?.textContent?.trim()).toBe('Pitika')
-    expect(approvals.querySelector('.ap-wait')?.textContent?.trim()).toBe('Waiting for the room owner')
+    const labels = [...p.querySelectorAll('#tabpanel-history .timeline .label')].map((l) => l.textContent?.trim())
+    expect(labels).toEqual(['Sent', 'Approved', 'Waiting for the room owner'])
+    expect([...p.querySelectorAll('#tabpanel-history .timeline .name')].map((n) => n.textContent?.trim())).toContain('Chan Sophea')
   })
 
   it('approves through the owner API and says IT setup is next', async () => {

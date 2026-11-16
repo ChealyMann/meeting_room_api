@@ -6,10 +6,10 @@ import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
-import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
@@ -18,7 +18,6 @@ import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
-import { approvedBy } from '../../utils/approvals'
 
 const props = defineProps<{
   booking: BookingDetail
@@ -40,11 +39,10 @@ const slip = useRequestSlip(() => (props.readOnly ? props.booking : null))
 
 const steps = computed(() => buildHistory(props.booking).steps)
 
-const approvals = computed(() => approvedBy(props.booking))
 
 // Tabs (owner pick, 16 Nov 2026): the photo, the steps and the buttons stay; the rest is split.
 // A count on Food & IT says there is something to check; Files shows only when there are files.
-type Tab = 'details' | 'services' | 'files' | 'approvals'
+type Tab = 'details' | 'services' | 'files' | 'history'
 const tab = ref<Tab>('details')
 watch(
   () => props.booking.id,
@@ -59,7 +57,7 @@ const tabs = computed(() => {
     { id: 'services', label: `Food & IT${count(services)}` },
   ]
   if (files) list.push({ id: 'files', label: `Files${count(files)}` })
-  list.push({ id: 'approvals', label: `Approvals${count(approvals.value.length)}` })
+  list.push({ id: 'history', label: 'History' })
   return list
 })
 </script>
@@ -98,9 +96,8 @@ const tabs = computed(() => {
         <BookingDetails :booking="booking" />
       </section>
 
-      <section v-show="tab === 'approvals'" id="tabpanel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
-        <h3>Approved by</h3>
-        <ApprovedBy :booking="booking" />
+      <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
+        <BookingHistory :booking="booking" :bar="false" />
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">

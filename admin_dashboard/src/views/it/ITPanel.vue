@@ -1,29 +1,28 @@
 <script setup lang="ts">
 // One IT setup in the side panel (spec Part B, "Panel"): the room photo, the booking's full
 // process bar, then the same tabs as the other booking pop-ups (owner pick, 16 Nov 2026):
-// Details, Food & IT, Files, Approvals. It opens on Food & IT, where IT's work is. The IT card
+// Details, Food & IT, Files, History. It opens on Food & IT, where IT's work is. The IT card
 // takes the ticket from the list, so a new assign shows at once. The times are the meeting's
 // only. The foot has Close and the row's buttons.
 import { Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import type { BookingDetail, ITTicketItem } from '../../api/types'
-import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
-import { approvedBy } from '../../utils/approvals'
 import { buildHistory } from '../../utils/bookingHistory'
 import { hasSessionAhead } from '../../utils/itQueue'
 
 const props = defineProps<{
   ticket: ITTicketItem
-  /** The full booking (process bar, food, approvals, files), or null while it loads or when it failed. */
+  /** The full booking (process bar, details, food, history, files), or null while it loads or when it failed. */
   detail: BookingDetail | null
   photo: string | null
   place: string | null
@@ -32,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; assign: []; ready: [] }>()
 
 const b = computed(() => props.ticket.booking)
-const steps = computed(() => (props.detail ? buildHistory(props.detail).steps : []))
+const steps = computed(() => (live.value ? buildHistory(live.value).steps : []))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
 /** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
 const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
@@ -61,8 +60,10 @@ const services = computed(() => {
   const d = props.detail
   return d ? { ...d, it } : { display_status: b.value.display_status, sessions: [], catering: null, it }
 })
+/** The full booking with IT from the ticket, for the History timeline. */
+const live = computed(() => (props.detail ? { ...props.detail, it: services.value.it } : null))
 
-type Tab = 'details' | 'services' | 'files' | 'approvals'
+type Tab = 'details' | 'services' | 'files' | 'history'
 const tab = ref<Tab>('services')
 const count = (n: number) => (n ? ` ${n}` : '')
 const files = computed(() => props.detail?.attachments ?? [])
@@ -72,7 +73,7 @@ const tabs = computed(() => {
     { id: 'services', label: `Food & IT${count((props.detail?.catering?.packages.length ?? 0) + props.ticket.items.length)}` },
   ]
   if (files.value.length) list.push({ id: 'files', label: `Files${count(files.value.length)}` })
-  list.push({ id: 'approvals', label: `Approvals${count(props.detail ? approvedBy(props.detail).length : 0)}` })
+  list.push({ id: 'history', label: 'History' })
   return list
 })
 </script>
@@ -105,8 +106,8 @@ const tabs = computed(() => {
         <BookingFiles :booking-id="detail.id" :files="files" />
       </section>
 
-      <section v-show="tab === 'approvals'" id="tabpanel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
-        <ApprovedBy v-if="detail" :booking="detail" />
+      <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
+        <BookingHistory v-if="live" :booking="live" :bar="false" />
         <p v-else class="none">Loading…</p>
       </section>
     </div>

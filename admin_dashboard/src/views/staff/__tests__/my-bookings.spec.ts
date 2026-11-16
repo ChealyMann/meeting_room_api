@@ -484,11 +484,11 @@ describe('Tabs on my booking', () => {
     await flushPromises()
   }
 
-  it('splits the pop-up into Details, Food & IT and Approvals; status, steps and the slip stay', async () => {
+  it('splits the pop-up into Details, Food & IT and History; status, steps and the slip stay', async () => {
     detail8 = DONE_FULL()
     const w = await open()
     await openCard(w, 'Team sync')
-    expect(tabNames()).toEqual(['Details', 'Food & IT 4', 'Approvals 1'])
+    expect(tabNames()).toEqual(['Details', 'Food & IT 4', 'History'])
     expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Details')
     expect(panel()!.querySelector('[role="tabpanel"] .band')).toBeNull()
     expect(panel()!.querySelector('[role="tabpanel"] .process-bar')).toBeNull()
@@ -538,34 +538,38 @@ describe('Tabs on my booking', () => {
     expect(tabPanel('services').textContent).toContain('No IT help asked.')
   })
 
-  it('lists who approved, and what it still waits for', async () => {
+  it('shows the History timeline: who did what, their role, when, and what it waits for', async () => {
     detail8 = bookingDetail({ ...WAITING, status: 'SETUP_IN_PROGRESS', display_status: 'SETUP_IN_PROGRESS' }, { reviews: [PITIKA_YES] })
     const w = await open()
     await openCard(w, 'Team sync')
-    const ap = tabPanel('approvals')
-    expect(ap.querySelector('.ap-who')?.textContent?.trim()).toBe('Chan Sophea')
-    expect(ap.querySelector('.ap-role')?.textContent?.trim()).toBe('Pitika')
-    expect(ap.querySelector('.ap-when')?.textContent?.trim()).toBe('12 Nov 2026, 14:05')
-    expect(ap.querySelector('.ap-note')?.textContent?.trim()).toBe('“Food is fine for 8.”')
-    expect(ap.querySelector('.ap-wait')?.textContent?.trim()).toBe('IT is setting up the room')
+    const h = tabPanel('history')
+    const labels = [...h.querySelectorAll('.timeline .label')].map((l) => l.textContent?.trim())
+    expect(labels).toEqual(['Sent', 'Approved', 'Waiting for IT to be ready'])
+    const approved = [...h.querySelectorAll('.timeline li')][1]!
+    expect(approved.querySelector('.name')?.textContent?.trim()).toBe('Chan Sophea')
+    expect(approved.querySelector('.role')?.textContent?.trim()).toBe('Pitika')
+    expect(approved.querySelector('.time')?.textContent?.trim()).toBe('12 Nov 2026, 14:05')
+    expect(approved.querySelector('.note')?.textContent?.trim()).toBe('Food is fine for 8.')
+    expect(h.querySelector('.steps')).toBeNull()
   })
 
-  it('says no one has approved yet while it waits for Pitika', async () => {
+  it('shows Sent and Waiting for Pitika on a new booking', async () => {
     const w = await open()
     await openCard(w, 'Team sync')
-    expect(tabNames()).toContain('Approvals')
-    expect(tabPanel('approvals').textContent).toContain('No one has approved yet.')
+    expect(tabNames()).toContain('History')
+    const labels = [...tabPanel('history').querySelectorAll('.timeline .label')].map((l) => l.textContent?.trim())
+    expect(labels).toEqual(['Sent', 'Waiting for Pitika'])
   })
 
   it('has a Files tab while files can still be added, and none on a confirmed booking with no file', async () => {
     const w = await open()
     await openCard(w, 'Team sync')
-    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Files', 'Approvals'])
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Files', 'History'])
     expect(tabPanel('files').querySelector('input[type="file"]')).not.toBeNull()
     w.unmount()
     detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' })
     const w2 = await open()
     await openCard(w2, 'Team sync')
-    expect(tabNames()).toEqual(['Details', 'Food & IT', 'Approvals'])
+    expect(tabNames()).toEqual(['Details', 'Food & IT', 'History'])
   })
 })

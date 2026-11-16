@@ -291,7 +291,7 @@ describe('IT setup', () => {
     await flushPromises()
 
     const tabs = [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
-    expect(tabs).toEqual(['Details', 'Food & IT 2', 'Approvals'])
+    expect(tabs).toEqual(['Details', 'Food & IT 2', 'History'])
     expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Food & IT 2')
     const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
     expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Projector setup', 'Microphones'])
@@ -302,7 +302,7 @@ describe('IT setup', () => {
     expect(it.textContent).toContain('IT note')
     expect(it.textContent).toContain('“Bring the long cable.”')
     expect(panel()!.querySelector('#tabpanel-services')!.textContent).toContain('No food ordered.')
-    expect(panel()!.querySelector('#tabpanel-approvals')!.textContent).toContain('No one has approved yet.')
+    expect(panel()!.querySelector('#tabpanel-history')!.textContent).toContain('Waiting for IT to be ready')
   })
 
   it('lists the booking files read only in the panel, and downloads one', async () => {

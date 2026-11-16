@@ -2,7 +2,7 @@
 // One of my bookings, in the side panel (owner pick, 13 Nov 2026: "Photo header"): the room photo
 // on top with the title on it; the status band; the steps bar; a note saying why it stopped
 // (not approved, expired, cancelled); the door pass when confirmed;
-// then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, Approvals. Foot (owner pick, 13 Nov 2026: look C "one main button +
+// then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, History. Foot (owner pick, 13 Nov 2026: look C "one main button +
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
@@ -14,9 +14,9 @@ import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import { cancelMyBooking } from '../../api/staff'
 import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
-import ApprovedBy from '../../components/ApprovedBy.vue'
 import BookingDetails from '../../components/BookingDetails.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingHistory from '../../components/BookingHistory.vue'
 import BookingServices from '../../components/BookingServices.vue'
 import BookingTabs from '../../components/BookingTabs.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
@@ -26,7 +26,6 @@ import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import { useToast } from '../../composables/useToast'
-import { approvedBy } from '../../utils/approvals'
 import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
 import { downloadBlob } from '../../utils/download'
@@ -105,9 +104,9 @@ const stopNote = computed(() => {
 const sessions = computed(() => (booking.value?.sessions ?? []).map((s) => ({ id: s.id, day: dayLabel(s.date) })))
 
 // Tabs (owner pick, 16 Nov 2026, like To review): the status, the steps and the buttons stay; the
-// rest is split into Details, Food & IT, Files and Approvals. Files shows while files can still be
+// rest is split into Details, Food & IT, Files and History. Files shows while files can still be
 // added, or when there are some. A new booking opens on Details.
-type Tab = 'details' | 'services' | 'files' | 'approvals'
+type Tab = 'details' | 'services' | 'files' | 'history'
 const tab = ref<Tab>('details')
 watch(
   () => props.bookingId,
@@ -123,7 +122,7 @@ const tabs = computed(() => {
     { id: 'services', label: `Food & IT${count(services)}` },
   ]
   if (showFiles.value) list.push({ id: 'files', label: `Files${count(b?.attachments.length ?? 0)}` })
-  list.push({ id: 'approvals', label: `Approvals${count(b ? approvedBy(b).length : 0)}` })
+  list.push({ id: 'history', label: 'History' })
   return list
 })
 
@@ -275,8 +274,8 @@ async function reload() {
         <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
       </section>
 
-      <section v-show="tab === 'approvals'" id="tabpanel-approvals" class="pane" role="tabpanel" aria-labelledby="tab-approvals">
-        <ApprovedBy :booking="booking" />
+      <section v-show="tab === 'history'" id="tabpanel-history" class="pane" role="tabpanel" aria-labelledby="tab-history">
+        <BookingHistory :booking="booking" :bar="false" />
       </section>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
