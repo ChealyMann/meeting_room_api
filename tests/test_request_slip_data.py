@@ -121,8 +121,8 @@ def test_different_times_make_a_timetable(slip):
     ("asked", "lines"),
     [
         ({}, ["- មិនមាន។"]),
-        ({"it": True}, ["- អ្នកបច្ចេកទេស IT និងឧបករណ៍ IT។"]),
-        ({"catering": True, "it": True}, ["- នំ ផ្លែឈើ និងភេសជ្ជៈ។", "- អ្នកបច្ចេកទេស IT និងឧបករណ៍ IT។"]),
+        ({"it": True}, ["- អ្នកជំនួយបច្ចេកទេសពត៌មានវិទ្យា និងសម្ភារៈប្រើប្រាស់ផ្សេងៗ។"]),
+        ({"catering": True, "it": True}, ["- នំ ផ្លែឈើ និងភេសជ្ជៈ។", "- អ្នកជំនួយបច្ចេកទេសពត៌មានវិទ្យា និងសម្ភារៈប្រើប្រាស់ផ្សេងៗ។"]),
     ],
 )
 def test_requests_list_only_what_was_asked(slip, asked, lines):
