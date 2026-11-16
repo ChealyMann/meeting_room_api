@@ -49,13 +49,19 @@ function move(event: KeyboardEvent, step: number) {
   gap: 4px;
   margin-inline: -20px;
   padding: 16px 20px 0;
+  /* Sideways only, with no scrollbar. The grey line is drawn inside the bar, so the red
+     underline sits on it without sticking out (that 1px made Windows show a scrollbar). */
   overflow-x: auto;
-  border-bottom: 1px solid var(--color-rule);
+  overflow-y: hidden;
+  scrollbar-width: none;
+  box-shadow: inset 0 -1px 0 var(--color-rule);
   background: var(--color-sheet);
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .tabs button {
   flex: none;
-  margin-bottom: -1px;
   padding: 10px;
   border: 0;
   border-bottom: 2px solid transparent;
