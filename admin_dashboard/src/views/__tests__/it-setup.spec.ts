@@ -72,6 +72,7 @@ const SUMMARY = { to_assign: 2, in_progress: 1, ready_today: 1, due_today: 6, du
 const calls: string[] = []
 const bodies: string[] = []
 let summary: Record<string, number>
+let files: unknown[] = []
 let action: () => Response
 
 function json(body: unknown, status = 200) {
@@ -88,6 +89,7 @@ beforeEach(() => {
   calls.length = 0
   bodies.length = 0
   summary = SUMMARY
+  files = []
   TO_ASSIGN = [ticket(5, '2026-11-05'), ticket(6, '2026-11-06')]
   IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]] })]
   action = () => json(TO_ASSIGN[0])
@@ -133,6 +135,8 @@ beforeEach(() => {
           cancelled_at: null,
           cancel_reason: null,
           cancelled_by: null,
+          attachments: files,
+          attachments_open: true,
         })
       }
       return json({ items: [], page: 1, size: 100, total: 0 })
@@ -278,6 +282,25 @@ describe('IT setup', () => {
     expect(panel()?.textContent).toContain('Meeting')
     const foot = [...(panel()?.querySelectorAll('.panel-foot button') ?? [])].map((b) => b.textContent?.trim())
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
+  })
+
+  it('lists the booking files read only in the panel, and downloads one', async () => {
+    files = [{ id: 5, file_name: 'room-plan.pdf', content_type: 'application/pdf', size_bytes: 9000, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/107/attachments/5' }]
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+    await row(wrapper, 7).trigger('click')
+    await flushPromises()
+
+    const name = panel()!.querySelector<HTMLButtonElement>('.att-name')!
+    expect(name.textContent).toBe('room-plan.pdf')
+    expect(panel()!.textContent).not.toContain('Add file')
+    name.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/107/attachments/5')
+    await new Promise((done) => setTimeout(done, 0)) // the download frees its URL on a timer
+    clickSpy.mockRestore()
   })
 
   it('marks each row with its state: needs staff, staff set, ready, missed', async () => {

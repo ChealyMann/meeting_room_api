@@ -7,6 +7,7 @@ import { computed } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingFiles from '../../components/BookingFiles.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
@@ -124,6 +125,11 @@ const sessions = computed(() =>
           <dd class="wrap" :class="{ none: !booking.it.special_requirements }">{{ booking.it.special_requirements || 'None' }}</dd>
         </div>
       </dl>
+
+      <template v-if="booking.attachments?.length">
+        <h3>Files</h3>
+        <BookingFiles :booking-id="booking.id" :files="booking.attachments" />
+      </template>
     </div>
 
     <template #foot>

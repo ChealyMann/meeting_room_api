@@ -34,7 +34,10 @@ function stub() {
     const url = new URL(String(input))
     const key = `${init?.method ?? 'GET'} ${url.pathname}`
     calls.push(key)
-    if (init?.body) bodies[key] = JSON.parse(String(init.body))
+    if (typeof init?.body === 'string') bodies[key] = JSON.parse(init.body)
+    if (key === 'POST /api/v1/bookings/8/attachments')
+      return json({ id: 9, file_name: 'notes.pdf', content_type: 'application/pdf', size_bytes: 6, created_at: '2026-11-12T03:00:00Z', url: '/api/v1/bookings/8/attachments/9' }, 201)
+    if (key === 'DELETE /api/v1/bookings/8/attachments/1') return new Response(null, { status: 204 })
     if (key === 'GET /api/v1/bookings/mine' && mineLimited)
       return new Response(JSON.stringify({ error: { code: 'RATE_LIMITED', message: 'Too many requests.' } }), {
         status: 429,
@@ -65,6 +68,7 @@ beforeEach(() => {
   useSessionStore().accessToken = 'A1'
   mine = [SOON, WAITING, GONE, DONE]
   mineFails = false
+  mineLimited = false
   rooms = []
   slipFails = false
   detail8 = bookingDetail(WAITING)
@@ -388,5 +392,43 @@ describe('My bookings', () => {
     await w.get('button[aria-label="Refresh"]').trigger('click')
     await flushPromises()
     expect(calls.filter((c) => c === 'GET /api/v1/bookings/mine').length).toBe(asked)
+  })
+})
+
+describe('Files on my booking', () => {
+  const AGENDA = { id: 1, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 2048, created_at: '2026-11-10T02:00:00Z', url: '/api/v1/bookings/8/attachments/1' }
+  const names = () => [...panel()!.querySelectorAll('.att-name')].map((n) => n.textContent)
+
+  it('adds and removes files while the booking is waiting', async () => {
+    detail8 = bookingDetail(WAITING, { attachments: [AGENDA] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(names()).toEqual(['agenda.pdf'])
+    const input = panel()!.querySelector<HTMLInputElement>('input[type="file"]')!
+    Object.defineProperty(input, 'files', { value: [new File(['%PDF-1'], 'notes.pdf')], configurable: true })
+    input.dispatchEvent(new Event('change'))
+    await flushPromises()
+    expect(calls).toContain('POST /api/v1/bookings/8/attachments')
+    expect(names()).toEqual(['agenda.pdf', 'notes.pdf'])
+    panel()!.querySelector<HTMLButtonElement>('[aria-label="Remove agenda.pdf"]')!.click()
+    await flushPromises()
+    expect(calls).toContain('DELETE /api/v1/bookings/8/attachments/1')
+    expect(names()).toEqual(['notes.pdf'])
+  })
+
+  it('shows files read only once confirmed', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' }, { attachments: [AGENDA] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(names()).toEqual(['agenda.pdf'])
+    expect(panel()!.textContent).not.toContain('Add file')
+    expect(panel()!.querySelector('[aria-label="Remove agenda.pdf"]')).toBeNull()
+  })
+
+  it('shows no Files block on a confirmed booking with no file', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(panel()!.querySelector('.att')).toBeNull()
   })
 })

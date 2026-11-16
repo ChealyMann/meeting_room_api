@@ -251,6 +251,29 @@ describe('Review panel and decisions', () => {
     expect(panel()!.textContent).toContain('The owner books their own room: you check the food and IT only.')
   })
 
+  it('lists the booking files read only, and downloads one', async () => {
+    DETAILS[21] = {
+      ...DETAILS[21],
+      attachments: [{ id: 4, file_name: 'guest-list.xlsx', content_type: 'x', size_bytes: 4096, created_at: '2026-11-04T02:00:00Z', url: '/api/v1/bookings/21/attachments/4' }],
+    }
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:1')
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>()
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const { wrapper } = await mountReview()
+    await row(wrapper, 21).trigger('click')
+    await flushPromises()
+
+    const name = panel()!.querySelector<HTMLButtonElement>('.att-name')!
+    expect(name.textContent).toBe('guest-list.xlsx')
+    expect(panel()!.textContent).not.toContain('Add file')
+    name.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/21/attachments/4')
+    await new Promise((done) => setTimeout(done, 0)) // the download frees its URL on a timer
+    clickSpy.mockRestore()
+    delete DETAILS[21]!.attachments
+  })
+
   it('approves from the row with optional notes, then the row leaves', async () => {
     const { wrapper } = await mountReview()
     await click(button(row(wrapper, 21).element, 'Approve'))

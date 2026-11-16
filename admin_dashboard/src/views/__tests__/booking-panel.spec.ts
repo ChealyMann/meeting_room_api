@@ -229,6 +229,21 @@ describe('BookingPanel', () => {
     expect(eye('Show door pass')).toBeUndefined()
   })
 
+  it('lists the booking files read only, and downloads one', async () => {
+    current = detail({
+      attachments: [{ id: 3, file_name: 'agenda.pdf', content_type: 'application/pdf', size_bytes: 2048, created_at: '2026-11-10T02:00:00Z', url: '/api/v1/bookings/12/attachments/3' }],
+      attachments_open: true,
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    await mountAt('/bookings?id=12')
+    const name = panel()!.querySelector<HTMLButtonElement>('.att-name')!
+    expect(name.textContent).toBe('agenda.pdf')
+    expect(panel()!.textContent).not.toContain('Add file')
+    await click(name)
+    expect(calls).toContain('GET /api/v1/bookings/12/attachments/3')
+    await new Promise((done) => setTimeout(done, 0)) // the download frees its URL on a timer
+  })
+
   it('downloads the calendar file', async () => {
     const revokedAtClick: boolean[] = []
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {

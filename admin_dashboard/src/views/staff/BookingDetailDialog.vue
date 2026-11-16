@@ -13,7 +13,8 @@ import { api } from '../../api'
 import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
 import { ApiError } from '../../api/errors'
 import { cancelMyBooking } from '../../api/staff'
-import type { BookingDetail, DoorPassOut } from '../../api/types'
+import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
+import BookingFiles from '../../components/BookingFiles.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
@@ -48,6 +49,11 @@ useLiveRefresh(async () => {
   const fresh = await getBooking(api, props.bookingId)
   if (!busy.value && fresh.id === props.bookingId) booking.value = fresh
 })
+
+// Files (owner, 16 Nov 2026): the booker adds or removes them until the booking is confirmed.
+function setFiles(files: AttachmentOut[]) {
+  if (booking.value) booking.value = { ...booking.value, attachments: files }
+}
 
 const history = computed(() => (booking.value ? buildHistory(booking.value) : { steps: [], events: [] }))
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
@@ -290,6 +296,11 @@ async function reload() {
           <dd>{{ booking.meeting_purpose }}</dd>
         </div>
       </dl>
+
+      <div v-if="booking.attachments.length || booking.attachments_open" class="block">
+        <div class="lbl"><span>Files</span></div>
+        <BookingFiles :booking-id="booking.id" :files="booking.attachments" :editable="booking.attachments_open" @update="setFiles" @locked="load" />
+      </div>
 
       <p v-if="icsError" class="msg" role="alert">{{ icsError }}</p>
       <p v-if="slip.error.value" class="msg" role="alert">{{ slip.error.value }}</p>

@@ -6,6 +6,7 @@ import { computed } from 'vue'
 
 import type { BookingDetail, ITTicketItem } from '../../api/types'
 import BaseButton from '../../components/base/BaseButton.vue'
+import BookingFiles from '../../components/BookingFiles.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
@@ -87,6 +88,11 @@ const subtitle = computed(() => {
         <div><dt>Attendees</dt><dd>{{ b.attendees }}</dd></div>
         <div><dt>Booker</dt><dd>{{ b.requester.name_en }}</dd></div>
       </dl>
+
+      <template v-if="detail?.attachments?.length">
+        <h3>Files</h3>
+        <BookingFiles :booking-id="detail.id" :files="detail.attachments" />
+      </template>
     </div>
 
     <template #foot>
