@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // One of my bookings, in the side panel: a small room photo by the title (look B, owner pick
 // 16 Nov 2026); the status band; a thin step bar; a note saying why it stopped
-// (not approved, expired, cancelled); the door pass when confirmed;
+// (not approved, expired, cancelled);
 // then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, History. Foot (owner pick, 13 Nov 2026: look C "one main button +
-// menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with Copy reference
+// menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with the door pass, Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
-import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, X } from 'lucide-vue-next'
+import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, KeyRound, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { api } from '../../api'
@@ -22,7 +22,6 @@ import BookingTabs from '../../components/BookingTabs.vue'
 import PanelSection from '../../components/PanelSection.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import StepProgress from '../../components/StepProgress.vue'
-import SecretReveal from '../../components/SecretReveal.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
@@ -127,10 +126,34 @@ const tabs = computed(() => {
   return list
 })
 
+// The door pass (owner pick, 16 Nov 2026: in the ⋯ menu): while confirmed and not over. The code
+// is fetched only when asked, then shows in one line above the buttons with Copy and Hide.
+const hasDoorPass = computed(() => booking.value?.status === 'CONFIRMED' && booking.value.display_status !== 'COMPLETED')
 const doorPass = ref<DoorPassOut | undefined>(undefined)
-async function revealDoorPass(): Promise<string> {
-  doorPass.value = await getDoorPass(api, props.bookingId)
-  return doorPass.value.passcode
+const passError = ref('')
+const passCopied = ref(false)
+async function showDoorPass() {
+  closeMenu()
+  passError.value = ''
+  passCopied.value = false
+  try {
+    doorPass.value = await getDoorPass(api, props.bookingId)
+  } catch (error) {
+    passError.value = error instanceof ApiError ? error.message : 'The door pass could not load.'
+  }
+}
+function hideDoorPass() {
+  doorPass.value = undefined
+  passCopied.value = false
+}
+async function copyDoorPass() {
+  if (!doorPass.value) return
+  try {
+    await navigator.clipboard.writeText(doorPass.value.passcode)
+    passCopied.value = true
+  } catch {
+    passError.value = 'Could not copy. Select the code instead.'
+  }
 }
 
 const icsError = ref('')
@@ -254,13 +277,6 @@ async function reload() {
         <span v-if="stopNote.who" class="who">{{ stopNote.who }}</span>
       </div>
 
-      <div v-if="booking.status === 'CONFIRMED' && booking.display_status !== 'COMPLETED'" class="block">
-        <div class="lbl"><span>Door pass</span></div>
-        <SecretReveal label="door pass" :reveal="revealDoorPass" @hide="doorPass = undefined">
-          <template #extra><span v-if="doorPass?.expired" class="expired">Expired</span></template>
-        </SecretReveal>
-      </div>
-
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" class="pane" role="tabpanel" aria-labelledby="tab-details">
@@ -296,6 +312,19 @@ async function reload() {
         </div>
       </div>
       <div v-else class="foot">
+        <div v-if="doorPass" class="pass">
+          <KeyRound :size="16" aria-hidden="true" />
+          <span class="pass-label">Door pass</span>
+          <span class="pass-code">{{ doorPass.passcode }}</span>
+          <span v-if="doorPass.expired" class="expired">Expired</span>
+          <span class="pass-sp" />
+          <button type="button" class="round" aria-label="Copy door pass" :title="passCopied ? 'Copied' : 'Copy'" @click="copyDoorPass">
+            <Check v-if="passCopied" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
+          <button type="button" class="round" aria-label="Hide door pass" title="Hide" @click="hideDoorPass"><X :size="15" aria-hidden="true" /></button>
+        </div>
+        <p v-if="passError" class="msg" role="alert">{{ passError }}</p>
         <div class="bar">
           <button v-if="open" type="button" class="main" @click="addToCalendar"><CalendarPlus :size="16" aria-hidden="true" />Add to calendar</button>
           <button v-if="slip.hasSlip.value" type="button" class="kh" :class="open ? 'cal' : 'main'" :disabled="slip.busy.value" @click="slip.download">
@@ -315,6 +344,7 @@ async function reload() {
             </button>
             <Transition name="menu">
               <div v-if="menuOpen" class="menu" role="menu">
+                <button v-if="hasDoorPass" type="button" role="menuitem" @click="showDoorPass"><KeyRound :size="16" aria-hidden="true" />Show door pass</button>
                 <button type="button" role="menuitem" @click="copyRef"><Copy :size="16" aria-hidden="true" />Copy reference</button>
                 <template v-if="open">
                   <hr />
@@ -414,23 +444,53 @@ async function reload() {
   font-size: 12.5px;
   color: var(--color-intaglio);
 }
-.block {
-  display: grid;
-  gap: 6px;
-}
-.lbl {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--color-intaglio);
-}
 .tab-bar {
   margin-block: 0 -4px;
 }
 .pane {
   display: grid;
   gap: 18px;
+}
+/* The door pass, shown from the ⋯ menu: one line above the buttons. */
+.pass {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: var(--color-paper);
+  color: var(--color-intaglio);
+  font-size: 13px;
+}
+.pass-label {
+  white-space: nowrap;
+}
+.pass-code {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.pass-sp {
+  flex: 1;
+}
+.round {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.round:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
 }
 .expired {
   color: var(--color-crimson);

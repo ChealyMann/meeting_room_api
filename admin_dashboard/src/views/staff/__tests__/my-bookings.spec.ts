@@ -225,6 +225,32 @@ describe('My bookings', () => {
     expect(panel()!.querySelector('.band.wait .say-status')?.textContent?.trim()).toBe('Waiting for Pitika')
   })
 
+  it('keeps the door pass in the ⋯ menu: it shows the code above the buttons, with Copy and Hide', async () => {
+    const w = await open()
+    await openCard(w, 'Budget review')
+    expect(panel()!.querySelector('.bd')?.textContent).not.toContain('Door pass')
+    await more()
+    const item = buttonIn(panel()!.querySelector('[role="menu"]')!, 'Show door pass')!
+    expect(item.getAttribute('role')).toBe('menuitem')
+    item.click()
+    await flushPromises()
+    expect(calls).toContain('GET /api/v1/bookings/7/door-pass')
+    expect(panel()!.querySelector('[role="menu"]')).toBeNull()
+    const pass = panel()!.querySelector('.panel-foot .pass')!
+    expect(pass.querySelector('.pass-code')?.textContent).toBe('482913')
+    expect(pass.querySelector('[aria-label="Copy door pass"]')).not.toBeNull()
+    pass.querySelector<HTMLButtonElement>('[aria-label="Hide door pass"]')!.click()
+    await flushPromises()
+    expect(panel()!.querySelector('.panel-foot .pass')).toBeNull()
+  })
+
+  it('offers no door pass while the booking waits, or after the meeting', async () => {
+    const w = await open()
+    await openCard(w, 'Team sync')
+    await more()
+    expect(buttonIn(panel()!, 'Show door pass')).toBeUndefined()
+  })
+
   it('keeps Add to calendar as the main button and closes the menu with Escape, not the panel', async () => {
     const w = await open()
     await openCard(w, 'Budget review')
@@ -232,7 +258,7 @@ describe('My bookings', () => {
     expect(panel()!.querySelector('[role="menu"]')).toBeNull()
     await more()
     const menu = panel()!.querySelector('[role="menu"]')!
-    expect(document.activeElement?.textContent?.trim()).toBe('Copy reference')
+    expect(document.activeElement?.textContent?.trim()).toBe('Show door pass')
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     await flushPromises()
     expect(panel()!.querySelector('[role="menu"]')).toBeNull()
