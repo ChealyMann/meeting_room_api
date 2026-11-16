@@ -10,6 +10,7 @@ import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import BookingServices from '../../components/BookingServices.vue'
+import BookingTabs from '../../components/BookingTabs.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
@@ -99,20 +100,7 @@ const sessions = computed(() =>
         <span>{{ note }}</span>
       </p>
 
-      <div class="tabs" role="tablist" aria-label="Booking">
-        <button
-          v-for="t in tabs"
-          :id="`tab-${t.id}`"
-          :key="t.id"
-          type="button"
-          role="tab"
-          :aria-selected="tab === t.id"
-          :aria-controls="`tabpanel-${t.id}`"
-          @click="tab = t.id"
-        >
-          {{ t.label }}
-        </button>
-      </div>
+      <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
         <h3 class="sessions-head">
@@ -285,34 +273,8 @@ h3 {
   color: var(--color-ink-off);
   font-size: 13px;
 }
-/* Tabs, like the Admin's booking panel; the bar sticks to the top while the panel scrolls. */
-.tabs {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  gap: 4px;
-  margin: 16px 0 14px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-sheet);
-}
-.tabs button {
-  flex: none;
-  margin-bottom: -1px;
-  padding: 9px 10px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--color-intaglio);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.tabs button[aria-selected='true'] {
-  border-bottom-color: var(--color-crimson);
-  color: var(--color-ink);
-  font-weight: 500;
+.tab-bar {
+  margin-block: 16px 14px;
 }
 [role='tabpanel'] > h3:first-child {
   margin-top: 0;

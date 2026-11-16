@@ -17,6 +17,7 @@ import type { AttachmentOut, BookingDetail, DoorPassOut } from '../../api/types'
 import ApprovedBy from '../../components/ApprovedBy.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
 import BookingServices from '../../components/BookingServices.vue'
+import BookingTabs from '../../components/BookingTabs.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import SecretReveal from '../../components/SecretReveal.vue'
@@ -276,20 +277,7 @@ async function reload() {
         </SecretReveal>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="Booking">
-        <button
-          v-for="t in tabs"
-          :id="`tab-${t.id}`"
-          :key="t.id"
-          type="button"
-          role="tab"
-          :aria-selected="tab === t.id"
-          :aria-controls="`tabpanel-${t.id}`"
-          @click="tab = t.id"
-        >
-          {{ t.label }}
-        </button>
-      </div>
+      <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" class="pane" role="tabpanel" aria-labelledby="tab-details">
         <div class="block">
@@ -523,39 +511,8 @@ dd {
 dd.none {
   color: var(--color-ink-off);
 }
-/* Tabs, like To review; the bar sticks to the top while the panel scrolls. */
-.tabs {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  gap: 4px;
-  margin: 0 -20px -4px;
-  padding: 0 20px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-sheet);
-}
-.tabs button {
-  flex: none;
-  margin-bottom: -1px;
-  padding: 10px 10px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--color-intaglio);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.tabs button[aria-selected='true'] {
-  border-bottom-color: var(--color-ink);
-  color: var(--color-ink);
-  font-weight: 500;
-}
-.tabs button:focus-visible {
-  outline: 2px solid var(--color-ink);
-  outline-offset: -2px;
+.tab-bar {
+  margin-block: 0 -4px;
 }
 .pane {
   display: grid;

@@ -271,17 +271,38 @@ describe('IT setup', () => {
     expect(bodies).toEqual([JSON.stringify({ version: 1 })])
   })
 
-  it('opens a setup in the panel with Setup and Meeting, and the row buttons', async () => {
+  it('opens a setup in the panel with IT help and Meeting, and the row buttons', async () => {
     const { wrapper } = await mountAt('/it-setup?tab=in_progress')
     await row(wrapper, 7).trigger('click')
     await flushPromises()
 
     expect(calls).toContain('GET /api/v1/bookings/107')
-    expect(panel()?.textContent).toContain('Setup')
+    expect(panel()?.textContent).toContain('IT help')
     expect(panel()?.textContent).toContain('Two wireless microphones')
     expect(panel()?.textContent).toContain('Meeting')
     const foot = [...(panel()?.querySelectorAll('.panel-foot button') ?? [])].map((b) => b.textContent?.trim())
     expect(foot).toEqual(['Close', 'Change staff', 'Mark ready'])
+  })
+
+  it('uses the same tabs and Food & IT card as the other pop-ups, opening on Food & IT', async () => {
+    IN_PROGRESS = [ticket(7, '2026-11-06', { status: 'ASSIGNED', staff: [STAFF[1]], technician_notes: 'Bring the long cable.' })]
+    const { wrapper } = await mountAt('/it-setup?tab=in_progress')
+    await row(wrapper, 7).trigger('click')
+    await flushPromises()
+
+    const tabs = [...panel()!.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())
+    expect(tabs).toEqual(['Details', 'Food & IT 2', 'Approvals'])
+    expect(panel()!.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('Food & IT 2')
+    const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
+    expect([...it.querySelectorAll('.svc-items li')].map((li) => li.textContent?.trim())).toEqual(['Projector setup', 'Microphones'])
+    expect(it.querySelector('.pill')?.textContent?.trim()).toBe('Setting up')
+    expect(it.textContent).toContain('Booker’s note')
+    expect(it.textContent).toContain('“Two wireless microphones”')
+    expect(it.textContent).toContain('Sok Pisey')
+    expect(it.textContent).toContain('IT note')
+    expect(it.textContent).toContain('“Bring the long cable.”')
+    expect(panel()!.querySelector('#tabpanel-services')!.textContent).toContain('No food ordered.')
+    expect(panel()!.querySelector('#tabpanel-approvals')!.textContent).toContain('No one has approved yet.')
   })
 
   it('lists the booking files read only in the panel, and downloads one', async () => {

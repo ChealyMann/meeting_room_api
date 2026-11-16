@@ -1,22 +1,29 @@
 <script setup lang="ts">
 // One IT setup in the side panel (spec Part B, "Panel"): the room photo, the booking's full
-// process bar, what to set up, and the meeting. The foot has Close and the row's buttons.
+// process bar, then the same tabs as the other booking pop-ups (owner pick, 16 Nov 2026):
+// Details, Food & IT, Files, Approvals. It opens on Food & IT, where IT's work is. The IT card
+// takes the ticket from the list, so a new assign shows at once. The times are the meeting's
+// only. The foot has Close and the row's buttons.
 import { Check } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { BookingDetail, ITTicketItem } from '../../api/types'
+import ApprovedBy from '../../components/ApprovedBy.vue'
 import BaseButton from '../../components/base/BaseButton.vue'
 import BookingFiles from '../../components/BookingFiles.vue'
+import BookingServices from '../../components/BookingServices.vue'
+import BookingTabs from '../../components/BookingTabs.vue'
 import SidePanel from '../../components/base/SidePanel.vue'
 import ProcessBar from '../../components/ProcessBar.vue'
 import RoomPhoto from '../../components/RoomPhoto.vue'
+import { approvedBy } from '../../utils/approvals'
 import { buildHistory } from '../../utils/bookingHistory'
 import { hasSessionAhead, sessionDate } from '../../utils/itQueue'
-import { formatDay } from '../../utils/time'
+import { formatDay, formatPhnomPenh } from '../../utils/time'
 
 const props = defineProps<{
   ticket: ITTicketItem
-  /** The full booking (for the process bar), or null while it loads or when it failed. */
+  /** The full booking (process bar, food, approvals, files), or null while it loads or when it failed. */
   detail: BookingDetail | null
   photo: string | null
   place: string | null
@@ -27,8 +34,6 @@ const emit = defineEmits<{ close: []; assign: []; ready: [] }>()
 const b = computed(() => props.ticket.booking)
 const steps = computed(() => (props.detail ? buildHistory(props.detail).steps : []))
 const hhmm = (time: string) => time.slice(0, 5)
-const names = computed(() => props.ticket.items.map((i) => String((i as Record<string, unknown>).name)).join(', '))
-const staffText = computed(() => (props.ticket.staff.length ? props.ticket.staff.map((s) => s.name_en).join(', ') : 'No staff yet'))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
 /** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
 const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
@@ -42,6 +47,40 @@ const subtitle = computed(() => {
   if (props.ticket.missed) return 'Missed · not marked ready'
   if (props.ticket.status === 'READY') return 'Ready'
   return props.ticket.staff.length ? 'Staff set · not ready' : 'Needs staff'
+})
+
+/** The booking for the Food & IT cards, with IT from the ticket (the list is the freshest). */
+const services = computed(() => {
+  const t = props.ticket
+  const it = {
+    ticket_id: t.id,
+    items: t.items,
+    special_requirements: t.special_requirements,
+    status: t.status,
+    technician_notes: t.technician_notes,
+    staff: t.staff,
+    setup_date: t.setup_date,
+    setup_time: t.setup_time,
+    forwarded_at: t.forwarded_at,
+    assigned_at: t.assigned_at,
+    ready_at: t.ready_at,
+  }
+  const d = props.detail
+  return d ? { ...d, it } : { display_status: b.value.display_status, sessions: [], catering: null, it }
+})
+
+type Tab = 'details' | 'services' | 'files' | 'approvals'
+const tab = ref<Tab>('services')
+const count = (n: number) => (n ? ` ${n}` : '')
+const files = computed(() => props.detail?.attachments ?? [])
+const tabs = computed(() => {
+  const list: Array<{ id: Tab; label: string }> = [
+    { id: 'details', label: 'Details' },
+    { id: 'services', label: `Food & IT${count((props.detail?.catering?.packages.length ?? 0) + props.ticket.items.length)}` },
+  ]
+  if (files.value.length) list.push({ id: 'files', label: `Files${count(files.value.length)}` })
+  list.push({ id: 'approvals', label: `Approvals${count(props.detail ? approvedBy(props.detail).length : 0)}` })
+  return list
 })
 </script>
 
@@ -58,41 +97,37 @@ const subtitle = computed(() => {
 
       <ProcessBar v-if="steps.length" :steps="steps" size="large" />
 
-      <h3>When <span class="count">· {{ setups.length }} {{ setups.length === 1 ? 'session' : 'sessions' }}</span></h3>
-      <ul class="setups">
-        <li v-for="s in setups" :key="s.session_number">
-          <span>{{ formatDay(sessionDate(s)) }}</span>
-          <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
-        </li>
-      </ul>
+      <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
-      <h3>Setup</h3>
-      <dl class="details">
-        <div><dt>Items</dt><dd>{{ names }}</dd></div>
-        <div>
-          <dt>Special needs</dt>
-          <dd class="wrap" :class="{ none: !ticket.special_requirements }">{{ ticket.special_requirements || 'None' }}</dd>
-        </div>
-        <div>
-          <dt>Technician notes</dt>
-          <dd class="wrap" :class="{ none: !ticket.technician_notes }">{{ ticket.technician_notes || 'None' }}</dd>
-        </div>
-        <div>
-          <dt>Staff</dt>
-          <dd :class="{ none: !ticket.staff.length }">{{ staffText }}</dd>
-        </div>
-      </dl>
+      <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
+        <h3>When <span class="count">· {{ setups.length }} {{ setups.length === 1 ? 'session' : 'sessions' }}</span></h3>
+        <ul class="setups">
+          <li v-for="s in setups" :key="s.session_number">
+            <span>{{ formatDay(sessionDate(s)) }}</span>
+            <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
+          </li>
+        </ul>
 
-      <h3>Meeting</h3>
-      <dl class="details">
-        <div><dt>Attendees</dt><dd>{{ b.attendees }}</dd></div>
-        <div><dt>Booker</dt><dd>{{ b.requester.name_en }}</dd></div>
-      </dl>
+        <h3>Meeting</h3>
+        <dl class="details">
+          <div><dt>Attendees</dt><dd>{{ b.attendees }}</dd></div>
+          <div><dt>Booker</dt><dd>{{ b.requester.name_en }}</dd></div>
+          <div><dt>Sent</dt><dd class="mono">{{ formatPhnomPenh(b.created_at) }}</dd></div>
+        </dl>
+      </section>
 
-      <template v-if="detail?.attachments?.length">
-        <h3>Files</h3>
-        <BookingFiles :booking-id="detail.id" :files="detail.attachments" />
-      </template>
+      <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
+        <BookingServices :booking="services" viewer="staff" :food="!!detail" />
+      </section>
+
+      <section v-if="files.length && detail" v-show="tab === 'files'" id="tabpanel-files" role="tabpanel" aria-labelledby="tab-files">
+        <BookingFiles :booking-id="detail.id" :files="files" />
+      </section>
+
+      <section v-show="tab === 'approvals'" id="tabpanel-approvals" role="tabpanel" aria-labelledby="tab-approvals">
+        <ApprovedBy v-if="detail" :booking="detail" />
+        <p v-else class="none">Loading…</p>
+      </section>
     </div>
 
     <template #foot>
@@ -134,6 +169,12 @@ const subtitle = computed(() => {
   font-size: 15px;
   font-weight: 500;
 }
+.tab-bar {
+  margin-block: 16px 14px;
+}
+[role='tabpanel'] > h3:first-child {
+  margin-top: 0;
+}
 h3 {
   margin: 20px 0 4px;
   font-size: 13px;
@@ -174,9 +215,6 @@ h3 .count {
   margin: 0;
   font-size: 13.5px;
   overflow-wrap: anywhere;
-}
-.wrap {
-  white-space: pre-line;
 }
 .none {
   color: var(--color-ink-off);

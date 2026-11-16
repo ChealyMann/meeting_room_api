@@ -521,6 +521,7 @@ describe('Tabs on my booking', () => {
     expect(it.textContent).toContain('“Two microphones.”')
     expect(it.textContent).toContain('Keo Rithy')
     expect(it.textContent).toContain('16 Nov 2026, 08:40')
+    expect(it.textContent).toContain('IT note')
     expect(it.textContent).toContain('“Sound tested.”')
   })
 
