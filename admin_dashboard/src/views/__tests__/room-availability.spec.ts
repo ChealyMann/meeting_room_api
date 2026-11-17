@@ -325,6 +325,37 @@ describe('RoomAvailabilityView', () => {
     expect(wrapper.find('.show-guide').exists()).toBe(false)
   })
 
+  it('names each room in Khmer only; search still finds the English name', async () => {
+    const { wrapper } = await mountAt('/room-availability')
+
+    expect(wrapper.get('[data-room="13"] .names strong').text()).toBe('បន្ទប់') // the test rooms' Khmer name
+    expect(wrapper.get('[data-room="13"] .names').text()).not.toContain('Board Room')
+    await search(wrapper, 'board')
+    expect(rowIds(wrapper)).toEqual([13])
+  })
+
+  it('moves between days with one small group in the filter row: arrows, the date, and Today on other days', async () => {
+    const { wrapper, router } = await mountAt('/room-availability')
+
+    expect(wrapper.find('.filters.days').exists()).toBe(false) // no row of day buttons (owner, 17 Nov 2026)
+    const nav = wrapper.get('.row-filters .day-nav')
+    expect(nav.find('#rooms-day').exists()).toBe(true)
+    expect(nav.find('button.today').exists()).toBe(false)
+
+    await nav.get('button[aria-label="Next day"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query.date).toBe('2026-11-05')
+    await wrapper.get('.day-nav button[aria-label="Previous day"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query.date).toBeUndefined()
+
+    await router.push('/room-availability?date=2026-11-06')
+    await flushPromises()
+    await wrapper.get('.day-nav button.today').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query.date).toBeUndefined()
+  })
+
   it('today, Free at offers only Now and the times still to come', async () => {
     await mountAt('/room-availability')
     const options = await pickerOptions('free-at')

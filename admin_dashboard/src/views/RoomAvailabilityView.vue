@@ -259,15 +259,6 @@ async function decide() {
       <RefreshButton class="new" :live="live" />
     </div>
 
-    <div class="filters days">
-      <BaseButton variant="quiet" @click="go(addDays(day, -1))"><ChevronLeft aria-hidden="true" />Previous day</BaseButton>
-      <BaseButton variant="quiet" :disabled="isToday" @click="go(today)">Today</BaseButton>
-      <BaseButton variant="quiet" @click="go(addDays(day, 1))">Next day<ChevronRight aria-hidden="true" /></BaseButton>
-      <div class="pick">
-        <DatePicker id="rooms-day" label="Day" :model-value="day" @update:model-value="$event && go($event)" />
-      </div>
-    </div>
-
     <div class="filters row-filters">
       <span id="free-at-label" class="free-at-label">Free at</span>
       <SearchPicker
@@ -282,6 +273,17 @@ async function decide() {
       <ListSearch :value="q" label="Search rooms" placeholder="Search room or floor" @search="q = $event" />
       <SearchPicker id="room-building" v-model="buildingName" class="narrow" :items="buildingItems" :words="FILTER_WORDS.building" />
       <BaseButton v-if="filtered" variant="quiet" class="clear-filters" @click="clearFilters">Clear filters</BaseButton>
+      <!-- The day: one small group on the right instead of a row of buttons (owner, 17 Nov 2026). -->
+      <div class="day-nav" role="group" aria-label="Day">
+        <BaseButton v-if="!isToday" variant="quiet" class="today" @click="go(today)">Today</BaseButton>
+        <button type="button" class="icon-btn" aria-label="Previous day" @click="go(addDays(day, -1))">
+          <ChevronLeft aria-hidden="true" />
+        </button>
+        <DatePicker id="rooms-day" label="Day" :model-value="day" @update:model-value="$event && go($event)" />
+        <button type="button" class="icon-btn" aria-label="Next day" @click="go(addDays(day, 1))">
+          <ChevronRight aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
     <OfflineNote :live="live" />
@@ -322,7 +324,8 @@ async function decide() {
             <div class="room" role="cell">
               <RoomPhoto class="thumb" :path="row.room.cover_photo?.thumbnail_url ?? null" :alt="row.room.name_en" />
               <div class="names">
-                <strong>{{ row.room.name_en }}<span class="kh">{{ row.room.name_kh }}</span></strong>
+                <!-- Khmer only (owner, 17 Nov 2026); the search still finds the English name. -->
+                <strong class="kh" :title="row.room.name_en">{{ row.room.name_kh || row.room.name_en }}</strong>
                 <span class="sub">
                   <Lock v-if="row.room.is_private" class="lock" aria-label="Private" />{{ row.room.floor.floor_label }} ·
                   {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
@@ -435,24 +438,32 @@ async function decide() {
 <style scoped src="./listPage.css"></style>
 
 <style scoped>
-.days {
-  align-items: center;
-  gap: 4px;
-}
-.pick {
-  margin-left: auto;
-}
-.pick .date-picker {
-  width: 172px;
-}
-
-/* One filter row, plain like the other list pages. */
+/* One filter row, plain like the other list pages; the day group sits at its right end. */
 .row-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 0;
+}
+.day-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.day-nav .icon-btn {
+  width: 34px;
+  height: 34px;
+}
+.day-nav .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.day-nav .date-picker {
+  width: 172px;
+}
+.day-nav .today {
+  margin-right: 4px;
 }
 .row-filters > .narrow {
   width: 184px;
@@ -557,11 +568,9 @@ async function decide() {
   white-space: nowrap;
 }
 .names .kh {
-  margin-left: 4px;
   font-family: var(--font-kh);
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--color-intaglio);
+  font-size: 14.5px;
+  line-height: 1.5;
 }
 .names .sub {
   display: block;
