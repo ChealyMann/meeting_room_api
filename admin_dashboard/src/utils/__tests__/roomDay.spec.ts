@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blockKind, clockLabel, DAY_END, DAY_START, freeAtOptions, freeLabel, freeUntil, isOpenAt, lanePct, toMinutes } from '../roomDay'
+import { blockKind, clockLabel, DAY_END, DAY_START, dayStatus, freeAtOptions, freeUntil, isOpenAt, lanePct, roomStatus, toMinutes } from '../roomDay'
 
 const ROOM = { start_time: '07:30:00', end_time: '18:00:00' }
 const item = (start: string, end: string) => ({ start_time: `${start}:00`, end_time: `${end}:00` })
@@ -58,24 +58,37 @@ describe('roomDay', () => {
   })
 })
 
-describe('roomDay: labels true to the clock and the room hours (owner, 17 Nov 2026)', () => {
+describe('roomDay: one status per room, true to the clock and the room hours (owner, 17 Nov 2026)', () => {
   const room = { start_time: '08:00:00', end_time: '17:00:00' }
+  const booked = (start: string, end: string, status = 'CONFIRMED', is_masked = false) => ({ ...item(start, end), status, is_masked })
 
-  it('a free room says Free all day on another day, or today before it opens', () => {
-    expect(freeLabel(room, [], false, 15 * 60)).toEqual({ text: 'Free all day', from: 480, to: 1020 })
-    expect(freeLabel(room, [], true, 7 * 60 + 30)).toEqual({ text: 'Free all day', from: 480, to: 1020 })
+  it('free: until the next booking or the closing time', () => {
+    expect(roomStatus(room, [booked('14:00', '15:00')], 10 * 60 + 20)).toEqual({ kind: 'free', text: 'Free until 14:00' })
+    expect(roomStatus(room, [], 15 * 60)).toEqual({ kind: 'free', text: 'Free until 17:00' })
   })
 
-  it('today while it is open: Free until its closing time, over the time left', () => {
-    expect(freeLabel(room, [], true, 14 * 60 + 24)).toEqual({ text: 'Free until 17:00', from: 864, to: 1020 })
+  it('booked: until the last of back-to-back bookings ends', () => {
+    const day = [booked('09:00', '10:30'), booked('10:30', '11:30'), booked('13:00', '14:00')]
+    expect(roomStatus(room, day, 10 * 60)).toEqual({ kind: 'booked', text: 'Booked until 11:30' })
   })
 
-  it('today after it closes: Closed for today', () => {
-    expect(freeLabel(room, [], true, 17 * 60)).toEqual({ text: 'Closed for today', from: 480, to: 1020 })
+  it('a private booking the reader may not see is still booked', () => {
+    expect(roomStatus(room, [booked('09:00', '10:00', 'CONFIRMED', true)], 9 * 60)).toEqual({ kind: 'booked', text: 'Booked until 10:00' })
   })
 
-  it('a room with bookings has no such label', () => {
-    expect(freeLabel(room, [item('09:00', '10:00')], true, 14 * 60)).toBeNull()
+  it('waiting: a booking not approved yet', () => {
+    expect(roomStatus(room, [booked('14:00', '16:00', 'PENDING_PITIKA')], 15 * 60)).toEqual({ kind: 'waiting', text: 'Waiting approval until 16:00' })
+  })
+
+  it('closed: before it opens, and after it closes', () => {
+    expect(roomStatus(room, [], 7 * 60 + 30)).toEqual({ kind: 'closed', text: 'Opens at 08:00' })
+    expect(roomStatus(room, [], 17 * 60)).toEqual({ kind: 'closed', text: 'Closed after 17:00' })
+  })
+
+  it('the whole day (Any time): free all day, or how many bookings', () => {
+    expect(dayStatus([])).toEqual({ kind: 'free', text: 'Free all day' })
+    expect(dayStatus([booked('09:00', '10:00')])).toEqual({ kind: 'some', text: '1 booking' })
+    expect(dayStatus([booked('09:00', '10:00'), booked('11:00', '12:00')])).toEqual({ kind: 'some', text: '2 bookings' })
   })
 
   it('knows when a room is open', () => {

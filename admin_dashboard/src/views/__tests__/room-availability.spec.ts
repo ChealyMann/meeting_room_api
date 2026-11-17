@@ -103,6 +103,8 @@ async function search(w: Awaited<ReturnType<typeof mountAt>>['wrapper'], text: s
   await flushPromises()
 }
 const rowIds = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) => w.findAll('[data-room]').map((r) => Number(r.attributes('data-room')))
+const status = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], id: number) => w.get(`[data-room="${id}"] .status`).text()
+const statusHead = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) => w.findAll('.trow.head [role="columnheader"]')[1]!.text()
 
 describe('RoomAvailabilityView', () => {
   it('shows only rooms of my province, and asks for their day in one call', async () => {
@@ -123,36 +125,36 @@ describe('RoomAvailabilityView', () => {
     expect(wrapper.get('[data-room="13"] .block').classes()).toContain('waiting')
   })
 
-  it('Free at Now puts the free rooms first and says how many', async () => {
+  it('Free at Now: one status per room, the free rooms first', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
     expect(pickerText('free-at')).toBe('Now')
+    expect(statusHead(wrapper)).toBe('Now')
     expect(rowIds(wrapper)).toEqual([13, 12]) // Mekong Room is in use at 10:20
-    expect(wrapper.get('.result').text()).toBe('1 of 2 rooms free at 10:20, now')
-    expect(wrapper.get('[data-room="13"] .fits').text()).toBe('Free until 14:00')
-    expect(wrapper.get('[data-room="12"]').classes()).toContain('not-free')
-    expect(wrapper.findAll('.now-line')).toHaveLength(2)
+    expect(status(wrapper, 13)).toBe('Free until 14:00')
+    expect(status(wrapper, 12)).toBe('Booked until 10:30')
+    expect(wrapper.find('.result').exists()).toBe(false)
+    expect(wrapper.findAll('.timeline .now-line')).toHaveLength(2)
   })
 
-  it('Free at 14:00 shows the rooms free then', async () => {
+  it('Free at 14:00 says each room at 14:00', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
     await choosePicker('free-at', '14:00')
+    expect(statusHead(wrapper)).toBe('At 14:00')
     expect(rowIds(wrapper)).toEqual([12, 13])
     // Never "the rest of the day": the room's own closing time (owner, 17 Nov 2026).
-    expect(wrapper.get('[data-room="12"] .fits').text()).toBe('Free until 18:00')
-    expect(wrapper.get('.result').text()).toBe('1 of 2 rooms free at 14:00')
+    expect(status(wrapper, 12)).toBe('Free until 18:00')
+    expect(status(wrapper, 13)).toBe('Waiting approval until 16:00')
   })
 
-  it('filters by search, kind and building, and Clear filters resets them', async () => {
+  it('filters by search and building, and Clear filters resets them', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
+    expect(document.getElementById('room-kind')).toBeNull() // calmer: no kind filter or column
     await search(wrapper, 'board')
     expect(rowIds(wrapper)).toEqual([13])
     await search(wrapper, '')
-    await choosePicker('room-kind', 'Shared rooms')
-    expect(rowIds(wrapper)).toEqual([12])
-    await choosePicker('room-kind', 'Shared and private')
     await choosePicker('room-building', 'Annex')
     expect(rowIds(wrapper)).toEqual([13])
 
@@ -166,9 +168,10 @@ describe('RoomAvailabilityView', () => {
   it('another day has no Now line, and Free at starts at Any time', async () => {
     const { wrapper } = await mountAt('/room-availability?date=2026-11-05')
 
-    expect(wrapper.find('.now-line').exists()).toBe(false)
+    expect(wrapper.find('.timeline .now-line').exists()).toBe(false)
     expect(pickerText('free-at')).toBe('Any time')
-    expect(wrapper.find('.result').exists()).toBe(false)
+    expect(statusHead(wrapper)).toBe('Day')
+    expect(status(wrapper, 12)).toBe('1 booking')
   })
 
   it('hover shows the title, times, booker and who it waits for', async () => {
@@ -259,60 +262,56 @@ describe('RoomAvailabilityView', () => {
     expect(router.currentRoute.value.query.booking).toBeUndefined()
   })
 
-  it("writes each room's own opening hours in its row", async () => {
+  it("draws each room's own open hours as the white bar; closed hours stay blank", async () => {
     const { wrapper } = await mountAt('/room-availability')
-    expect(wrapper.get('[data-room="12"] .hours-open').text()).toBe('07:30–18:00')
-    expect(wrapper.get('[data-room="13"] .hours-open').text()).toBe('08:00–17:00')
+
+    // Board Room opens 08:00–17:00 on the 07:00–18:00 lane.
+    const track = wrapper.get('[data-room="13"] .track')
+    expect(track.attributes('style')).toBe('left: 9.090909090909092%; width: 81.81818181818181%;')
+    expect(track.attributes('title')).toBe('Open 08:00–17:00')
+    expect(wrapper.get('[data-room="12"] .track').attributes('title')).toBe('Open 07:30–18:00')
+    expect(wrapper.find('.closed').exists()).toBe(false)
+    expect(wrapper.find('.free-label').exists()).toBe(false)
   })
 
-  it('says it once: a room with no booking has its words on the lane, not again beside its name', async () => {
-    day[13] = []
-    const { wrapper } = await mountAt('/room-availability')
-    expect(wrapper.find('[data-room="13"] .fits').exists()).toBe(false)
-    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free until 17:00')
+  it('greys the past part of the bar today, and fades bookings that have ended', async () => {
+    day[12] = [item(70, '09:00', '10:00', 'Budget review', 'CONFIRMED')]
+    const { wrapper } = await mountAt('/room-availability') // 10:20
+    expect(wrapper.get('[data-room="13"] .track .past').attributes('style')).toBe(`width: ${(140 / 540) * 100}%;`)
+    expect(wrapper.get('[data-booking="70"]').classes()).toContain('done')
+    expect(wrapper.get('[data-booking="71"]').classes()).not.toContain('done')
   })
 
   it('hides the hour labels the Now tag would cover', async () => {
     const { wrapper } = await mountAt('/room-availability') // 10:20
     const hours = wrapper.findAll('.hours > .hour').map((h) => h.text())
-    expect(hours).not.toContain('10:00')
-    expect(hours).toContain('11:00')
     expect(hours).not.toContain('10:00') // the tag sits on 10:20
+    expect(hours).toContain('11:00')
     expect(hours).toContain('09:00')
   })
 
-  it("greys out each room's own closed hours", async () => {
-    const { wrapper } = await mountAt('/room-availability')
-
-    // Board Room opens 08:00–17:00: closed 07:00–08:00 and 17:00–18:00. Mekong Room 07:30–18:00.
-    const closed = (id: number) => wrapper.findAll(`[data-room="${id}"] .closed`).map((c) => c.attributes('style'))
-    expect(closed(13)).toEqual([
-      'left: 0%; width: 9.090909090909092%; border-radius: 10px 0 0 10px;',
-      'left: 90.9090909090909%; width: 9.090909090909093%; border-radius: 0 10px 10px 0;',
-    ])
-    expect(closed(12)).toHaveLength(1)
-  })
-
-  it('a free room says Free until its closing time today, over the time left', async () => {
+  it('a free room says Free until its closing time today, and Free all day on another day', async () => {
     day[13] = []
-    const { wrapper } = await mountAt('/room-availability')
-    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free until 17:00')
+    const today = await mountAt('/room-availability')
+    expect(status(today.wrapper, 13)).toBe('Free until 17:00')
+    today.wrapper.unmount()
+    const other = await mountAt('/room-availability?date=2026-11-05')
+    expect(status(other.wrapper, 13)).toBe('Free all day')
   })
 
-  it('a free room says Free all day on another day', async () => {
-    day[13] = []
-    const { wrapper } = await mountAt('/room-availability?date=2026-11-05')
-    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free all day')
-  })
-
-  it('after closing time: Closed for today, and the line says every room is closed', async () => {
+  it('after closing time each room says so', async () => {
     vi.setSystemTime(new Date('2026-11-04T11:30:00Z')) // 18:30 in Phnom Penh
     day[12] = []
     day[13] = []
     const { wrapper } = await mountAt('/room-availability')
+    expect([status(wrapper, 12), status(wrapper, 13)]).toEqual(['Closed after 18:00', 'Closed after 17:00'])
+  })
 
-    expect(wrapper.findAll('.free-label').map((l) => l.text())).toEqual(['Closed for today', 'Closed for today'])
-    expect(wrapper.get('.result').text()).toBe('All rooms are closed now')
+  it('has no note or guide on top: just the day and the rooms (owner, 17 Nov 2026)', async () => {
+    const { wrapper } = await mountAt('/room-availability')
+    expect(wrapper.find('.page-note').exists()).toBe(false)
+    expect(wrapper.find('.guide').exists()).toBe(false)
+    expect(wrapper.find('.show-guide').exists()).toBe(false)
   })
 
   it('today, Free at offers only Now and the times still to come', async () => {

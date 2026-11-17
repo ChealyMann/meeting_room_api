@@ -1,6 +1,6 @@
 // The day of a room on the Room availability page (spec 2026-11-17-room-availability-design):
 // clock times in minutes, a time's place on the 07:00–18:00 lane, what kind of block a booking
-// is, and whether a room is free at a time and until when.
+// is, whether a room is free at a time and until when, and the one status its row says.
 
 export const DAY_START = 7 * 60
 export const DAY_END = 18 * 60
@@ -37,20 +37,6 @@ export function isOpenAt(room: Span, at: number): boolean {
   return toMinutes(room.start_time) <= at && at < toMinutes(room.end_time)
 }
 
-/** The words on the lane of a room with no booking that day, and the span they sit over, true
- * to the clock and the room's own hours (owner, 17 Nov 2026): another day or before it opens,
- * "Free all day" over its hours; today while open, "Free until 17:00" (its closing time) over
- * the time left; after it closes, "Closed for today". Null when the room has bookings. */
-export function freeLabel(room: Span, items: Span[], today: boolean, now: number): { text: string; from: number; to: number } | null {
-  if (items.length) return null
-  const opens = toMinutes(room.start_time)
-  const closes = toMinutes(room.end_time)
-  if (!today || now < opens) return { text: 'Free all day', from: opens, to: closes }
-  // The closing time, not "the rest of the day": short enough for a room that closes soon.
-  if (now < closes) return { text: `Free until ${clockLabel(closes)}`, from: now, to: closes }
-  return { text: 'Closed for today', from: opens, to: closes }
-}
-
 /** Until when the room stays free from `at` (minutes): the next booking's start or closing
  * time, whichever comes first. Null when the room is closed at `at` or a booking covers it
  * (a booking covers [start, end)). */
@@ -65,6 +51,35 @@ export function freeUntil(room: Span, items: Span[], at: number): number | null 
     if (start > at) until = Math.min(until, start)
   }
   return until
+}
+
+export type RoomStatus = { kind: 'free' | 'booked' | 'waiting' | 'closed' | 'some'; text: string }
+type Booking = Span & { status: string; is_masked: boolean }
+
+/** The one status a room's row says at `at` (minutes), true to its own hours (owner, 17 Nov 2026):
+ * "Free until 14:00" (the next booking or its closing time), "Booked until 11:30" (back-to-back
+ * bookings count as one stretch), "Waiting approval until 16:00", "Opens at 08:00" or
+ * "Closed after 17:00". */
+export function roomStatus(room: Span, items: Booking[], at: number): RoomStatus {
+  const opens = toMinutes(room.start_time)
+  const closes = toMinutes(room.end_time)
+  if (at < opens) return { kind: 'closed', text: `Opens at ${clockLabel(opens)}` }
+  if (at >= closes) return { kind: 'closed', text: `Closed after ${clockLabel(closes)}` }
+  const on = items.find((i) => toMinutes(i.start_time) <= at && at < toMinutes(i.end_time))
+  if (!on) return { kind: 'free', text: `Free until ${clockLabel(freeUntil(room, items, at) ?? closes)}` }
+  let until = toMinutes(on.end_time)
+  for (let next = items.find((i) => toMinutes(i.start_time) === until); next; next = items.find((i) => toMinutes(i.start_time) === until)) {
+    until = toMinutes(next.end_time)
+  }
+  return blockKind(on) === 'waiting'
+    ? { kind: 'waiting', text: `Waiting approval until ${clockLabel(until)}` }
+    : { kind: 'booked', text: `Booked until ${clockLabel(until)}` }
+}
+
+/** The row's status for the whole day (Free at: Any time). */
+export function dayStatus(items: unknown[]): RoomStatus {
+  if (!items.length) return { kind: 'free', text: 'Free all day' }
+  return { kind: 'some', text: `${items.length} booking${items.length === 1 ? '' : 's'}` }
 }
 
 /** The Free at choices: Any time, Now, then every half hour from 07:00 to 17:30. Today, pass the

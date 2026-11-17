@@ -1,13 +1,14 @@
 <script setup lang="ts">
 // Room availability (spec 2026-11-17-room-availability-design, owner pick 17 Nov 2026): every
-// room's day on one page for the Pitika (their province) and the Admin (every room). The Food
-// list's head and day buttons; one filter row led by "Free at"; one row per room with its
-// bookings on a 07:00–18:00 lane, the past hatched and a red Now line today. No summary numbers
-// above the table (owner, twice). The day lives in the address (?date=2026-11-04; none = today).
+// room's day on one page for the Pitika (their province) and the Admin (every room). Calm look A
+// (owner, 17 Nov 2026: "clean and minimal", photos kept, no note or guide on top): the Food list's
+// day buttons, one filter row (Free at, search, building), then one row per room: photo and name,
+// one status said once, and its day bar (white open hours, grey past, blank closed, a red Now line). No summary numbers above the table (owner,
+// twice). The day lives in the address (?date=2026-11-04; none = today).
 // Hover a booking for its title, times and booker; click it for its drawer (?booking=ID): a booking
 // waiting for Pitika opens the To review panel with Approve and Reject, anything else the Bookings
 // drawer, like the Food list.
-import { ChevronLeft, ChevronRight, CircleAlert, Globe, Lock } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, CircleAlert, Lock } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -33,7 +34,7 @@ import { useToast } from '../composables/useToast'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useSessionStore } from '../stores/session'
 import { FILTER_WORDS } from '../utils/pickerWords'
-import { blockKind, clockLabel, DAY_END, DAY_START, freeAtOptions, freeLabel, freeUntil, isOpenAt, lanePct, toMinutes } from '../utils/roomDay'
+import { blockKind, clockLabel, dayStatus, freeAtOptions, freeUntil, lanePct, roomStatus, toMinutes } from '../utils/roomDay'
 import { addDays, formatDay, phnomPenhClock } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
@@ -98,17 +99,16 @@ watch(day, () => load(), { immediate: true })
 const live = useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 // --- Filters, with the app's dropdown (SearchPicker): Free at first (Now today, Any time on other
-// days; null = Any time), then the search, the kind and the building (null = all).
+// days; null = Any time), then the search and the building (null = all). No kind filter: the
+// lock beside a private room's floor says it (calm look A).
 const freeAt = ref<string | null>(null)
 const q = ref('')
-const kind = ref<string | null>(null)
 const buildingName = ref<string | null>(null)
 watch(isToday, (yes) => (freeAt.value = yes ? 'now' : null), { immediate: true })
 const defaultFreeAt = computed(() => (isToday.value ? 'now' : null))
-const filtered = computed(() => !!q.value || !!kind.value || !!buildingName.value || freeAt.value !== defaultFreeAt.value)
+const filtered = computed(() => !!q.value || !!buildingName.value || freeAt.value !== defaultFreeAt.value)
 function clearFilters() {
   q.value = ''
-  kind.value = null
   buildingName.value = null
   freeAt.value = defaultFreeAt.value
 }
@@ -119,10 +119,6 @@ const freeAtItems = computed<PickerItem[]>(() =>
     .filter((o) => o.value !== '')
     .map((o) => ({ value: o.value, label: o.label, keywords: o.value === 'now' ? clock.value : undefined })),
 )
-const KIND_ITEMS: PickerItem[] = [
-  { value: 'shared', label: 'Shared rooms' },
-  { value: 'private', label: 'Private rooms' },
-]
 const buildingItems = computed<PickerItem[]>(() =>
   [...new Set(myRooms.value.map((r) => r.building.name_en))].sort().map((name) => ({ value: name, label: name })),
 )
@@ -133,30 +129,19 @@ const rows = computed(() => {
   const words = q.value.trim().toLowerCase()
   const list = myRooms.value
     .filter((r) => !words || `${r.name_en} ${r.name_kh} ${r.floor.floor_label} ${r.building.name_en}`.toLowerCase().includes(words))
-    .filter((r) => !kind.value || (kind.value === 'private') === r.is_private)
     .filter((r) => !buildingName.value || r.building.name_en === buildingName.value)
     .map((room) => {
       const items = schedule.value[room.id] ?? []
-      return { room, items, until: at.value === null ? null : freeUntil(room, items, at.value), label: labelOf(room, items) }
+      const time = at.value
+      const status = time === null ? dayStatus(items) : roomStatus(room, items, time)
+      return { room, items, until: time === null ? null : freeUntil(room, items, time), status }
     })
     .sort((a, b) => a.room.building.name_en.localeCompare(b.room.building.name_en) || a.room.name_en.localeCompare(b.room.name_en))
   if (at.value !== null) list.sort((a, b) => Number(a.until === null) - Number(b.until === null) || (b.until ?? 0) - (a.until ?? 0))
   return list
 })
-const result = computed(() => {
-  const time = at.value
-  if (time === null) return ''
-  // Every room has its own hours: say so when none is open then, not "0 of 14 free".
-  if (rows.value.length && rows.value.every((r) => !isOpenAt(r.room, time))) {
-    return freeAt.value === 'now' ? 'All rooms are closed now' : `All rooms are closed at ${clockLabel(time)}`
-  }
-  const free = rows.value.filter((r) => r.until !== null).length
-  const when = freeAt.value === 'now' ? `${clock.value}, now` : clockLabel(time)
-  return `${free} of ${rows.value.length} rooms free at ${when}`
-})
-/** "Free until 16:00": the next booking or the room's own closing time, never "the rest of the
- * day" (a room may close at 17:00 while others stay open; owner, 17 Nov 2026). */
-const fitsFor = (row: { until: number | null }) => (row.until === null ? '' : `Free until ${clockLabel(row.until)}`)
+/** The status column's head: the time its words are about. */
+const statusHead = computed(() => (at.value === null ? 'Day' : freeAt.value === 'now' ? 'Now' : `At ${clockLabel(at.value)}`))
 
 const HOURS = Array.from({ length: 11 }, (_, i) => clockLabel((7 + i) * 60))
 /** The hour labels, blank where the Now tag sits (today), so the tag never covers them: a label
@@ -167,28 +152,25 @@ const hourLabels = computed(() =>
     return isToday.value && at > now.value - 70 && at < now.value + 35 ? '' : h
   }),
 )
-/** The room's own closed hours on the lane: before it opens and after it closes. */
-function closedSpans(room: RoomListItem) {
+/** The room's open hours on the lane: the white bar. Closed hours stay blank. */
+function trackOf(room: RoomListItem) {
+  const left = lanePct(toMinutes(room.start_time))
+  return { left: `${left}%`, width: `${lanePct(toMinutes(room.end_time)) - left}%` }
+}
+/** Today, the part of the bar already gone (grey), as a share of the room's open hours. */
+function pastOf(room: RoomListItem) {
   const opens = toMinutes(room.start_time)
-  const closes = toMinutes(room.end_time)
-  const spans: Array<{ left: string; width: string; borderRadius: string }> = []
-  if (opens > DAY_START) spans.push({ left: '0%', width: `${lanePct(opens)}%`, borderRadius: '10px 0 0 10px' })
-  if (closes < DAY_END) spans.push({ left: `${lanePct(closes)}%`, width: `${100 - lanePct(closes)}%`, borderRadius: '0 10px 10px 0' })
-  return spans
+  const share = ((now.value - opens) / (toMinutes(room.end_time) - opens)) * 100
+  return `${Math.min(100, Math.max(0, share))}%`
 }
-/** The words over a lane with no booking, and where they sit (see freeLabel). */
-function labelOf(room: RoomListItem, items: RoomDaySchedule['items']) {
-  const label = freeLabel(room, items, isToday.value, now.value)
-  if (!label) return null
-  const left = lanePct(label.from)
-  return { text: label.text, closed: label.text === 'Closed for today', style: { left: `${left}%`, width: `${lanePct(label.to) - left}%` } }
-}
+/** Today, a booking that has ended (faded). */
+const ended = (item: { end_time: string }) => isToday.value && toMinutes(item.end_time) <= now.value
 const hhmm = (time: string) => time.slice(0, 5)
 const span = (item: { start_time: string; end_time: string }) => {
   const left = lanePct(toMinutes(item.start_time))
   return { left: `calc(${left}% + 1px)`, width: `calc(${lanePct(toMinutes(item.end_time)) - left}% - 2px)` }
 }
-const SKELETON_COLUMNS = ['260px', '88px', '6fr']
+const SKELETON_COLUMNS = ['300px', '180px', '6fr']
 
 // --- Hover: the booking's title, times and booker ------------------------------------------
 type Item = RoomDaySchedule['items'][number]
@@ -288,23 +270,20 @@ async function decide() {
     </div>
 
     <div class="filters row-filters">
-      <div class="free-at">
-        <span id="free-at-label" class="free-at-label">Free at</span>
-        <SearchPicker
-          id="free-at"
-          v-model="freeAt"
-          searchable
-          :items="freeAtItems"
-          :words="FILTER_WORDS.freeAt"
-          described-by="free-at-label"
-        />
-      </div>
+      <span id="free-at-label" class="free-at-label">Free at</span>
+      <SearchPicker
+        id="free-at"
+        v-model="freeAt"
+        class="free-at"
+        searchable
+        :items="freeAtItems"
+        :words="FILTER_WORDS.freeAt"
+        described-by="free-at-label"
+      />
       <ListSearch :value="q" label="Search rooms" placeholder="Search room or floor" @search="q = $event" />
-      <SearchPicker id="room-kind" v-model="kind" class="narrow" :items="KIND_ITEMS" :words="FILTER_WORDS.roomKind" />
       <SearchPicker id="room-building" v-model="buildingName" class="narrow" :items="buildingItems" :words="FILTER_WORDS.building" />
       <BaseButton v-if="filtered" variant="quiet" class="clear-filters" @click="clearFilters">Clear filters</BaseButton>
     </div>
-    <p v-if="result" class="result" aria-live="polite">{{ result }}</p>
 
     <OfflineNote :live="live" />
     <div class="sheet">
@@ -324,7 +303,7 @@ async function decide() {
         <div class="timeline" role="table" :aria-label="`Rooms on ${formatDay(day)}`">
           <div class="trow head" role="row">
             <div role="columnheader">Room</div>
-            <div role="columnheader">Kind</div>
+            <div role="columnheader">{{ statusHead }}</div>
             <div class="hcell" role="columnheader">
               <div class="hours">
                 <span v-for="(h, i) in hourLabels" :key="i" class="hour">{{ h }}</span>
@@ -337,7 +316,6 @@ async function decide() {
             v-for="row in rows"
             :key="row.room.id"
             class="trow"
-            :class="{ 'not-free': at !== null && row.until === null }"
             role="row"
             :data-room="row.room.id"
             :data-free="at === null ? undefined : String(row.until !== null)"
@@ -347,27 +325,26 @@ async function decide() {
               <div class="names">
                 <strong>{{ row.room.name_en }}<span class="kh">{{ row.room.name_kh }}</span></strong>
                 <span class="sub">
-                  <span class="hours-open mono">{{ hhmm(row.room.start_time) }}–{{ hhmm(row.room.end_time) }}</span> ·
-                  {{ row.room.floor.floor_label }} · {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
+                  <Lock v-if="row.room.is_private" class="lock" aria-label="Private" />{{ row.room.floor.floor_label }} ·
+                  {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
                 </span>
-                <!-- Said once: a room with no booking has its words on the lane instead. -->
-                <span v-if="at !== null && row.until !== null && row.items.length" class="fits">{{ fitsFor(row) }}</span>
               </div>
             </div>
-            <div class="kind" role="cell">
-              <template v-if="row.room.is_private"><Lock aria-hidden="true" />Private</template>
-              <template v-else><Globe aria-hidden="true" />Shared</template>
+            <div class="status-cell" role="cell">
+              <span class="status" :class="row.status.kind"><i aria-hidden="true" />{{ row.status.text }}</span>
             </div>
             <div class="lane" role="cell">
-              <span v-if="isToday" class="past" :style="{ width: `${lanePct(now)}%` }" />
-              <span v-for="(c, ci) in closedSpans(row.room)" :key="ci" class="closed" :style="c" />
-              <span v-if="row.label" class="free-label" :class="{ shut: row.label.closed }" :style="row.label.style">{{ row.label.text }}</span>
+              <span
+                class="track"
+                :style="trackOf(row.room)"
+                :title="`Open ${hhmm(row.room.start_time)}–${hhmm(row.room.end_time)}`"
+              ><span v-if="isToday" class="past" :style="{ width: pastOf(row.room) }" /></span>
               <button
                 v-for="(it, i) in row.items"
                 :key="`${it.booking_id ?? 'm'}-${i}`"
                 type="button"
                 class="block"
-                :class="blockKind(it)"
+                :class="[blockKind(it), { done: ended(it) }]"
                 :style="span(it)"
                 :data-booking="it.booking_id ?? undefined"
                 :aria-disabled="it.is_masked || undefined"
@@ -379,7 +356,7 @@ async function decide() {
                 @click="open(it)"
               >
                 <b>{{ it.is_masked ? 'Private booking' : it.title }}</b>
-                <span class="mono">{{ hhmm(it.start_time) }}–{{ hhmm(it.end_time) }}</span>
+                <span class="when mono">{{ hhmm(it.start_time) }}–{{ hhmm(it.end_time) }}</span>
               </button>
               <span v-if="isToday" class="now-line" :style="{ left: `${lanePct(now)}%` }" />
               <span v-if="at !== null && freeAt !== 'now'" class="at-line" :style="{ left: `${lanePct(at)}%` }" />
@@ -387,14 +364,6 @@ async function decide() {
           </div>
         </div>
       </div>
-    </div>
-
-    <div v-if="rooms && rows.length" class="legend">
-      <span><i class="f" />Free</span>
-      <span><i class="b" />Booked</span>
-      <span><i class="w" />Waiting for approval</span>
-      <span><i class="c" />Closed</span>
-      <span v-if="isToday"><i class="x" />Past</span>
     </div>
 
     <Teleport to="body">
@@ -473,54 +442,37 @@ async function decide() {
   width: 172px;
 }
 
-/* One filter row, led by Free at: the app's dropdown on a soft green box. */
+/* One filter row, plain like the other list pages. */
 .row-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  margin-top: 0;
 }
 .row-filters > .narrow {
   width: 184px;
 }
-.free-at {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 3px 3px 12px;
-  border: 1px solid color-mix(in srgb, var(--color-ok) 35%, var(--color-rule));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-ok) 10%, var(--color-sheet));
-}
 .free-at-label {
-  color: var(--color-ok);
+  color: var(--color-intaglio);
   font-size: 13px;
-  font-weight: 500;
   white-space: nowrap;
 }
-.free-at :deep(.picker) {
+.row-filters > .free-at {
   width: 150px;
 }
 .clear-filters {
   color: var(--color-crimson);
 }
-.result {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-ok);
-}
-
-/* The timeline: Room · Kind · the 07:00–18:00 lane. */
+/* The timeline: Room · status · the 07:00–18:00 day bar. */
 .timeline {
-  min-width: 980px;
+  min-width: 940px;
 }
 .trow {
   display: grid;
-  grid-template-columns: 270px 88px minmax(0, 1fr);
+  grid-template-columns: 300px 180px minmax(0, 1fr);
   align-items: center;
   border-bottom: 1px solid var(--color-rule);
-  transition: opacity 160ms ease;
 }
 .trow:last-child {
   border-bottom: 0;
@@ -541,16 +493,10 @@ async function decide() {
   text-transform: uppercase;
 }
 .trow.head > .hcell {
-  padding: 10px 12px 10px 0;
+  padding: 10px 16px 10px 0;
 }
 .trow:not(.head):hover {
   background: var(--color-row-hover);
-}
-.trow.not-free {
-  opacity: 0.5;
-}
-.trow.not-free:hover {
-  opacity: 0.85;
 }
 .hours {
   position: relative;
@@ -584,16 +530,17 @@ async function decide() {
 }
 .room {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px;
   min-width: 0;
 }
+/* The photo stays, small and quiet: one size on every row. */
 .thumb {
-  width: 56px;
+  width: 52px;
   height: 38px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 .names {
   min-width: 0;
@@ -620,87 +567,98 @@ async function decide() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.fits {
-  display: block;
-  color: var(--color-ok);
-  font-size: 12px;
-  font-weight: 500;
+.lock {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 3px;
+  vertical-align: -1px;
 }
-.kind {
+/* One status per row, said once: a dot and its words. */
+.status-cell {
+  padding: 12px;
+  min-width: 0;
+}
+.status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
+  gap: 8px;
+  font-size: 13px;
   color: var(--color-intaglio);
-  font-size: 12.5px;
 }
-.kind svg {
-  width: 14px;
-  height: 14px;
+.status i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-rule-strong);
 }
+.status.free {
+  color: var(--color-ok);
+}
+.status.free i {
+  background: var(--color-ok);
+}
+.status.booked {
+  color: var(--color-crimson);
+}
+.status.booked i {
+  background: var(--color-crimson);
+}
+.status.waiting {
+  color: var(--color-warn);
+}
+.status.waiting i {
+  width: 6px;
+  height: 6px;
+  border: 1.5px dashed var(--color-warn);
+  background: none;
+}
+.status.closed {
+  color: var(--color-ink-off);
+}
+.status.some i {
+  background: var(--color-intaglio);
+}
+/* The day bar: white = open, grey = past, blank = closed. */
 .lane {
   position: relative;
-  height: 46px;
-  margin: 8px 12px 8px 0;
-  border-radius: 10px;
-  background-color: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
-  background-image: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent calc(100% / 11 - 1px),
-    var(--color-rule) calc(100% / 11 - 1px),
-    var(--color-rule) calc(100% / 11)
-  );
+  height: 34px;
+  margin: 10px 16px 10px 0;
+}
+.track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 8px;
+  background: var(--color-sheet);
 }
 .past {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  border-radius: 10px 0 0 10px;
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 5%, transparent) 0 4px, transparent 4px 8px);
+  background: var(--color-field-disabled);
   pointer-events: none;
-}
-/* The room's own closed hours: grey, over the lane's green. */
-.closed {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-  background: var(--color-rule-strong);
-  pointer-events: none;
-}
-/* A lane with no booking: its words sit over the time they are about (see freeLabel). */
-.free-label {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  color: var(--color-ok);
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-}
-.free-label.shut {
-  color: var(--color-ink-off);
 }
 .block {
   position: absolute;
-  top: 5px;
-  bottom: 5px;
+  top: 3px;
+  bottom: 3px;
   z-index: 1;
-  display: grid;
-  align-content: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   overflow: hidden;
-  padding: 4px 8px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   font: inherit;
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     transform 160ms var(--ease-out-quint),
@@ -719,24 +677,31 @@ async function decide() {
 .block b {
   overflow: hidden;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.block span {
+/* Only the title shows on the bar (calm look A); the times are in the hover card and stay here
+ * for screen readers. */
+.block .when {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  font-size: 10.5px;
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 .block.booked {
-  background: color-mix(in srgb, var(--color-crimson) 14%, var(--color-sheet));
+  background: var(--color-crimson-wash);
   color: var(--color-crimson);
 }
 .block.waiting {
-  border: 1px dashed color-mix(in srgb, var(--color-warn) 60%, transparent);
-  background: color-mix(in srgb, var(--color-warn) 16%, var(--color-sheet));
+  outline: 1px dashed color-mix(in srgb, var(--color-warn) 55%, transparent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
   color: var(--color-warn);
+}
+.block.done {
+  opacity: 0.5;
 }
 .block.masked {
   background: var(--color-field-disabled);
@@ -746,8 +711,8 @@ async function decide() {
 .now-line,
 .at-line {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -10px;
+  bottom: -10px;
   z-index: 2;
   width: 2px;
   pointer-events: none;
@@ -757,42 +722,6 @@ async function decide() {
 }
 .at-line {
   background: var(--color-ok);
-}
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  margin-top: 12px;
-  color: var(--color-intaglio);
-  font-size: 12.5px;
-}
-.legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.legend i {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-}
-.legend .f {
-  background: color-mix(in srgb, var(--color-ok) 18%, var(--color-sheet));
-}
-.legend .b {
-  background: color-mix(in srgb, var(--color-crimson) 22%, var(--color-sheet));
-}
-.legend .w {
-  border: 1px dashed var(--color-warn);
-  background: color-mix(in srgb, var(--color-warn) 22%, var(--color-sheet));
-}
-.legend .c {
-  background: var(--color-rule-strong);
-}
-.legend .x {
-  border: 1px solid var(--color-rule);
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 14%, transparent) 0 3px, transparent 3px 6px);
 }
 /* Hover: a small dark card above the block (below it near the top of the window). */
 .room-tip {
@@ -823,7 +752,6 @@ async function decide() {
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  .trow,
   .block {
     transition: none;
   }
