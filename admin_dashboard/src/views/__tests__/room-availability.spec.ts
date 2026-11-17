@@ -51,6 +51,7 @@ beforeEach(() => {
   session.user = { id: 5, name_en: 'Chan Sophea', roles: [{ code: 'PITIKA' }], province: { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'x' } } as never
   calls.length = 0
   bodies.length = 0
+  localStorage.clear()
   day = {
     12: [item(70, '11:00', '12:30', 'Budget review', 'CONFIRMED')],
     13: [item(71, '14:00', '16:00', 'Risk review', 'PENDING_PITIKA')],
@@ -176,21 +177,69 @@ describe('RoomAvailabilityView', () => {
     expect(rowIds(wrapper).sort()).toEqual([12, 13])
   })
 
-  it('filters by search and building, and Clear filters resets them', async () => {
+  it('filters by search; Clear filters resets the search and Free at, and keeps the building', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
     expect(document.getElementById('room-kind')).toBeNull() // calmer: no kind filter or column
     await search(wrapper, 'board')
     expect(rowIds(wrapper)).toEqual([13])
-    await search(wrapper, '')
     await choosePicker('room-building', 'Annex')
-    expect(rowIds(wrapper)).toEqual([13])
+    await choosePicker('free-at', '14:00')
 
     await wrapper.get('button.clear-filters').trigger('click')
     await flushPromises()
-    expect(rowIds(wrapper).sort()).toEqual([12, 13])
-    expect(pickerText('room-building')).toBe('All buildings')
+    expect(wrapper.get<HTMLInputElement>('.search input').element.value).toBe('')
+    expect(pickerText('free-at')).toBe('Now')
+    expect(pickerText('room-building')).toBe('Annex') // the building is where you work, not a filter
     expect(wrapper.find('button.clear-filters').exists()).toBe(false)
+  })
+
+  it('remembers the building picked, and asks only for its rooms (option A, owner 17 Nov 2026)', async () => {
+    const first = await mountAt('/room-availability')
+    await choosePicker('room-building', 'Annex')
+    expect(rowIds(first.wrapper)).toEqual([13])
+    expect(calls.at(-1)).toBe('/api/v1/room-schedule?date=2026-11-04&room_ids=13')
+    expect(first.wrapper.get('[data-room="13"] .sub').text()).not.toContain('Annex') // said once, in the picker
+    first.wrapper.unmount()
+
+    calls.length = 0
+    const again = await mountAt('/room-availability')
+    expect(pickerText('room-building')).toBe('Annex')
+    expect(rowIds(again.wrapper)).toEqual([13])
+    expect(calls.filter((c) => c.startsWith('/api/v1/room-schedule'))).toEqual(['/api/v1/room-schedule?date=2026-11-04&room_ids=13'])
+  })
+
+  it('a remembered building that is gone falls back to All buildings', async () => {
+    localStorage.setItem('nbc.admin.roomBuilding', 'Old annex')
+    const { wrapper } = await mountAt('/room-availability')
+    expect(pickerText('room-building')).toBe('All buildings')
+    expect(rowIds(wrapper).sort()).toEqual([12, 13])
+  })
+
+  it('All buildings: a heading per building says how many rooms are free in it', async () => {
+    day[12] = [item(70, '09:00', '10:30', 'Budget review', 'CONFIRMED')] // Head office: in use at 10:20
+    const { wrapper } = await mountAt('/room-availability')
+
+    const heads = () => wrapper.findAll('.group').map((g) => g.text())
+    expect(heads()).toEqual(['Annex1 free now', 'Head officenone free now'])
+    expect(wrapper.get('.group b').text()).toBe('Annex')
+    expect(wrapper.get('[data-room="13"] .sub').text()).not.toContain('Annex')
+    await showAll(wrapper)
+    expect(rowIds(wrapper)).toEqual([13, 12]) // each room under its building's heading
+    await choosePicker('free-at', 'Any time')
+    expect(heads()).toEqual(['Annex1 room', 'Head office1 room'])
+  })
+
+  it('asks for the day of at most 200 rooms per call', async () => {
+    const many = Array.from({ length: 250 }, (_, i) => roomItem(1000 + i, `Room ${i}`))
+    ROOMS.push(...many)
+    try {
+      await mountAt('/room-availability')
+      const asked = calls.filter((c) => c.startsWith('/api/v1/room-schedule')).map((c) => new URL(`http://x${c}`).searchParams.get('room_ids')!.split(',').length)
+      expect(asked).toEqual([200, 52])
+    } finally {
+      ROOMS.splice(3)
+    }
   })
 
   it('another day has no Now line, and Free at starts at Any time', async () => {
@@ -327,6 +376,14 @@ describe('RoomAvailabilityView', () => {
     expect(hours).not.toContain('10:00') // the tag sits on 10:20
     expect(hours).toContain('11:00')
     expect(hours).toContain('09:00')
+  })
+
+  it('at 16:23 the Now tag would touch 17:00, so 17:00 hides too', async () => {
+    vi.setSystemTime(new Date('2026-11-04T09:23:00Z')) // 16:23
+    const { wrapper } = await mountAt('/room-availability')
+    const hours = wrapper.findAll('.hours > .hour').map((h) => h.text())
+    expect(hours).not.toContain('17:00')
+    expect(hours).toContain('15:00')
   })
 
   it('a free room says Free until its closing time today, and Free all day on another day', async () => {

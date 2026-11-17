@@ -62,9 +62,35 @@ let tick: ReturnType<typeof setInterval> | undefined
 onMounted(() => (tick = setInterval(() => (clock.value = phnomPenhClock(new Date())), 20_000)))
 onBeforeUnmount(() => clearInterval(tick))
 
+// --- The building (option A, owner 17 Nov 2026): the page starts on the building picked last
+// time, remembered in this browser, and asks only for its rooms; null = All buildings, with a
+// heading per building. It is where you work, not a filter: Clear filters keeps it.
+const BUILDING_KEY = 'nbc.admin.roomBuilding'
+function readBuilding(): string | null {
+  try {
+    return localStorage.getItem(BUILDING_KEY)
+  } catch {
+    return null
+  }
+}
+const buildingName = ref<string | null>(readBuilding())
+watch(buildingName, (name) => {
+  try {
+    if (name) localStorage.setItem(BUILDING_KEY, name)
+    else localStorage.removeItem(BUILDING_KEY)
+  } catch {
+    // Private mode or blocked storage: the choice lasts until reload.
+  }
+  void load()
+})
+
 // --- Rooms (once) and the day's bookings ------------------------------------------------
+/** The day endpoint takes at most 200 rooms (MAX_DAY_ROOMS): more are asked in parts. */
+const DAY_ROOMS_PER_CALL = 200
 const rooms = ref<RoomListItem[] | null>(null)
 const schedule = ref<Record<number, RoomDaySchedule['items']>>({})
+/** The rooms whose day is loaded: only they show, so a room is never "free" before its day arrives. */
+const loadedIds = ref<Set<number>>(new Set())
 const loading = ref(false)
 const error = ref('')
 let latest = 0
@@ -85,9 +111,20 @@ async function load(quietRefresh?: unknown) {
   }
   try {
     if (rooms.value === null) rooms.value = await listAllRooms(api)
-    const ids = myRooms.value.map((r) => r.id)
-    const answer = ids.length ? await getDaySchedule(api, day.value, ids) : { items: [] }
-    if (request === latest) schedule.value = Object.fromEntries(answer.items.map((d) => [d.room_id, d.items]))
+    // A remembered building with no room of mine any more: All buildings (its watch loads again).
+    const name = buildingName.value
+    if (name && !myRooms.value.some((r) => r.building.name_en === name)) {
+      buildingName.value = null
+      return
+    }
+    const ids = myRooms.value.filter((r) => !name || r.building.name_en === name).map((r) => r.id)
+    const parts: number[][] = []
+    for (let i = 0; i < ids.length; i += DAY_ROOMS_PER_CALL) parts.push(ids.slice(i, i + DAY_ROOMS_PER_CALL))
+    const answers = await Promise.all(parts.map((part) => getDaySchedule(api, day.value, part)))
+    if (request === latest) {
+      schedule.value = Object.fromEntries(answers.flatMap((a) => a.items).map((d) => [d.room_id, d.items]))
+      loadedIds.value = new Set(ids)
+    }
   } catch (err) {
     if (request === latest && quiet) throw err
     if (request === latest) error.value = err instanceof ApiError ? err.message : 'Something went wrong.'
@@ -99,17 +136,15 @@ watch(day, () => load(), { immediate: true })
 const live = useLiveRefresh(() => (loading.value ? undefined : load(true)))
 
 // --- Filters, with the app's dropdown (SearchPicker): Free at first (Now today, Any time on other
-// days; null = Any time), then the search and the building (null = all). No kind filter: the
-// lock beside a private room's floor says it (calm look A).
+// days; null = Any time), then the search. No kind filter: the lock beside a private room's floor
+// says it (calm look A).
 const freeAt = ref<string | null>(null)
 const q = ref('')
-const buildingName = ref<string | null>(null)
 watch(isToday, (yes) => (freeAt.value = yes ? 'now' : null), { immediate: true })
 const defaultFreeAt = computed(() => (isToday.value ? 'now' : null))
-const filtered = computed(() => !!q.value || !!buildingName.value || freeAt.value !== defaultFreeAt.value)
+const filtered = computed(() => !!q.value || freeAt.value !== defaultFreeAt.value)
 function clearFilters() {
   q.value = ''
-  buildingName.value = null
   freeAt.value = defaultFreeAt.value
 }
 /** Now, then every half hour (today: only those still to come); Any time is the picker's empty choice. */
@@ -129,7 +164,7 @@ const rows = computed(() => {
   const words = q.value.trim().toLowerCase()
   const list = myRooms.value
     .filter((r) => !words || `${r.name_en} ${r.name_kh} ${r.floor.floor_label} ${r.building.name_en}`.toLowerCase().includes(words))
-    .filter((r) => !buildingName.value || r.building.name_en === buildingName.value)
+    .filter((r) => (!buildingName.value || r.building.name_en === buildingName.value) && loadedIds.value.has(r.id))
     .map((room) => {
       const items = schedule.value[room.id] ?? []
       const time = at.value
@@ -153,13 +188,26 @@ const shown = computed(() => (at.value === null || showAll.value ? rows.value : 
 const whenWords = computed(() => (freeAt.value === 'now' ? 'now' : at.value === null ? '' : `at ${clockLabel(at.value)}`))
 const notFreeLine = computed(() => `${notFree.value} ${notFree.value === 1 ? 'room is' : 'rooms are'} not free ${whenWords.value}`)
 
+/** All buildings: a heading per building with how many of its rooms are free then (or how many
+ * rooms on Any time), its rooms below. One building: no heading (the picker says which). */
+const grouped = computed(() => !buildingName.value && buildingItems.value.length > 1)
+const groups = computed(() => {
+  if (!grouped.value) return [{ name: null as string | null, words: '', none: false, rows: shown.value }]
+  return [...new Set(rows.value.map((r) => r.room.building.name_en))].sort().map((name) => {
+    const all = rows.value.filter((r) => r.room.building.name_en === name)
+    const free = all.filter((r) => r.until !== null).length
+    const words = at.value === null ? `${all.length} room${all.length === 1 ? '' : 's'}` : `${free || 'none'} free ${whenWords.value}`
+    return { name, words, none: at.value !== null && !free, rows: shown.value.filter((r) => r.room.building.name_en === name) }
+  })
+})
+
 const HOURS = Array.from({ length: 11 }, (_, i) => clockLabel((7 + i) * 60))
 /** The hour labels, blank where the Now tag sits (today), so the tag never covers them: a label
- * runs about 35 minutes right of its line, the tag about 35 minutes each side of now. */
+ * runs about 35 minutes right of its line, the tag about 40 minutes each side of now. */
 const hourLabels = computed(() =>
   HOURS.map((h) => {
     const at = toMinutes(h)
-    return isToday.value && at > now.value - 70 && at < now.value + 35 ? '' : h
+    return isToday.value && at > now.value - 70 && at < now.value + 40 ? '' : h
   }),
 )
 /** The room's own closed hours on the lane, grey with round ends: before it opens and after it
@@ -326,8 +374,12 @@ async function decide() {
               </div>
             </div>
           </div>
+          <template v-for="g in groups" :key="g.name ?? 'all'">
+          <div v-if="g.name" class="group" role="row">
+            <b role="rowheader">{{ g.name }}</b><span :class="{ none: g.none }">{{ g.words }}</span>
+          </div>
           <div
-            v-for="row in shown"
+            v-for="row in g.rows"
             :key="row.room.id"
             class="trow"
             role="row"
@@ -341,7 +393,7 @@ async function decide() {
                 <strong class="kh" :title="row.room.name_en">{{ row.room.name_kh || row.room.name_en }}</strong>
                 <span class="sub">
                   <Lock v-if="row.room.is_private" class="lock" aria-label="Private" />{{ row.room.floor.floor_label }} ·
-                  {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
+                  <template v-if="!buildingName && !grouped">{{ row.room.building.name_en }} · </template>{{ row.room.capacity }} seats
                 </span>
               </div>
             </div>
@@ -374,6 +426,7 @@ async function decide() {
               <span v-if="at !== null && freeAt !== 'now'" class="at-line" :style="{ left: `${lanePct(at)}%` }" />
             </div>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -493,6 +546,25 @@ async function decide() {
 }
 .row-filters > .free-at {
   width: 150px;
+}
+/* All buildings: a heading per building, with how many of its rooms are free. */
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 18px 12px 8px;
+  border-bottom: 1px solid var(--color-rule-strong);
+}
+.group b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.group span {
+  color: var(--color-ok);
+  font-size: 12.5px;
+}
+.group span.none {
+  color: var(--color-ink-off);
 }
 /* The rooms Free at hides: one quiet line under the table. */
 .more {
