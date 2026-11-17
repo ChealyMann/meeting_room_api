@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blockKind, clockLabel, DAY_END, DAY_START, freeAtOptions, freeUntil, lanePct, toMinutes } from '../roomDay'
+import { blockKind, clockLabel, DAY_END, DAY_START, freeAtOptions, freeLabel, freeUntil, isOpenAt, lanePct, toMinutes } from '../roomDay'
 
 const ROOM = { start_time: '07:30:00', end_time: '18:00:00' }
 const item = (start: string, end: string) => ({ start_time: `${start}:00`, end_time: `${end}:00` })
@@ -55,5 +55,37 @@ describe('roomDay', () => {
       { value: '420', label: '07:00' },
     ])
     expect(options.at(-1)).toEqual({ value: '1050', label: '17:30' })
+  })
+})
+
+describe('roomDay: labels true to the clock and the room hours (owner, 17 Nov 2026)', () => {
+  const room = { start_time: '08:00:00', end_time: '17:00:00' }
+
+  it('a free room says Free all day on another day, or today before it opens', () => {
+    expect(freeLabel(room, [], false, 15 * 60)).toEqual({ text: 'Free all day', from: 480, to: 1020 })
+    expect(freeLabel(room, [], true, 7 * 60 + 30)).toEqual({ text: 'Free all day', from: 480, to: 1020 })
+  })
+
+  it('today while it is open: Free for the rest of the day, over the time left', () => {
+    expect(freeLabel(room, [], true, 14 * 60 + 24)).toEqual({ text: 'Free for the rest of the day', from: 864, to: 1020 })
+  })
+
+  it('today after it closes: Closed for today', () => {
+    expect(freeLabel(room, [], true, 17 * 60)).toEqual({ text: 'Closed for today', from: 480, to: 1020 })
+  })
+
+  it('a room with bookings has no such label', () => {
+    expect(freeLabel(room, [item('09:00', '10:00')], true, 14 * 60)).toBeNull()
+  })
+
+  it('knows when a room is open', () => {
+    expect([isOpenAt(room, 7 * 60 + 59), isOpenAt(room, 8 * 60), isOpenAt(room, 16 * 60 + 59), isOpenAt(room, 17 * 60)]).toEqual([false, true, true, false])
+  })
+
+  it('today offers only Now and the half hours still to come', () => {
+    const labels = freeAtOptions(14 * 60 + 24).map((o) => o.label)
+    expect(labels.slice(0, 4)).toEqual(['Any time', 'Now', '14:30', '15:00'])
+    expect(labels.at(-1)).toBe('17:30')
+    expect(freeAtOptions(14 * 60 + 30).map((o) => o.label)[2]).toBe('14:30')
   })
 })

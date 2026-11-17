@@ -5,7 +5,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
-import { choosePicker } from '../../test-utils/picker'
+import { choosePicker, pickerOptions } from '../../test-utils/picker'
 import { bookingDetail, bookingItem, building, roomItem } from '../../test-utils/staff'
 import { useToast } from '../../composables/useToast'
 import RoomAvailabilityView from '../RoomAvailabilityView.vue'
@@ -15,7 +15,7 @@ enableAutoUnmount(afterEach)
 // Now: Wed 4 Nov 2026, 10:20 in Phnom Penh. Two Phnom Penh rooms and one in Siem Reap.
 const ROOMS = [
   roomItem(12, 'Mekong Room', { start_time: '07:30', end_time: '18:00', building: building(1, 'Head office') }),
-  roomItem(13, 'Board Room', { start_time: '07:30', end_time: '18:00', is_private: true, building: building(2, 'Annex') }),
+  roomItem(13, 'Board Room', { start_time: '08:00', end_time: '17:00', is_private: true, building: building(2, 'Annex') }),
   roomItem(99, 'Siem Reap Room', { province: { code: 'SIEM_REAP', name_en: 'Siem Reap', name_kh: 'x' } }),
 ]
 const item = (booking: number, start: string, end: string, title: string, status: string, extra: Record<string, unknown> = {}) => ({
@@ -256,6 +256,56 @@ describe('RoomAvailabilityView', () => {
     expect(document.body.querySelector('[role="tooltip"]')?.textContent).not.toContain('Sok Dara')
     await block.trigger('click')
     expect(router.currentRoute.value.query.booking).toBeUndefined()
+  })
+
+  it("greys out each room's own closed hours", async () => {
+    const { wrapper } = await mountAt('/room-availability')
+
+    // Board Room opens 08:00–17:00: closed 07:00–08:00 and 17:00–18:00. Mekong Room 07:30–18:00.
+    const closed = (id: number) => wrapper.findAll(`[data-room="${id}"] .closed`).map((c) => c.attributes('style'))
+    expect(closed(13)).toEqual(['left: 0%; width: 9.090909090909092%;', 'left: 90.9090909090909%; width: 9.090909090909093%;'])
+    expect(closed(12)).toHaveLength(1)
+  })
+
+  it('a free room says Free for the rest of the day today, over the time left', async () => {
+    day[13] = []
+    const { wrapper } = await mountAt('/room-availability')
+    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free for the rest of the day')
+  })
+
+  it('a free room says Free all day on another day', async () => {
+    day[13] = []
+    const { wrapper } = await mountAt('/room-availability?date=2026-11-05')
+    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free all day')
+  })
+
+  it('after closing time: Closed for today, and the line says every room is closed', async () => {
+    vi.setSystemTime(new Date('2026-11-04T11:30:00Z')) // 18:30 in Phnom Penh
+    day[12] = []
+    day[13] = []
+    const { wrapper } = await mountAt('/room-availability')
+
+    expect(wrapper.findAll('.free-label').map((l) => l.text())).toEqual(['Closed for today', 'Closed for today'])
+    expect(wrapper.get('.result').text()).toBe('All rooms are closed now')
+  })
+
+  it('today, Free at offers only Now and the times still to come', async () => {
+    await mountAt('/room-availability')
+    const options = await pickerOptions('free-at')
+    expect(options.slice(0, 3)).toEqual(['Any time', 'Now', '10:30'])
+    expect(options).not.toContain('10:00')
+  })
+
+  it('keeps a picked Free at time after the clock passes it', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-11-04T03:20:00Z')) // 10:20
+    await mountAt('/room-availability')
+    await choosePicker('free-at', '10:30')
+
+    vi.setSystemTime(new Date('2026-11-04T03:40:00Z')) // 10:40
+    vi.advanceTimersByTime(20_000)
+    await flushPromises()
+    expect(pickerText('free-at')).toBe('10:30')
   })
 
   it('is in the Daily group of the sidebar after Food list, for Admin and Pitika', () => {

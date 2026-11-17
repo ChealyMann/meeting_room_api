@@ -33,7 +33,7 @@ import { useToast } from '../composables/useToast'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useSessionStore } from '../stores/session'
 import { FILTER_WORDS } from '../utils/pickerWords'
-import { blockKind, clockLabel, freeAtOptions, freeUntil, lanePct, toMinutes } from '../utils/roomDay'
+import { blockKind, clockLabel, DAY_END, DAY_START, freeAtOptions, freeLabel, freeUntil, isOpenAt, lanePct, toMinutes } from '../utils/roomDay'
 import { addDays, formatDay, phnomPenhClock } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
@@ -112,9 +112,10 @@ function clearFilters() {
   buildingName.value = null
   freeAt.value = defaultFreeAt.value
 }
-/** Now, then every half hour; Any time is the picker's empty choice. */
+/** Now, then every half hour (today: only those still to come); Any time is the picker's empty choice. */
 const freeAtItems = computed<PickerItem[]>(() =>
-  freeAtOptions()
+  // A picked time stays offered after the clock passes it, so the picker keeps showing it.
+  freeAtOptions(isToday.value ? Math.min(now.value, Number(freeAt.value) || now.value) : 0)
     .filter((o) => o.value !== '')
     .map((o) => ({ value: o.value, label: o.label, keywords: o.value === 'now' ? clock.value : undefined })),
 )
@@ -136,16 +137,21 @@ const rows = computed(() => {
     .filter((r) => !buildingName.value || r.building.name_en === buildingName.value)
     .map((room) => {
       const items = schedule.value[room.id] ?? []
-      return { room, items, until: at.value === null ? null : freeUntil(room, items, at.value) }
+      return { room, items, until: at.value === null ? null : freeUntil(room, items, at.value), label: labelOf(room, items) }
     })
     .sort((a, b) => a.room.building.name_en.localeCompare(b.room.building.name_en) || a.room.name_en.localeCompare(b.room.name_en))
   if (at.value !== null) list.sort((a, b) => Number(a.until === null) - Number(b.until === null) || (b.until ?? 0) - (a.until ?? 0))
   return list
 })
 const result = computed(() => {
-  if (at.value === null) return ''
+  const time = at.value
+  if (time === null) return ''
+  // Every room has its own hours: say so when none is open then, not "0 of 14 free".
+  if (rows.value.length && rows.value.every((r) => !isOpenAt(r.room, time))) {
+    return freeAt.value === 'now' ? 'All rooms are closed now' : `All rooms are closed at ${clockLabel(time)}`
+  }
   const free = rows.value.filter((r) => r.until !== null).length
-  const when = freeAt.value === 'now' ? `${clock.value}, now` : clockLabel(at.value)
+  const when = freeAt.value === 'now' ? `${clock.value}, now` : clockLabel(time)
   return `${free} of ${rows.value.length} rooms free at ${when}`
 })
 /** "Free for the rest of the day" when it stays free until the room closes. */
@@ -153,6 +159,22 @@ const fitsFor = (row: { room: RoomListItem; until: number | null }) =>
   row.until === null ? '' : row.until >= toMinutes(row.room.end_time) ? 'Free for the rest of the day' : `Free until ${clockLabel(row.until)}`
 
 const HOURS = Array.from({ length: 11 }, (_, i) => clockLabel((7 + i) * 60))
+/** The room's own closed hours on the lane: before it opens and after it closes. */
+function closedSpans(room: RoomListItem) {
+  const opens = toMinutes(room.start_time)
+  const closes = toMinutes(room.end_time)
+  const spans: Array<{ left: string; width: string }> = []
+  if (opens > DAY_START) spans.push({ left: '0%', width: `${lanePct(opens)}%` })
+  if (closes < DAY_END) spans.push({ left: `${lanePct(closes)}%`, width: `${100 - lanePct(closes)}%` })
+  return spans
+}
+/** The words over a lane with no booking, and where they sit (see freeLabel). */
+function labelOf(room: RoomListItem, items: RoomDaySchedule['items']) {
+  const label = freeLabel(room, items, isToday.value, now.value)
+  if (!label) return null
+  const left = lanePct(label.from)
+  return { text: label.text, closed: label.text === 'Closed for today', style: { left: `${left}%`, width: `${lanePct(label.to) - left}%` } }
+}
 const hhmm = (time: string) => time.slice(0, 5)
 const span = (item: { start_time: string; end_time: string }) => {
   const left = lanePct(toMinutes(item.start_time))
@@ -326,7 +348,8 @@ async function decide() {
             </div>
             <div class="lane" role="cell">
               <span v-if="isToday" class="past" :style="{ width: `${lanePct(now)}%` }" />
-              <span v-if="!row.items.length" class="free-all">Free all day</span>
+              <span v-for="(c, ci) in closedSpans(row.room)" :key="ci" class="closed" :style="c" />
+              <span v-if="row.label" class="free-label" :class="{ shut: row.label.closed }" :style="row.label.style">{{ row.label.text }}</span>
               <button
                 v-for="(it, i) in row.items"
                 :key="`${it.booking_id ?? 'm'}-${i}`"
@@ -358,6 +381,7 @@ async function decide() {
       <span><i class="f" />Free</span>
       <span><i class="b" />Booked</span>
       <span><i class="w" />Waiting for approval</span>
+      <span><i class="c" />Closed</span>
       <span v-if="isToday"><i class="x" />Past</span>
     </div>
 
@@ -625,15 +649,33 @@ async function decide() {
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 5%, transparent) 0 4px, transparent 4px 8px);
   pointer-events: none;
 }
-.free-all {
+/* The room's own closed hours: grey, over the lane's green. */
+.closed {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--color-field-disabled);
+  pointer-events: none;
+}
+.closed:first-of-type {
+  border-radius: 10px 0 0 10px;
+}
+/* A lane with no booking: its words sit over the time they are about (see freeLabel). */
+.free-label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
   display: grid;
   place-items: center;
+  overflow: hidden;
   color: var(--color-ok);
   font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
   pointer-events: none;
+}
+.free-label.shut {
+  color: var(--color-ink-off);
 }
 .block {
   position: absolute;
@@ -734,6 +776,10 @@ async function decide() {
 .legend .w {
   border: 1px dashed var(--color-warn);
   background: color-mix(in srgb, var(--color-warn) 22%, var(--color-sheet));
+}
+.legend .c {
+  border: 1px solid var(--color-rule);
+  background: var(--color-field-disabled);
 }
 .legend .x {
   border: 1px solid var(--color-rule);
