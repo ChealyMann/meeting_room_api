@@ -143,6 +143,16 @@ const rows = computed(() => {
 /** The status column's head: the time its words are about. */
 const statusHead = computed(() => (at.value === null ? 'Day' : freeAt.value === 'now' ? 'Now' : `At ${clockLabel(at.value)}`))
 
+// --- Free at answers "which room can I use then?": only the rooms free then show (owner, 17 Nov
+// 2026). One line under the table shows the rest, at the bottom with why; a new time or day hides
+// them again. Any time shows every room.
+const showAll = ref(false)
+watch([freeAt, day], () => (showAll.value = false))
+const notFree = computed(() => (at.value === null ? 0 : rows.value.filter((r) => r.until === null).length))
+const shown = computed(() => (at.value === null || showAll.value ? rows.value : rows.value.filter((r) => r.until !== null)))
+const whenWords = computed(() => (freeAt.value === 'now' ? 'now' : at.value === null ? '' : `at ${clockLabel(at.value)}`))
+const notFreeLine = computed(() => `${notFree.value} ${notFree.value === 1 ? 'room is' : 'rooms are'} not free ${whenWords.value}`)
+
 const HOURS = Array.from({ length: 11 }, (_, i) => clockLabel((7 + i) * 60))
 /** The hour labels, blank where the Now tag sits (today), so the tag never covers them: a label
  * runs about 35 minutes right of its line, the tag about 35 minutes each side of now. */
@@ -300,6 +310,9 @@ async function decide() {
       <EmptyState v-else-if="rooms && !rows.length" title="No room matches these filters." text="Try another search or building.">
         <BaseButton @click="clearFilters">Clear filters</BaseButton>
       </EmptyState>
+      <EmptyState v-else-if="rooms && !shown.length" :title="`No room is free ${whenWords}.`" text="Try another time, or see every room.">
+        <BaseButton class="show-all" @click="showAll = true">Show all rooms</BaseButton>
+      </EmptyState>
       <div v-else-if="rooms" class="table-scroll" :aria-busy="loading || undefined">
         <div class="timeline" role="table" :aria-label="`Rooms on ${formatDay(day)}`">
           <div class="trow head" role="row">
@@ -314,7 +327,7 @@ async function decide() {
             </div>
           </div>
           <div
-            v-for="row in rows"
+            v-for="row in shown"
             :key="row.room.id"
             class="trow"
             role="row"
@@ -365,7 +378,12 @@ async function decide() {
       </div>
     </div>
 
-    <div v-if="rooms && rows.length" class="legend">
+    <p v-if="rooms && shown.length && notFree" class="more">
+      <span>{{ notFreeLine }}</span>
+      <button type="button" class="show-all" @click="showAll = !showAll">{{ showAll ? 'Hide them' : 'Show them' }}</button>
+    </p>
+
+    <div v-if="rooms && shown.length" class="legend">
       <span><i class="f" />Free</span>
       <span><i class="b" />Booked</span>
       <span><i class="w" />Waiting for approval</span>
@@ -475,6 +493,33 @@ async function decide() {
 }
 .row-filters > .free-at {
   width: 150px;
+}
+/* The rooms Free at hides: one quiet line under the table. */
+.more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 12px 0 0;
+  color: var(--color-intaglio);
+  font-size: 13px;
+}
+.more button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-crimson);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.more button:hover {
+  text-decoration: underline;
+}
+.more button:focus-visible {
+  outline: 2px solid var(--color-crimson);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .clear-filters {
   color: var(--color-crimson);

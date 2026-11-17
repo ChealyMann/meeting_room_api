@@ -52,7 +52,7 @@ beforeEach(() => {
   calls.length = 0
   bodies.length = 0
   day = {
-    12: [item(70, '09:00', '10:30', 'Budget review', 'CONFIRMED')],
+    12: [item(70, '11:00', '12:30', 'Budget review', 'CONFIRMED')],
     13: [item(71, '14:00', '16:00', 'Risk review', 'PENDING_PITIKA')],
   }
   vi.stubGlobal(
@@ -105,6 +105,11 @@ async function search(w: Awaited<ReturnType<typeof mountAt>>['wrapper'], text: s
 const rowIds = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) => w.findAll('[data-room]').map((r) => Number(r.attributes('data-room')))
 const status = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], id: number) => w.get(`[data-room="${id}"] .status`).text()
 const statusHead = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) => w.findAll('.trow.head [role="columnheader"]')[1]!.text()
+/** Shows the rooms Free at hides (the line under the table, or the empty state's button). */
+async function showAll(w: Awaited<ReturnType<typeof mountAt>>['wrapper']) {
+  await w.get('button.show-all').trigger('click')
+  await flushPromises()
+}
 
 describe('RoomAvailabilityView', () => {
   it('shows only rooms of my province, and asks for their day in one call', async () => {
@@ -120,32 +125,55 @@ describe('RoomAvailabilityView', () => {
 
     const budget = wrapper.get('[data-room="12"] .block')
     expect(budget.text()).toContain('Budget review')
-    expect(budget.text()).toContain('09:00–10:30')
+    expect(budget.text()).toContain('11:00–12:30')
     expect(budget.classes()).toContain('booked')
     expect(wrapper.get('[data-room="13"] .block').classes()).toContain('waiting')
   })
 
-  it('Free at Now: one status per room, the free rooms first', async () => {
+  it('Free at Now shows only the rooms free now; one line under the table shows the rest', async () => {
+    day[12] = [item(70, '09:00', '10:30', 'Budget review', 'CONFIRMED')] // in use at 10:20
     const { wrapper } = await mountAt('/room-availability')
 
     expect(pickerText('free-at')).toBe('Now')
     expect(statusHead(wrapper)).toBe('Now')
-    expect(rowIds(wrapper)).toEqual([13, 12]) // Mekong Room is in use at 10:20
+    expect(rowIds(wrapper)).toEqual([13])
     expect(status(wrapper, 13)).toBe('Free until 14:00')
+    expect(wrapper.get('.more span').text()).toBe('1 room is not free now')
+    expect(wrapper.get('.more button').text()).toBe('Show them')
+    expect(wrapper.findAll('.timeline .now-line')).toHaveLength(1)
+
+    await showAll(wrapper)
+    expect(rowIds(wrapper)).toEqual([13, 12]) // at the bottom, with why
     expect(status(wrapper, 12)).toBe('Booked until 10:30')
-    expect(wrapper.find('.result').exists()).toBe(false)
-    expect(wrapper.findAll('.timeline .now-line')).toHaveLength(2)
+    expect(wrapper.get('.more button').text()).toBe('Hide them')
+    await showAll(wrapper)
+    expect(rowIds(wrapper)).toEqual([13])
   })
 
-  it('Free at 14:00 says each room at 14:00', async () => {
+  it('Free at 14:00 shows the rooms free at 14:00; another time hides the rest again', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
     await choosePicker('free-at', '14:00')
     expect(statusHead(wrapper)).toBe('At 14:00')
-    expect(rowIds(wrapper)).toEqual([12, 13])
+    expect(rowIds(wrapper)).toEqual([12]) // Board Room waits for approval 14:00–16:00
     // Never "the rest of the day": the room's own closing time (owner, 17 Nov 2026).
     expect(status(wrapper, 12)).toBe('Free until 18:00')
+    expect(wrapper.get('.more').text()).toContain('1 room is not free at 14:00')
+    await showAll(wrapper)
     expect(status(wrapper, 13)).toBe('Waiting approval until 16:00')
+
+    await choosePicker('free-at', '15:00')
+    expect(rowIds(wrapper)).toEqual([12])
+  })
+
+  it('when no room is free then, says so and offers every room', async () => {
+    vi.setSystemTime(new Date('2026-11-04T11:30:00Z')) // 18:30: both rooms closed
+    const { wrapper } = await mountAt('/room-availability')
+
+    expect(rowIds(wrapper)).toEqual([])
+    expect(wrapper.text()).toContain('No room is free now.')
+    await showAll(wrapper)
+    expect(rowIds(wrapper).sort()).toEqual([12, 13])
   })
 
   it('filters by search and building, and Clear filters resets them', async () => {
@@ -315,6 +343,7 @@ describe('RoomAvailabilityView', () => {
     day[12] = []
     day[13] = []
     const { wrapper } = await mountAt('/room-availability')
+    await showAll(wrapper)
     expect([status(wrapper, 12), status(wrapper, 13)]).toEqual(['Closed after 18:00', 'Closed after 17:00'])
   })
 
@@ -328,6 +357,7 @@ describe('RoomAvailabilityView', () => {
   it("a closed room's status is words, never a grey closed block (owner bug, 17 Nov 2026)", async () => {
     vi.setSystemTime(new Date('2026-11-04T11:30:00Z')) // 18:30: both rooms closed
     const { wrapper } = await mountAt('/room-availability')
+    await showAll(wrapper)
 
     const statuses = wrapper.findAll('.status')
     expect(statuses.map((s) => s.classes())).toEqual([
