@@ -288,11 +288,8 @@ def test_food_and_it_copied(
     catering = data["catering"]
     assert catering["packages"] == [{"id": package.id, "name": "Coffee break"}]
     assert catering["remarks"] == "2 vegetarian"
-    assert (catering["servings"], catering["delivery_date"], catering["delivery_time"]) == (
-        5,
-        DAY.isoformat(),
-        "09:00",
-    )
+    assert "servings" not in catering  # food has no numbers (owner decision, 17 Nov 2026)
+    assert (catering["delivery_date"], catering["delivery_time"]) == (DAY.isoformat(), "09:00")
     assert (catering["decided_by"], catering["decided_at"], catering["approver_notes"]) == (
         None,
         None,

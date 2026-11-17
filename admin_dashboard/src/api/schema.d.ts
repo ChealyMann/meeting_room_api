@@ -1891,7 +1891,11 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** BookingRoomRef */
+        /**
+         * BookingRoomRef
+         * @description The booked room. Building, floor, seats, type, owner and the map search feed the Room
+         *     section of the booking pop-ups (owner pick, 17 Nov 2026). The owner is the name only.
+         */
         BookingRoomRef: {
             /** Id */
             id: number;
@@ -1903,6 +1907,14 @@ export interface components {
             is_private: boolean;
             location: components["schemas"]["NamedRef"];
             province: components["schemas"]["ProvinceRef"];
+            building: components["schemas"]["BuildingRef"];
+            floor: components["schemas"]["FloorRef"];
+            /** Capacity */
+            capacity: number;
+            category: components["schemas"]["NamedRef"];
+            owner: components["schemas"]["NamedRef"] | null;
+            /** Map Query */
+            map_query: string | null;
         };
         /**
          * BookingRoute
@@ -2176,8 +2188,6 @@ export interface components {
             delivery_date: string;
             /** Delivery Time */
             delivery_time: string;
-            /** Servings */
-            servings: number;
             /** Packages */
             packages: {
                 [key: string]: unknown;
@@ -2199,8 +2209,6 @@ export interface components {
             }[];
             /** Remarks */
             remarks: string | null;
-            /** Servings */
-            servings: number;
             /**
              * Delivery Date
              * Format: date

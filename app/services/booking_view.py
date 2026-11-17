@@ -7,7 +7,7 @@ fixed number of queries. The Pitika, owner and IT lists reuse it.
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.config import Settings
 from app.constants.booking import ATTACHMENTS_OPEN, ReviewDecision, ReviewStage
@@ -26,7 +26,7 @@ from app.schemas.booking import (
 )
 from app.schemas.booking_attachment import attachment_out
 from app.schemas.booking_review import DecidedBookingItem
-from app.schemas.refs import NamedRef, ProvinceRef
+from app.schemas.refs import BuildingRef, FloorRef, NamedRef, ProvinceRef
 from app.services import booking_transitions as transitions
 
 
@@ -38,15 +38,23 @@ def booking_load_options() -> tuple:
         selectinload(Booking.catering_order),
         selectinload(Booking.it_ticket),
         selectinload(Booking.requester),
-        selectinload(Booking.room)
-        .selectinload(Room.floor)
-        .selectinload(Floor.building)
-        .selectinload(Building.location),
+        selectinload(Booking.room).options(*room_load_options()),
+    )
+
+
+def room_load_options() -> tuple:
+    """Loader options under a booking's room: everything `room_ref` reads. The type and the
+    owner are joined into the rooms query, so they cost no extra query."""
+    return (
+        selectinload(Room.floor).selectinload(Floor.building).selectinload(Building.location),
+        joinedload(Room.category),
+        joinedload(Room.owner),
     )
 
 
 def room_ref(room: Room) -> BookingRoomRef:
-    location = room.floor.building.location
+    building = room.floor.building
+    location = building.location
     return BookingRoomRef(
         id=room.id,
         name_en=room.name_en,
@@ -54,6 +62,12 @@ def room_ref(room: Room) -> BookingRoomRef:
         is_private=room.is_private,
         location=NamedRef.model_validate(location),
         province=ProvinceRef.from_code(location.province),
+        building=BuildingRef.model_validate(building),
+        floor=FloorRef.model_validate(room.floor),
+        capacity=room.capacity,
+        category=NamedRef.model_validate(room.category),
+        owner=NamedRef.model_validate(room.owner) if room.owner else None,
+        map_query=location.map_query,
     )
 
 
@@ -122,7 +136,6 @@ def _catering_out(booking: Booking) -> CateringOut | None:
     return CateringOut(
         packages=order.packages,
         remarks=order.remarks,
-        servings=booking.attendees,  # B-25: always the current attendees
         delivery_date=delivery.date(),
         delivery_time=delivery.time(),
         approver_notes=order.approver_notes,

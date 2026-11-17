@@ -2,15 +2,25 @@
 // The Details tab of a booking pop-up (owner pick, 16 Nov 2026: "the same info as Pitika"), in To
 // review (Pitika and the room owner), IT setup and My bookings: every session, the meeting, and who
 // asks (ID, name, position and department, as kept when sent). Only meeting times, never IT's
-// setup times.
+// setup times. The Room section (owner pick, 17 Nov 2026, look A "Rows") comes right after When:
+// the room, floor and building, the office with a map link, seats and type, and the owner of a
+// private room ("You" when the reader owns it). It replaces the room line at the panel's top.
+import { ExternalLink } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { BookingDetail } from '../api/types'
+import { useSessionStore } from '../stores/session'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS } from '../utils/bookingLabels'
+import { mapSearchUrl } from '../utils/mapLink'
 import PanelSection from './PanelSection.vue'
 import { formatDay, formatPhnomPenh } from '../utils/time'
 
 const props = defineProps<{ booking: BookingDetail }>()
+const session = useSessionStore()
+
+const room = computed(() => props.booking.room)
+const mapUrl = computed(() => mapSearchUrl(room.value.map_query))
+const ownerIsMe = computed(() => !!room.value.owner && room.value.owner.id === session.user?.id)
 
 const hhmm = (time: string) => time.slice(0, 5)
 const info = (key: string) => (props.booking.requester_info[key] as string | null | undefined) || null
@@ -35,6 +45,42 @@ const invited = computed(() => {
           <span class="mono">{{ hhmm(s.start_time) }}–{{ hhmm(s.end_time) }}</span>
         </li>
       </ul>
+    </PanelSection>
+
+    <PanelSection title="Room">
+      <dl class="details">
+        <div>
+          <dt>Room</dt>
+          <dd>
+            {{ room.name_en }}<span v-if="room.is_private" class="private">Private</span>
+            <span class="sub kh">{{ room.name_kh }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Where</dt>
+          <dd>{{ room.floor.floor_label }} <span class="sub">{{ room.building.name_en }}</span></dd>
+        </div>
+        <div>
+          <dt>Office</dt>
+          <dd>
+            {{ room.location.name_en }}, {{ room.province.name_en }}
+            <span v-if="mapUrl" class="sub">
+              <a class="map" :href="mapUrl" target="_blank" rel="noopener">Open in Maps<ExternalLink :size="12" aria-hidden="true" /></a>
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Seats</dt>
+          <dd><span class="mono">{{ room.capacity }}</span> · {{ room.category.name_en }}</dd>
+        </div>
+        <div v-if="room.owner">
+          <dt>Owner</dt>
+          <dd>
+            <template v-if="ownerIsMe">You</template>
+            <template v-else>{{ room.owner.name_en }} <span class="sub kh">{{ room.owner.name_kh }}</span></template>
+          </dd>
+        </div>
+      </dl>
     </PanelSection>
 
     <PanelSection title="Meeting">
@@ -117,6 +163,29 @@ const invited = computed(() => {
   display: block;
   font-size: 12.5px;
   color: var(--color-intaglio);
+}
+/* "Private" after the room name: a quiet tag, not a status. */
+.private {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-field-disabled);
+  color: var(--color-intaglio);
+  font-size: 11.5px;
+  vertical-align: 1px;
+}
+.map {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-ink);
+  text-underline-offset: 3px;
+}
+.map:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 @media (max-width: 420px) {
   .details > div {

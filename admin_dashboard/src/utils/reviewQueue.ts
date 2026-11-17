@@ -73,8 +73,6 @@ export function rowSteps(item: BookingListItem): RowStep[] {
 export interface CheckLabel {
   kind: 'private' | 'food' | 'it' | 'r4'
   text: string
-  /** Servings, for food. */
-  count?: number
 }
 
 const names = (list: Array<Record<string, unknown>>) => list.map((x) => String(x.name)).join(', ')
@@ -84,7 +82,7 @@ export function checkLabels(b: BookingDetail): CheckLabel[] {
   const labels: CheckLabel[] = []
   if (b.route === 'R2') labels.push({ kind: 'private', text: b.private_justification ? 'Private · reason given' : 'Private · no reason' })
   if (b.route === 'R4') labels.push({ kind: 'r4', text: 'Food and IT only' })
-  if (b.catering) labels.push({ kind: 'food', text: names(b.catering.packages), count: b.catering.servings })
+  if (b.catering) labels.push({ kind: 'food', text: names(b.catering.packages) }) // food has no numbers (17 Nov 2026)
   if (b.it) labels.push({ kind: 'it', text: names(b.it.items) })
   return labels
 }

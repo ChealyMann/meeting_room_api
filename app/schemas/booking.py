@@ -31,7 +31,7 @@ from app.schemas.common import (
     ResponseModel,
     UtcDateTime,
 )
-from app.schemas.refs import NamedRef, ProvinceRef
+from app.schemas.refs import BuildingRef, FloorRef, NamedRef, ProvinceRef
 
 # --- Requests --------------------------------------------------------------------------
 
@@ -151,12 +151,21 @@ class LocalMoment(ResponseModel):
 
 
 class BookingRoomRef(ResponseModel):
+    """The booked room. Building, floor, seats, type, owner and the map search feed the Room
+    section of the booking pop-ups (owner pick, 17 Nov 2026). The owner is the name only."""
+
     id: int
     name_en: str
     name_kh: str
     is_private: bool
     location: NamedRef
     province: ProvinceRef
+    building: BuildingRef
+    floor: FloorRef
+    capacity: int
+    category: NamedRef
+    owner: NamedRef | None
+    map_query: str | None  # the office's map search, for "Open in Maps"
 
 
 class PersonRef(ResponseModel):
@@ -169,7 +178,6 @@ class PersonRef(ResponseModel):
 class CateringOut(ResponseModel):
     packages: list[dict[str, Any]]
     remarks: str | None
-    servings: int
     # The first delivery. Food is served at every session (owner decision, 6 Nov 2026): the
     # food list has one delivery per session.
     delivery_date: date

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One of my bookings, in the side panel: a small room photo by the title (look B, owner pick
-// 16 Nov 2026); the status band; a thin step bar; a note saying why it stopped
+// One of my bookings, in the side panel: a small room photo by the title and the code (look B,
+// owner pick 16 Nov 2026; the room line moved to the Room section in Details, 17 Nov); the status band; a thin step bar; a note saying why it stopped
 // (not approved, expired, cancelled);
 // then tabs (owner pick, 16 Nov 2026): Details, Food & IT, Files, History. Foot (owner pick, 13 Nov 2026: look C "one main button +
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with the door pass, Copy reference
@@ -255,7 +255,6 @@ async function reload() {
   <SidePanel
     :open="true"
     :title="booking?.meeting_title ?? 'Booking'"
-    :subtitle="booking ? `${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}` : undefined"
     :serial="booking?.reference_code"
     @close="emit('close')"
   >

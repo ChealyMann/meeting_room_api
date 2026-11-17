@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One booking waiting for the Pitika (spec 2026-11-05-pitika-review-design, "The side panel"):
-// a small room photo by the title, a thin step bar (look B, owner pick 16 Nov 2026), a one-line
+// a small room photo by the title and the code (the room is in the Details tab's Room section,
+// 17 Nov 2026), a thin step bar (look B, owner pick 16 Nov 2026), a one-line
 // warning, then tabs: the meeting, the food and the IT help, history; then Reject and Approve.
 // Decisions happen in the page's confirm pop-up.
 import { Check, Clock, FileText, TriangleAlert } from 'lucide-vue-next'
@@ -69,7 +70,6 @@ const tabs = computed(() => {
   <SidePanel
     :open="true"
     :title="booking.meeting_title"
-    :subtitle="`${booking.room.name_kh} · ${booking.room.name_en} · ${booking.room.location.name_en}`"
     :serial="booking.reference_code"
     @close="emit('close')"
   >
