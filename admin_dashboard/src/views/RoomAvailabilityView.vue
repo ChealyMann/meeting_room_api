@@ -639,7 +639,16 @@ async function decide() {
   height: 34px;
   margin: 10px 16px 10px 0;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
+  background-color: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
+  /* 30-minute blocks (owner, 17 Nov 2026): a thin gap of the sheet every half hour, 22 on the
+   * 07:00–18:00 lane, so each half hour reads as its own cell. */
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% / 22 - 2px),
+    var(--color-sheet) calc(100% / 22 - 2px),
+    var(--color-sheet) calc(100% / 22)
+  );
 }
 .past {
   position: absolute;
