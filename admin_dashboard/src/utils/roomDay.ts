@@ -1,0 +1,60 @@
+// The day of a room on the Room availability page (spec 2026-11-17-room-availability-design):
+// clock times in minutes, a time's place on the 07:00–18:00 lane, what kind of block a booking
+// is, and whether a room is free at a time and until when.
+
+export const DAY_START = 7 * 60
+export const DAY_END = 18 * 60
+
+/** "10:45" or "10:45:00" → 645. */
+export function toMinutes(time: string): number {
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+}
+
+/** 645 → "10:45". */
+export function clockLabel(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
+/** A time's place on the lane, 0 to 100 (%), clamped to 07:00 and 18:00. */
+export function lanePct(minutes: number): number {
+  const clamped = Math.min(Math.max(minutes, DAY_START), DAY_END)
+  return ((clamped - DAY_START) / (DAY_END - DAY_START)) * 100
+}
+
+export type BlockKind = 'booked' | 'waiting' | 'masked'
+const WAITING = ['PENDING_PITIKA', 'PENDING_OWNER']
+
+/** Masked: a private booking the reader may not see. Waiting: for Pitika or the room owner. */
+export function blockKind(item: { status: string; is_masked: boolean }): BlockKind {
+  if (item.is_masked) return 'masked'
+  return WAITING.includes(item.status) ? 'waiting' : 'booked'
+}
+
+type Span = { start_time: string; end_time: string }
+
+/** Until when the room stays free from `at` (minutes): the next booking's start or closing
+ * time, whichever comes first. Null when the room is closed at `at` or a booking covers it
+ * (a booking covers [start, end)). */
+export function freeUntil(room: Span, items: Span[], at: number): number | null {
+  const opens = toMinutes(room.start_time)
+  const closes = toMinutes(room.end_time)
+  if (at < opens || at >= closes) return null
+  let until = closes
+  for (const item of items) {
+    const start = toMinutes(item.start_time)
+    const end = toMinutes(item.end_time)
+    if (start <= at && at < end) return null
+    if (start > at) until = Math.min(until, start)
+  }
+  return until
+}
+
+/** The Free at choices: Any time, Now, then every half hour from 07:00 to 17:30. */
+export function freeAtOptions(): Array<{ value: string; label: string }> {
+  const options = [
+    { value: '', label: 'Any time' },
+    { value: 'now', label: 'Now' },
+  ]
+  for (let m = DAY_START; m < DAY_END; m += 30) options.push({ value: String(m), label: clockLabel(m) })
+  return options
+}
