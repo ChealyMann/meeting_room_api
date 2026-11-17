@@ -106,24 +106,39 @@ def build_booking_list_items(bookings: list[Booking]) -> list[BookingListItem]:
 
 
 def build_decided_items(
-    bookings: list[Booking], reviewer_id: int, stage: ReviewStage
+    session: Session, bookings: list[Booking], stage: ReviewStage, reviewer_id: int | None = None
 ) -> list[DecidedBookingItem]:
-    """List items with the reviewer's own decision at `stage`: when, and the notes or the reason.
-    Reads the loaded `reviews` and `rejection` (no query per row)."""
-    items = []
+    """List items with the decision at `stage`: when, the notes or the reason, and who decided.
+    `reviewer_id` set: that reviewer's own decision (not an Admin backup); None: the stage's
+    decision, whoever made it. Reads the loaded `reviews` and `rejection`, and the deciders'
+    names in one query (no query per row)."""
+    chosen = []
     for booking in bookings:
-        review = next(
+        decided = [
             r
             for r in booking.reviews
-            if r.stage == stage and r.reviewer_id == reviewer_id and not r.by_admin
-        )
+            if r.stage == stage and r.decision != ReviewDecision.NOT_REQUIRED
+        ]
+        if reviewer_id is not None:
+            decided = [r for r in decided if r.reviewer_id == reviewer_id and not r.by_admin]
+        chosen.append((booking, decided[-1]))
+    ids = {review.reviewer_id for _, review in chosen if review.reviewer_id is not None}
+    users = {u.id: u for u in session.scalars(select(User).where(User.id.in_(ids)))} if ids else {}
+    items = []
+    for booking, review in chosen:
         if review.decision == ReviewDecision.REJECTED and booking.rejection is not None:
             note = booking.rejection.reason
         else:
             note = review.notes
         fields = _list_item_fields(booking)
         items.append(
-            DecidedBookingItem(**fields, decided_at=review.reviewed_at, decision_note=note)
+            DecidedBookingItem(
+                **fields,
+                decided_at=review.reviewed_at,
+                decision_note=note,
+                decided_by=_person(users.get(review.reviewer_id)),
+                by_admin=review.by_admin,
+            )
         )
     return items
 

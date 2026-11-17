@@ -592,7 +592,7 @@ Booking in province (else 404) → version → status PENDING_PITIKA (else INVAL
 
 ### 9.14 IT — `it_tickets.py`
 
-`GET /it/tickets?status=&q=` (IT_LEAD or IT_STAFF): tickets with `forwarded_at` set and booking not REJECTED / CANCELLED (BR-IT-01). IT Lead: all. IT Staff only: tickets they are assigned to (a user with both roles sees all). `status` = ITStatus. `q`: title, reference code. Sort by first start asc.
+`GET /it/tickets?status=&q=` (IT_LEAD or IT_STAFF): tickets with `forwarded_at` set and booking not REJECTED / CANCELLED (BR-IT-01). IT Lead: the tickets of rooms in the province of their office, none without an office (owner, 17 Nov 2026); the staff picker (`GET /it/staff`) lists IT Staff of that province only, and assigning IT Staff of another province is refused (422 `user_ids`). IT Staff only: tickets they are assigned to (a user with both roles sees the IT Lead's list). `status` = ITStatus. `q`: title, reference code. Sort by first start asc.
 
 `ITTicketItem`: `id, status, items, special_requirements, technician_notes, staff, setup_date, setup_time, forwarded_at, assigned_at, ready_at, review_notes: [notes of APPROVED reviews] (BR-APR-07), booking: BookingListItem`.
 

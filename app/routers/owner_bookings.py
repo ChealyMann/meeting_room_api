@@ -61,7 +61,9 @@ def list_decided_bookings(
         session, current, paging.page, paging.size, ReviewDecision(decision), date_from, date_to,
         room_id, q,
     )  # fmt: skip
-    items = booking_view.build_decided_items(result["items"], current.id, ReviewStage.OWNER)
+    items = booking_view.build_decided_items(
+        session, result["items"], ReviewStage.OWNER, reviewer_id=current.id
+    )
     return Page[DecidedBookingItem](**{**result, "items": items})
 
 

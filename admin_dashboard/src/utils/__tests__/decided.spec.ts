@@ -54,6 +54,14 @@ describe('summaryLine', () => {
   ])('%j → %s', (summary, line) => {
     expect(summaryLine(summary)).toBe(line)
   })
+
+  // Pitika: the province's decisions, not only mine (owner, 17 Nov 2026).
+  it.each([
+    [{ waiting: 3, approved_today: 5, rejected_today: 1 }, '6 decided today · 3 still waiting'],
+    [{ waiting: 0, approved_today: 0, rejected_today: 0 }, 'Nothing decided yet today · nothing waiting'],
+  ])('for a team, %j → %s', (summary, line) => {
+    expect(summaryLine(summary, true)).toBe(line)
+  })
 })
 
 describe('ringArcs', () => {

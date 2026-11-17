@@ -491,7 +491,7 @@ describe('To review filters', () => {
 
   it('says what today looks like in one short line', async () => {
     const { wrapper } = await mountReview()
-    expect(wrapper.get('.sub').text()).toBe('Today you decided 6 · 3 still waiting')
+    expect(wrapper.get('.sub').text()).toBe('6 decided today · 3 still waiting')
     expect(wrapper.find('.page-head .count').exists()).toBe(false)
   })
 

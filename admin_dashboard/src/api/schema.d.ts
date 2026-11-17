@@ -1068,11 +1068,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List bookings I decided
-         * @description Bookings you approved or rejected (`decision`), newest decision first, in rooms of
-         *     your current province. Each has `decided_at` and `decision_note` (your notes on an
-         *     approval, your reason on a rejection). Decisions the Admin made as a backup are not
-         *     listed. `q` matches the title, the reference code or the requester's name.
+         * List decided bookings in my province
+         * @description Bookings approved or rejected at the Pitika stage (`decision`), newest decision first,
+         *     in rooms of your current province: by you, by the other Pitikas of the province, or by an
+         *     Admin as a backup. Each has `decided_at`, `decision_note` (the notes on an approval, the
+         *     reason on a rejection), `decided_by` and `by_admin`. `q` matches the title, the reference
+         *     code or the requester's name.
          */
         get: operations["list_decided_bookings_api_v1_pitika_bookings_decided_get"];
         put?: never;
@@ -1093,8 +1094,8 @@ export interface paths {
         /**
          * See my day in numbers
          * @description `waiting`: bookings in your province waiting for Pitika now. `approved_today` and
-         *     `rejected_today`: your own decisions today (Phnom Penh day; Admin backups not counted).
-         *     With no province, all are 0.
+         *     `rejected_today`: the province's decisions at the Pitika stage today (every Pitika, and
+         *     Admin backups; Phnom Penh day). With no province, all are 0.
          */
         get: operations["pitika_summary_api_v1_pitika_bookings_summary_get"];
         put?: never;
@@ -2314,7 +2315,8 @@ export interface components {
         };
         /**
          * DecidedBookingItem
-         * @description A booking this Pitika approved or rejected, with when and what they wrote.
+         * @description A decided booking, with when, what was written, and who decided (a Pitika of the
+         *     province, the room owner, or an Admin as a backup when `by_admin`).
          */
         DecidedBookingItem: {
             /** Id */
@@ -2347,6 +2349,9 @@ export interface components {
             decided_at: string;
             /** Decision Note */
             decision_note: string | null;
+            decided_by: components["schemas"]["PersonRef"] | null;
+            /** By Admin */
+            by_admin: boolean;
         };
         /** DepartmentCreate */
         DepartmentCreate: {

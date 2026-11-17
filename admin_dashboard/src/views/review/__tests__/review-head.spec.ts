@@ -20,6 +20,11 @@ describe('ReviewHead', () => {
     expect(tabs(wrapper).map((t) => t.attributes('aria-selected'))).toEqual(['false', 'true', 'false'])
   })
 
+  it("speaks for the whole team when it is a team's queue (the Pitikas of a province)", () => {
+    const wrapper = mount(ReviewHead, { props: { summary: SUMMARY, tab: 'waiting', team: true } })
+    expect(wrapper.get('.sub').text()).toBe('6 decided today · 3 still waiting')
+  })
+
   it('says which tab was picked', async () => {
     const wrapper = mount(ReviewHead, { props: { summary: SUMMARY, tab: 'waiting' } })
 

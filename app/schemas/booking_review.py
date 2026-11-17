@@ -1,6 +1,6 @@
 """Pitika approve and reject bodies (spec 9.11), and the Pitika's decided list."""
 
-from app.schemas.booking import BookingListItem
+from app.schemas.booking import BookingListItem, PersonRef
 from app.schemas.common import (
     BookingText,
     OptionalBookingText,
@@ -11,11 +11,14 @@ from app.schemas.common import (
 
 
 class DecidedBookingItem(BookingListItem):
-    """A booking this Pitika approved or rejected, with when and what they wrote."""
+    """A decided booking, with when, what was written, and who decided (a Pitika of the
+    province, the room owner, or an Admin as a backup when `by_admin`)."""
 
     decided_at: UtcDateTime
     # The review's notes on an approval; the rejection's reason on a rejection.
     decision_note: str | None
+    decided_by: PersonRef | None
+    by_admin: bool
 
 
 class ApproveBody(RequestModel):

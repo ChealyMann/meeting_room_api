@@ -1,11 +1,21 @@
 """Who can see a booking, its door pass and its title (spec 8.1)."""
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.constants.booking import MASKED_TITLE, BookingRoute
 from app.constants.roles import RoleCode
-from app.models import Booking, Building, Floor, Location, Room, it_ticket_staff
+from app.models import (
+    Booking,
+    Building,
+    Department,
+    Division,
+    Floor,
+    Location,
+    Room,
+    User,
+    it_ticket_staff,
+)
 from app.security import CurrentUser
 from app.services.province import get_room_province, get_user_province
 from app.services.records import not_found
@@ -15,15 +25,36 @@ def room_province(room: Room) -> str:
     return get_room_province(room).code
 
 
-def pitika_province(current: CurrentUser) -> str | None:
+def user_province(user: User) -> str | None:
     """The province of the user's office, or None when they have no division."""
-    province = get_user_province(current.user)
+    province = get_user_province(user)
     return province.code if province else None
 
 
-def room_ids_in_province(code: str | None):
+def pitika_province(current: CurrentUser) -> str | None:
+    """The province of the user's office, or None when they have no division. Also the IT
+    Lead's: they see the setups of their own province (owner, 17 Nov 2026)."""
+    return user_province(current.user)
+
+
+def user_province_sql(user_id: int):
+    """The province of a user's office as a scalar subquery (NULL without an office): lets a
+    list filter by it without loading the office, department and location one by one."""
+    office = aliased(Location)
+    return (
+        select(office.province)
+        .select_from(User)
+        .join(Division, User.division_id == Division.id)
+        .join(Department, Division.department_id == Department.id)
+        .join(office, Department.location_id == office.id)
+        .where(User.id == user_id)
+        .scalar_subquery()
+    )
+
+
+def room_ids_in_province(code):
     """A subquery of the ids of the rooms in a province (room, floor, building, location).
-    A None code matches no room."""
+    `code` is a province code or `user_province_sql(...)`; None or NULL matches no room."""
     return (
         select(Room.id)
         .join(Floor, Room.floor_id == Floor.id)

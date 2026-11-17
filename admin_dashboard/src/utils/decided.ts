@@ -63,10 +63,10 @@ export function decidedTime(item: DecidedBookingItem): string {
   return phnomPenhClock(new Date(item.decided_at))
 }
 
-/** The line under the title. */
-export function summaryLine(s: PitikaSummary): string {
+/** The line under the title. `team`: the counts are the whole province's (Pitika), not mine. */
+export function summaryLine(s: PitikaSummary, team = false): string {
   const decided = s.approved_today + s.rejected_today
-  const left = decided ? `Today you decided ${decided}` : 'Nothing decided yet today'
+  const left = !decided ? 'Nothing decided yet today' : team ? `${decided} decided today` : `Today you decided ${decided}`
   const right = s.waiting ? (decided ? `${s.waiting} still waiting` : `${s.waiting} waiting`) : 'nothing waiting'
   return `${left} · ${right}`
 }

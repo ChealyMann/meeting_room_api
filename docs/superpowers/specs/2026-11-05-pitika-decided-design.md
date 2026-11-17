@@ -2,6 +2,12 @@
 
 Owner decisions, 5 Nov 2026, from mockups the owner iterated on (picked version "G").
 
+> **Changed 17 Nov 2026 (owner):** the Approved and Rejected tabs and today's numbers now hold
+> every Pitika-stage decision of the province (every Pitika, and Admin backups), not only mine.
+> Each item has `decided_by` and `by_admin`; each row says "by you", "by <name>" or
+> "by Admin <name>"; the line under the title reads "6 decided today". The room owner's tabs
+> are unchanged (their own decisions).
+
 ## Why
 
 A Pitika approves or rejects a booking, and it leaves To review. Today they cannot find it again

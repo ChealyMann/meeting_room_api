@@ -39,6 +39,9 @@ export interface Reviewer {
   waitingLabel: string
   /** The empty queue's line. */
   emptyText: string
+  /** A team's queue: the Pitikas of a province share it and see each other's decisions, with
+   * who decided (owner, 17 Nov 2026). A room owner's queue is theirs alone. */
+  team: boolean
   list(f: BookingFilters): Promise<Page<BookingListItem>>
   approve(id: number, body: { notes: string | null; version: number }): Promise<BookingDetail>
   reject(id: number, body: { reason: string; version: number }): Promise<BookingDetail>
@@ -62,6 +65,7 @@ export const REVIEWERS: Record<ReviewerKey, Reviewer> = {
     waitingStatus: 'PENDING_PITIKA',
     waitingLabel: 'Waiting for Pitika',
     emptyText: 'New bookings in your province show here.',
+    team: true,
     list: (f) => listPitikaBookingPage(api, f),
     approve: (id, body) => pitikaApprove(api, id, body),
     reject: (id, body) => pitikaReject(api, id, body),
@@ -82,6 +86,7 @@ export const REVIEWERS: Record<ReviewerKey, Reviewer> = {
     waitingStatus: 'PENDING_OWNER',
     waitingLabel: 'Waiting for room owner',
     emptyText: 'Bookings of your rooms show here once the Pitika approves them.',
+    team: false,
     list: (f) => listOwnerBookingPage(api, f),
     approve: (id, body) => ownerApprove(api, id, body),
     reject: (id, body) => ownerReject(api, id, body),

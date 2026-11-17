@@ -18,6 +18,7 @@ import TableSkeleton from '../../components/list/TableSkeleton.vue'
 import { usePanelParam } from '../../composables/usePanelParam'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useResourceList } from '../../composables/useResourceList'
+import { useSessionStore } from '../../stores/session'
 import { decidedTime, groupByDecisionDay, nowPill } from '../../utils/decided'
 import { formatDay } from '../../utils/time'
 import ReviewPanel from '../bookings/ReviewPanel.vue'
@@ -59,6 +60,15 @@ const shortDay = (day: string) => {
   return day.slice(0, 4) === today.value.slice(0, 4) ? text.slice(0, -5) : text
 }
 const hhmm = (time: string) => time.slice(0, 5)
+// A team's list (Pitika) holds every decision of the province: each says who decided.
+const session = useSessionStore()
+const team = computed(() => (props.reviewer ?? REVIEWERS.pitika).team)
+const by = (b: DecidedBookingItem) => {
+  const who = b.decided_by
+  if (!who) return ''
+  if (who.id === session.user?.id && !b.by_admin) return 'by you'
+  return b.by_admin ? `by Admin ${who.name_en}` : `by ${who.name_en}`
+}
 const note = (b: DecidedBookingItem) =>
   b.decision_note ? `${props.decision === 'REJECTED' ? 'Reason' : 'Notes'}: “${b.decision_note}”` : ''
 
@@ -97,7 +107,15 @@ watch(
       v-else-if="result && !items.length"
       :filtered="filtered"
       :title="filtered ? 'No bookings match' : decision === 'APPROVED' ? 'No approved bookings yet' : 'No rejected bookings'"
-      :text="filtered ? 'Nothing you decided matches these filters.' : `Bookings you ${decision === 'APPROVED' ? 'approve' : 'reject'} show here.`"
+      :text="
+        filtered
+          ? team
+            ? 'Nothing decided matches these filters.'
+            : 'Nothing you decided matches these filters.'
+          : team
+            ? `Bookings ${word} in your province show here.`
+            : `Bookings you ${decision === 'APPROVED' ? 'approve' : 'reject'} show here.`
+      "
     >
       <BaseButton v-if="filtered" @click="list.reset()">Clear filters</BaseButton>
     </EmptyState>
@@ -134,6 +152,7 @@ watch(
                 <Check v-if="decision === 'APPROVED'" aria-hidden="true" />
                 <X v-else aria-hidden="true" />{{ decision === 'APPROVED' ? 'Approved' : 'Rejected' }} ·
                 <span class="decided-at mono">{{ decidedTime(b) }}</span>
+                <template v-if="team && by(b)"> · <span class="by">{{ by(b) }}</span></template>
               </span>
               <span class="now" :class="nowPill(b).tone">{{ nowPill(b).text }}</span>
             </template>
@@ -221,6 +240,10 @@ watch(
 }
 .decided-at {
   font-weight: 400;
+}
+.by {
+  font-weight: 400;
+  color: var(--color-intaglio);
 }
 .now {
   padding: 3px 10px;
