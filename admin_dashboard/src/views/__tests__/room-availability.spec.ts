@@ -6,7 +6,8 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NAV_GROUPS } from '../../layouts/nav'
 import { useSessionStore } from '../../stores/session'
 import { choosePicker } from '../../test-utils/picker'
-import { building, roomItem } from '../../test-utils/staff'
+import { bookingDetail, bookingItem, building, roomItem } from '../../test-utils/staff'
+import { useToast } from '../../composables/useToast'
 import RoomAvailabilityView from '../RoomAvailabilityView.vue'
 
 enableAutoUnmount(afterEach)
@@ -31,6 +32,11 @@ const item = (booking: number, start: string, end: string, title: string, status
 })
 let day: Record<number, unknown[]>
 const calls: string[] = []
+const bodies: string[] = []
+const DETAILS: Record<number, unknown> = {
+  70: bookingDetail(bookingItem(70, 'Budget review', 'CONFIRMED', '2026-11-04', { room: { ...bookingItem(70, 'x', 'CONFIRMED', '2026-11-04').room, id: 12 } })),
+  71: bookingDetail(bookingItem(71, 'Risk review', 'PENDING_PITIKA', '2026-11-04', { room: { ...bookingItem(71, 'x', 'PENDING_PITIKA', '2026-11-04').room, id: 13 } })),
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -44,15 +50,20 @@ beforeEach(() => {
   session.accessToken = 'A1'
   session.user = { id: 5, name_en: 'Chan Sophea', roles: [{ code: 'PITIKA' }], province: { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'x' } } as never
   calls.length = 0
+  bodies.length = 0
   day = {
     12: [item(70, '09:00', '10:30', 'Budget review', 'CONFIRMED')],
     13: [item(71, '14:00', '16:00', 'Risk review', 'PENDING_PITIKA')],
   }
   vi.stubGlobal(
     'fetch',
-    vi.fn<typeof fetch>(async (input) => {
+    vi.fn<typeof fetch>(async (input, init) => {
       const url = new URL(String(input))
-      calls.push(`${url.pathname}${url.search}`)
+      calls.push(`${init?.method && init.method !== 'GET' ? `${init.method} ` : ''}${url.pathname}${url.search}`)
+      if (init?.body) bodies.push(String(init.body))
+      const one = /^\/api\/v1\/bookings\/(\d+)$/.exec(url.pathname)
+      if (one && DETAILS[Number(one[1])]) return json(DETAILS[Number(one[1])])
+      if (/^\/api\/v1\/pitika\/bookings\/71\/(approve|reject)$/.test(url.pathname)) return json({ ...(DETAILS[71] as object), status: 'CONFIRMED' })
       if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: ROOMS.length })
       if (url.pathname === '/api/v1/room-schedule') {
         const ids = (url.searchParams.get('room_ids') ?? '').split(',').map(Number)
@@ -157,6 +168,94 @@ describe('RoomAvailabilityView', () => {
     expect(wrapper.find('.now-line').exists()).toBe(false)
     expect(pickerText('free-at')).toBe('Any time')
     expect(wrapper.find('.result').exists()).toBe(false)
+  })
+
+  it('hover shows the title, times, booker and who it waits for', async () => {
+    const { wrapper } = await mountAt('/room-availability')
+    const block = wrapper.get('[data-booking="71"]')
+
+    await block.trigger('mouseenter')
+    const tip = () => document.body.querySelector('[role="tooltip"]')
+    expect(tip()?.textContent).toContain('Risk review')
+    expect(tip()?.textContent).toContain('14:00–16:00')
+    expect(tip()?.textContent).toContain('Sok Dara')
+    expect(tip()?.textContent).toContain('Waiting for Pitika')
+    await block.trigger('mouseleave')
+    expect(tip()).toBeNull()
+    await block.trigger('focus')
+    expect(tip()?.textContent).toContain('Risk review')
+  })
+
+  it('a waiting booking opens the To review panel and can be approved', async () => {
+    const { wrapper, router } = await mountAt('/room-availability')
+    await wrapper.get('[data-booking="71"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.booking).toBe('71')
+    const panel = document.body.querySelector('.review-panel')?.closest('[role="dialog"]') as HTMLElement
+    expect(panel.querySelector('h2')?.textContent).toBe('Risk review')
+    ;[...panel.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Approve')!.click()
+    await flushPromises()
+    const dialog = document.body.querySelector('.action-dialog') as HTMLElement
+    expect(dialog.textContent).toContain('Approve this booking?')
+    ;(dialog.querySelector('button.confirm') as HTMLButtonElement).click()
+    await flushPromises()
+
+    expect(calls).toContain('POST /api/v1/pitika/bookings/71/approve')
+    expect(bodies.at(-1)).toBe(JSON.stringify({ notes: null, version: 3 }))
+    expect(useToast().toasts.value.map((t) => t.title)).toContain('NBC-26-71 approved')
+    expect(document.body.querySelector('.action-dialog')).toBeNull()
+    expect(router.currentRoute.value.query.booking).toBeUndefined()
+    expect(calls.filter((c) => c.startsWith('/api/v1/room-schedule')).length).toBeGreaterThan(1)
+  })
+
+  it('reject needs a reason of at least 5 characters', async () => {
+    const { wrapper } = await mountAt('/room-availability?booking=71')
+    await flushPromises()
+    const panel = document.body.querySelector('.review-panel')?.closest('[role="dialog"]') as HTMLElement
+    ;[...panel.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Reject')!.click()
+    await flushPromises()
+    const dialog = () => document.body.querySelector('.action-dialog') as HTMLElement
+    const confirm = () => dialog().querySelector('button.confirm') as HTMLButtonElement
+    const box = dialog().querySelector('textarea')!
+    box.value = 'Room'
+    box.dispatchEvent(new Event('input'))
+    await flushPromises()
+    expect(confirm().disabled).toBe(true)
+    box.value = 'Room closed'
+    box.dispatchEvent(new Event('input'))
+    await flushPromises()
+    confirm().click()
+    await flushPromises()
+
+    expect(calls).toContain('POST /api/v1/pitika/bookings/71/reject')
+    expect(bodies.at(-1)).toBe(JSON.stringify({ reason: 'Room closed', version: 3 }))
+    expect(wrapper.exists()).toBe(true)
+  })
+
+  it('a booked booking opens the Bookings drawer, with no Approve', async () => {
+    const { wrapper } = await mountAt('/room-availability')
+    await wrapper.get('[data-booking="70"]').trigger('click')
+    await flushPromises()
+
+    const drawer = document.body.querySelector('[role="dialog"]') as HTMLElement
+    expect(drawer.querySelector('h2')?.textContent).toBe('Budget review')
+    expect(document.body.querySelector('.review-panel')).toBeNull()
+    expect([...drawer.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Approve')).toBe(false)
+  })
+
+  it('a masked booking shows Private booking and does not open', async () => {
+    day[13] = [item(0, '14:00', '16:00', 'Private booking', 'CONFIRMED', { booking_id: null, reference_code: null, requester_name: null, is_masked: true })]
+    const { wrapper, router } = await mountAt('/room-availability')
+    const block = wrapper.get('[data-room="13"] .block')
+
+    expect(block.text()).toContain('Private booking')
+    expect(block.classes()).toContain('masked')
+    expect(block.attributes('aria-disabled')).toBe('true')
+    await block.trigger('mouseenter')
+    expect(document.body.querySelector('[role="tooltip"]')?.textContent).not.toContain('Sok Dara')
+    await block.trigger('click')
+    expect(router.currentRoute.value.query.booking).toBeUndefined()
   })
 
   it('is in the Daily group of the sidebar after Food list, for Admin and Pitika', () => {

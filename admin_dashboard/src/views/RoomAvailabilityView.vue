@@ -4,15 +4,19 @@
 // list's head and day buttons; one filter row led by "Free at"; one row per room with its
 // bookings on a 07:00–18:00 lane, the past hatched and a red Now line today. No summary numbers
 // above the table (owner, twice). The day lives in the address (?date=2026-11-04; none = today).
+// Hover a booking for its title, times and booker; click it for its drawer (?booking=ID): a booking
+// waiting for Pitika opens the To review panel with Approve and Reject, anything else the Bookings
+// drawer, like the Food list.
 import { ChevronLeft, ChevronRight, CircleAlert, Globe, Lock } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../api'
+import { getBooking } from '../api/bookings'
 import { ApiError } from '../api/errors'
 import { listAllRooms } from '../api/references'
 import { getDaySchedule } from '../api/staff'
-import type { RoomDaySchedule, RoomListItem } from '../api/types'
+import type { BookingDetail, RoomDaySchedule, RoomListItem } from '../api/types'
 import BaseButton from '../components/base/BaseButton.vue'
 import DatePicker from '../components/base/DatePicker.vue'
 import EmptyState from '../components/list/EmptyState.vue'
@@ -23,11 +27,18 @@ import SearchPicker, { type PickerItem } from '../components/list/SearchPicker.v
 import TableSkeleton from '../components/list/TableSkeleton.vue'
 import RoomPhoto from '../components/RoomPhoto.vue'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import { usePanelParam } from '../composables/usePanelParam'
+import { usePanelRecord } from '../composables/usePanelRecord'
+import { useToast } from '../composables/useToast'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useSessionStore } from '../stores/session'
 import { FILTER_WORDS } from '../utils/pickerWords'
 import { blockKind, clockLabel, freeAtOptions, freeUntil, lanePct, toMinutes } from '../utils/roomDay'
 import { addDays, formatDay, phnomPenhClock } from '../utils/time'
+import BookingActionDialog from './bookings/BookingActionDialog.vue'
+import BookingPanel from './bookings/BookingPanel.vue'
+import ReviewPanel from './bookings/ReviewPanel.vue'
+import { REVIEWERS } from './review/reviewers'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,6 +159,85 @@ const span = (item: { start_time: string; end_time: string }) => {
   return { left: `calc(${left}% + 1px)`, width: `calc(${lanePct(toMinutes(item.end_time)) - left}% - 2px)` }
 }
 const SKELETON_COLUMNS = ['260px', '88px', '6fr']
+
+// --- Hover: the booking's title, times and booker ------------------------------------------
+type Item = RoomDaySchedule['items'][number]
+const WAITING_FOR: Record<string, string> = { PENDING_PITIKA: 'Waiting for Pitika', PENDING_OWNER: 'Waiting for room owner' }
+const tip = ref<{ item: Item; left: number; top: number; below: boolean } | null>(null)
+function showTip(item: Item, event: Event) {
+  const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const below = box.top < 90
+  tip.value = { item, left: Math.max(8, Math.min(box.left, window.innerWidth - 268)), top: below ? box.bottom + 8 : box.top - 8, below }
+}
+const hideTip = () => (tip.value = null)
+
+// --- The drawer (?booking=ID) -------------------------------------------------------------
+const panel = usePanelParam('booking')
+const { record: openBooking, load: loadOpen } = usePanelRecord(panel.id, (id) => getBooking(api, id))
+function open(item: Item) {
+  hideTip()
+  if (item.booking_id !== null && !item.is_masked) panel.open(item.booking_id)
+}
+/** A Pitika decides a booking waiting for Pitika right here; anything else is read in the drawer. */
+const canDecide = computed(() => openBooking.value?.display_status === 'PENDING_PITIKA' && session.roleCodes.includes('PITIKA'))
+const coverOf = (roomId: number) => rooms.value?.find((r) => r.id === roomId)?.cover_photo?.url ?? null
+async function onChanged(booking: BookingDetail) {
+  openBooking.value = booking
+  await load(true).catch(() => undefined)
+}
+
+// --- Approve and reject: the same pop-up as To review ---------------------------------------
+type Decision = 'approve' | 'reject'
+const asking = ref<Decision | null>(null)
+const askText = ref('')
+const askBusy = ref(false)
+const askError = ref('')
+const askFieldError = ref('')
+const toast = useToast()
+function ask(action: Decision) {
+  asking.value = action
+  askText.value = ''
+  askError.value = ''
+  askFieldError.value = ''
+}
+const askEffect = computed(() => {
+  if (asking.value === 'reject') return 'The booking stops and the room is free again. The booker sees your reason.'
+  return openBooking.value ? REVIEWERS.pitika.nextStepText(openBooking.value) : ''
+})
+const askTimes = computed(() => {
+  const b = openBooking.value
+  if (!b) return ''
+  const more = b.session_count - 1
+  return `${hhmm(b.first_session.start_time)}–${hhmm(b.first_session.end_time)}${more > 0 ? ` +${more} more` : ''}`
+})
+async function decide() {
+  const booking = openBooking.value
+  const action = asking.value
+  if (!action || !booking) return
+  const text = askText.value.trim()
+  askBusy.value = true
+  askError.value = ''
+  askFieldError.value = ''
+  try {
+    if (action === 'approve') await REVIEWERS.pitika.approve(booking.id, { notes: text || null, version: booking.version })
+    else await REVIEWERS.pitika.reject(booking.id, { reason: text, version: booking.version })
+    toast.show(`${booking.reference_code} ${action === 'approve' ? 'approved' : 'rejected'}`, booking.meeting_title)
+    asking.value = null
+    panel.close()
+    await load(true).catch(() => undefined)
+  } catch (err) {
+    if (err instanceof ApiError) {
+      askFieldError.value = err.fields.reason ?? err.fields.notes ?? ''
+      askError.value = askFieldError.value ? '' : err.message
+      // Decided by someone else, started, or changed: show the day and the booking as they are now.
+      if ([403, 404, 409].includes(err.status)) await Promise.all([load(true).catch(() => undefined), loadOpen()])
+    } else {
+      askError.value = 'Something went wrong.'
+    }
+  } finally {
+    askBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -245,7 +335,13 @@ const SKELETON_COLUMNS = ['260px', '88px', '6fr']
                 :class="blockKind(it)"
                 :style="span(it)"
                 :data-booking="it.booking_id ?? undefined"
-                :disabled="it.is_masked"
+                :aria-disabled="it.is_masked || undefined"
+                :aria-describedby="tip && tip.item === it ? 'room-tip' : undefined"
+                @mouseenter="showTip(it, $event)"
+                @mouseleave="hideTip"
+                @focus="showTip(it, $event)"
+                @blur="hideTip"
+                @click="open(it)"
               >
                 <b>{{ it.is_masked ? 'Private booking' : it.title }}</b>
                 <span class="mono">{{ hhmm(it.start_time) }}–{{ hhmm(it.end_time) }}</span>
@@ -264,6 +360,66 @@ const SKELETON_COLUMNS = ['260px', '88px', '6fr']
       <span><i class="w" />Waiting for approval</span>
       <span v-if="isToday"><i class="x" />Past</span>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="tip"
+        id="room-tip"
+        class="room-tip"
+        role="tooltip"
+        :class="{ below: tip.below }"
+        :style="{ left: `${tip.left}px`, top: `${tip.top}px` }"
+      >
+        <b>{{ tip.item.is_masked ? 'Private booking' : tip.item.title }}</b>
+        <span class="mono">{{ hhmm(tip.item.start_time) }}–{{ hhmm(tip.item.end_time) }}</span>
+        <span v-if="!tip.item.is_masked && tip.item.requester_name"> · {{ tip.item.requester_name }}</span>
+        <span v-if="!tip.item.is_masked && WAITING_FOR[tip.item.status]" class="waits">{{ WAITING_FOR[tip.item.status] }}</span>
+      </div>
+    </Teleport>
+
+    <ReviewPanel
+      v-if="openBooking && canDecide"
+      :key="`review-${openBooking.id}`"
+      :booking="openBooking"
+      :photo-path="coverOf(openBooking.room.id)"
+      :starts-in="null"
+      :waiting-label="REVIEWERS.pitika.waitingLabel"
+      :lead-card="REVIEWERS.pitika.leadCard"
+      :note="REVIEWERS.pitika.panelNote(openBooking)"
+      @close="panel.close"
+      @approve="ask('approve')"
+      @reject="ask('reject')"
+    />
+    <BookingPanel
+      v-else-if="openBooking"
+      :key="`booking-${openBooking.id}`"
+      :booking="openBooking"
+      :admin-actions="session.isAdmin"
+      @close="panel.close"
+      @changed="onChanged"
+    />
+
+    <BookingActionDialog
+      v-if="asking && openBooking"
+      v-model="askText"
+      :action="asking"
+      :title="asking === 'approve' ? 'Approve this booking?' : 'Reject this booking?'"
+      :confirm-label="asking === 'approve' ? 'Approve' : 'Reject'"
+      :field-label="asking === 'approve' ? 'Notes (optional)' : 'Reason'"
+      :max="1000"
+      :min-length="asking === 'reject' ? 5 : 0"
+      :meeting="openBooking.meeting_title"
+      :reference="openBooking.reference_code"
+      :day="formatDay(openBooking.first_session.date)"
+      :times="askTimes"
+      :effect="askEffect"
+      :busy="askBusy"
+      :allowed="true"
+      :error="askError"
+      :field-error="askFieldError"
+      @back="asking = null"
+      @confirm="decide"
+    />
   </div>
 </template>
 
@@ -498,7 +654,7 @@ const SKELETON_COLUMNS = ['260px', '88px', '6fr']
     transform 160ms var(--ease-out-quint),
     box-shadow 160ms ease;
 }
-.block:not(:disabled):hover,
+.block:not(.masked):hover,
 .block:focus-visible {
   z-index: 3;
   transform: translateY(-1px);
@@ -582,6 +738,34 @@ const SKELETON_COLUMNS = ['260px', '88px', '6fr']
 .legend .x {
   border: 1px solid var(--color-rule);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 14%, transparent) 0 3px, transparent 3px 6px);
+}
+/* Hover: a small dark card above the block (below it near the top of the window). */
+.room-tip {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--color-ink);
+  box-shadow: var(--shadow-toast);
+  color: var(--color-sheet);
+  font-size: 12.5px;
+  line-height: 1.45;
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+.room-tip.below {
+  transform: none;
+}
+.room-tip b {
+  font-weight: 600;
+}
+.room-tip span {
+  opacity: 0.85;
+}
+.room-tip .waits {
+  opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .trow,
