@@ -8,7 +8,7 @@ const shape = (roles: string[]) =>
 describe('navFor', () => {
   it("gives an Admin today's menu: Daily, then the four setup groups", () => {
     expect(shape(['ADMIN'])).toEqual([
-      { title: 'Daily', items: ['bookings', 'food-list', 'home'] },
+      { title: 'Daily', items: ['bookings', 'food-list', 'room-availability', 'home'] },
       { title: 'Places', items: ['offices', 'buildings', 'floors'] },
       { title: 'Catalog', items: ['room-types', 'equipment', 'catering-packages', 'it-services', 'public-holidays'] },
       { title: 'Organisation', items: ['departments', 'divisions', 'positions', 'slip-settings'] },
@@ -16,15 +16,15 @@ describe('navFor', () => {
     ])
   })
 
-  it('gives a Pitika only Daily: To review, Bookings, Food list', () => {
-    expect(shape(['PITIKA', 'STAFF'])).toEqual([{ title: 'Daily', items: ['find-room', 'my-bookings', 'review', 'bookings', 'food-list'] }])
+  it('gives a Pitika only Daily: To review, Bookings, Food list, Room availability', () => {
+    expect(shape(['PITIKA', 'STAFF'])).toEqual([{ title: 'Daily', items: ['find-room', 'my-bookings', 'review', 'bookings', 'food-list', 'room-availability'] }])
     const review = navFor(['PITIKA'])[0]!.items[0]!
     expect(review).toMatchObject({ label: 'To review', icon: 'inbox' })
     expect(NAV_ICONS[review.icon]).toBeDefined()
   })
 
   it('puts To review first for an Admin who is also Pitika', () => {
-    expect(shape(['ADMIN', 'PITIKA'])[0]).toEqual({ title: 'Daily', items: ['review', 'bookings', 'food-list', 'home'] })
+    expect(shape(['ADMIN', 'PITIKA'])[0]).toEqual({ title: 'Daily', items: ['review', 'bookings', 'food-list', 'room-availability', 'home'] })
   })
 
   it('gives a Room owner To review and Bookings', () => {
@@ -33,7 +33,7 @@ describe('navFor', () => {
   })
 
   it('calls the owner page My rooms for a Pitika who also owns a room', () => {
-    expect(shape(['PITIKA', 'ROOM_OWNER'])).toEqual([{ title: 'Daily', items: ['review', 'owner-review', 'bookings', 'food-list'] }])
+    expect(shape(['PITIKA', 'ROOM_OWNER'])).toEqual([{ title: 'Daily', items: ['review', 'owner-review', 'bookings', 'food-list', 'room-availability'] }])
     const mine = navFor(['PITIKA', 'ROOM_OWNER'])[0]!.items[1]!
     expect(mine).toMatchObject({ label: 'My rooms', icon: 'door-open' })
   })

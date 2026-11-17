@@ -24,6 +24,7 @@ function makeRouter() {
           { path: 'profile', name: 'profile', component: Page, meta: { title: 'My profile' } },
           { path: 'bookings', name: 'bookings', component: Page, meta: { title: 'Bookings' } },
           { path: 'food-list', name: 'food-list', component: Page, meta: { title: 'Food list' } },
+          { path: 'room-availability', name: 'room-availability', component: Page, meta: { title: 'Room availability' } },
           { path: 'offices', name: 'offices', component: Page, meta: { title: 'Offices' } },
           { path: 'buildings', name: 'buildings', component: Page, meta: { title: 'Buildings' } },
           { path: 'floors', name: 'floors', component: Page, meta: { title: 'Floors' } },
@@ -112,11 +113,11 @@ describe('AppShell sidebar groups', () => {
   const fold = (wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper'], name: string) =>
     wrapper.findAll('aside .nav button.fold').find((b) => b.text().includes(name))!
 
-  it('puts the daily pages first: Bookings, Food list, Rooms', async () => {
+  it('puts the daily pages first: Bookings, Food list, Room availability, Rooms', async () => {
     const { wrapper } = await mountShell('/')
 
     expect(wrapper.get('aside .nav h2').text()).toBe('Daily')
-    expect(linkLabels(wrapper).slice(0, 3)).toEqual(['Bookings', 'Food list', 'Rooms'])
+    expect(linkLabels(wrapper).slice(0, 4)).toEqual(['Bookings', 'Food list', 'Room availability', 'Rooms'])
   })
 
   it('folds the setup groups, except the one holding the current page', async () => {
@@ -166,7 +167,7 @@ describe('AppShell folded sidebar', () => {
     const { wrapper } = await folded('/')
 
     const links = wrapper.findAll('aside .nav a[href]').map((a) => a.attributes('title'))
-    expect(links).toEqual(['Bookings', 'Food list', 'Rooms'])
+    expect(links).toEqual(['Bookings', 'Food list', 'Room availability', 'Rooms'])
     expect(wrapper.findAll('aside button.group-icon').map((b) => b.attributes('aria-label'))).toEqual([
       'Places',
       'Catalog',

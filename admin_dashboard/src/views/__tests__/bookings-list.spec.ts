@@ -205,6 +205,6 @@ describe('BookingsView', () => {
 
   it('is in the Daily group of the sidebar', () => {
     const group = navFor(['ADMIN']).find((g) => g.title === 'Daily')
-    expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list', 'home'])
+    expect(group?.items.map((i) => i.route)).toEqual(['bookings', 'food-list', 'room-availability', 'home'])
   })
 })
