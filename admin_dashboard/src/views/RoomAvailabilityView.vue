@@ -333,7 +333,7 @@ async function decide() {
               </div>
             </div>
             <div class="status-cell" role="cell">
-              <span class="status" :class="row.status.kind"><i aria-hidden="true" />{{ row.status.text }}</span>
+              <span class="status" :class="`s-${row.status.kind}`"><i aria-hidden="true" />{{ row.status.text }}</span>
             </div>
             <div class="lane" role="cell" :title="`Open ${hhmm(row.room.start_time)}–${hhmm(row.room.end_time)}`">
               <span v-if="isToday" class="past" :style="{ width: `${lanePct(now)}%` }" />
@@ -606,31 +606,31 @@ async function decide() {
   border-radius: 50%;
   background: var(--color-rule-strong);
 }
-.status.free {
+.status.s-free {
   color: var(--color-ok);
 }
-.status.free i {
+.status.s-free i {
   background: var(--color-ok);
 }
-.status.booked {
+.status.s-booked {
   color: var(--color-crimson);
 }
-.status.booked i {
+.status.s-booked i {
   background: var(--color-crimson);
 }
-.status.waiting {
+.status.s-waiting {
   color: var(--color-warn);
 }
-.status.waiting i {
+.status.s-waiting i {
   width: 6px;
   height: 6px;
   border: 1.5px dashed var(--color-warn);
   background: none;
 }
-.status.closed {
+.status.s-closed {
   color: var(--color-ink-off);
 }
-.status.some i {
+.status.s-some i {
   background: var(--color-intaglio);
 }
 /* The day bar, in the old colors (owner, 17 Nov 2026): green = free, hatched = past, grey = closed. */
@@ -659,7 +659,7 @@ async function decide() {
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 7%, transparent) 0 4px, transparent 4px 8px);
   pointer-events: none;
 }
-.closed {
+.lane > .closed {
   position: absolute;
   top: 0;
   bottom: 0;

@@ -325,6 +325,19 @@ describe('RoomAvailabilityView', () => {
     expect(wrapper.find('.show-guide').exists()).toBe(false)
   })
 
+  it("a closed room's status is words, never a grey closed block (owner bug, 17 Nov 2026)", async () => {
+    vi.setSystemTime(new Date('2026-11-04T11:30:00Z')) // 18:30: both rooms closed
+    const { wrapper } = await mountAt('/room-availability')
+
+    const statuses = wrapper.findAll('.status')
+    expect(statuses.map((s) => s.classes())).toEqual([
+      ['status', 's-closed'],
+      ['status', 's-closed'],
+    ])
+    // Every grey closed block sits on a day bar.
+    expect(wrapper.findAll('.closed').every((c) => c.element.parentElement?.classList.contains('lane'))).toBe(true)
+  })
+
   it('names each room in Khmer only; search still finds the English name', async () => {
     const { wrapper } = await mountAt('/room-availability')
 
