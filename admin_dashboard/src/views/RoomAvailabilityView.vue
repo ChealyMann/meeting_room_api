@@ -714,18 +714,21 @@ async function decide() {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* Solid enough to read over the green and the hatched past (owner, 17 Nov 2026: "too light"). */
 .block.booked {
-  background: var(--color-crimson-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-crimson) 30%, transparent);
+  background: color-mix(in srgb, var(--color-crimson) 18%, var(--color-sheet));
   color: var(--color-crimson);
 }
 .block.waiting {
-  outline: 1px dashed color-mix(in srgb, var(--color-warn) 55%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--color-warn) 70%, transparent);
   outline-offset: -1px;
-  background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
+  background: color-mix(in srgb, var(--color-warn) 20%, var(--color-sheet));
   color: var(--color-warn);
 }
+/* An ended booking: a little quieter, still easy to read. */
 .block.done {
-  opacity: 0.5;
+  opacity: 0.8;
 }
 .block.masked {
   background: var(--color-field-disabled);
@@ -771,8 +774,8 @@ async function decide() {
   background: color-mix(in srgb, var(--color-ok) 18%, var(--color-sheet));
 }
 .legend .b {
-  background: var(--color-crimson-wash);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-crimson) 25%, transparent);
+  background: color-mix(in srgb, var(--color-crimson) 18%, var(--color-sheet));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-crimson) 30%, transparent);
 }
 .legend .w {
   border: 1px dashed var(--color-warn);
