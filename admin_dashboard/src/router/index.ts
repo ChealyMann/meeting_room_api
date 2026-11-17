@@ -109,6 +109,12 @@ const router = createRouter({
           meta: { title: 'Food list', roles: ['ADMIN', 'PITIKA'] },
         },
         {
+          path: 'room-availability',
+          name: 'room-availability',
+          component: () => import('../views/RoomAvailabilityView.vue'),
+          meta: { title: 'Room availability', roles: ['ADMIN', 'PITIKA'] },
+        },
+        {
           path: 'offices',
           name: 'offices',
           component: () => import('../views/OfficesView.vue'),

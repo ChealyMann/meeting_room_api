@@ -28,6 +28,8 @@ export const FILTER_WORDS = {
   department: { all: 'All departments', search: 'Search departments', unknown: 'Unknown department', none: 'No department matches', clear: 'Show all departments' },
   bookable: { all: 'Bookable or not', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show bookable or not' },
   private: { all: 'Private or public', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show private or public' },
+  freeAt: { all: 'Any time', search: 'Search times', unknown: 'Unknown time', none: 'No time matches', clear: 'Show any time' },
+  roomKind: { all: 'Shared and private', search: 'Search', unknown: 'Unknown', none: 'Nothing matches', clear: 'Show shared and private' },
   division: { all: 'All divisions', search: 'Search divisions', unknown: 'Unknown division', none: 'No division matches', clear: 'Show all divisions' },
   position: { all: 'All positions', search: 'Search positions', unknown: 'Unknown position', none: 'No position matches', clear: 'Show all positions' },
   bookingStatus: { all: 'Any status', search: 'Search statuses', unknown: 'Unknown status', none: 'No status matches', clear: 'Show any status' },
