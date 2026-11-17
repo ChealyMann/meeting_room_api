@@ -51,7 +51,22 @@ from app.services.user_avatar import make_avatar_jpeg
 DATA_FILE = Path(__file__).with_name("seed_mockup.json")
 MOCKUP_DIR = Path(__file__).resolve().parent.parent / "frontend_mockup" / "meeting_room_mockup"
 DEMO_PASSWORD = "Demo@12345"
-ROOM_HOURS = (time(7, 30), time(18, 0))
+# Opening hours by room type (rooms keep their own hours; owner, 17 Nov 2026). Others 07:30-18:00.
+HOURS_BY_CATEGORY = {
+    "Executive Room": (time(8, 0), time(17, 0)),
+    "Executive Suite": (time(8, 0), time(17, 0)),
+    "Private Office": (time(8, 0), time(17, 0)),
+    "Regional Boardroom": (time(8, 0), time(17, 0)),
+    "Grand Hall": (time(7, 0), time(18, 0)),
+    "Seminar Room": (time(8, 0), time(16, 30)),
+}
+DEFAULT_HOURS = (time(7, 30), time(18, 0))
+
+
+def room_hours(category: str) -> tuple[time, time]:
+    """Opening and closing time for a mockup room of this type."""
+    return HOURS_BY_CATEGORY.get(category, DEFAULT_HOURS)
+
 
 # Offices seed_org does not make: name_en -> (name_kh, province).
 NEW_OFFICES = {
@@ -457,8 +472,8 @@ def seed_mockup(session: Session, settings: Settings) -> MockupResult:
             room_owner_id=owner.id if owner else None,
             capacity=r["capacity"],
             size_sqm=r["size_sqm"],
-            start_time=ROOM_HOURS[0],
-            end_time=ROOM_HOURS[1],
+            start_time=room_hours(r["category"])[0],
+            end_time=room_hours(r["category"])[1],
             is_private=r["is_private"],
         )
         session.add(room)

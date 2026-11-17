@@ -38,15 +38,16 @@ export function isOpenAt(room: Span, at: number): boolean {
 }
 
 /** The words on the lane of a room with no booking that day, and the span they sit over, true
- * to the clock (owner, 17 Nov 2026): another day or before it opens, "Free all day" over its
- * hours; today while open, "Free for the rest of the day" over the time left; after it closes,
- * "Closed for today". Null when the room has bookings. */
+ * to the clock and the room's own hours (owner, 17 Nov 2026): another day or before it opens,
+ * "Free all day" over its hours; today while open, "Free until 17:00" (its closing time) over
+ * the time left; after it closes, "Closed for today". Null when the room has bookings. */
 export function freeLabel(room: Span, items: Span[], today: boolean, now: number): { text: string; from: number; to: number } | null {
   if (items.length) return null
   const opens = toMinutes(room.start_time)
   const closes = toMinutes(room.end_time)
   if (!today || now < opens) return { text: 'Free all day', from: opens, to: closes }
-  if (now < closes) return { text: 'Free for the rest of the day', from: now, to: closes }
+  // The closing time, not "the rest of the day": short enough for a room that closes soon.
+  if (now < closes) return { text: `Free until ${clockLabel(closes)}`, from: now, to: closes }
   return { text: 'Closed for today', from: opens, to: closes }
 }
 

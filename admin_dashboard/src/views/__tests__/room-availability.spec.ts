@@ -258,6 +258,12 @@ describe('RoomAvailabilityView', () => {
     expect(router.currentRoute.value.query.booking).toBeUndefined()
   })
 
+  it("writes each room's own opening hours in its row", async () => {
+    const { wrapper } = await mountAt('/room-availability')
+    expect(wrapper.get('[data-room="12"] .hours-open').text()).toBe('07:30–18:00')
+    expect(wrapper.get('[data-room="13"] .hours-open').text()).toBe('08:00–17:00')
+  })
+
   it("greys out each room's own closed hours", async () => {
     const { wrapper } = await mountAt('/room-availability')
 
@@ -267,10 +273,10 @@ describe('RoomAvailabilityView', () => {
     expect(closed(12)).toHaveLength(1)
   })
 
-  it('a free room says Free for the rest of the day today, over the time left', async () => {
+  it('a free room says Free until its closing time today, over the time left', async () => {
     day[13] = []
     const { wrapper } = await mountAt('/room-availability')
-    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free for the rest of the day')
+    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free until 17:00')
   })
 
   it('a free room says Free all day on another day', async () => {

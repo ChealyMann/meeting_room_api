@@ -338,7 +338,10 @@ async function decide() {
               <RoomPhoto class="thumb" :path="row.room.cover_photo?.thumbnail_url ?? null" :alt="row.room.name_en" />
               <div class="names">
                 <strong>{{ row.room.name_en }}<span class="kh">{{ row.room.name_kh }}</span></strong>
-                <span class="sub">{{ row.room.floor.floor_label }} · {{ row.room.building.name_en }} · {{ row.room.capacity }} seats</span>
+                <span class="sub">
+                  <span class="hours-open mono">{{ hhmm(row.room.start_time) }}–{{ hhmm(row.room.end_time) }}</span> ·
+                  {{ row.room.floor.floor_label }} · {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
+                </span>
                 <span v-if="at !== null && row.until !== null" class="fits">{{ fitsFor(row) }}</span>
               </div>
             </div>

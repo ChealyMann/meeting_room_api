@@ -66,8 +66,8 @@ describe('roomDay: labels true to the clock and the room hours (owner, 17 Nov 20
     expect(freeLabel(room, [], true, 7 * 60 + 30)).toEqual({ text: 'Free all day', from: 480, to: 1020 })
   })
 
-  it('today while it is open: Free for the rest of the day, over the time left', () => {
-    expect(freeLabel(room, [], true, 14 * 60 + 24)).toEqual({ text: 'Free for the rest of the day', from: 864, to: 1020 })
+  it('today while it is open: Free until its closing time, over the time left', () => {
+    expect(freeLabel(room, [], true, 14 * 60 + 24)).toEqual({ text: 'Free until 17:00', from: 864, to: 1020 })
   })
 
   it('today after it closes: Closed for today', () => {
