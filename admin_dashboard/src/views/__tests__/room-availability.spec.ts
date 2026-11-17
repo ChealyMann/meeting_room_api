@@ -139,7 +139,8 @@ describe('RoomAvailabilityView', () => {
 
     await choosePicker('free-at', '14:00')
     expect(rowIds(wrapper)).toEqual([12, 13])
-    expect(wrapper.get('[data-room="12"] .fits').text()).toBe('Free for the rest of the day')
+    // Never "the rest of the day": the room's own closing time (owner, 17 Nov 2026).
+    expect(wrapper.get('[data-room="12"] .fits').text()).toBe('Free until 18:00')
     expect(wrapper.get('.result').text()).toBe('1 of 2 rooms free at 14:00')
   })
 
@@ -264,12 +265,31 @@ describe('RoomAvailabilityView', () => {
     expect(wrapper.get('[data-room="13"] .hours-open').text()).toBe('08:00–17:00')
   })
 
+  it('says it once: a room with no booking has its words on the lane, not again beside its name', async () => {
+    day[13] = []
+    const { wrapper } = await mountAt('/room-availability')
+    expect(wrapper.find('[data-room="13"] .fits').exists()).toBe(false)
+    expect(wrapper.get('[data-room="13"] .free-label').text()).toBe('Free until 17:00')
+  })
+
+  it('hides the hour labels the Now tag would cover', async () => {
+    const { wrapper } = await mountAt('/room-availability') // 10:20
+    const hours = wrapper.findAll('.hours > .hour').map((h) => h.text())
+    expect(hours).not.toContain('10:00')
+    expect(hours).toContain('11:00')
+    expect(hours).not.toContain('10:00') // the tag sits on 10:20
+    expect(hours).toContain('09:00')
+  })
+
   it("greys out each room's own closed hours", async () => {
     const { wrapper } = await mountAt('/room-availability')
 
     // Board Room opens 08:00–17:00: closed 07:00–08:00 and 17:00–18:00. Mekong Room 07:30–18:00.
     const closed = (id: number) => wrapper.findAll(`[data-room="${id}"] .closed`).map((c) => c.attributes('style'))
-    expect(closed(13)).toEqual(['left: 0%; width: 9.090909090909092%;', 'left: 90.9090909090909%; width: 9.090909090909093%;'])
+    expect(closed(13)).toEqual([
+      'left: 0%; width: 9.090909090909092%; border-radius: 10px 0 0 10px;',
+      'left: 90.9090909090909%; width: 9.090909090909093%; border-radius: 0 10px 10px 0;',
+    ])
     expect(closed(12)).toHaveLength(1)
   })
 

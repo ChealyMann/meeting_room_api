@@ -154,18 +154,26 @@ const result = computed(() => {
   const when = freeAt.value === 'now' ? `${clock.value}, now` : clockLabel(time)
   return `${free} of ${rows.value.length} rooms free at ${when}`
 })
-/** "Free for the rest of the day" when it stays free until the room closes. */
-const fitsFor = (row: { room: RoomListItem; until: number | null }) =>
-  row.until === null ? '' : row.until >= toMinutes(row.room.end_time) ? 'Free for the rest of the day' : `Free until ${clockLabel(row.until)}`
+/** "Free until 16:00": the next booking or the room's own closing time, never "the rest of the
+ * day" (a room may close at 17:00 while others stay open; owner, 17 Nov 2026). */
+const fitsFor = (row: { until: number | null }) => (row.until === null ? '' : `Free until ${clockLabel(row.until)}`)
 
 const HOURS = Array.from({ length: 11 }, (_, i) => clockLabel((7 + i) * 60))
+/** The hour labels, blank where the Now tag sits (today), so the tag never covers them: a label
+ * runs about 35 minutes right of its line, the tag about 35 minutes each side of now. */
+const hourLabels = computed(() =>
+  HOURS.map((h) => {
+    const at = toMinutes(h)
+    return isToday.value && at > now.value - 70 && at < now.value + 35 ? '' : h
+  }),
+)
 /** The room's own closed hours on the lane: before it opens and after it closes. */
 function closedSpans(room: RoomListItem) {
   const opens = toMinutes(room.start_time)
   const closes = toMinutes(room.end_time)
-  const spans: Array<{ left: string; width: string }> = []
-  if (opens > DAY_START) spans.push({ left: '0%', width: `${lanePct(opens)}%` })
-  if (closes < DAY_END) spans.push({ left: `${lanePct(closes)}%`, width: `${100 - lanePct(closes)}%` })
+  const spans: Array<{ left: string; width: string; borderRadius: string }> = []
+  if (opens > DAY_START) spans.push({ left: '0%', width: `${lanePct(opens)}%`, borderRadius: '10px 0 0 10px' })
+  if (closes < DAY_END) spans.push({ left: `${lanePct(closes)}%`, width: `${100 - lanePct(closes)}%`, borderRadius: '0 10px 10px 0' })
   return spans
 }
 /** The words over a lane with no booking, and where they sit (see freeLabel). */
@@ -319,7 +327,7 @@ async function decide() {
             <div role="columnheader">Kind</div>
             <div class="hcell" role="columnheader">
               <div class="hours">
-                <span v-for="h in HOURS" :key="h">{{ h }}</span>
+                <span v-for="(h, i) in hourLabels" :key="i" class="hour">{{ h }}</span>
                 <span v-if="isToday" class="tag now-tag mono" :style="{ left: `${lanePct(now)}%` }">Now {{ clock }}</span>
                 <span v-if="at !== null && freeAt !== 'now'" class="tag at-tag mono" :style="{ left: `${lanePct(at)}%` }">{{ clockLabel(at) }}</span>
               </div>
@@ -342,7 +350,8 @@ async function decide() {
                   <span class="hours-open mono">{{ hhmm(row.room.start_time) }}–{{ hhmm(row.room.end_time) }}</span> ·
                   {{ row.room.floor.floor_label }} · {{ row.room.building.name_en }} · {{ row.room.capacity }} seats
                 </span>
-                <span v-if="at !== null && row.until !== null" class="fits">{{ fitsFor(row) }}</span>
+                <!-- Said once: a room with no booking has its words on the lane instead. -->
+                <span v-if="at !== null && row.until !== null && row.items.length" class="fits">{{ fitsFor(row) }}</span>
               </div>
             </div>
             <div class="kind" role="cell">
@@ -634,7 +643,7 @@ async function decide() {
   height: 46px;
   margin: 8px 12px 8px 0;
   border-radius: 10px;
-  background-color: color-mix(in srgb, var(--color-ok) 7%, var(--color-sheet));
+  background-color: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
   background-image: repeating-linear-gradient(
     to right,
     transparent 0,
@@ -657,11 +666,9 @@ async function decide() {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--color-field-disabled);
+  z-index: 1;
+  background: var(--color-rule-strong);
   pointer-events: none;
-}
-.closed:first-of-type {
-  border-radius: 10px 0 0 10px;
 }
 /* A lane with no booking: its words sit over the time they are about (see freeLabel). */
 .free-label {
@@ -781,8 +788,7 @@ async function decide() {
   background: color-mix(in srgb, var(--color-warn) 22%, var(--color-sheet));
 }
 .legend .c {
-  border: 1px solid var(--color-rule);
-  background: var(--color-field-disabled);
+  background: var(--color-rule-strong);
 }
 .legend .x {
   border: 1px solid var(--color-rule);
