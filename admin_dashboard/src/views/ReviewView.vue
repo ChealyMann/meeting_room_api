@@ -145,10 +145,9 @@ const nextOf = (b: BookingListItem) => R.value.rowSteps(b).find((step) => step.g
 type Label = ReturnType<typeof labelsOf>[number]
 /** Soft tags: food and IT say what they are; a missing reason or too few seats is crimson. */
 const tagText = (c: Label) => {
-  const count = 'count' in c && c.count ? ` ×${c.count}` : ''
-  if (c.kind === 'food') return `Food · ${c.text}${count}`
+  if (c.kind === 'food') return `Food · ${c.text}`
   if (c.kind === 'it') return `IT · ${c.text}`
-  return `${c.text}${count}`
+  return c.text
 }
 const toneOf = (c: Label) =>
   ('over' in c && c.over) || c.text === 'Private · no reason' ? 'alert' : c.kind === 'private' ? 'warn' : null
@@ -229,7 +228,7 @@ async function decide() {
 
 <template>
   <div class="places-page review">
-    <ReviewHead :summary="summary" :tab="tab" :title="pageTitle" @select="selectTab">
+    <ReviewHead :summary="summary" :tab="tab" :title="pageTitle" :team="R.team" @select="selectTab">
       <template #actions><RefreshButton :live="live" /></template>
     </ReviewHead>
     <OfflineNote :live="live" class="offline" />

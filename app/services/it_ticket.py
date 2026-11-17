@@ -1,8 +1,10 @@
 """IT tickets (spec 9.14): the IT Lead's queue, assigning IT Staff (T10) and Ready (T11).
 
 A ticket is visible once it was forwarded and its booking is not REJECTED or CANCELLED
-(BR-IT-01). The IT Lead sees all; a user with only IT_STAFF sees the tickets they are
-assigned to. The `version` in a request is the booking's (B-19).
+(BR-IT-01). The IT Lead sees the tickets of rooms in their own province (the province of their
+office; none without an office), and picks and assigns IT Staff of that province only (owner,
+17 Nov 2026); a user with only IT_STAFF sees the tickets they are assigned to. The `version` in
+a request is the booking's (B-19).
 """
 
 from datetime import date, datetime, time, timedelta
@@ -18,7 +20,18 @@ from app.constants.booking import (
 )
 from app.constants.roles import RoleCode
 from app.errors import AppError, ErrorCode
-from app.models import Booking, BookingSession, ITTicket, Role, User, it_ticket_staff, user_roles
+from app.models import (
+    Booking,
+    BookingSession,
+    Department,
+    Division,
+    ITTicket,
+    Location,
+    Role,
+    User,
+    it_ticket_staff,
+    user_roles,
+)
 from app.schemas.it_ticket import ITBusy, ITSetup, ITStaffOut, ITStaffPick, ITTicketItem
 from app.security import CurrentUser, load_role_codes
 from app.services import booking_access, booking_view, clock
@@ -29,6 +42,7 @@ from app.services.records import not_found
 from app.services.user_avatar import avatar_url
 
 NOT_ACTIVE_STAFF = "This user is not active IT Staff."
+OTHER_PROVINCE_STAFF = "Pick IT Staff who work in this booking's province."
 NO_ACTIVE_STAFF = "Assign active IT Staff first."
 _HIDDEN = (BookingStatus.REJECTED.value, BookingStatus.CANCELLED.value)
 
@@ -40,7 +54,10 @@ def _invalid(field: str, message: str) -> AppError:
 def _visible(query, current: CurrentUser):
     """Keep the tickets `current` may see. The query must join `Booking`."""
     query = query.where(ITTicket.forwarded_at.is_not(None), Booking.status.not_in(_HIDDEN))
-    if not current.has_role(RoleCode.IT_LEAD):
+    if current.has_role(RoleCode.IT_LEAD):
+        province = booking_access.user_province_sql(current.id)
+        query = query.where(Booking.room_id.in_(booking_access.room_ids_in_province(province)))
+    else:
         assigned = select(it_ticket_staff.c.ticket_id).where(
             it_ticket_staff.c.user_id == current.id
         )
@@ -217,13 +234,19 @@ def ticket_summary(session: Session, current: CurrentUser) -> dict[str, int]:
     }
 
 
-def list_it_staff(session: Session) -> list[User]:
-    """Active users with the IT_STAFF role, by English name (the assign picker)."""
+def list_it_staff(session: Session, province: str | None) -> list[User]:
+    """Active users with the IT_STAFF role whose office is in `province`, by English name (the
+    assign picker). No province: nobody."""
+    if province is None:
+        return []
     query = (
         select(User)
         .join(user_roles, user_roles.c.user_id == User.id)
         .join(Role, Role.id == user_roles.c.role_id)
-        .where(User.is_active, Role.code == RoleCode.IT_STAFF.value)
+        .join(Division, User.division_id == Division.id)
+        .join(Department, Division.department_id == Department.id)
+        .join(Location, Department.location_id == Location.id)
+        .where(User.is_active, Role.code == RoleCode.IT_STAFF.value, Location.province == province)
         .order_by(User.name_en, User.id)
     )
     return list(session.scalars(query).unique())
@@ -302,7 +325,7 @@ def staff_picks(
     """The assign picker: active IT Staff by name; with `day`, how many setups (visible
     tickets whose first session is that day) each one already has. With `ticket_id` (404 when
     hidden): that ticket's day, and each one's other setups at the same time."""
-    users = list_it_staff(session)
+    users = list_it_staff(session, booking_access.pitika_province(current))
     target = _load_visible(session, current, ticket_id) if ticket_id is not None else None
     if target is not None and day is None:
         day = transitions.first_start(target.booking).date()
@@ -450,6 +473,9 @@ def assign_staff(
     if not _can_assign(ticket, booking):
         raise transitions.invalid_transition(booking)
     users = _active_it_staff(session, user_ids)
+    province = booking_access.room_province(booking.room)
+    if any(booking_access.user_province(user) != province for user in users):
+        raise _invalid("user_ids", OTHER_PROVINCE_STAFF)
 
     ticket.staff = sorted(users, key=lambda user: user.name_en)
     if ticket.status != ITStatus.READY:

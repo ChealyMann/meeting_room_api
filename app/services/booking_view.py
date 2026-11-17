@@ -7,7 +7,7 @@ fixed number of queries. The Pitika, owner and IT lists reuse it.
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.config import Settings
 from app.constants.booking import ATTACHMENTS_OPEN, ReviewDecision, ReviewStage
@@ -26,7 +26,7 @@ from app.schemas.booking import (
 )
 from app.schemas.booking_attachment import attachment_out
 from app.schemas.booking_review import DecidedBookingItem
-from app.schemas.refs import NamedRef, ProvinceRef
+from app.schemas.refs import BuildingRef, FloorRef, NamedRef, ProvinceRef
 from app.services import booking_transitions as transitions
 
 
@@ -38,15 +38,23 @@ def booking_load_options() -> tuple:
         selectinload(Booking.catering_order),
         selectinload(Booking.it_ticket),
         selectinload(Booking.requester),
-        selectinload(Booking.room)
-        .selectinload(Room.floor)
-        .selectinload(Floor.building)
-        .selectinload(Building.location),
+        selectinload(Booking.room).options(*room_load_options()),
+    )
+
+
+def room_load_options() -> tuple:
+    """Loader options under a booking's room: everything `room_ref` reads. The type and the
+    owner are joined into the rooms query, so they cost no extra query."""
+    return (
+        selectinload(Room.floor).selectinload(Floor.building).selectinload(Building.location),
+        joinedload(Room.category),
+        joinedload(Room.owner),
     )
 
 
 def room_ref(room: Room) -> BookingRoomRef:
-    location = room.floor.building.location
+    building = room.floor.building
+    location = building.location
     return BookingRoomRef(
         id=room.id,
         name_en=room.name_en,
@@ -54,6 +62,12 @@ def room_ref(room: Room) -> BookingRoomRef:
         is_private=room.is_private,
         location=NamedRef.model_validate(location),
         province=ProvinceRef.from_code(location.province),
+        building=BuildingRef.model_validate(building),
+        floor=FloorRef.model_validate(room.floor),
+        capacity=room.capacity,
+        category=NamedRef.model_validate(room.category),
+        owner=NamedRef.model_validate(room.owner) if room.owner else None,
+        map_query=location.map_query,
     )
 
 
@@ -92,24 +106,39 @@ def build_booking_list_items(bookings: list[Booking]) -> list[BookingListItem]:
 
 
 def build_decided_items(
-    bookings: list[Booking], reviewer_id: int, stage: ReviewStage
+    session: Session, bookings: list[Booking], stage: ReviewStage, reviewer_id: int | None = None
 ) -> list[DecidedBookingItem]:
-    """List items with the reviewer's own decision at `stage`: when, and the notes or the reason.
-    Reads the loaded `reviews` and `rejection` (no query per row)."""
-    items = []
+    """List items with the decision at `stage`: when, the notes or the reason, and who decided.
+    `reviewer_id` set: that reviewer's own decision (not an Admin backup); None: the stage's
+    decision, whoever made it. Reads the loaded `reviews` and `rejection`, and the deciders'
+    names in one query (no query per row)."""
+    chosen = []
     for booking in bookings:
-        review = next(
+        decided = [
             r
             for r in booking.reviews
-            if r.stage == stage and r.reviewer_id == reviewer_id and not r.by_admin
-        )
+            if r.stage == stage and r.decision != ReviewDecision.NOT_REQUIRED
+        ]
+        if reviewer_id is not None:
+            decided = [r for r in decided if r.reviewer_id == reviewer_id and not r.by_admin]
+        chosen.append((booking, decided[-1]))
+    ids = {review.reviewer_id for _, review in chosen if review.reviewer_id is not None}
+    users = {u.id: u for u in session.scalars(select(User).where(User.id.in_(ids)))} if ids else {}
+    items = []
+    for booking, review in chosen:
         if review.decision == ReviewDecision.REJECTED and booking.rejection is not None:
             note = booking.rejection.reason
         else:
             note = review.notes
         fields = _list_item_fields(booking)
         items.append(
-            DecidedBookingItem(**fields, decided_at=review.reviewed_at, decision_note=note)
+            DecidedBookingItem(
+                **fields,
+                decided_at=review.reviewed_at,
+                decision_note=note,
+                decided_by=_person(users.get(review.reviewer_id)),
+                by_admin=review.by_admin,
+            )
         )
     return items
 
@@ -122,7 +151,6 @@ def _catering_out(booking: Booking) -> CateringOut | None:
     return CateringOut(
         packages=order.packages,
         remarks=order.remarks,
-        servings=booking.attendees,  # B-25: always the current attendees
         delivery_date=delivery.date(),
         delivery_time=delivery.time(),
         approver_notes=order.approver_notes,

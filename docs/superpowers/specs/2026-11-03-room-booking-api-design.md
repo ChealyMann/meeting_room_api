@@ -63,7 +63,7 @@ These are not in the requirements. They are my calls; change them with a comment
 | B-22 | Inactive IT Staff | Turning off an IT Staff user is not blocked. Ready needs at least one **active** assigned IT Staff, else `409 INVALID_TRANSITION` "Assign active IT Staff first." Lists show inactive staff with `is_active: false`. |
 | B-23 | Booker's own email | If the booker puts their own email in `participant_emails`, it is removed (they are already counted as the "+1"). |
 | B-24 | Empty PATCH | A PATCH with only `version` changes nothing and does not raise the version. |
-| B-25 | Food after edit | Servings always = current attendees. A small edit that changes attendees changes the servings, with no new Pitika approval (BR-EDT-02). |
+| B-25 | Food after edit | Food has no numbers (owner decision, 17 Nov 2026): the API sends no servings; the kitchen reads the attendees. A small edit that changes attendees needs no new Pitika approval (BR-EDT-02). |
 | B-26 | One person, two rooms | A user may book two rooms at the same time. Clash checks are per room only. |
 | B-27 | Booker turned off | When the Admin turns a user off, every booking of theirs that is not final and not ended becomes CANCELLED in the same transaction: `cancel_reason` "Cancelled: the booker's account was turned off.", sessions stop blocking (decided Nov 3, 2026). The answer of `PATCH /users/{id}` gets a new list `bookings_cancelled: [ids]`. |
 | B-28 | Reference code | **Changes the requirements** (glossary: "NBC-" and 5 digits). The format is `NBC-YY-NNNNN`, e.g. `NBC-26-48213`: 90,000 codes per year, so they never run out (decided Nov 3, 2026). The door pass keeps `NBC-` + 5 digits. |
@@ -592,7 +592,7 @@ Booking in province (else 404) → version → status PENDING_PITIKA (else INVAL
 
 ### 9.14 IT — `it_tickets.py`
 
-`GET /it/tickets?status=&q=` (IT_LEAD or IT_STAFF): tickets with `forwarded_at` set and booking not REJECTED / CANCELLED (BR-IT-01). IT Lead: all. IT Staff only: tickets they are assigned to (a user with both roles sees all). `status` = ITStatus. `q`: title, reference code. Sort by first start asc.
+`GET /it/tickets?status=&q=` (IT_LEAD or IT_STAFF): tickets with `forwarded_at` set and booking not REJECTED / CANCELLED (BR-IT-01). IT Lead: the tickets of rooms in the province of their office, none without an office (owner, 17 Nov 2026); the staff picker (`GET /it/staff`) lists IT Staff of that province only, and assigning IT Staff of another province is refused (422 `user_ids`). IT Staff only: tickets they are assigned to (a user with both roles sees the IT Lead's list). `status` = ITStatus. `q`: title, reference code. Sort by first start asc.
 
 `ITTicketItem`: `id, status, items, special_requirements, technician_notes, staff, setup_date, setup_time, forwarded_at, assigned_at, ready_at, review_notes: [notes of APPROVED reviews] (BR-APR-07), booking: BookingListItem`.
 

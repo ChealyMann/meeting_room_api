@@ -177,6 +177,12 @@ def _my_review(current: CurrentUser, stage: ReviewStage):
     )
 
 
+def _stage_review(stage: ReviewStage):
+    """The join condition for anyone's review at `stage`: every Pitika of the province, and an
+    Admin deciding as a backup (owner, 17 Nov 2026: Pitikas see each other's decisions)."""
+    return and_(BookingReview.booking_id == Booking.id, BookingReview.stage == stage)
+
+
 def _list_decided(
     session: Session,
     current: CurrentUser,
@@ -189,13 +195,15 @@ def _list_decided(
     date_to: date | None,
     room_id: int | None,
     q: str | None,
+    mine: bool = True,
 ) -> dict:
-    """Bookings in `rooms` this user approved or rejected (`decision`) at `stage`, newest
-    decision first."""
+    """Bookings in `rooms` approved or rejected (`decision`) at `stage`, newest decision first:
+    by this user (`mine`), or by anyone (the Pitika's province)."""
+    joined = _my_review(current, stage) if mine else _stage_review(stage)
     query = (
         select(Booking)
         .join(User, Booking.requester_id == User.id)
-        .join(BookingReview, _my_review(current, stage))
+        .join(BookingReview, joined)
         .where(Booking.room_id.in_(rooms), BookingReview.decision == decision)
         .options(
             *booking_load_options(),
@@ -214,9 +222,11 @@ def _decided_summary(
     stage: ReviewStage,
     rooms,
     waiting_status: BookingStatus,
+    mine: bool = True,
 ) -> dict[str, int]:
-    """Bookings in `rooms` waiting at `waiting_status` now, and this user's own approvals and
-    rejections at `stage` today (the Phnom Penh day; Admin backups not counted)."""
+    """Bookings in `rooms` waiting at `waiting_status` now, and the approvals and rejections at
+    `stage` today (the Phnom Penh day): this user's own (`mine`, Admin backups not counted), or
+    everyone's (the Pitika's province, Admin backups counted)."""
     waiting = session.scalar(
         select(func.count(Booking.id)).where(
             Booking.room_id.in_(rooms), Booking.status == waiting_status
@@ -225,7 +235,7 @@ def _decided_summary(
     start = local_to_utc(datetime.combine(now_local().date(), time()))
     rows = session.execute(
         select(BookingReview.decision, func.count(BookingReview.id))
-        .join(Booking, _my_review(current, stage))
+        .join(Booking, _my_review(current, stage) if mine else _stage_review(stage))
         .where(
             Booking.room_id.in_(rooms),
             BookingReview.reviewed_at >= start,
@@ -252,21 +262,23 @@ def list_pitika_decided(
     room_id: int | None,
     q: str | None,
 ) -> dict:
-    """Bookings this Pitika approved or rejected (`decision`) in rooms of their current
-    province, newest decision first. No province means an empty list."""
+    """Bookings any Pitika of the province (or an Admin as a backup) approved or rejected
+    (`decision`) in rooms of this Pitika's current province, newest decision first. No province
+    means an empty list."""
     rooms = booking_access.room_ids_in_province(booking_access.pitika_province(current))
     return _list_decided(
         session, current, ReviewStage.PITIKA, rooms, page, size, decision, date_from, date_to,
-        room_id, q,
+        room_id, q, mine=False,
     )  # fmt: skip
 
 
 def pitika_summary(session: Session, current: CurrentUser) -> dict[str, int]:
-    """Waiting bookings in the Pitika's province now, and their own approvals and rejections
-    today (the Phnom Penh day; Admin backups not counted). No province: all 0."""
+    """Waiting bookings in the Pitika's province now, and the province's approvals and
+    rejections at the Pitika stage today (every Pitika, and Admin backups; the Phnom Penh day).
+    No province: all 0."""
     rooms = booking_access.room_ids_in_province(booking_access.pitika_province(current))
     return _decided_summary(
-        session, current, ReviewStage.PITIKA, rooms, BookingStatus.PENDING_PITIKA
+        session, current, ReviewStage.PITIKA, rooms, BookingStatus.PENDING_PITIKA, mine=False
     )
 
 

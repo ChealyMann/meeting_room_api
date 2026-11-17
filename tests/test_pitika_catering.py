@@ -94,7 +94,7 @@ def test_food_list_item_shape(client, frozen, pitika, order, make_user, auth_hea
     item = item["items"][0]
     assert set(item) == {
         "booking_id", "reference_code", "booking_status", "room", "meeting_title",
-        "delivery_date", "delivery_time", "servings", "packages", "remarks", "approver_notes",
+        "delivery_date", "delivery_time", "packages", "remarks", "approver_notes",
         "session_number", "session_count",
     }  # fmt: skip
     assert item["booking_id"] == booking.id
@@ -102,7 +102,7 @@ def test_food_list_item_shape(client, frozen, pitika, order, make_user, auth_hea
     assert item["booking_status"] == "CONFIRMED"
     assert item["room"]["id"] == booking.room_id
     assert item["room"]["province"]["code"] == "PHNOM_PENH"
-    assert (item["meeting_title"], item["servings"]) == ("Board", 12)
+    assert item["meeting_title"] == "Board"
     assert (item["delivery_date"], item["delivery_time"]) == (DAY.isoformat(), "09:00")
     assert item["packages"] == [{"id": 1, "name": "Lunch box"}]
     assert (item["remarks"], item["approver_notes"]) == ("No pork", "Serve at 11:45")
@@ -141,17 +141,11 @@ def test_food_list_private_title_not_masked(
     assert data["items"][0]["meeting_title"] == "Secret plan"
 
 
-def test_food_list_servings_follow_attendees(
-    client, frozen, db_session, pitika, order, auth_headers
-):
-    booking = order(attendees=5)
-    headers = auth_headers(pitika)
-    first = client.get(URL, params={"date": DAY.isoformat()}, headers=headers).json()
-    assert first["items"][0]["servings"] == 5
-    booking.attendees = 9
-    db_session.flush()
-    second = client.get(URL, params={"date": DAY.isoformat()}, headers=headers).json()
-    assert second["items"][0]["servings"] == 9
+def test_food_list_has_no_servings(client, frozen, pitika, order, auth_headers):
+    """Food has no numbers (owner decision, 17 Nov 2026): no servings in the food list."""
+    order(attendees=5)
+    data = client.get(URL, params={"date": DAY.isoformat()}, headers=auth_headers(pitika)).json()
+    assert "servings" not in data["items"][0]
 
 
 def test_pitika_sees_only_own_province(

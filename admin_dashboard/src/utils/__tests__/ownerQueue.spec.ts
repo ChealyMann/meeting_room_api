@@ -80,7 +80,7 @@ describe('ownerCheckLabels', () => {
   })
 
   it('shows no food or IT label', () => {
-    const labels = ownerCheckLabels(detail({ catering: { packages: [{ name: 'Lunch box' }], servings: 10 }, it: { items: [{ name: 'Projector' }] } }), 20)
+    const labels = ownerCheckLabels(detail({ catering: { packages: [{ name: 'Lunch box' }] }, it: { items: [{ name: 'Projector' }] } }), 20)
     expect(labels.map((l) => l.kind)).toEqual(['private', 'seats'])
   })
 })

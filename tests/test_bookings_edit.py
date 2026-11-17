@@ -121,7 +121,7 @@ def test_catering_remarks_and_it_requirements(
     assert response.status_code == 200
     data = response.json()
     assert data["catering"]["remarks"] == "No pork"
-    assert data["catering"]["servings"] == 7  # B-25
+    assert data["attendees"] == 7
     assert data["it"]["special_requirements"] == "Two microphones"
     assert data["version"] == 2
 

@@ -265,7 +265,6 @@ async function downloadIcs() {
       <p v-if="!booking.catering" class="none">No food ordered.</p>
       <dl v-else class="details">
         <div><dt>Packages</dt><dd>{{ names(booking.catering.packages) }}</dd></div>
-        <div><dt>Servings</dt><dd class="mono">{{ booking.catering.servings }}</dd></div>
         <div>
           <dt>Delivery</dt>
           <dd v-if="booking.session_count > 1" class="delivery">At the start of every session ({{ booking.session_count }} times)</dd>

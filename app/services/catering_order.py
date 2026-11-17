@@ -50,7 +50,6 @@ def list_food_orders(session: Session, current: CurrentUser, day: date) -> list[
                 meeting_title=booking.meeting_title,
                 delivery_date=start.date(),
                 delivery_time=start.time(),
-                servings=booking.attendees,  # B-25: always the current attendees
                 packages=order.packages,
                 remarks=order.remarks,
                 approver_notes=order.approver_notes,

@@ -70,12 +70,12 @@ describe('checkLabels', () => {
     const b = detail({
       route: 'R2',
       private_justification: 'Board members attend',
-      catering: { packages: [{ id: 1, name: 'Coffee break' }, { id: 2, name: 'Lunch box' }], servings: 12 },
+      catering: { packages: [{ id: 1, name: 'Coffee break' }, { id: 2, name: 'Lunch box' }] },
       it: { items: [{ id: 3, name: 'Projector setup' }, { id: 4, name: 'Microphones' }] },
     })
     expect(checkLabels(b)).toEqual([
       { kind: 'private', text: 'Private · reason given' },
-      { kind: 'food', text: 'Coffee break, Lunch box', count: 12 },
+      { kind: 'food', text: 'Coffee break, Lunch box' },
       { kind: 'it', text: 'Projector setup, Microphones' },
     ])
   })
@@ -92,7 +92,7 @@ describe('nextStepText', () => {
     expect(nextStepText(detail({ route: 'R2' }))).toBe('It goes to the room owner next.')
     expect(nextStepText(detail({ has_it: true }))).toBe('It goes to IT setup next.')
     expect(nextStepText(detail())).toBe('It is confirmed, with a door pass.')
-    expect(nextStepText(detail({ catering: { packages: [], servings: 4 } }))).toBe(
+    expect(nextStepText(detail({ catering: { packages: [] } }))).toBe(
       'It is confirmed, with a door pass. The food is approved with it.',
     )
   })

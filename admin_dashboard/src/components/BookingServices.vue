@@ -2,6 +2,7 @@
 // Food & IT (owner pick, 16 Nov 2026): one card each, with every item, the booker's note, and the
 // answer. Food is checked by Pitika when they approve; IT moves from received to the room being
 // ready. The same cards in My bookings, To review (Pitika and the room owner) and IT setup.
+import { MapPin } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { BookingDetail } from '../api/types'
@@ -19,8 +20,10 @@ const props = withDefaults(
     itFirst?: boolean
     /** The card the reader checks, on a light background: food for Pitika, IT for IT. */
     lead?: 'food' | 'it' | null
+    /** Where to set up, on top of the IT card (IT's panel only, owner pick 17 Nov 2026). */
+    setupAt?: { place: string; area: string } | null
   }>(),
-  { food: true, itFirst: false, lead: null },
+  { food: true, itFirst: false, lead: null, setupAt: null },
 )
 /** The cards in the order they show (and are read). */
 const order = computed(() => {
@@ -58,7 +61,7 @@ const itPill = computed<Pill | null>(() => {
         <PanelSection v-if="booking.catering" title="Food & drinks" class="svc-card" :class="{ lead: lead === 'food' }" data-kind="food">
           <template v-if="foodPill" #extra><span class="pill" :class="foodPill.tone">{{ foodPill.text }}</span></template>
           <ul class="svc-items">
-            <li v-for="p in booking.catering.packages" :key="String(p.id)"><span>{{ p.name }}</span> <span class="q mono">× {{ booking.catering.servings }}</span></li>
+            <li v-for="p in booking.catering.packages" :key="String(p.id)">{{ p.name }}</li>
           </ul>
           <dl class="svc-rows">
             <div>
@@ -85,6 +88,10 @@ const itPill = computed<Pill | null>(() => {
       <template v-else>
         <PanelSection v-if="booking.it" title="IT help" class="svc-card" :class="{ lead: lead === 'it' }" data-kind="it">
           <template v-if="itPill" #extra><span class="pill" :class="itPill.tone">{{ itPill.text }}</span></template>
+          <p v-if="setupAt" class="setup-at">
+            <MapPin :size="16" aria-hidden="true" />
+            <span>Set up at {{ setupAt.place }}<span class="area">{{ setupAt.area }}</span></span>
+          </p>
           <ul class="svc-items">
             <li v-for="x in booking.it.items" :key="String(x.id)">{{ x.name }}</li>
           </ul>
@@ -137,6 +144,28 @@ const itPill = computed<Pill | null>(() => {
   background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
   color: var(--color-warn);
 }
+/* "Set up at": one white line on the light IT card, with a pin. */
+.setup-at {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  background: var(--color-sheet);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.setup-at svg {
+  margin-top: 2px;
+  color: var(--color-intaglio);
+}
+.setup-at .area {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-intaglio);
+}
 .svc-items {
   margin: 0;
   padding: 0;
@@ -152,11 +181,6 @@ const itPill = computed<Pill | null>(() => {
 }
 .svc-items li + li {
   border-top: 1px solid var(--color-rule);
-}
-.svc-items .q {
-  flex: none;
-  font-size: 12.5px;
-  color: var(--color-ink-off);
 }
 .svc-rows {
   display: grid;

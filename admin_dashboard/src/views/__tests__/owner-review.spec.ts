@@ -50,7 +50,7 @@ const ITEMS = [
 const DETAIL = {
   private_justification: 'The Governor attends',
   reviews: [{ stage: 'PITIKA', decision: 'APPROVED', reviewer: { id: 9, name_en: 'Chan Sophea' }, notes: 'Check the projector', reviewed_at: '2026-11-05T01:00:00Z', by_admin: false }],
-  catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25, delivery_date: '2026-11-05', delivery_time: '12:00', remarks: null },
+  catering: { packages: [{ id: 1, name: 'Lunch box' }], delivery_date: '2026-11-05', delivery_time: '12:00', remarks: null },
   it: { items: [{ id: 2, name: 'Projector setup' }], special_requirements: null, staff: [], status: 'RECEIVED', forwarded_at: null, assigned_at: null, ready_at: null },
 }
 
@@ -159,7 +159,7 @@ describe('Owner To review', () => {
     const p = panel()!
     expect([...p.querySelectorAll('[role="tab"]')].map((t) => t.textContent?.trim())).toEqual(['Details', 'Food & IT 2', 'History'])
     const food = p.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
-    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Lunch box × 25'])
+    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Lunch box'])
     expect(p.querySelector('#tabpanel-services .svc-card[data-kind="it"] .svc-items')?.textContent?.trim()).toBe('Projector setup')
     expect(p.querySelector('#tabpanel-services .lead')).toBeNull()
     const labels = [...p.querySelectorAll('#tabpanel-history .timeline .label')].map((l) => l.textContent?.trim())

@@ -89,7 +89,8 @@ def test_detail_shape(client, frozen, make_user, make_bookable_room, make_bookin
         "reviews", "rejection", "cancelled_at", "cancel_reason", "cancelled_by", "updated_at",
         "attachments", "attachments_open",
     }  # fmt: skip
-    location = room.floor.building.location
+    building = room.floor.building
+    location = building.location
     assert data["room"] == {
         "id": room.id,
         "name_en": room.name_en,
@@ -97,11 +98,37 @@ def test_detail_shape(client, frozen, make_user, make_bookable_room, make_bookin
         "is_private": False,
         "location": {"id": location.id, "name_en": location.name_en, "name_kh": location.name_kh},
         "province": {"code": "PHNOM_PENH", "name_en": "Phnom Penh", "name_kh": "ភ្នំពេញ"},
+        "building": {
+            "id": building.id,
+            "name_en": building.name_en,
+            "name_kh": building.name_kh,
+            "short_name": building.short_name,
+        },
+        "floor": {"id": room.floor.id, "floor_label": room.floor.floor_label},
+        "capacity": room.capacity,
+        "category": {
+            "id": room.category.id,
+            "name_en": room.category.name_en,
+            "name_kh": room.category.name_kh,
+        },
+        "owner": None,
+        "map_query": location.map_query,
     }
     assert data["first_session"]["date"] == DAY.isoformat()
     assert data["last_end"] == {"date": NEXT_DAY.isoformat(), "time": "10:00"}
     assert data["catering"]["delivery_time"] == "14:00"
     assert data["meeting_purpose"] == "Plan"
+
+
+def test_detail_room_owner(client, frozen, private_booking, auth_headers):
+    """A private room names its owner (name only, no phone), for the panel's Room section."""
+    booking, booker, owner = private_booking()
+    data = client.get(f"{URL}/{booking.id}", headers=auth_headers(booker)).json()
+    assert data["room"]["owner"] == {
+        "id": owner.id,
+        "name_en": owner.name_en,
+        "name_kh": owner.name_kh,
+    }
 
 
 def test_mine_newest_first_and_q(

@@ -23,7 +23,7 @@ const ITEMS = [
 ]
 const DETAILS: Record<number, Record<string, unknown>> = {
   21: {
-    catering: { packages: [{ id: 1, name: 'Lunch box' }], servings: 25, delivery_date: '2026-11-05', delivery_time: '14:00' },
+    catering: { packages: [{ id: 1, name: 'Lunch box' }], delivery_date: '2026-11-05', delivery_time: '14:00' },
     it: { items: [{ id: 2, name: 'Projector setup' }], status: 'RECEIVED', staff: [] },
     sessions: [
       { id: 1, date: '2026-11-05', start_time: '14:00', end_time: '15:30' },
@@ -163,7 +163,7 @@ describe('ReviewView', () => {
     // The time leads the row; the reference sits on the photo; what to check is in soft tags.
     expect([row(wrapper, 21).get('.start').text(), row(wrapper, 21).get('.end').text()]).toEqual(['14:00', '15:30'])
     expect(row(wrapper, 21).get('.photo .ref').text()).toBe('NBC-26-87467')
-    expect(row(wrapper, 21).findAll('.soft-tag').map((t) => t.text())).toEqual(['Food · Lunch box ×25', 'IT · Projector setup'])
+    expect(row(wrapper, 21).findAll('.soft-tag').map((t) => t.text())).toEqual(['Food · Lunch box', 'IT · Projector setup'])
     expect(row(wrapper, 22).text()).toContain('Private · reason given')
   })
 
@@ -279,14 +279,14 @@ describe('Review panel and decisions', () => {
 
     it('shows Food & IT with the same cards as the booker: items with the amount, the booker’s notes', async () => {
       DETAILS[22] = {
-        catering: { packages: [{ id: 1, name: 'Coffee break' }], servings: 8, remarks: 'Less sugar.', delivery_date: '2026-11-05', delivery_time: '14:00' },
+        catering: { packages: [{ id: 1, name: 'Coffee break' }], remarks: 'Less sugar.', delivery_date: '2026-11-05', delivery_time: '14:00' },
         it: { items: [{ id: 2, name: 'Video call' }], special_requirements: 'Two microphones.', status: 'RECEIVED', staff: [] },
       }
       const { wrapper } = await mountReview()
       await row(wrapper, 22).trigger('click')
       await flushPromises()
       const food = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="food"]')!
-      expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8'])
+      expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break'])
       expect(food.textContent).toContain('Booker’s note')
       expect(food.textContent).toContain('“Less sugar.”')
       const it = panel()!.querySelector('#tabpanel-services .svc-card[data-kind="it"]')!
@@ -383,7 +383,7 @@ describe('Review panel and decisions', () => {
     expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
     expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('The start of every session (3 times)')
     const facts = [...p.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {
@@ -491,7 +491,7 @@ describe('To review filters', () => {
 
   it('says what today looks like in one short line', async () => {
     const { wrapper } = await mountReview()
-    expect(wrapper.get('.sub').text()).toBe('Today you decided 6 · 3 still waiting')
+    expect(wrapper.get('.sub').text()).toBe('6 decided today · 3 still waiting')
     expect(wrapper.find('.page-head .count').exists()).toBe(false)
   })
 

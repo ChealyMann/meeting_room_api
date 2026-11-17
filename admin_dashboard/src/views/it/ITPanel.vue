@@ -3,7 +3,8 @@
 // booking's thin step bar (look B), then the same tabs as the other booking pop-ups (16 Nov 2026):
 // Details, Food & IT, Files, History. It opens on Food & IT, where IT's work is. The IT card
 // takes the ticket from the list, so a new assign shows at once. The times are the meeting's
-// only. The foot has Close and the row's buttons.
+// only. The foot has Close and the row's buttons. The top is the photo, title and code only; the
+// IT card says where to set up, and Details has the Room section (owner pick, 17 Nov 2026).
 import { Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
@@ -26,7 +27,6 @@ const props = defineProps<{
   /** The full booking (process bar, details, food, history, files), or null while it loads or when it failed. */
   detail: BookingDetail | null
   photo: string | null
-  place: string | null
   actions: boolean
 }>()
 const emit = defineEmits<{ close: []; assign: []; ready: [] }>()
@@ -34,9 +34,12 @@ const emit = defineEmits<{ close: []; assign: []; ready: [] }>()
 const b = computed(() => props.ticket.booking)
 const steps = computed(() => (live.value ? buildHistory(live.value).steps : []))
 const isOpen = computed(() => !props.ticket.missed && props.ticket.status !== 'READY')
+/** Where IT goes, on the IT card: "Chinit River · Floor 18", then the building and office. */
+const setupAt = computed(() => {
+  const r = b.value.room
+  return { place: `${r.name_en} · ${r.floor.floor_label}`, area: `${r.building.name_en}, ${r.location.name_en}` }
+})
 /** Staff can be assigned or changed while sessions remain, even on a confirmed booking. */
-/** The room line by the photo: Khmer name, name, and where it is. */
-const room = computed(() => [b.value.room.name_kh, b.value.room.name_en, props.place].filter(Boolean).join(' · '))
 const canStaff = computed(() => isOpen.value || hasSessionAhead(props.ticket, new Date()))
 /** Where the setup is, beside the step bar. */
 const subtitle = computed(() => {
@@ -83,7 +86,7 @@ const tabs = computed(() => {
 </script>
 
 <template>
-  <SidePanel :open="true" :title="b.meeting_title" :subtitle="room" :serial="b.reference_code" @close="emit('close')">
+  <SidePanel :open="true" :title="b.meeting_title" :serial="b.reference_code" @close="emit('close')">
     <template #lead><RoomPhoto class="room-thumb" :path="photo" :alt="b.room.name_en" /></template>
     <div class="it-panel">
       <StepProgress v-if="steps.length" :steps="steps" :label="subtitle" />
@@ -96,7 +99,7 @@ const tabs = computed(() => {
       </section>
 
       <section v-show="tab === 'services'" id="tabpanel-services" role="tabpanel" aria-labelledby="tab-services">
-        <BookingServices :booking="services" viewer="staff" :food="!!detail" it-first lead="it" />
+        <BookingServices :booking="services" viewer="staff" :food="!!detail" it-first lead="it" :setup-at="setupAt" />
       </section>
 
       <section v-if="files.length && detail" v-show="tab === 'files'" id="tabpanel-files" role="tabpanel" aria-labelledby="tab-files">

@@ -14,6 +14,9 @@ const decided = (id: number, decided_at: string, changes: Record<string, unknown
   ...listItem(id, { display_status: 'CONFIRMED', status: 'CONFIRMED', ...changes }),
   decided_at,
   decision_note: null,
+  decided_by: { id: 5, name_en: 'Chan Sophea' },
+  by_admin: false,
+  ...changes,
 })
 
 // Now: Thu 5 Nov 2026, 13:40 in Phnom Penh.
@@ -96,6 +99,21 @@ const card = (wrapper: Awaited<ReturnType<typeof mountList>>['wrapper'], id: num
 const panel = () => document.body.querySelector('.review-panel')?.closest('[role="dialog"]') as HTMLElement | null
 
 describe('DecidedList', () => {
+  it("says who decided each one: me, another Pitika, or an Admin as a backup (owner, 17 Nov 2026)", async () => {
+    useSessionStore().user = { id: 5 } as never
+    answer = {
+      items: [
+        decided(51, '2026-11-05T06:38:00Z'),
+        decided(52, '2026-11-05T06:20:00Z', { decided_by: { id: 6, name_en: 'Sok Pisey' } }),
+        decided(53, '2026-11-05T06:10:00Z', { decided_by: { id: 1, name_en: 'Mann Chealy' }, by_admin: true }),
+      ],
+      total: 3,
+    }
+    const { wrapper } = await mountList('APPROVED')
+
+    expect([51, 52, 53].map((id) => card(wrapper, id).get('.by').text())).toEqual(['by you', 'by Sok Pisey', 'by Admin Mann Chealy'])
+  })
+
   it('asks for my approvals, 20 a page', async () => {
     await mountList('APPROVED')
     expect(calls).toContain('/api/v1/pitika/bookings/decided?decision=APPROVED&page=1&size=20')
@@ -116,7 +134,7 @@ describe('DecidedList', () => {
 
     const c = card(wrapper, 31)
     expect(c.classes()).toContain('soft-row')
-    expect(c.get('.mark.ok').text()).toBe('Approved · 13:38')
+    expect(c.get('.mark.ok').text()).toBe('Approved · 13:38 · by Chan Sophea')
     expect(c.get('h3').text()).toBe('Board risk review')
     expect(c.get('.photo .ref').text()).toBe('NBC-26-39730')
     expect([c.get('.start').text(), c.get('.day').text()]).toEqual(['14:00', 'Tue 10 Nov'])
@@ -150,8 +168,8 @@ describe('DecidedList', () => {
   })
 
   it.each([
-    ['APPROVED', 'No approved bookings yet', 'Bookings you approve show here.'],
-    ['REJECTED', 'No rejected bookings', 'Bookings you reject show here.'],
+    ['APPROVED', 'No approved bookings yet', 'Bookings approved in your province show here.'],
+    ['REJECTED', 'No rejected bookings', 'Bookings rejected in your province show here.'],
   ] as const)('says when there is nothing on %s', async (decision, title, text) => {
     answer = { items: [], total: 0 }
     const { wrapper } = await mountList(decision)

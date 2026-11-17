@@ -8,7 +8,10 @@ import type { PitikaSummary } from '../../api/types'
 import QueueHead, { type HeadRing, type HeadTab } from '../../components/QueueHead.vue'
 import { ringArcs, summaryLine, type Tab } from '../../utils/decided'
 
-const props = withDefaults(defineProps<{ summary: PitikaSummary | null; tab: Tab; title?: string }>(), { title: 'To review' })
+const props = withDefaults(defineProps<{ summary: PitikaSummary | null; tab: Tab; title?: string; team?: boolean }>(), {
+  title: 'To review',
+  team: false,
+})
 const emit = defineEmits<{ select: [Tab] }>()
 
 const ring = computed<HeadRing | null>(() => {
@@ -37,7 +40,7 @@ const tabs = computed<HeadTab[]>(() => {
 <template>
   <QueueHead
     :title="title"
-    :line="summary ? summaryLine(summary) : null"
+    :line="summary ? summaryLine(summary, team) : null"
     :ring="ring"
     :tabs="tabs"
     :tab="tab"

@@ -72,12 +72,8 @@ const groups = computed(() =>
     : groupBySetupDay(rows.value, today.value).map((g) => ({ ...g, today: g.key === 'today' })),
 )
 
-// Where the room is, and its photo, from the rooms list (no extra call per row).
+// The room's photo, from the rooms list (no extra call per row).
 const roomOf = (id: number) => props.rooms.find((r) => r.id === id) ?? null
-const placeOf = (t: ITTicketItem) => {
-  const r = roomOf(t.booking.room.id)
-  return r ? `${r.location.name_en} · ${r.building.name_en} · ${r.floor.floor_label}` : null
-}
 const thumbOf = (t: ITTicketItem) => roomOf(t.booking.room.id)?.cover_photo?.thumbnail_url ?? null
 const photoOf = (t: ITTicketItem) => roomOf(t.booking.room.id)?.cover_photo?.url ?? null
 
@@ -268,7 +264,6 @@ defineExpose({ live })
       :ticket="openTicket"
       :detail="detail"
       :photo="photoOf(openTicket)"
-      :place="placeOf(openTicket)"
       :actions="actions"
       @close="panel.close"
       @assign="ask('assign', openTicket)"

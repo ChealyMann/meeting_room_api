@@ -451,9 +451,10 @@ describe('IT setup', () => {
       'Fri 6 Nov 2026 08:00–11:00',
       'Mon 9 Nov 2026 08:00–11:00',
     ])
-    expect(panel()!.textContent).not.toMatch(/set up/i)
+    // No IT setup times in Details (the IT card's "Set up at" line names a place, not a time).
+    expect(panel()!.querySelector('#tabpanel-details')!.textContent).not.toMatch(/set up/i)
     expect(panel()!.textContent).not.toContain('07:30')
     const facts = [...panel()!.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
   })
 })

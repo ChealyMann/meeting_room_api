@@ -17,7 +17,6 @@ class CateringOrderItem(ResponseModel):
     meeting_title: str
     delivery_date: date
     delivery_time: LocalTime
-    servings: int
     packages: list[dict[str, Any]]
     remarks: str | None
     approver_notes: str | None

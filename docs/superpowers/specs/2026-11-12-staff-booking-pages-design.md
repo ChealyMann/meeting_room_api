@@ -102,7 +102,7 @@ dialog (code + Copy), Add to calendar (the API's calendar file).
 2. **Meeting type** (API requires one of 4 values): a choice **Internal / External** plus a switch
    **"The Governor attends"** → INTERNAL, EXTERNAL, INTERNAL_WITH_GOVERNOR, EXTERNAL_WITH_GOVERNOR.
    Place: on step 2 under the title (builder's call on exact look; Soft-field style).
-3. **Servings follow people** (API rule B-25): no servings stepper; show "× {people}".
+3. **No food numbers** (API rule B-25, owner decision 17 Nov 2026): no servings stepper and no "× {people}"; only the package names.
 4. **Food and IT groups and icons come from the API**: add `group` and `icon` to catering packages and
    IT services, set by the Admin in the Service catalog page (reuse the Equipment icon picker).
    Groups — food: Breakfast, Meals, Breaks & drinks; IT: Screens & video, Sound & language,

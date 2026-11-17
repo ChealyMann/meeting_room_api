@@ -214,7 +214,8 @@ describe('My bookings', () => {
     expect(panel()!.querySelector('.panel-cover')).toBeNull()
     expect(panel()!.querySelector('.band.ok .say-status')?.textContent?.trim()).toBe('Confirmed · the room is yours')
     expect(panel()!.querySelector('.band small')?.textContent?.trim()).toBe('Fri 13 Nov')
-    expect(panel()!.querySelector('.subtitle')?.textContent).toContain('Mekong Room · NBC')
+    // The top is the title and the code only; the room is in the Room section (17 Nov 2026).
+    expect(panel()!.querySelector('.subtitle')?.textContent?.trim()).toBe('NBC-26-7')
     expect(panel()!.querySelector('.step-progress .line')?.textContent?.trim()).toBe('Step 3 of 3')
   })
 
@@ -352,9 +353,9 @@ describe('My bookings', () => {
     const rows = [...details.querySelectorAll('.sessions li')].map((li) => [...li.children].map((c) => c.textContent?.trim()).join(' '))
     expect(rows).toEqual(['Mon 16 Nov 2026 12:30–18:00', 'Tue 17 Nov 2026 07:30–18:00'])
     expect(details.querySelector('.sessions-head')?.textContent).toContain('2 sessions')
-    expect([...details.querySelectorAll('.panel-section > h3')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['When · 2 sessions', 'Meeting', 'Booker'])
+    expect([...details.querySelectorAll('.panel-section > h3')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['When · 2 sessions', 'Room', 'Meeting', 'Booker'])
     const facts = [...details.querySelectorAll('.details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
     expect(details.textContent).toContain('1 by email')
     expect(details.textContent).toContain('NBC0042')
   })
@@ -472,7 +473,6 @@ describe('Tabs on my booking', () => {
       { id: 2, name: 'តែ' },
     ],
     remarks: 'Less sugar, please.',
-    servings: 8,
     delivery_date: '2026-11-16',
     delivery_time: '09:00',
     approver_notes: 'Food is fine for 8.',
@@ -534,7 +534,7 @@ describe('Tabs on my booking', () => {
     const w = await open()
     await openCard(w, 'Team sync')
     const food = panel()!.querySelector('.svc-card[data-kind="food"]')!
-    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break × 8', 'តែ × 8'])
+    expect([...food.querySelectorAll('.svc-items li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Coffee break', 'តែ'])
     expect(food.querySelector('.pill')?.textContent?.trim()).toBe('Approved')
     expect(food.textContent).toContain('Mon 16 Nov 2026 · 09:00')
     expect(food.textContent).toContain('“Less sugar, please.”')

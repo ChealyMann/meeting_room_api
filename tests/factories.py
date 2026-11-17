@@ -180,9 +180,18 @@ def make_user(
     position: Position | None = None,
     **fields,
 ) -> User:
-    """An active user who does not need to change their password, unless told otherwise."""
+    """An active user who does not need to change their password, unless told otherwise.
+
+    IT Lead and IT Staff need an office (R6), and their province sets what an IT Lead sees
+    (owner, 17 Nov 2026): with no `division` given they work in a Phnom Penh office. Pass
+    `division_id=None` for one with no office."""
     n = _next()
     position = position or make_position(session)
+    it_roles = {RoleCode.IT_LEAD.value, RoleCode.IT_STAFF.value}
+    if division is None and it_roles & {str(code) for code in roles}:
+        division = make_division(
+            session, make_department(session, make_location(session, province="PHNOM_PENH"))
+        )
     values = {
         "staff_id": f"EMP-{n:05d}",
         "name_en": f"User {n}",

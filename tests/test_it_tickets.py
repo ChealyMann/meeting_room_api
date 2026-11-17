@@ -74,6 +74,76 @@ def test_lead_sees_all_staff_sees_assigned(
     assert len(ids(client.get(URL, headers=auth_headers(both)))) == 3
 
 
+# --- By province (owner, 17 Nov 2026: weak spot 2 of "Working Together in the Same Role") ---
+
+
+@pytest.fixture
+def siem_reap(
+    make_user, make_bookable_room, make_booking, make_division, make_department, make_location
+):
+    """IT people and a setup in Siem Reap: `(lead, staff, booking)`."""
+    division = make_division(make_department(make_location(province="SIEM_REAP")))
+    lead = make_user(roles=["IT_LEAD"], division=division)
+    staff = make_user(roles=["IT_STAFF"], division=division)
+    booking = make_booking(
+        make_bookable_room(province="SIEM_REAP"),
+        make_user(roles=["STAFF"]),
+        it=True,
+        status=BookingStatus.SETUP_IN_PROGRESS,
+        forwarded=True,
+    )
+    return lead, staff, booking
+
+
+def test_lead_sees_only_their_province(
+    client, frozen, lead, staff, setup, siem_reap, make_user, auth_headers
+):
+    sr_lead, _sr_staff, sr_booking = siem_reap
+    pp_booking = setup()
+
+    assert ids(client.get(URL, headers=auth_headers(lead))) == [pp_booking.id]
+    assert ids(client.get(URL, headers=auth_headers(sr_lead))) == [sr_booking.id]
+    # Another province's setup cannot be changed either.
+    assert error(assign(client, auth_headers(lead), sr_booking, [staff.id])) == (404, "NOT_FOUND")
+    assert error(ready(client, auth_headers(lead), sr_booking)) == (404, "NOT_FOUND")
+    # An IT Lead with no office sees nothing, like a Pitika with none.
+    nowhere = make_user(roles=["IT_LEAD"], division_id=None)
+    assert ids(client.get(URL, headers=auth_headers(nowhere))) == []
+
+
+def test_staff_picker_lists_only_the_leads_province(
+    client, frozen, lead, staff, siem_reap, auth_headers
+):
+    sr_lead, sr_staff, _ = siem_reap
+
+    def names(headers):
+        items = client.get("/api/v1/it/staff", headers=headers).json()["items"]
+        return [u["id"] for u in items]
+
+    assert names(auth_headers(lead)) == [staff.id]
+    assert names(auth_headers(sr_lead)) == [sr_staff.id]
+
+
+def test_assign_refuses_staff_of_another_province(
+    client, frozen, lead, setup, siem_reap, auth_headers
+):
+    _sr_lead, sr_staff, _ = siem_reap
+    booking = setup()
+    response = assign(client, auth_headers(lead), booking, [sr_staff.id])
+    assert error(response) == (422, "VALIDATION_ERROR")
+    assert "province" in fields(response)["user_ids"]
+
+
+def test_summary_counts_only_their_province(client, frozen, lead, setup, siem_reap, auth_headers):
+    setup()
+    sr_lead, _, _ = siem_reap
+
+    def summary(user):
+        return client.get(f"{URL}/summary", headers=auth_headers(user)).json()
+
+    assert (summary(lead)["to_assign"], summary(sr_lead)["to_assign"]) == (1, 1)
+
+
 def test_other_roles_cannot_list(client, frozen, make_user, auth_headers):
     response = client.get(URL, headers=auth_headers(make_user(roles=["STAFF"])))
     assert error(response) == (403, "FORBIDDEN")

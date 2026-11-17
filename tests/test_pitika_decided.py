@@ -1,5 +1,7 @@
-"""Pitika "Decided by me": the decided list and today's summary
-(spec docs/superpowers/specs/2026-11-05-pitika-decided-design.md)."""
+"""Pitika decided list and today's summary
+(spec docs/superpowers/specs/2026-11-05-pitika-decided-design.md). Since 17 Nov 2026 (owner, weak
+spot 1 of "Working Together in the Same Role") they hold every Pitika-stage decision in the
+province, each with who decided, not only my own."""
 
 from datetime import datetime, time, timedelta
 
@@ -71,6 +73,8 @@ def test_lists_my_approvals_newest_first(client, frozen, freeze_now, pitika, pen
     # NOW is 08:00 in Phnom Penh (UTC+7): one hour later is 02:00 UTC.
     assert newest["decided_at"] == "2026-11-09T02:00:00Z"
     assert (newest["decision_note"], oldest["decision_note"]) == (None, "Fine")
+    me = {"id": pitika.id, "name_en": pitika.name_en}
+    assert (newest["decided_by"], newest["by_admin"]) == (me, False)
 
 
 def test_lists_my_rejections_with_reason(client, frozen, pitika, pending, auth_headers):
@@ -85,22 +89,44 @@ def test_lists_my_rejections_with_reason(client, frozen, pitika, pending, auth_h
     assert decided(client, headers, "APPROVED")["items"] == []
 
 
-def test_other_pitika_and_admin_backup_not_listed(
-    client, frozen, db_session, pitika, pending, make_pitika, auth_headers
+def test_lists_other_pitikas_and_admin_backups_with_who_decided(
+    client, frozen, db_session, pitika, pending, make_pitika, make_user, auth_headers
 ):
     other = make_pitika(province="PHNOM_PENH")
     by_other = pending()
     approve(client, auth_headers(other), by_other)
-    # A backup decision saved under my id by the Admin path (B-34) is not "mine".
+    # The Admin decided for Pitika as a backup (B-34): saved under the Admin's id.
+    admin = make_user(roles=["ADMIN"])
     backup = pending(status=BookingStatus.CONFIRMED)
     db_session.add(
         BookingReview(
             booking_id=backup.id,
             stage=ReviewStage.PITIKA,
             decision=ReviewDecision.APPROVED,
-            reviewer_id=pitika.id,
-            reviewed_at=datetime(2026, 11, 9, 1, 0),
+            reviewer_id=admin.id,
+            reviewed_at=datetime(2026, 11, 9, 0, 30),
             by_admin=True,
+        )
+    )
+    db_session.commit()
+
+    data = decided(client, auth_headers(pitika))
+    assert ids(data) == [by_other.id, backup.id]
+    who = [(item["decided_by"]["name_en"], item["by_admin"]) for item in data["items"]]
+    assert who == [(other.name_en, False), (admin.name_en, True)]
+
+
+def test_room_owner_decisions_are_not_pitika_decisions(
+    client, frozen, db_session, pitika, pending, auth_headers
+):
+    booking = pending(status=BookingStatus.CONFIRMED)
+    db_session.add(
+        BookingReview(
+            booking_id=booking.id,
+            stage=ReviewStage.OWNER,
+            decision=ReviewDecision.APPROVED,
+            reviewer_id=pitika.id,
+            reviewed_at=datetime(2026, 11, 9, 0, 30),
         )
     )
     db_session.commit()
@@ -263,9 +289,10 @@ def test_summary_day_is_phnom_penh(client, frozen, freeze_now, pitika, pending, 
     assert summary(client, headers)["approved_today"] == 1
 
 
-def test_summary_skips_admin_backup_and_other_pitika(
-    client, frozen, db_session, pitika, pending, make_pitika, auth_headers
+def test_summary_counts_the_whole_province(
+    client, frozen, db_session, pitika, pending, make_pitika, make_user, auth_headers
 ):
+    """Other Pitikas and Admin backups count too, like the decided lists."""
     approve(client, auth_headers(make_pitika(province="PHNOM_PENH")), pending())
     backup = pending(status=BookingStatus.CONFIRMED)
     db_session.add(
@@ -273,7 +300,7 @@ def test_summary_skips_admin_backup_and_other_pitika(
             booking_id=backup.id,
             stage=ReviewStage.PITIKA,
             decision=ReviewDecision.APPROVED,
-            reviewer_id=pitika.id,
+            reviewer_id=make_user(roles=["ADMIN"]).id,
             reviewed_at=datetime(2026, 11, 9, 1, 0),
             by_admin=True,
         )
@@ -281,7 +308,7 @@ def test_summary_skips_admin_backup_and_other_pitika(
     db_session.commit()
     assert summary(client, auth_headers(pitika)) == {
         "waiting": 0,
-        "approved_today": 0,
+        "approved_today": 2,
         "rejected_today": 0,
     }
 
