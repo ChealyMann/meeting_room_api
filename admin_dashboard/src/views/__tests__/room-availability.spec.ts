@@ -262,24 +262,35 @@ describe('RoomAvailabilityView', () => {
     expect(router.currentRoute.value.query.booking).toBeUndefined()
   })
 
-  it("draws each room's own open hours as the white bar; closed hours stay blank", async () => {
+  it("greys out each room's own closed hours, with round ends (the old colors, owner 17 Nov 2026)", async () => {
     const { wrapper } = await mountAt('/room-availability')
 
-    // Board Room opens 08:00–17:00 on the 07:00–18:00 lane.
-    const track = wrapper.get('[data-room="13"] .track')
-    expect(track.attributes('style')).toBe('left: 9.090909090909092%; width: 81.81818181818181%;')
-    expect(track.attributes('title')).toBe('Open 08:00–17:00')
-    expect(wrapper.get('[data-room="12"] .track').attributes('title')).toBe('Open 07:30–18:00')
-    expect(wrapper.find('.closed').exists()).toBe(false)
-    expect(wrapper.find('.free-label').exists()).toBe(false)
+    // Board Room opens 08:00–17:00: closed 07:00–08:00 and 17:00–18:00. Mekong Room 07:30–18:00.
+    const closed = (id: number) => wrapper.findAll(`[data-room="${id}"] .closed`).map((c) => c.attributes('style'))
+    expect(closed(13)).toEqual([
+      'left: 0%; width: 9.090909090909092%; border-radius: 8px 0 0 8px;',
+      'left: 90.9090909090909%; width: 9.090909090909093%; border-radius: 0 8px 8px 0;',
+    ])
+    expect(closed(12)).toHaveLength(1)
+    expect(wrapper.get('[data-room="13"] .lane').attributes('title')).toBe('Open 08:00–17:00')
+    expect(wrapper.find('.track').exists()).toBe(false)
   })
 
-  it('greys the past part of the bar today, and fades bookings that have ended', async () => {
+  it('hatches the past today, and fades bookings that have ended', async () => {
     day[12] = [item(70, '09:00', '10:00', 'Budget review', 'CONFIRMED')]
     const { wrapper } = await mountAt('/room-availability') // 10:20
-    expect(wrapper.get('[data-room="13"] .track .past').attributes('style')).toBe(`width: ${(140 / 540) * 100}%;`)
+    expect(wrapper.get('[data-room="13"] .past').attributes('style')).toBe(`width: ${(200 / 660) * 100}%;`)
     expect(wrapper.get('[data-booking="70"]').classes()).toContain('done')
     expect(wrapper.get('[data-booking="71"]').classes()).not.toContain('done')
+  })
+
+  it('the legend says what each color means; Past only today', async () => {
+    const today = await mountAt('/room-availability')
+    expect(today.wrapper.findAll('.legend > span').map((l) => l.text())).toEqual(['Free', 'Booked', 'Waiting for approval', 'Closed', 'Past'])
+    today.wrapper.unmount()
+    const other = await mountAt('/room-availability?date=2026-11-05')
+    expect(other.wrapper.findAll('.legend > span').map((l) => l.text())).toEqual(['Free', 'Booked', 'Waiting for approval', 'Closed'])
+    expect(other.wrapper.find('.past').exists()).toBe(false)
   })
 
   it('hides the hour labels the Now tag would cover', async () => {

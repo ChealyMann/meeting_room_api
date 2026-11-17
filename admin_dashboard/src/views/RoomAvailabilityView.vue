@@ -34,7 +34,7 @@ import { useToast } from '../composables/useToast'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { useSessionStore } from '../stores/session'
 import { FILTER_WORDS } from '../utils/pickerWords'
-import { blockKind, clockLabel, dayStatus, freeAtOptions, freeUntil, lanePct, roomStatus, toMinutes } from '../utils/roomDay'
+import { blockKind, clockLabel, DAY_END, DAY_START, dayStatus, freeAtOptions, freeUntil, lanePct, roomStatus, toMinutes } from '../utils/roomDay'
 import { addDays, formatDay, phnomPenhClock } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import BookingPanel from './bookings/BookingPanel.vue'
@@ -152,16 +152,15 @@ const hourLabels = computed(() =>
     return isToday.value && at > now.value - 70 && at < now.value + 35 ? '' : h
   }),
 )
-/** The room's open hours on the lane: the white bar. Closed hours stay blank. */
-function trackOf(room: RoomListItem) {
-  const left = lanePct(toMinutes(room.start_time))
-  return { left: `${left}%`, width: `${lanePct(toMinutes(room.end_time)) - left}%` }
-}
-/** Today, the part of the bar already gone (grey), as a share of the room's open hours. */
-function pastOf(room: RoomListItem) {
+/** The room's own closed hours on the lane, grey with round ends: before it opens and after it
+ * closes (the old colors, owner 17 Nov 2026: green free, hatched past, grey closed). */
+function closedSpans(room: RoomListItem) {
   const opens = toMinutes(room.start_time)
-  const share = ((now.value - opens) / (toMinutes(room.end_time) - opens)) * 100
-  return `${Math.min(100, Math.max(0, share))}%`
+  const closes = toMinutes(room.end_time)
+  const spans: Array<{ left: string; width: string; borderRadius: string }> = []
+  if (opens > DAY_START) spans.push({ left: '0%', width: `${lanePct(opens)}%`, borderRadius: '8px 0 0 8px' })
+  if (closes < DAY_END) spans.push({ left: `${lanePct(closes)}%`, width: `${100 - lanePct(closes)}%`, borderRadius: '0 8px 8px 0' })
+  return spans
 }
 /** Today, a booking that has ended (faded). */
 const ended = (item: { end_time: string }) => isToday.value && toMinutes(item.end_time) <= now.value
@@ -333,12 +332,9 @@ async function decide() {
             <div class="status-cell" role="cell">
               <span class="status" :class="row.status.kind"><i aria-hidden="true" />{{ row.status.text }}</span>
             </div>
-            <div class="lane" role="cell">
-              <span
-                class="track"
-                :style="trackOf(row.room)"
-                :title="`Open ${hhmm(row.room.start_time)}–${hhmm(row.room.end_time)}`"
-              ><span v-if="isToday" class="past" :style="{ width: pastOf(row.room) }" /></span>
+            <div class="lane" role="cell" :title="`Open ${hhmm(row.room.start_time)}–${hhmm(row.room.end_time)}`">
+              <span v-if="isToday" class="past" :style="{ width: `${lanePct(now)}%` }" />
+              <span v-for="(c, ci) in closedSpans(row.room)" :key="ci" class="closed" :style="c" />
               <button
                 v-for="(it, i) in row.items"
                 :key="`${it.booking_id ?? 'm'}-${i}`"
@@ -364,6 +360,14 @@ async function decide() {
           </div>
         </div>
       </div>
+    </div>
+
+    <div v-if="rooms && rows.length" class="legend">
+      <span><i class="f" />Free</span>
+      <span><i class="b" />Booked</span>
+      <span><i class="w" />Waiting for approval</span>
+      <span><i class="c" />Closed</span>
+      <span v-if="isToday"><i class="x" />Past</span>
     </div>
 
     <Teleport to="body">
@@ -620,27 +624,29 @@ async function decide() {
 .status.some i {
   background: var(--color-intaglio);
 }
-/* The day bar: white = open, grey = past, blank = closed. */
+/* The day bar, in the old colors (owner, 17 Nov 2026): green = free, hatched = past, grey = closed. */
 .lane {
   position: relative;
   height: 34px;
   margin: 10px 16px 10px 0;
-}
-.track {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-rule-strong);
   border-radius: 8px;
-  background: var(--color-sheet);
+  background: color-mix(in srgb, var(--color-ok) 12%, var(--color-sheet));
 }
 .past {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  background: var(--color-field-disabled);
+  border-radius: 8px 0 0 8px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 7%, transparent) 0 4px, transparent 4px 8px);
+  pointer-events: none;
+}
+.closed {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  background: var(--color-rule-strong);
   pointer-events: none;
 }
 .block {
@@ -722,6 +728,44 @@ async function decide() {
 }
 .at-line {
   background: var(--color-ok);
+}
+/* The legend under the table: what each color means. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 12px;
+  color: var(--color-intaglio);
+  font-size: 12.5px;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.legend i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+.legend .f {
+  background: color-mix(in srgb, var(--color-ok) 18%, var(--color-sheet));
+}
+.legend .b {
+  background: var(--color-crimson-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-crimson) 25%, transparent);
+}
+.legend .w {
+  border: 1px dashed var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 18%, var(--color-sheet));
+}
+.legend .c {
+  background: var(--color-rule-strong);
+}
+.legend .x {
+  border: 1px solid var(--color-rule);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-ink) 14%, transparent) 0 3px, transparent 3px 6px);
 }
 /* Hover: a small dark card above the block (below it near the top of the window). */
 .room-tip {
