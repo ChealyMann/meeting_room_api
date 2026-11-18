@@ -259,3 +259,20 @@ def test_a_long_title_shrinks_the_heads_comments_and_labels():
     label = "មតិលោកជំទាវប្រធានការិយាល័យ"
     assert _fit_size([label], 10.5, OFFICE_BOX_CM, LABEL_CM_PER_LETTER) < 10.5
     assert _fit_size(["មតិប្រធានការិយាល័យ"], 10.5, OFFICE_BOX_CM, LABEL_CM_PER_LETTER) == 10.5
+
+
+def test_signatures_are_in_the_pen_blue():
+    """Signatures print in the same blue as the comments (owner, 18 Nov 2026), whatever colour
+    the stored picture is; see-through stays see-through."""
+    from app.services.request_slip_docx import INK_BLUE, blue_ink
+
+    black = Image.new("RGBA", (4, 1), (0, 0, 0, 0))
+    black.putpixel((1, 0), (0, 0, 0, 255))
+    black.putpixel((2, 0), (40, 40, 40, 128))
+    buffer = io.BytesIO()
+    black.save(buffer, "PNG")
+    out = Image.open(blue_ink(buffer.getvalue())).convert("RGBA")
+    blue = (INK_BLUE[0], INK_BLUE[1], INK_BLUE[2])
+    assert out.getpixel((1, 0)) == (*blue, 255)
+    assert out.getpixel((2, 0)) == (*blue, 128)
+    assert out.getpixel((0, 0))[3] == 0
