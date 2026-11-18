@@ -353,9 +353,9 @@ async function decide() {
               @open="panel.open(b.id)"
             >
               <template #line>
-                <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
-                <span class="bit">{{ b.room.name_en }}</span><span class="sep" />
-                <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span><span class="sep" />
+                <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span>
+                <span class="bit">{{ b.room.name_en }}</span>
+                <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span>
                 <span class="bit kind" :class="{ governor: isGovernor(b) }"><component :is="kindIcon(b)" aria-hidden="true" />{{ MEETING_TYPE_LABELS[b.meeting_type] ?? b.meeting_type }}</span>
               </template>
               <template v-if="rowLabels(b).length" #tags>

@@ -147,8 +147,8 @@ watch(
             @open="panel.open(b.id)"
           >
             <template #line>
-              <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
-              <span class="bit">{{ b.room.name_en }}</span><span class="sep" />
+              <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span>
+              <span class="bit">{{ b.room.name_en }}</span>
               <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span>
             </template>
             <template v-if="note(b)" #tags>
