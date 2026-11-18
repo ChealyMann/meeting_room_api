@@ -14,7 +14,10 @@ DEMO_PASSWORD. Safe to run many times: records are matched by name or email and 
 when missing; photos are added only to rooms this run creates.
 """
 
+import io
 import json
+import math
+import random
 import re
 import sys
 import uuid
@@ -22,6 +25,7 @@ from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -47,6 +51,7 @@ from app.models import (
 from app.security import hash_password
 from app.services.room_photo import process_image
 from app.services.user_avatar import make_avatar_jpeg
+from app.services.user_signature import make_signature_png
 
 DATA_FILE = Path(__file__).with_name("seed_mockup.json")
 MOCKUP_DIR = Path(__file__).resolve().parent.parent / "frontend_mockup" / "meeting_room_mockup"
@@ -117,6 +122,8 @@ POSITIONS = {
     "IT Team Lead": "ប្រធានក្រុមព័ត៌មានវិទ្យា",
     "Protocol Officer": "មន្ត្រីពិធីការ",
     "Officer": "មន្ត្រី",
+    "Director of Department": "ប្រធាននាយកដ្ឋាន",
+    "Chief of Office": "ប្រធានការិយាល័យ",
 }
 
 IT_DIVISION = ("Information Technology Department", "IT Administration and Operations")
@@ -247,6 +254,74 @@ OTHERS = [
 ]
 
 
+def _head(staff_id, title, name_en, name_kh, email, position, division):
+    return DemoUser(
+        staff_id, title, name_en, name_kh, email, "", position, division, (RoleCode.STAFF,)
+    )
+
+
+# Heads of the demo staff's departments and offices (divisions), so their request slips have
+# every opinion box signed (owner, 18 Nov 2026). Each signs where they lead.
+HEADS = [
+    _head(
+        "HEAD-201",
+        "Mr.",
+        "Ly Sophal",
+        "លី សុផល",
+        "head.statistics@example.com",
+        "Director of Department",
+        ("Statistics Department", "Monetary and Financial Statistics"),
+    ),
+    _head(
+        "HEAD-202",
+        "Ms.",
+        "Chan Malis",
+        "ចាន់ ម៉ាលីស",
+        "chief.mfs@example.com",
+        "Chief of Office",
+        ("Statistics Department", "Monetary and Financial Statistics"),
+    ),
+    _head(
+        "HEAD-203",
+        "Dr.",
+        "Keo Vannak",
+        "កែវ វណ្ណៈ",
+        "head.research@example.com",
+        "Director of Department",
+        ("Monetary Policy and Research Department", "Research"),
+    ),
+    _head(
+        "HEAD-204",
+        "Ms.",
+        "Sok Channary",
+        "សុខ ចន្ទនារី",
+        "chief.research@example.com",
+        "Chief of Office",
+        ("Monetary Policy and Research Department", "Research"),
+    ),
+    _head(
+        "HEAD-205",
+        "Mr.",
+        "Nhem Pisey",
+        "ញឹម ពិសី",
+        "head.personnel@example.com",
+        "Director of Department",
+        ("Personnel Department", "Training"),
+    ),
+    _head(
+        "HEAD-206",
+        "Ms.",
+        "Pich Sreymom",
+        "ពេជ្រ ស្រីមុំ",
+        "chief.training@example.com",
+        "Chief of Office",
+        ("Personnel Department", "Training"),
+    ),
+]
+# Who gets a drawn demo signature when they have none: the heads and the demo bookers.
+SIGNERS = [h.staff_id for h in HEADS] + ["DEMO-103", "DEMO-104", "DEMO-105"]
+
+
 @dataclass
 class MockupResult:
     offices: int = 0
@@ -257,6 +332,8 @@ class MockupResult:
     users: int = 0
     rooms: int = 0
     photos: int = 0
+    heads: int = 0
+    signatures: int = 0
 
 
 class MockupError(Exception):
@@ -394,7 +471,7 @@ def _users(session: Session, settings: Settings, it_staff: list[dict], result: M
                 s["avatar"],
             )
         )
-    people = OWNERS + it_people + OTHERS
+    people = OWNERS + it_people + OTHERS + HEADS
     password_hash = hash_password(DEMO_PASSWORD)
     users: dict[str, User] = {}
     for p in people:
@@ -449,6 +526,70 @@ def _add_photos(settings: Settings, session: Session, room: Room, photos: list[s
     return added
 
 
+def draw_signature(name: str) -> bytes:
+    """A made-up handwritten signature for a demo user, as the cleaned PNG the app stores: the
+    name in a script font when the machine has one, on a loose underline stroke. The same name
+    always draws the same signature."""
+    rng = random.Random(name)
+    image = Image.new("RGB", (520, 180), "white")
+    pen = ImageDraw.Draw(image)
+    ink = (22, 38, 110)
+    font = None
+    for face in ("segoesc.ttf", "Inkfree.ttf", "DejaVuSans-Oblique.ttf"):
+        try:
+            font = ImageFont.truetype(face, 58)
+            break
+        except OSError:
+            continue
+    text = name if font else ""
+    if font:
+        pen.text((24 + rng.randint(0, 20), 30 + rng.randint(0, 14)), text, font=font, fill=ink)
+    # The underline: a loose wave from left to right, a little different for each name.
+    lift, wave = rng.uniform(0.6, 1.4), rng.uniform(5, 11)
+    points = [
+        (x, 138 - x * 0.06 * lift + wave * math.sin(x / rng.uniform(28, 40)))
+        for x in range(30, 470, 4)
+    ]
+    pen.line(points, fill=ink, width=4, joint="curve")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return make_signature_png(buffer.getvalue())
+
+
+def _signatures(session: Session, settings: Settings, users: dict[str, User]) -> int:
+    """Draw a signature for each demo signer who has none. Returns how many were added."""
+    added = 0
+    for staff_id in SIGNERS:
+        user = users.get(staff_id)
+        if user is None or user.user_signature:
+            continue
+        stored = f"users/{user.id}/{uuid.uuid4()}.png"
+        path = settings.signature_dir / stored
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(draw_signature(user.name_en))
+        user.user_signature = stored
+        added += 1
+        print(f"  signature for {user.email}")
+    session.flush()
+    return added
+
+
+def _set_heads(session: Session, users: dict[str, User]) -> int:
+    """Make each demo head the head of their department or office, where none is set yet (a head
+    set by an Admin is never replaced). Returns how many were set."""
+    done = 0
+    for head in HEADS:
+        user = users[head.staff_id]
+        division = _division(session, *head.division)
+        unit = division.department if head.position == "Director of Department" else division
+        if unit.head_user_id is None:
+            unit.head_user_id = user.id
+            done += 1
+            print(f"  {user.name_en} heads {unit.name_en}")
+    session.flush()
+    return done
+
+
 def seed_mockup(session: Session, settings: Settings) -> MockupResult:
     """Insert the missing mockup data. Flushes; the caller commits."""
     data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
@@ -456,6 +597,8 @@ def seed_mockup(session: Session, settings: Settings) -> MockupResult:
     floors = _places(session, data["offices"], result)
     categories, equipment = _catalog(session, result)
     users = _users(session, settings, data["it_staff"], result)
+    result.heads = _set_heads(session, users)
+    result.signatures = _signatures(session, settings, users)
 
     for r in data["rooms"]:
         floor = floors[(r["office"], r["building"], r["floor"])]
@@ -506,7 +649,8 @@ def main() -> int:
     print(
         f"Mockup data: added {result.offices} offices, {result.buildings} buildings, "
         f"{result.floors} floors, {result.categories} categories, {result.equipment} equipment, "
-        f"{result.users} users, {result.rooms} rooms, {result.photos} photos. "
+        f"{result.users} users, {result.rooms} rooms, {result.photos} photos, "
+        f"{result.heads} heads, {result.signatures} signatures. "
         f"Demo password: {DEMO_PASSWORD}"
     )
     return 0

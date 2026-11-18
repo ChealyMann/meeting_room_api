@@ -9,6 +9,7 @@ from app.constants.booking import BookingStatus
 from app.services import booking_transitions as transitions
 from app.services.request_slip_data import build_slip_data
 from app.services.request_slip_docx import SMALLEST, fit_scale
+from app.services.slip_settings import get_slip_settings
 
 # The IT line, in the owner's words (16 Nov 2026).
 IT_LINE = "- អ្នកជំនួយបច្ចេកទេសពត៌មានវិទ្យា និងសម្ភារៈប្រើប្រាស់ផ្សេងៗ។"
@@ -181,6 +182,36 @@ def test_slip_reads_only_copies(slip, db_session, settings, make_user, org):
     assert (data.office_head.name, data.office_head.title) == ("ហេង សុខលីណា", "លោកស្រី")
 
 
+def test_an_empty_box_is_filled_by_the_head_set_later(slip, db_session, settings, make_user, org):
+    """Fill empty boxes (owner, 18 Nov 2026): a box with no copy, because nobody was set when the
+    booking was confirmed, gets the head set now and their signature. The date stays the confirm
+    day. A box that has a copy never changes."""
+    org["department"].head = None
+    org["division"].head = None
+    db_session.flush()
+    data = slip()
+    assert (data.department_head, data.office_head) == (None, None)
+    assert data.director is not None
+
+    late = make_user(name_kh="ជា សេរី", title="Ms.", user_signature="users/7/late.png")
+    file = _png(settings, "users/7/late.png")
+    org["department"].head = late
+    org["division"].head = org["office_head"]
+    db_session.flush()
+    data = build_slip_data(db_session, settings, slip.booking)
+    assert (data.department_head.name, data.department_head.title) == ("ជា សេរី", "លោកស្រី")
+    assert data.department_head.signature == file
+    assert data.department_head.date == "០៩/១១/២០២៦"  # the confirm day, not today
+    assert data.office_head.name == "ហេង សុខលីណា"
+    assert data.department_line == "លោកស្រីប្រធាននាយកដ្ឋានប្រព័ន្ធទូទាត់"
+    assert data.office_line == "លោកស្រីប្រធានការិយាល័យគោលនយោបាយ"
+
+    # Kept copies still win: a new director now does not replace the one who signed.
+    get_slip_settings(db_session).director = late
+    db_session.flush()
+    assert build_slip_data(db_session, settings, slip.booking).director.name == "ពេជ្រ វិសាល"
+
+
 def test_booker_without_division(slip, make_user, org):
     data = slip(requester=make_user(name_kh="គ្មានការិយាល័យ"))
     assert data.department_line == "ប្រធាននាយកដ្ឋាន ...................."
@@ -189,9 +220,12 @@ def test_booker_without_division(slip, make_user, org):
     assert data.director is not None
 
 
-def test_old_booking_without_copies(db_session, settings, make_bookable_room, make_booking, maker):
-    """Confirmed before the slip existed: no signer rows. Boxes empty; the booker's signature
-    and office come from their profile now."""
+def test_old_booking_without_copies(
+    db_session, settings, make_bookable_room, make_booking, maker, org
+):
+    """Confirmed before the slip existed: no signer rows. The booker's signature and office come
+    from their profile now, and each box gets the person set now (fill empty boxes, owner,
+    18 Nov 2026)."""
     file = settings.signature_dir / "users/9/me.png"
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_bytes(b"png")
@@ -199,9 +233,13 @@ def test_old_booking_without_copies(db_session, settings, make_bookable_room, ma
     booking.requester_info = {"name_en": "Sok Dara", "name_kh": "សុខ ដារ៉ា"}
     db_session.flush()
     data = build_slip_data(db_session, settings, booking)
-    assert (data.office_head, data.department_head, data.director) == (None, None, None)
     assert data.maker.signature == file.resolve()
-    assert data.office_line == "ប្រធានការិយាល័យគោលនយោបាយ"
+    assert (data.office_head.name, data.department_head.name, data.director.name) == (
+        "ហេង សុខលីណា",
+        "ចាន់ សុភក្ត្រ",
+        "ពេជ្រ វិសាល",
+    )
+    assert data.office_line == "លោកស្រីប្រធានការិយាល័យគោលនយោបាយ"
     assert data.director_title == "លោក"
 
 
