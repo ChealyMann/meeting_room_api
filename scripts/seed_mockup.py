@@ -92,7 +92,7 @@ CATEGORIES = {
 }
 
 # The mockup lists free-text features; they are grouped into these equipment items.
-# (name, Lucide icon, words that match a feature, ignoring case)
+# (name, Lucide icon from the dashboard's list of 50, words that match a feature, ignoring case)
 EQUIPMENT = [
     ("Projector", "projector", ("projector",)),
     ("Wireless screen sharing", "cast", ("screen sharing", "wireless presentation")),
@@ -100,11 +100,11 @@ EQUIPMENT = [
     ("Video conference camera", "video", ("camera", "video", "broadcast")),
     ("Microphones", "mic", ("microphone",)),
     ("Speakers", "speaker", ("speaker", "audio")),
-    ("Whiteboard", "presentation", ("whiteboard",)),
+    ("Whiteboard", "square-pen", ("whiteboard",)),
     ("Wi-Fi", "wifi", ("wi-fi",)),
     ("Coffee and tea", "coffee", ("coffee", "beverage", "refreshment")),
-    ("Stage and podium", "mic-vocal", ("stage", "podium", "lectern")),
-    ("Network ports", "ethernet-port", ("ethernet",)),
+    ("Stage and podium", "presentation", ("stage", "podium", "lectern")),
+    ("Network ports", "cable", ("ethernet",)),
     ("Air conditioning", "air-vent", ("air conditioning",)),
 ]
 # A projector or screen-sharing feature already names its screen.
