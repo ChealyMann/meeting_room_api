@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, LogOut, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { homeFor } from '../router/guard'
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
 import { useWaitingCounts } from '../composables/useWaitingCounts'
@@ -107,8 +108,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <aside class="rail" :class="{ open, compact }" aria-label="Main">
     <div class="brand">
-      <img :src="LOGO" alt="National Bank of Cambodia" width="36" height="36" />
-      <div class="brand-text"><b>Meeting Rooms</b><span>{{ roleName }}</span></div>
+      <!-- The logo and name go to my home page (owner, 18 Nov 2026), as after signing in. -->
+      <RouterLink class="home" :to="{ name: homeFor(session.roleCodes) }" title="Home" aria-label="Meeting Rooms, home">
+        <img :src="LOGO" alt="" width="36" height="36" />
+        <div class="brand-text"><b>Meeting Rooms</b><span>{{ roleName }}</span></div>
+      </RouterLink>
       <button type="button" class="close" aria-label="Close menu" @click="emit('close')">
         <X aria-hidden="true" />
       </button>
@@ -236,6 +240,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   align-items: center;
   gap: 12px;
   padding: 20px 14px 16px; /* logo at 14px: centred in the 64px folded rail too */
+}
+.home {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin: -4px;
+  padding: 4px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .home:hover {
+    background: var(--color-rail-raised);
+  }
 }
 .brand img {
   width: 36px;
