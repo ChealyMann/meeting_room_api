@@ -139,7 +139,9 @@ for (const width of [1366, 900, 390]) {
     await signedIn(page, '/owner-review')
 
     await expect(page.locator('.soft-row')).toHaveCount(3)
-    await expect(page.locator('.soft-row').first().locator('.soft-tag')).toHaveText(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
+    // The Governor is said once, as the meeting type in the room line (look E, 18 Nov 2026).
+    await expect(page.locator('.soft-row').first().locator('.soft-tag')).toHaveText(['Private · reason given', '25 people · 20 seats', 'Pitika notes'])
+    await expect(page.locator('.soft-row').first().locator('.line .kind.governor')).toBeVisible()
     expect(await sideways(page)).toBe(0)
     const ring = page.locator('.today-ring')
     await expect(ring).toHaveText('3/6')

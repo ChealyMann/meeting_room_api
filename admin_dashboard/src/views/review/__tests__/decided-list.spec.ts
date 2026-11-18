@@ -138,7 +138,10 @@ describe('DecidedList', () => {
     expect(c.get('h3').text()).toBe('Board risk review')
     expect(c.get('.photo .ref').text()).toBe('NBC-26-39730')
     expect([c.get('.start').text(), c.get('.day').text()]).toEqual(['14:00', 'Tue 10 Nov'])
-    expect(c.get('.line').text()).toContain('Governor Room · Touch Bunthoeun')
+    expect(c.get('.line').text()).toContain('Governor Room')
+    // Who booked is in the footer now (look E), with when it was sent.
+    expect(c.get('.foot .who').text()).toBe('Touch Bunthoeun')
+    expect(c.get('.foot .sent').text()).toMatch(/^Sent /)
     expect(c.get('.now').text()).toBe('Room owner next')
     expect(c.get('.now').classes()).toContain('warn')
     expect(c.get('.decided-at').text()).toBe('13:38')

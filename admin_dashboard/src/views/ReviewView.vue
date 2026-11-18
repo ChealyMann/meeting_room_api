@@ -4,7 +4,22 @@
 // waiting for them, grouped by urgency, each with the room's photo, what to check and the row
 // bar ("gap is you"). Details are loaded per booking for the labels. What differs between the
 // Pitika and the owner comes from `REVIEWERS`.
-import { CircleAlert, X } from 'lucide-vue-next'
+import {
+  Armchair,
+  Building2,
+  Check,
+  CircleAlert,
+  Clock,
+  ListChecks,
+  Lock,
+  MapPin,
+  MessageSquareText,
+  Monitor,
+  Star,
+  Users,
+  UtensilsCrossed,
+  X,
+} from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -30,7 +45,9 @@ import { useSessionStore } from '../stores/session'
 import { tabFrom, type Tab } from '../utils/decided'
 import { groupByUrgency, startsIn } from '../utils/reviewQueue'
 import { FILTER_WORDS } from '../utils/pickerWords'
-import { formatDay } from '../utils/time'
+import { rowBooker } from '../utils/booker'
+import { MEETING_TYPE_LABELS } from '../utils/bookingLabels'
+import { formatDay, sentLabel } from '../utils/time'
 import BookingActionDialog from './bookings/BookingActionDialog.vue'
 import ReviewPanel from './bookings/ReviewPanel.vue'
 import DecidedList from './review/DecidedList.vue'
@@ -149,6 +166,19 @@ const tagText = (c: Label) => {
   if (c.kind === 'it') return `IT · ${c.text}`
   return c.text
 }
+/** The row's tags leave out "With Governor": the room line already says the meeting type. */
+const rowLabels = (b: BookingListItem) => labelsOf(b).filter((c) => c.kind !== 'governor')
+const TAG_ICONS: Record<string, unknown> = {
+  private: Lock,
+  food: UtensilsCrossed,
+  it: Monitor,
+  r4: ListChecks,
+  seats: Armchair,
+  'pitika-notes': MessageSquareText,
+}
+const tagIcon = (c: Label) => TAG_ICONS[c.kind] ?? ListChecks
+const isGovernor = (b: BookingListItem) => b.meeting_type.endsWith('_WITH_GOVERNOR')
+const kindIcon = (b: BookingListItem) => (isGovernor(b) ? Star : b.meeting_type === 'EXTERNAL' ? Users : Building2)
 const toneOf = (c: Label) =>
   ('over' in c && c.over) || c.text === 'Private · no reason' ? 'alert' : c.kind === 'private' ? 'warn' : null
 
@@ -317,21 +347,29 @@ async function decide() {
               :reference="b.reference_code"
               :title="b.meeting_title"
               :current="panel.id.value === b.id"
+              :soon="group.key === 'today'"
+              :booker="rowBooker(b)"
+              :sent="sentLabel(b.created_at, now)"
               @open="panel.open(b.id)"
             >
               <template #line>
-                <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }} · {{ b.requester.name_en }} · {{ b.attendees }} people
+                <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
+                <span class="bit">{{ b.room.name_en }}</span><span class="sep" />
+                <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span><span class="sep" />
+                <span class="bit kind" :class="{ governor: isGovernor(b) }"><component :is="kindIcon(b)" aria-hidden="true" />{{ MEETING_TYPE_LABELS[b.meeting_type] ?? b.meeting_type }}</span>
               </template>
-              <template v-if="labelsOf(b).length" #tags>
-                <span v-for="c in labelsOf(b)" :key="c.kind" class="soft-tag" :class="[c.kind, toneOf(c)]">{{ tagText(c) }}</span>
+              <template v-if="rowLabels(b).length" #tags>
+                <span v-for="c in rowLabels(b)" :key="c.kind" class="soft-tag" :class="[c.kind, toneOf(c)]"
+                  ><component :is="tagIcon(c)" aria-hidden="true" />{{ tagText(c) }}</span
+                >
               </template>
               <template #status>
-                <span v-if="group.key === 'today'" class="soon">{{ startsIn(b, now) }}</span>
+                <span v-if="group.key === 'today'" class="soon"><Clock aria-hidden="true" />{{ startsIn(b, now) }}</span>
                 <span v-else-if="nextOf(b)" class="next">Next: <b>{{ nextOf(b) }}</b></span>
               </template>
               <template #actions>
-                <BaseButton variant="quiet" class="reject" @click="ask('reject', b)">Reject</BaseButton>
-                <BaseButton variant="primary" @click="ask('approve', b)">Approve</BaseButton>
+                <BaseButton variant="danger" class="reject" @click="ask('reject', b)">Reject</BaseButton>
+                <BaseButton variant="primary" @click="ask('approve', b)"><Check aria-hidden="true" />Approve</BaseButton>
               </template>
             </SoftRow>
           </ul>
@@ -455,11 +493,32 @@ async function decide() {
   font-weight: 500;
   color: var(--color-ink);
 }
+/* "Starts in" sits on the cream footer as a white pill with a thin crimson edge (look E). */
 .soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--color-sheet);
+  box-shadow: inset 0 0 0 1px var(--color-danger-line);
   color: var(--color-crimson);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
   white-space: nowrap;
+}
+.soon svg {
+  width: 14px;
+  height: 14px;
+}
+.kind {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.kind.governor,
+.kind.governor svg {
+  color: var(--color-crimson);
 }
 .next {
   color: var(--color-intaglio);
@@ -471,6 +530,6 @@ async function decide() {
   font-weight: 500;
 }
 .reject {
-  color: var(--color-crimson);
+  background: var(--color-sheet);
 }
 </style>

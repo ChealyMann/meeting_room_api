@@ -7,6 +7,7 @@
 // (`session`), with that session's time and "Session 2 of 5". Staff are for all of them, and can be
 // assigned or changed while sessions remain, even on a confirmed booking; Mark ready is once, on
 // the first session (owner decisions, 6 Nov 2026), and confirms the booking.
+import { MapPin } from 'lucide-vue-next'
 import { computed, toRef } from 'vue'
 
 import type { ITSetup, ITTicketItem } from '../../api/types'
@@ -15,7 +16,8 @@ import SoftRow from '../../components/SoftRow.vue'
 import StaffAvatar from '../../components/StaffAvatar.vue'
 import { sessionDate } from '../../utils/itQueue'
 import { startsAt } from '../../utils/reviewQueue'
-import { formatDay, phnomPenhClock } from '../../utils/time'
+import { rowBooker } from '../../utils/booker'
+import { formatDay, phnomPenhClock, sentLabel } from '../../utils/time'
 import { useTicketFacts } from './ticketFacts'
 
 const props = defineProps<{
@@ -81,10 +83,14 @@ const status = computed(() => {
     :reference="b.reference_code"
     :title="b.meeting_title"
     :current="current"
+    :soon="date === today"
+    :booker="rowBooker(b)"
+    :sent="sentLabel(b.created_at, now)"
     @open="emit('open')"
   >
     <template #line>
-      <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }}
+      <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
+      <span class="bit">{{ b.room.name_en }}</span>
     </template>
     <template #tags>
       <span v-for="n in needs" :key="n.name" class="soft-tag chk"><component :is="n.icon" aria-hidden="true" />{{ n.name }}</span>
