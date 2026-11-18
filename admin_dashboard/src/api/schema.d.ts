@@ -1752,6 +1752,25 @@ export interface components {
             /** File */
             file: string;
         };
+        /**
+         * BookerRef
+         * @description Who sent the booking, for the review row's footer (owner pick E, 18 Nov 2026). The name
+         *     and photo are today's; the position and department are as they were when it was sent.
+         */
+        BookerRef: {
+            /** Id */
+            id: number;
+            /** Name En */
+            name_en: string;
+            /** Name Kh */
+            name_kh: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Position */
+            position: string | null;
+            /** Department */
+            department: string | null;
+        };
         /** BookingCheck */
         BookingCheck: {
             /** Room Id */
@@ -1818,7 +1837,7 @@ export interface components {
             route: components["schemas"]["BookingRoute"];
             status: components["schemas"]["BookingStatus"];
             display_status: components["schemas"]["DisplayStatus"];
-            requester: components["schemas"]["NamedRef"];
+            requester: components["schemas"]["BookerRef"];
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
@@ -1876,7 +1895,7 @@ export interface components {
             route: components["schemas"]["BookingRoute"];
             status: components["schemas"]["BookingStatus"];
             display_status: components["schemas"]["DisplayStatus"];
-            requester: components["schemas"]["NamedRef"];
+            requester: components["schemas"]["BookerRef"];
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
@@ -1938,7 +1957,7 @@ export interface components {
             route: components["schemas"]["BookingRoute"];
             status: components["schemas"]["BookingStatus"];
             display_status: components["schemas"]["DisplayStatus"];
-            requester: components["schemas"]["NamedRef"];
+            requester: components["schemas"]["BookerRef"];
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
@@ -2330,7 +2349,7 @@ export interface components {
             route: components["schemas"]["BookingRoute"];
             status: components["schemas"]["BookingStatus"];
             display_status: components["schemas"]["DisplayStatus"];
-            requester: components["schemas"]["NamedRef"];
+            requester: components["schemas"]["BookerRef"];
             first_session: components["schemas"]["SessionOut"];
             /** Session Count */
             session_count: number;
