@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { NAV_ICONS, navFor, navIcon, pageLabel, roleTitle } from '../nav'
+import { NAV_ICONS, navFor, navIcon, pageLabel, parentItem, roleTitle } from '../nav'
 
 const shape = (roles: string[]) =>
   navFor(roles).map((group) => ({ title: group.title, items: group.items.map((item) => item.route) }))
@@ -78,5 +78,17 @@ describe('pageLabel and navIcon', () => {
   it('know nothing of a page outside the menu', () => {
     expect(pageLabel('profile', ['ADMIN'])).toBeNull()
     expect(navIcon('profile', ['ADMIN'])).toBeUndefined()
+  })
+})
+
+describe('parentItem', () => {
+  it('finds the menu item a page belongs to: a room and its booking page sit under Find a room', () => {
+    expect(parentItem('staff-room', ['STAFF'])?.route).toBe('find-room')
+    expect(parentItem('book', ['STAFF'])?.label).toBe('Find a room')
+  })
+
+  it('is null for a menu page itself and for a page under nothing', () => {
+    expect(parentItem('find-room', ['STAFF'])).toBeNull()
+    expect(parentItem('profile', ['STAFF'])).toBeNull()
   })
 })

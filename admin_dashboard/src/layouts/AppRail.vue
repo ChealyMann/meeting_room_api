@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSessionStore } from '../stores/session'
 import { usePrivateImage } from '../composables/usePrivateImage'
 import { useWaitingCounts } from '../composables/useWaitingCounts'
-import { NAV_ICONS as ICONS, navFor, roleTitle, type NavGroup } from './nav'
+import { NAV_ICONS as ICONS, navFor, roleTitle, type NavGroup, type NavItem } from './nav'
 
 const props = defineProps<{ open: boolean; compact: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -17,6 +17,8 @@ const LOGO = '/nbc-logo.png'
 const session = useSessionStore()
 const router = useRouter()
 const route = useRoute()
+/** A page under this item (a room, its booking form): the item stays marked. */
+const isUnder = (item: NavItem) => typeof route.name === 'string' && !!item.pages?.includes(route.name)
 
 // Setup groups fold; the one holding the current page opens by itself, the others keep what
 // the Admin chose. The folded (icon-only) rail shows every link, with no group headers.
@@ -154,7 +156,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           >
             <a
               :href="href"
-              :aria-current="isExactActive ? 'page' : undefined"
+              :aria-current="isExactActive || isUnder(item) ? 'page' : undefined"
               :title="item.label"
               @click="navigate"
             >
@@ -191,7 +193,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
         <template v-for="item in menuGroup.items" :key="item.label">
           <RouterLink v-if="item.route" v-slot="{ href, navigate, isExactActive }" :to="{ name: item.route }" custom>
-            <a :href="href" role="menuitem" :aria-current="isExactActive ? 'page' : undefined" @click="navigate">
+            <a :href="href" role="menuitem" :aria-current="isExactActive || isUnder(item) ? 'page' : undefined" @click="navigate">
               <component :is="ICONS[item.icon]" aria-hidden="true" />
               {{ item.label }}
             </a>

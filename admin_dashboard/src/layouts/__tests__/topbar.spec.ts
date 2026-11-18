@@ -24,6 +24,22 @@ describe('AppTopbar title', () => {
     expect(await titleAt(['PITIKA', 'ROOM_OWNER'], 'owner-review', 'To review')).toContain('My rooms')
   })
 
+  it('puts the menu page first on a page under it, as a link back (Find a room › Book a room)', async () => {
+    useSessionStore().user = { roles: [{ code: 'STAFF' }] } as never
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/find-room', name: 'find-room', component: Page, meta: { title: 'Find a room' } },
+        { path: '/book/3', name: 'book', component: Page, meta: { title: 'Book a room' } },
+      ],
+    })
+    await router.push('/book/3')
+    const wrapper = mount(AppTopbar, { props: { menuOpen: false }, global: { plugins: [router] } })
+    const back = wrapper.get('.path a')
+    expect([back.text(), back.attributes('href')]).toEqual(['Find a room', '/find-room'])
+    expect(wrapper.get('.path [aria-current="page"]').text()).toBe('Book a room')
+  })
+
   it('keeps the page title otherwise', async () => {
     expect(await titleAt(['ROOM_OWNER'], 'owner-review', 'To review')).toContain('To review')
     expect(await titleAt(['ADMIN'], 'profile', 'My profile')).toContain('My profile')
