@@ -84,7 +84,9 @@ describe('RoomPhotos', () => {
     expect(wrapper.findAll('li.photo')[0]!.text()).toContain('Cover')
     expect(wrapper.findAll('li.photo')[1]!.text()).not.toContain('Cover')
     expect(wrapper.get('img').attributes('src')).toBe('http://localhost:8000/uploads/rooms/12/31_thumb.jpg')
-    expect(wrapper.text()).toContain('2/20')
+    expect(wrapper.get('.head').text()).toBe('Photos 2 of 20')
+    expect(wrapper.get('label.add').text()).toBe('Add photos · 18 more allowed')
+    expect(wrapper.findAll('li.photo')[0]!.text()).toMatch(/Added 1 Oct( 2026)?$/)
   })
 
   it('uploads the good files and names each refused one', async () => {
@@ -129,6 +131,18 @@ describe('RoomPhotos', () => {
     expect(ids(wrapper)).toEqual([32, 31, 33])
     expect(wrapper.findAll('li.photo')[0]!.text()).toContain('Cover')
     expect(lastChange(wrapper).map((p) => p.id)).toEqual([32, 31, 33])
+  })
+
+  it('makes a photo the cover in one click: it moves first, the others keep their order', async () => {
+    const wrapper = await mountPhotos([photo(31, 1), photo(32, 2), photo(33, 3)])
+    expect(wrapper.findAll('li.photo')[0]!.get('button[aria-label="Make cover"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.findAll('li.photo')[2]!.get('button[aria-label="Make cover"]').trigger('click')
+    await flushPromises()
+
+    expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ photo_ids: [33, 31, 32] })
+    expect(ids(wrapper)).toEqual([33, 31, 32])
+    expect(wrapper.findAll('li.photo')[0]!.classes()).toContain('cover')
   })
 
   it("shows the server's order when it refuses a reorder (someone else changed the photos)", async () => {
