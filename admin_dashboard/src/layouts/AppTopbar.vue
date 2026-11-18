@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Clock, Menu, Moon, Sun } from 'lucide-vue-next'
+import { ChevronRight, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -66,9 +66,12 @@ onBeforeUnmount(() => clearInterval(timer))
       </template>
       <b aria-current="page">{{ title }}</b>
     </nav>
-    <div class="clock mono">
-      <Clock aria-hidden="true" />
-      <span>Phnom Penh <span class="today">{{ today }}</span> {{ now }}</span>
+    <!-- Look A (owner pick, 18 Nov 2026): the day in words, a hairline, the time in bold. The
+         city and the year are in the hover title. -->
+    <div class="clock" :title="`Phnom Penh · ${today} · ${now}`">
+      <span class="today">{{ today.slice(0, -5) }}</span>
+      <span class="bar" aria-hidden="true" />
+      <span class="time mono">{{ now }}</span>
     </div>
     <button
       type="button"
@@ -134,11 +137,22 @@ onBeforeUnmount(() => clearInterval(timer))
 .clock {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-intaglio);
   white-space: nowrap;
+}
+.clock .bar {
+  width: 1px;
+  height: 14px;
+  background: var(--color-rule-strong);
+}
+.clock .time {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 /* Tablets always show the folded rail, phones the drawer: no fold button there. */
 @media (max-width: 1100px) {
@@ -157,6 +171,7 @@ onBeforeUnmount(() => clearInterval(timer))
 }
 @media (max-width: 480px) {
   .today,
+  .clock .bar,
   .path > span,
   .path > a,
   .path > svg {

@@ -55,10 +55,15 @@ describe('AppTopbar clock', () => {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/x', component: Page }] })
     await router.push('/x')
     const wrapper = mount(AppTopbar, { props: { menuOpen: false }, global: { plugins: [router] } })
-    expect(wrapper.find('.clock').text()).toBe('Phnom Penh Fri 6 Nov 2026 23:59')
+    // Look A (owner pick, 18 Nov 2026): the day in words, then the time in bold; the city and
+    // the year are in the hover title.
+    const clock = () => wrapper.get('.clock')
+    expect([clock().get('.today').text(), clock().get('.time').text()]).toEqual(['Fri 6 Nov', '23:59'])
+    expect(clock().attributes('title')).toBe('Phnom Penh · Fri 6 Nov 2026 · 23:59')
 
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(wrapper.find('.clock').text()).toBe('Phnom Penh Sat 7 Nov 2026 00:00')
+    expect([clock().get('.today').text(), clock().get('.time').text()]).toEqual(['Sat 7 Nov', '00:00'])
+    expect(clock().attributes('title')).toBe('Phnom Penh · Sat 7 Nov 2026 · 00:00')
     wrapper.unmount()
   })
 })
