@@ -20,6 +20,12 @@ const ROOM = {
   is_private: false,
   location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
   province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
+  building: { id: 2, name_en: 'Techo Building', name_kh: 'អគារតេជោ', short_name: null },
+  floor: { id: 5, floor_label: '3rd floor' },
+  capacity: 20,
+  category: { id: 1, name_en: 'Meeting Room', name_kh: 'បន្ទប់ប្រជុំ' },
+  owner: null,
+  map_query: null,
 }
 const day = (offset: number) => {
   const d = new Date(Date.now() + 7 * 3600_000)
@@ -35,7 +41,7 @@ const ITEMS = [0, 1, 9].map((offset, i) => ({
   route: i === 1 ? 'R2' : 'R1',
   status: 'PENDING_PITIKA',
   display_status: 'PENDING_PITIKA',
-  requester: { id: 4, name_en: 'Sokunthea Chanthavong', name_kh: 'សុគន្ធា' },
+  requester: { id: 4, name_en: 'Sokunthea Chanthavong', name_kh: 'សុគន្ធា', avatar_url: null, position: 'Officer', department: 'Payment Systems Department' },
   first_session: { id: 1, date: day(offset), start_time: '23:00', end_time: '23:30' },
   session_count: 2,
   attendees: 25,
@@ -96,7 +102,7 @@ test('a Pitika lands on To review and sees only their menu', async ({ page }) =>
   await signedIn(page, '/')
 
   await expect(page).toHaveURL(/\/review$/)
-  await expect(page.locator('nav a .label')).toHaveText(['To review', 'Bookings', 'Food list'])
+  await expect(page.locator('nav a .label')).toHaveText(['Find a room', 'My bookings', 'To review', 'Bookings', 'Food list', 'Room availability'])
   await expect(page.locator('nav a[href="/review"] .wait')).toHaveText('3')
 })
 

@@ -133,7 +133,9 @@ describe('Owner To review', () => {
   it('shows what an owner checks, and no food or IT labels', async () => {
     const { wrapper } = await mountOwner()
     const checks = row(wrapper).findAll('.soft-tag').map((c) => c.text())
-    expect(checks).toEqual(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
+    // The Governor is said once, as the meeting type at the end of the room line (look E).
+    expect(checks).toEqual(['Private · reason given', '25 people · 20 seats', 'Pitika notes'])
+    expect(row(wrapper).get('.line .kind.governor').exists()).toBe(true)
     expect(row(wrapper).get('.soft-tag.seats').classes()).toContain('alert')
     expect(row(wrapper).find('.soft-tag.food').exists()).toBe(false)
   })

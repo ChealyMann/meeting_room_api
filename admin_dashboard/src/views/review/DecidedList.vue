@@ -4,7 +4,7 @@
 // Waiting tab (owner decision, 6 Nov 2026): the meeting time, the photo with the reference, the
 // note as a tag, then my decision with its time and where the booking is now. Read only: a row
 // opens the review panel with only Close.
-import { Check, CircleAlert, X } from 'lucide-vue-next'
+import { Check, CircleAlert, MapPin, Users, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import { api } from '../../api'
@@ -20,7 +20,8 @@ import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useResourceList } from '../../composables/useResourceList'
 import { useSessionStore } from '../../stores/session'
 import { decidedTime, groupByDecisionDay, nowPill } from '../../utils/decided'
-import { formatDay } from '../../utils/time'
+import { rowBooker } from '../../utils/booker'
+import { formatDay, sentLabel } from '../../utils/time'
 import ReviewPanel from '../bookings/ReviewPanel.vue'
 import { REVIEWERS, type Reviewer } from './reviewers'
 
@@ -50,6 +51,8 @@ const { list, result, loading, error, filtered, load } = useResourceList<Decided
 watch(() => props.decision, load)
 
 const today = usePhnomPenhToday()
+// "Sent today / yesterday" follows the Phnom Penh day: a new day makes a new now.
+const now = computed(() => (today.value ? new Date() : new Date()))
 const items = computed(() => result.value?.items ?? [])
 const days = computed(() => groupByDecisionDay(items.value, today.value))
 const word = computed(() => (props.decision === 'APPROVED' ? 'approved' : 'rejected'))
@@ -139,10 +142,14 @@ watch(
             :reference="b.reference_code"
             :title="b.meeting_title"
             :current="panel.id.value === b.id"
+            :booker="rowBooker(b)"
+            :sent="sentLabel(b.created_at, now)"
             @open="panel.open(b.id)"
           >
             <template #line>
-              <span class="kh">{{ b.room.name_kh }}</span> · {{ b.room.name_en }} · {{ b.requester.name_en }}
+              <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
+              <span class="bit">{{ b.room.name_en }}</span><span class="sep" />
+              <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span>
             </template>
             <template v-if="note(b)" #tags>
               <span class="soft-tag note" :class="{ alert: decision === 'REJECTED' }" :title="b.decision_note ?? ''">{{ note(b) }}</span>

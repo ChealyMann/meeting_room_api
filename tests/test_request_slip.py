@@ -142,15 +142,16 @@ def test_a_completed_booking_still_has_its_slip(client, auth_headers, confirmed,
 def test_old_booking_without_copies(
     client, auth_headers, db_session, settings, make_bookable_room, make_booking, maker
 ):
-    """Confirmed before the slip existed: it downloads, with only the logo and the booker's
-    signature from their profile now."""
+    """Confirmed before the slip existed: it downloads, with the booker's signature from their
+    profile now, and the boxes signed by the people set now (fill empty boxes, 18 Nov 2026);
+    their signature files were never written here, so only the logo and the booker's show."""
     _write_png(settings, "users/9/me.png")
     booking = make_booking(make_bookable_room(), maker, status=BookingStatus.CONFIRMED)
     booking.requester_info = {"name_en": "Sok Dara", "name_kh": "សុខ ដារ៉ា"}
     db_session.flush()
     document = _open(client.get(url(booking), headers=auth_headers(maker)))
     assert len(document.inline_shapes) == 2
-    assert "ឯកភាពតាមសំណើ។" not in _all_text(document)
+    assert "ឯកភាពតាមសំណើ។" in _all_text(document)
 
 
 def test_no_signature_files_means_no_pictures_but_the_words_stay(

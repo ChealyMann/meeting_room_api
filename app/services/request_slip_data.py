@@ -3,8 +3,9 @@
 It reads the booking's copies only (the snapshot rule): the booker's office names kept when the
 booking was sent (`requester_info`), and the signers kept when it was confirmed
 (`booking_signers`). People moving, offices renamed, heads or signatures changed later do not
-change a slip. One exception (owner, 13 Nov 2026, "fill empty ones only"): a signer who had no
-signature when the booking was confirmed gets the one they have now. A booking from before the
+change a slip. Two exceptions fill what was empty, never change what was kept: a signer who had
+no signature when the booking was confirmed gets the one they have now (owner, 13 Nov 2026), and
+a box with no signer at all gets the person set now (owner, 18 Nov 2026). A booking from before the
 copies existed falls back to the booker's profile now and gets empty opinion boxes.
 
 Wording follows the owner's signed paper (13 Nov 2026); see docs/superpowers/plans/
@@ -21,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.constants.booking import SignerRole
 from app.models import Booking, BookingSigner, User
+from app.services.booking_signers import late_signers
 from app.services.clock import LOCAL_OFFSET
 from app.services.khmer_calendar import lunar_line
 from app.services.khmer_text import (
@@ -151,7 +153,8 @@ def _office_names(booking: Booking) -> tuple[str | None, str | None]:
 
 def build_slip_data(session: Session, settings: Settings, booking: Booking) -> SlipData:
     rows = session.scalars(select(BookingSigner).where(BookingSigner.booking_id == booking.id))
-    signers = {row.role: row for row in rows}
+    kept = {row.role: row for row in rows}
+    signers = {**late_signers(session, booking, set(kept)), **kept}
     slip_settings = get_slip_settings(session)
 
     def title_of(role: SignerRole) -> str:

@@ -49,6 +49,8 @@ from app.services.room_photo import process_image
 from app.services.user_avatar import make_avatar_jpeg
 
 DATA_FILE = Path(__file__).with_name("seed_mockup.json")
+# A cleaned sample signature (transparent PNG) every demo signer gets.
+DEMO_SIGNATURE = Path(__file__).with_name("demo_signature.png")
 MOCKUP_DIR = Path(__file__).resolve().parent.parent / "frontend_mockup" / "meeting_room_mockup"
 DEMO_PASSWORD = "Demo@12345"
 # Opening hours by room type (rooms keep their own hours; owner, 17 Nov 2026). Others 07:30-18:00.
@@ -117,6 +119,8 @@ POSITIONS = {
     "IT Team Lead": "ប្រធានក្រុមព័ត៌មានវិទ្យា",
     "Protocol Officer": "មន្ត្រីពិធីការ",
     "Officer": "មន្ត្រី",
+    "Director of Department": "ប្រធាននាយកដ្ឋាន",
+    "Chief of Office": "ប្រធានការិយាល័យ",
 }
 
 IT_DIVISION = ("Information Technology Department", "IT Administration and Operations")
@@ -247,6 +251,74 @@ OTHERS = [
 ]
 
 
+def _head(staff_id, title, name_en, name_kh, email, position, division):
+    return DemoUser(
+        staff_id, title, name_en, name_kh, email, "", position, division, (RoleCode.STAFF,)
+    )
+
+
+# Heads of the demo staff's departments and offices (divisions), so their request slips have
+# every opinion box signed (owner, 18 Nov 2026). Each signs where they lead.
+HEADS = [
+    _head(
+        "HEAD-201",
+        "Mr.",
+        "Ly Sophal",
+        "លី សុផល",
+        "head.statistics@example.com",
+        "Director of Department",
+        ("Statistics Department", "Monetary and Financial Statistics"),
+    ),
+    _head(
+        "HEAD-202",
+        "Ms.",
+        "Chan Malis",
+        "ចាន់ ម៉ាលីស",
+        "chief.mfs@example.com",
+        "Chief of Office",
+        ("Statistics Department", "Monetary and Financial Statistics"),
+    ),
+    _head(
+        "HEAD-203",
+        "Dr.",
+        "Keo Vannak",
+        "កែវ វណ្ណៈ",
+        "head.research@example.com",
+        "Director of Department",
+        ("Monetary Policy and Research Department", "Research"),
+    ),
+    _head(
+        "HEAD-204",
+        "Ms.",
+        "Sok Channary",
+        "សុខ ចន្ទនារី",
+        "chief.research@example.com",
+        "Chief of Office",
+        ("Monetary Policy and Research Department", "Research"),
+    ),
+    _head(
+        "HEAD-205",
+        "Mr.",
+        "Nhem Pisey",
+        "ញឹម ពិសី",
+        "head.personnel@example.com",
+        "Director of Department",
+        ("Personnel Department", "Training"),
+    ),
+    _head(
+        "HEAD-206",
+        "Ms.",
+        "Pich Sreymom",
+        "ពេជ្រ ស្រីមុំ",
+        "chief.training@example.com",
+        "Chief of Office",
+        ("Personnel Department", "Training"),
+    ),
+]
+# Who gets the demo signature when they have none: the heads and the demo bookers.
+SIGNERS = [h.staff_id for h in HEADS] + ["DEMO-103", "DEMO-104", "DEMO-105"]
+
+
 @dataclass
 class MockupResult:
     offices: int = 0
@@ -257,6 +329,8 @@ class MockupResult:
     users: int = 0
     rooms: int = 0
     photos: int = 0
+    heads: int = 0
+    signatures: int = 0
 
 
 class MockupError(Exception):
@@ -394,7 +468,7 @@ def _users(session: Session, settings: Settings, it_staff: list[dict], result: M
                 s["avatar"],
             )
         )
-    people = OWNERS + it_people + OTHERS
+    people = OWNERS + it_people + OTHERS + HEADS
     password_hash = hash_password(DEMO_PASSWORD)
     users: dict[str, User] = {}
     for p in people:
@@ -449,6 +523,41 @@ def _add_photos(settings: Settings, session: Session, room: Room, photos: list[s
     return added
 
 
+def _signatures(session: Session, settings: Settings, users: dict[str, User]) -> int:
+    """Give each demo signer who has none the demo signature (one sample for all, owner, 18 Nov
+    2026). Returns how many were added."""
+    added = 0
+    for staff_id in SIGNERS:
+        user = users.get(staff_id)
+        if user is None or user.user_signature:
+            continue
+        stored = f"users/{user.id}/{uuid.uuid4()}.png"
+        path = settings.signature_dir / stored
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(DEMO_SIGNATURE.read_bytes())
+        user.user_signature = stored
+        added += 1
+        print(f"  signature for {user.email}")
+    session.flush()
+    return added
+
+
+def _set_heads(session: Session, users: dict[str, User]) -> int:
+    """Make each demo head the head of their department or office, where none is set yet (a head
+    set by an Admin is never replaced). Returns how many were set."""
+    done = 0
+    for head in HEADS:
+        user = users[head.staff_id]
+        division = _division(session, *head.division)
+        unit = division.department if head.position == "Director of Department" else division
+        if unit.head_user_id is None:
+            unit.head_user_id = user.id
+            done += 1
+            print(f"  {user.name_en} heads {unit.name_en}")
+    session.flush()
+    return done
+
+
 def seed_mockup(session: Session, settings: Settings) -> MockupResult:
     """Insert the missing mockup data. Flushes; the caller commits."""
     data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
@@ -456,6 +565,8 @@ def seed_mockup(session: Session, settings: Settings) -> MockupResult:
     floors = _places(session, data["offices"], result)
     categories, equipment = _catalog(session, result)
     users = _users(session, settings, data["it_staff"], result)
+    result.heads = _set_heads(session, users)
+    result.signatures = _signatures(session, settings, users)
 
     for r in data["rooms"]:
         floor = floors[(r["office"], r["building"], r["floor"])]
@@ -506,7 +617,8 @@ def main() -> int:
     print(
         f"Mockup data: added {result.offices} offices, {result.buildings} buildings, "
         f"{result.floors} floors, {result.categories} categories, {result.equipment} equipment, "
-        f"{result.users} users, {result.rooms} rooms, {result.photos} photos. "
+        f"{result.users} users, {result.rooms} rooms, {result.photos} photos, "
+        f"{result.heads} heads, {result.signatures} signatures. "
         f"Demo password: {DEMO_PASSWORD}"
     )
     return 0

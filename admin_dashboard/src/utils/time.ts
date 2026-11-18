@@ -68,3 +68,16 @@ export function formatDay(date: string): string {
   const p = parts(calendarDay, new Date(`${date}T00:00:00Z`))
   return `${p.weekday} ${p.day} ${p.month} ${p.year}`
 }
+
+/** When a booking was sent, in Phnom Penh: "Sent today, 07:45", "Sent yesterday, 16:20",
+ *  "Sent Mon 16 Nov, 10:02" (the year only when it is not this year). */
+export function sentLabel(isoUtc: string, now: Date): string {
+  const at = new Date(isoUtc)
+  const day = phnomPenhDate(at)
+  const today = phnomPenhDate(now)
+  const clock = phnomPenhClock(at)
+  if (day === today) return `Sent today, ${clock}`
+  if (day === addDays(today, -1)) return `Sent yesterday, ${clock}`
+  const words = day.slice(0, 4) === today.slice(0, 4) ? formatDay(day).slice(0, -5) : formatDay(day)
+  return `Sent ${words}, ${clock}`
+}

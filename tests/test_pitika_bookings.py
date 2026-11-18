@@ -56,6 +56,30 @@ def test_list_only_own_province(client, frozen, pitika, pending, make_bookable_r
     assert data["total"] == 1
 
 
+def test_list_item_booker_card(client, frozen, db_session, pitika, pending, auth_headers):
+    """The row's footer (owner pick E, 18 Nov 2026): the booker's photo, and the position and
+    department as they were when the booking was sent, even if the booker moves later."""
+    booking = pending()
+    booking.requester_info = {
+        **booking.requester_info,
+        "position": "Officer",
+        "department": "Statistics Department",
+    }
+    booking.requester.user_avatar = "7/face.jpg"
+    booking.requester.name_en = "Heng Rathana"
+    db_session.flush()
+
+    item = client.get(LIST, headers=auth_headers(pitika)).json()["items"][0]
+    assert item["requester"] == {
+        "id": booking.requester.id,
+        "name_en": "Heng Rathana",
+        "name_kh": booking.requester.name_kh,
+        "avatar_url": f"/api/v1/users/{booking.requester.id}/avatar",
+        "position": "Officer",
+        "department": "Statistics Department",
+    }
+
+
 def test_list_without_province_is_empty(client, frozen, make_user, pending, auth_headers):
     pending()
     nobody = make_user(roles=["PITIKA"])

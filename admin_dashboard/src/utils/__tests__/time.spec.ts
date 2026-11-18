@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDays, formatDay, formatPhnomPenh, phnomPenhClock, phnomPenhDate } from '../time'
+import { addDays, formatDay, formatPhnomPenh, phnomPenhClock, phnomPenhDate, sentLabel } from '../time'
 
 describe('formatPhnomPenh', () => {
   it('shows API UTC time as Phnom Penh time (UTC+7)', () => {
@@ -40,5 +40,25 @@ describe('addDays', () => {
 describe('formatDay', () => {
   it('shows the weekday, day, short month and year', () => {
     expect(formatDay('2026-11-04')).toBe('Wed 4 Nov 2026')
+  })
+})
+
+describe('sentLabel', () => {
+  // 18 Nov 2026, 10:00 in Phnom Penh
+  const now = new Date('2026-11-18T03:00:00Z')
+
+  it('says today or yesterday with the Phnom Penh time', () => {
+    expect(sentLabel('2026-11-18T00:45:00Z', now)).toBe('Sent today, 07:45')
+    expect(sentLabel('2026-11-17T09:20:00Z', now)).toBe('Sent yesterday, 16:20')
+  })
+
+  it('uses the Phnom Penh day, not the UTC one', () => {
+    // 17 Nov 18:30 UTC is 18 Nov 01:30 in Phnom Penh
+    expect(sentLabel('2026-11-17T18:30:00Z', now)).toBe('Sent today, 01:30')
+  })
+
+  it('names the day when it is older, and the year only when it is not this year', () => {
+    expect(sentLabel('2026-11-16T03:02:00Z', now)).toBe('Sent Mon 16 Nov, 10:02')
+    expect(sentLabel('2025-12-30T03:02:00Z', now)).toBe('Sent Tue 30 Dec 2025, 10:02')
   })
 })

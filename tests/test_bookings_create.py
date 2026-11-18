@@ -40,6 +40,9 @@ def test_r1_created_pending(client, frozen, room, booker, auth_headers):
         "id": booker.id,
         "name_en": booker.name_en,
         "name_kh": booker.name_kh,
+        "avatar_url": None,
+        "position": booker.position.name_en,
+        "department": data["requester_info"]["department"],
     }
     assert data["room"]["id"] == room.id
     assert data["first_session"]["date"] == DAY.isoformat()

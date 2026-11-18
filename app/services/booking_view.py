@@ -13,6 +13,7 @@ from app.config import Settings
 from app.constants.booking import ATTACHMENTS_OPEN, ReviewDecision, ReviewStage
 from app.models import Booking, BookingSession, Building, Floor, Room, User
 from app.schemas.booking import (
+    BookerRef,
     BookingDetail,
     BookingListItem,
     BookingRoomRef,
@@ -28,6 +29,7 @@ from app.schemas.booking_attachment import attachment_out
 from app.schemas.booking_review import DecidedBookingItem
 from app.schemas.refs import BuildingRef, FloorRef, NamedRef, ProvinceRef
 from app.services import booking_transitions as transitions
+from app.services.user_avatar import avatar_url
 
 
 def booking_load_options() -> tuple:
@@ -75,6 +77,18 @@ def _person(user: User | None) -> PersonRef | None:
     return PersonRef.model_validate(user) if user else None
 
 
+def _booker(booking: Booking) -> BookerRef:
+    user, sent = booking.requester, booking.requester_info
+    return BookerRef(
+        id=user.id,
+        name_en=user.name_en,
+        name_kh=user.name_kh,
+        avatar_url=avatar_url(user),
+        position=sent.get("position"),
+        department=sent.get("department"),
+    )
+
+
 def _session_out(session: BookingSession | None) -> SessionOut | None:
     return SessionOut.model_validate(session) if session is not None else None
 
@@ -89,7 +103,7 @@ def _list_item_fields(booking: Booking) -> dict[str, Any]:
         "route": booking.route,
         "status": booking.status,
         "display_status": transitions.display_status(booking),
-        "requester": NamedRef.model_validate(booking.requester),
+        "requester": _booker(booking),
         "first_session": SessionOut.model_validate(booking.sessions[0]),
         "session_count": len(booking.sessions),
         "next_session": _session_out(transitions.next_session(booking)),

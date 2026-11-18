@@ -20,6 +20,12 @@ const ROOM = {
   is_private: true,
   location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
   province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
+  building: { id: 2, name_en: 'Techo Building', name_kh: 'អគារតេជោ', short_name: null },
+  floor: { id: 5, floor_label: '3rd floor' },
+  capacity: 20,
+  category: { id: 1, name_en: 'Meeting Room', name_kh: 'បន្ទប់ប្រជុំ' },
+  owner: { id: 7, name_en: 'Keo Vanna', name_kh: 'x' },
+  map_query: null,
 }
 const ROOMS = [{ ...ROOM, capacity: 20, owner: { id: 7, name_en: 'Keo Vanna', name_kh: 'x' }, cover_photo: null }]
 const day = (offset: number) => {
@@ -36,7 +42,7 @@ const ITEMS = [0, 1, 9].map((offset, i) => ({
   route: 'R2',
   status: 'PENDING_OWNER',
   display_status: 'PENDING_OWNER',
-  requester: { id: 4, name_en: 'Sokunthea Chanthavong', name_kh: 'សុគន្ធា' },
+  requester: { id: 4, name_en: 'Sokunthea Chanthavong', name_kh: 'សុគន្ធា', avatar_url: null, position: 'Officer', department: 'Payment Systems Department' },
   first_session: { id: 1, date: day(offset), start_time: '23:00', end_time: '23:30' },
   session_count: 1,
   attendees: 25,
@@ -96,7 +102,7 @@ test('a Room owner lands on To review, sees only their menu, with the waiting co
   await signedIn(page, '/')
 
   await expect(page).toHaveURL(/\/owner-review$/)
-  await expect(page.locator('nav a .label')).toHaveText(['To review', 'Bookings'])
+  await expect(page.locator('nav a .label')).toHaveText(['Find a room', 'My bookings', 'To review', 'Bookings'])
   await expect(page.locator('nav a[href="/owner-review"] .wait')).toHaveText('3')
   await expect(page.locator('.rail .brand-text span')).toHaveText('Room owner')
 })
@@ -139,7 +145,9 @@ for (const width of [1366, 900, 390]) {
     await signedIn(page, '/owner-review')
 
     await expect(page.locator('.soft-row')).toHaveCount(3)
-    await expect(page.locator('.soft-row').first().locator('.soft-tag')).toHaveText(['Private · reason given', 'With Governor', '25 people · 20 seats', 'Pitika notes'])
+    // The Governor is said once, as the meeting type in the room line (look E, 18 Nov 2026).
+    await expect(page.locator('.soft-row').first().locator('.soft-tag')).toHaveText(['Private · reason given', '25 people · 20 seats', 'Pitika notes'])
+    await expect(page.locator('.soft-row').first().locator('.line .kind.governor')).toBeVisible()
     expect(await sideways(page)).toBe(0)
     const ring = page.locator('.today-ring')
     await expect(ring).toHaveText('3/6')

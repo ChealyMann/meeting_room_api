@@ -175,6 +175,15 @@ class PersonRef(ResponseModel):
     name_en: str
 
 
+class BookerRef(NamedRef):
+    """Who sent the booking, for the review row's footer (owner pick E, 18 Nov 2026). The name
+    and photo are today's; the position and department are as they were when it was sent."""
+
+    avatar_url: str | None  # GET /users/{id}/avatar, or null when there is no photo
+    position: str | None
+    department: str | None
+
+
 class CateringOut(ResponseModel):
     packages: list[dict[str, Any]]
     remarks: str | None
@@ -227,7 +236,7 @@ class BookingListItem(ResponseModel):
     route: BookingRoute
     status: BookingStatus
     display_status: DisplayStatus  # CONFIRMED and ended -> COMPLETED (B-10)
-    requester: NamedRef
+    requester: BookerRef
     first_session: SessionOut
     session_count: int
     # The first session not ended yet (owner, 16 Nov 2026: the card shows it); null once all ended.
