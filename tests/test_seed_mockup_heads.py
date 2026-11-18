@@ -1,20 +1,14 @@
 """The demo heads and signatures in scripts/seed_mockup.py (owner, 18 Nov 2026): every opinion
 box of a demo request slip is signed."""
 
-import io
-
 from PIL import Image
 
-from scripts.seed_mockup import HEADS, _set_heads, _signatures, draw_signature
+from scripts.seed_mockup import DEMO_SIGNATURE, HEADS, _set_heads, _signatures
 
 
-def test_a_drawn_signature_is_a_clean_png_and_the_same_each_time():
-    png = draw_signature("Ly Sophal")
-    image = Image.open(io.BytesIO(png))
-    assert image.format == "PNG"
-    assert image.mode == "RGBA"  # cleaned like an upload: see-through paper
-    assert draw_signature("Ly Sophal") == png
-    assert draw_signature("Chan Malis") != png
+def test_the_demo_signature_is_a_clean_png():
+    image = Image.open(DEMO_SIGNATURE)
+    assert (image.format, image.mode) == ("PNG", "RGBA")  # cleaned like an upload
 
 
 def _org(make_department, make_division):
@@ -53,5 +47,5 @@ def test_signatures_are_drawn_only_for_who_has_none(db_session, settings, make_u
     users = {"HEAD-201": make_user(), "DEMO-103": make_user(user_signature="users/5/mine.png")}
     assert _signatures(db_session, settings, users) == 1
     stored = users["HEAD-201"].user_signature
-    assert (settings.signature_dir / stored).is_file()
+    assert (settings.signature_dir / stored).read_bytes() == DEMO_SIGNATURE.read_bytes()
     assert users["DEMO-103"].user_signature == "users/5/mine.png"

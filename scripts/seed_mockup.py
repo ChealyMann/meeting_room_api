@@ -14,10 +14,7 @@ DEMO_PASSWORD. Safe to run many times: records are matched by name or email and 
 when missing; photos are added only to rooms this run creates.
 """
 
-import io
 import json
-import math
-import random
 import re
 import sys
 import uuid
@@ -25,7 +22,6 @@ from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -51,9 +47,10 @@ from app.models import (
 from app.security import hash_password
 from app.services.room_photo import process_image
 from app.services.user_avatar import make_avatar_jpeg
-from app.services.user_signature import make_signature_png
 
 DATA_FILE = Path(__file__).with_name("seed_mockup.json")
+# A cleaned sample signature (transparent PNG) every demo signer gets.
+DEMO_SIGNATURE = Path(__file__).with_name("demo_signature.png")
 MOCKUP_DIR = Path(__file__).resolve().parent.parent / "frontend_mockup" / "meeting_room_mockup"
 DEMO_PASSWORD = "Demo@12345"
 # Opening hours by room type (rooms keep their own hours; owner, 17 Nov 2026). Others 07:30-18:00.
@@ -318,7 +315,7 @@ HEADS = [
         ("Personnel Department", "Training"),
     ),
 ]
-# Who gets a drawn demo signature when they have none: the heads and the demo bookers.
+# Who gets the demo signature when they have none: the heads and the demo bookers.
 SIGNERS = [h.staff_id for h in HEADS] + ["DEMO-103", "DEMO-104", "DEMO-105"]
 
 
@@ -526,38 +523,9 @@ def _add_photos(settings: Settings, session: Session, room: Room, photos: list[s
     return added
 
 
-def draw_signature(name: str) -> bytes:
-    """A made-up handwritten signature for a demo user, as the cleaned PNG the app stores: the
-    name in a script font when the machine has one, on a loose underline stroke. The same name
-    always draws the same signature."""
-    rng = random.Random(name)
-    image = Image.new("RGB", (520, 180), "white")
-    pen = ImageDraw.Draw(image)
-    ink = (22, 38, 110)
-    font = None
-    for face in ("segoesc.ttf", "Inkfree.ttf", "DejaVuSans-Oblique.ttf"):
-        try:
-            font = ImageFont.truetype(face, 58)
-            break
-        except OSError:
-            continue
-    text = name if font else ""
-    if font:
-        pen.text((24 + rng.randint(0, 20), 30 + rng.randint(0, 14)), text, font=font, fill=ink)
-    # The underline: a loose wave from left to right, a little different for each name.
-    lift, wave = rng.uniform(0.6, 1.4), rng.uniform(5, 11)
-    points = [
-        (x, 138 - x * 0.06 * lift + wave * math.sin(x / rng.uniform(28, 40)))
-        for x in range(30, 470, 4)
-    ]
-    pen.line(points, fill=ink, width=4, joint="curve")
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return make_signature_png(buffer.getvalue())
-
-
 def _signatures(session: Session, settings: Settings, users: dict[str, User]) -> int:
-    """Draw a signature for each demo signer who has none. Returns how many were added."""
+    """Give each demo signer who has none the demo signature (one sample for all, owner, 18 Nov
+    2026). Returns how many were added."""
     added = 0
     for staff_id in SIGNERS:
         user = users.get(staff_id)
@@ -566,7 +534,7 @@ def _signatures(session: Session, settings: Settings, users: dict[str, User]) ->
         stored = f"users/{user.id}/{uuid.uuid4()}.png"
         path = settings.signature_dir / stored
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(draw_signature(user.name_en))
+        path.write_bytes(DEMO_SIGNATURE.read_bytes())
         user.user_signature = stored
         added += 1
         print(f"  signature for {user.email}")
