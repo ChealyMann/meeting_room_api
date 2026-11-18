@@ -135,7 +135,7 @@ describe('Owner To review', () => {
     const checks = row(wrapper).findAll('.soft-tag').map((c) => c.text())
     // The Governor is said once, as the meeting type at the end of the room line (look E).
     expect(checks).toEqual(['Private · reason given', '25 people · 20 seats', 'Pitika notes'])
-    expect(row(wrapper).get('.line .kind.governor').exists()).toBe(true)
+    expect(row(wrapper).find('.line .kind.governor').exists()).toBe(true)
     expect(row(wrapper).get('.soft-tag.seats').classes()).toContain('alert')
     expect(row(wrapper).find('.soft-tag.food').exists()).toBe(false)
   })

@@ -18,6 +18,12 @@ const ROOM = {
   is_private: false,
   location: { id: 3, name_en: 'Head Office', name_kh: 'ការិយាល័យកណ្តាល' },
   province: { code: 'PP', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' },
+  building: { id: 2, name_en: 'Techo Building', name_kh: 'អគារតេជោ', short_name: null },
+  floor: { id: 5, floor_label: '3rd floor' },
+  capacity: 20,
+  category: { id: 1, name_en: 'Meeting Room', name_kh: 'បន្ទប់ប្រជុំ' },
+  owner: null,
+  map_query: null,
 }
 const PACKAGES = Array.from({ length: 20 }, (_, i) => ({
   id: 3 + i,
@@ -72,7 +78,6 @@ const ORDERS = Array.from({ length: 12 }, (_, i) => ({
   meeting_title: `Quarterly budget and planning review number ${i + 1}`,
   delivery_date: '2026-11-04',
   delivery_time: '12:00',
-  servings: 25,
   packages: [
     { id: 1, name: 'Coffee break' },
     { id: 2, name: 'Lunch box with a long name' },

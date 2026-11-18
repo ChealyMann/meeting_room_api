@@ -91,7 +91,7 @@ describe('RoomEquipment', () => {
   const box = (wrapper: Awaited<ReturnType<typeof mountList>>, name: string) =>
     wrapper.findAll('label.check').find((l) => l.text().startsWith(name))
   const saveButton = (wrapper: Awaited<ReturnType<typeof mountList>>) =>
-    wrapper.findAll('button').find((b) => b.text() === 'Save equipment')!
+    wrapper.findAll('button').find((b) => b.text() === 'Save')!
 
   it("shows each item's icon beside its name, as the equipment list does", async () => {
     ALL[0] = { ...item(1, 'Projector'), icon: 'projector' }
@@ -127,6 +127,22 @@ describe('RoomEquipment', () => {
     expect(useToast().toasts.value.map((t) => t.title)).toContain('Equipment saved')
     const events = wrapper.emitted('change') ?? []
     expect((events[events.length - 1]![0] as EquipmentOut[]).map((e) => e.id)).toEqual([1])
+  })
+
+  it('says how many changes are not saved, and Undo puts the ticks back (look A, 18 Nov 2026)', async () => {
+    const wrapper = await mountList([item(1, 'Projector')])
+    expect(wrapper.get('.foot .state').text()).toBe('No changes')
+    expect(wrapper.get('.foot').classes()).toContain('clean')
+
+    await box(wrapper, 'Projector')!.get('input').setValue(false)
+    await box(wrapper, 'Whiteboard')!.get('input').setValue(true)
+    expect(wrapper.get('.foot .state').text()).toBe('2 changes not saved')
+    expect(box(wrapper, 'Whiteboard')!.classes()).toContain('on')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Undo')!.trigger('click')
+    expect(wrapper.get('.foot .state').text()).toBe('No changes')
+    expect((box(wrapper, 'Projector')!.get('input').element as HTMLInputElement).checked).toBe(true)
+    expect(box(wrapper, 'Whiteboard')!.classes()).not.toContain('on')
   })
 
   it('shows the API message when the save is refused', async () => {

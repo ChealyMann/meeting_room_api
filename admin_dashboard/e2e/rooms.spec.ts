@@ -37,8 +37,8 @@ test('create a room in steps, find it, turn it off', async ({ page }) => {
   await panel.getByRole('button', { name: 'Next: equipment' }).click()
 
   await expect(panel).toContainText('Step 3 of 3 · Equipment')
-  await panel.locator('#tabpanel-equipment input[type="checkbox"]').first().check()
-  await panel.getByRole('button', { name: 'Save equipment' }).click()
+  await panel.locator('#tabpanel-equipment label.check').first().click()
+  await panel.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('Equipment saved')
   await panel.getByRole('button', { name: 'Done' }).click()
 

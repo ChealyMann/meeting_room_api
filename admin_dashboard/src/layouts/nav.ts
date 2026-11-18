@@ -33,6 +33,9 @@ export interface NavItem {
   route?: string
   /** The roles that see the item; none means the Admin only. */
   roles?: string[]
+  /** Route names of pages under this item (a room, its booking form): the menu keeps the item
+   *  marked on them, and the top bar shows it before the page name, as a link back. */
+  pages?: string[]
 }
 
 export interface NavGroup {
@@ -49,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Daily',
     items: [
       // Every Staff user books here, so these two come first (owner decision, 12 Nov 2026).
-      { label: 'Find a room', icon: 'search', route: 'find-room', roles: ['STAFF'] },
+      { label: 'Find a room', icon: 'search', route: 'find-room', roles: ['STAFF'], pages: ['staff-room', 'book'] },
       { label: 'My bookings', icon: 'calendar-clock', route: 'my-bookings', roles: ['STAFF'] },
       { label: 'To review', icon: 'inbox', route: 'review', roles: ['PITIKA'] },
       { label: 'To review', icon: 'inbox', route: 'owner-review', roles: ['ROOM_OWNER'] },
@@ -156,6 +159,12 @@ export function roleTitle(roles: string[]): string {
 function itemFor(route: unknown, roles: string[]): NavItem | null {
   const all = roles.length ? navFor(roles) : NAV_GROUPS
   return all.flatMap((group) => group.items).find((i) => i.route === route) ?? null
+}
+
+/** The menu item a page sits under (Find a room for a room and its booking form), or null. */
+export function parentItem(route: unknown, roles: string[]): NavItem | null {
+  const all = roles.length ? navFor(roles) : NAV_GROUPS
+  return all.flatMap((group) => group.items).find((i) => typeof route === 'string' && i.pages?.includes(route)) ?? null
 }
 
 /** The page's name as the menu shows it ("My rooms"), or null for a page outside the menu. */

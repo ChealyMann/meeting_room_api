@@ -89,7 +89,7 @@ const status = computed(() => {
     @open="emit('open')"
   >
     <template #line>
-      <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span><span class="sep" />
+      <span class="bit"><MapPin aria-hidden="true" /><span class="kh">{{ b.room.name_kh }}</span></span>
       <span class="bit">{{ b.room.name_en }}</span>
     </template>
     <template #tags>

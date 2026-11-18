@@ -128,3 +128,10 @@ describe('waiting counts in the menu', () => {
     expect(calls).toEqual([])
   })
 })
+
+describe('the logo and name', () => {
+  it('go to my home page, as after signing in (owner, 18 Nov 2026)', async () => {
+    expect((await mountRail(['STAFF'])).get('.brand a.home').attributes('href')).toBe('/find-room')
+    expect((await mountRail(['PITIKA', 'STAFF'])).get('.brand a.home').attributes('href')).toBe('/review')
+  })
+})

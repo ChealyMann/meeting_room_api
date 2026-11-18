@@ -19,7 +19,8 @@ test('sign in, edit my profile, stay signed in after reload, sign out', async ({
   await expect(rail.getByRole('link', { name: 'Rooms' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByText(/Phnom Penh \d\d:\d\d/)).toBeVisible()
 
-  await rail.getByRole('link', { name: /My profile/ }).click()
+  await rail.getByRole('button', { name: /Account menu/ }).click()
+  await page.getByRole('menuitem', { name: 'My profile' }).click()
   const phone = page.getByLabel('Phone')
   await expect(phone).toBeEditable()
   const before = await phone.inputValue()
@@ -39,6 +40,7 @@ test('sign in, edit my profile, stay signed in after reload, sign out', async ({
   await page.getByRole('button', { name: 'Save changes' }).click()
   await expect(page.getByRole('status').getByText('Profile saved')).toBeVisible()
 
-  await rail.getByRole('button', { name: 'Sign out' }).click()
+  await rail.getByRole('button', { name: /Account menu/ }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/sign-in/)
 })

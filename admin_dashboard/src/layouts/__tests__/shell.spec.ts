@@ -92,18 +92,32 @@ describe('AppShell', () => {
     expect(wrapper.text()).toContain('dara@company.com')
     expect(wrapper.text()).toContain('SD')
     expect(wrapper.get('header').text()).toContain('My profile')
-    expect(wrapper.get('header').text()).toMatch(/Phnom Penh \w{3} \d{1,2} \w{3} \d{4} \d\d:\d\d/)
+    // The clock (look A): the day and the time; the city is in its hover title.
+    expect(wrapper.get('header .clock').text()).toMatch(/^\w{3} \d{1,2} \w{3}\s*\d\d:\d\d$/)
+    expect(wrapper.get('header .clock').attributes('title')).toMatch(/^Phnom Penh · /)
   })
 
-  it('signs out and goes to sign-in', async () => {
+  it('signs out from the account menu and goes to sign-in (look A, 18 Nov 2026)', async () => {
     const { wrapper, router, session } = await mountShell('/')
     const signOut = vi.spyOn(session, 'signOut').mockResolvedValue()
 
-    await wrapper.get('button[aria-label="Sign out"]').trigger('click')
+    const account = wrapper.get('button[aria-haspopup="menu"]')
+    expect(account.attributes('aria-expanded')).toBe('false')
+    await account.trigger('click')
+    expect(account.attributes('aria-expanded')).toBe('true')
+    const menu = document.body.querySelector('.account-menu')!
+    expect([...menu.querySelectorAll('[role="menuitem"]')].map((m) => m.textContent?.trim())).toEqual([
+      'My profile',
+      'Night mode',
+      'Sign out',
+    ])
+
+    ;(menu.querySelector('.out') as HTMLButtonElement).click()
     await flushPromises()
 
     expect(signOut).toHaveBeenCalledTimes(1)
     expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(document.body.querySelector('.account-menu')).toBeNull()
   })
 })
 

@@ -22,6 +22,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_UNDERLINE
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt, RGBColor
+from PIL import Image, ImageOps
 
 from app.services.request_slip_data import SlipData, SlipSigner
 
@@ -31,6 +32,25 @@ LABEL_FONT = "Khmer OS Muol Light"
 PEN_FONT = "Khmer OS Freehand"
 PEN_SIZE = 7.5  # the opinion comments and their dates (owner, 13 Nov 2026: "smaller")
 INK_BLUE = RGBColor(0x1F, 0x3A, 0x93)  # the opinion boxes, like a pen
+
+
+def blue_ink(png: bytes) -> io.BytesIO:
+    """A signature repainted in the pen blue (owner, 18 Nov 2026: "in blue like the text"): every
+    pixel takes INK_BLUE and keeps its see-through amount, so the strokes and their soft edges stay.
+    A picture with no see-through part uses its darkness as the ink amount."""
+    image = Image.open(io.BytesIO(png))
+    if image.mode in ("RGBA", "LA") or "transparency" in image.info:
+        alpha = image.convert("RGBA").getchannel("A")
+    else:
+        alpha = ImageOps.invert(image.convert("L"))
+    painted = Image.new("RGBA", image.size, (*INK_BLUE, 0))
+    painted.putalpha(alpha)
+    out = io.BytesIO()
+    painted.save(out, format="PNG")
+    out.seek(0)
+    return out
+
+
 LOGO = Path(__file__).resolve().parent.parent / "assets" / "nbc-logo.png"
 
 LEFT_CM, MIDDLE_CM, RIGHT_CM = 6.6, 6.3, 6.0  # 18.9 cm of text width
@@ -160,7 +180,9 @@ def _signer(cell, signer: SlipSigner | None, comment_size: float = PEN_SIZE) -> 
             run.add_break()
     if signer.signature is not None:
         picture = _tight(cell.add_paragraph(), align=WD_ALIGN_PARAGRAPH.CENTER)
-        picture.add_run().add_picture(str(signer.signature), width=_picture_cm(2.6))
+        picture.add_run().add_picture(
+            blue_ink(signer.signature.read_bytes()), width=_picture_cm(2.6)
+        )
     date_line = _tight(cell.add_paragraph(), align=WD_ALIGN_PARAGRAPH.CENTER)
     _run(date_line, signer.date, font=PEN_FONT, size=PEN_SIZE, color=INK_BLUE)
     name = _tight(cell.add_paragraph(), align=WD_ALIGN_PARAGRAPH.CENTER, line=1.3)
@@ -264,7 +286,9 @@ def _bottom(cell, data: SlipData) -> None:
     _run(_tight(_first(maker), align=centre), "អ្នកធ្វើប័ណ្ណ")
     signature = _tight(maker.add_paragraph(), align=centre)
     if data.maker.signature is not None:
-        signature.add_run().add_picture(str(data.maker.signature), width=_picture_cm(2.8))
+        signature.add_run().add_picture(
+            blue_ink(data.maker.signature.read_bytes()), width=_picture_cm(2.8)
+        )
     else:
         _tight(maker.add_paragraph())  # room to sign by hand
         _tight(maker.add_paragraph())

@@ -5,7 +5,8 @@
 // room's photo with the reference on it, the meeting (title, one room line, soft tags) and the
 // buttons; under it a soft cream footer with who booked (face, name, position · department),
 // the status and when it was sent. A click or Enter opens the details.
-// Slots: `line` (the room line: put `.sep` spans between its parts, Lucide icons are sized),
+// Slots: `line` (the room line: one <span class="bit"> per part, the bars between them are drawn;
+// Lucide icons are sized),
 // `tags` (<span class="soft-tag">, `warn` or `alert` for amber or crimson), `status` (in the
 // footer, before "Sent") and `actions` (the buttons, top right).
 import { CalendarDays, Send } from 'lucide-vue-next'
@@ -56,7 +57,7 @@ const role = computed(() => (props.booker ? bookerRole(props.booker) : ''))
       </div>
       <div class="body">
         <h3>{{ title }}</h3>
-        <div class="line"><slot name="line" /></div>
+        <div class="line"><div class="line-in"><slot name="line" /></div></div>
         <div v-if="$slots.tags" class="tags"><slot name="tags" /></div>
       </div>
       <div v-if="$slots.actions" class="side">
@@ -230,37 +231,50 @@ h3 {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
-/* The parts never shrink into each other: when the row is narrow, the line wraps between them. */
+/* The room line: its parts (`.bit`) never shrink into each other; when the row is narrow the
+   line wraps between them. Each part draws its thin bar in its own left padding,
+   and the inner box sits 19px to the left inside a clipped box: so the part that starts a line has
+   its bar cut off, and no bar is ever left hanging at a line's end or start. */
 .line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px 9px;
   min-width: 0;
   margin-top: 5px;
-  white-space: nowrap;
+  overflow: hidden;
   font-size: 13.5px;
   color: var(--color-intaglio);
 }
-.line :slotted(.bit) {
+.line-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 3px;
+  margin-left: -19px;
+  white-space: nowrap;
+}
+.line-in :slotted(.bit) {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 6px;
-  max-width: 100%;
+  max-width: calc(100% - 19px);
+  padding-left: 19px;
 }
-.line :slotted(svg),
-.line :slotted(.bit svg) {
+.line-in :slotted(.bit)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  width: 1px;
+  height: 14px;
+  margin-top: -7px;
+  background: var(--color-rule-strong);
+}
+.line-in :slotted(svg),
+.line-in :slotted(.bit svg) {
   flex: none;
   width: 15px;
   height: 15px;
   color: var(--color-ink-off);
-}
-.line :slotted(.sep) {
-  flex: none;
-  width: 1px;
-  height: 14px;
-  background: var(--color-rule-strong);
 }
 .tags {
   display: flex;
@@ -350,10 +364,12 @@ h3 {
 }
 
 /* The footer: who booked, the status, when it was sent */
+/* When the row is too narrow for one line, the status and "Sent" move to a second line, right. */
 .foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 6px 12px;
   min-width: 0;
   margin: 2px 12px 12px;
   padding: 8px 14px 8px 10px;
@@ -387,9 +403,10 @@ h3 {
 }
 .foot-end {
   display: inline-flex;
-  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 14px;
+  gap: 6px 14px;
   margin-left: auto;
 }
 .sent {
@@ -471,8 +488,9 @@ h3 {
   }
   .foot-end {
     flex-basis: 100%;
+    flex-wrap: wrap;
     order: 5;
-    justify-content: space-between;
+    gap: 6px 10px;
     margin-left: 0;
   }
 }
