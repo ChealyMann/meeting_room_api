@@ -167,7 +167,7 @@ describe('RoomDetailPanel tabs', () => {
     await wrapper.findAll('[role="tab"]').find((t) => t.text().startsWith('Photos'))!.trigger('click')
 
     expect(wrapper.get('#tabpanel-photos').text()).toContain('Add photos')
-    expect(wrapper.get('#tabpanel-photos').text()).toContain('0/20')
+    expect(wrapper.get('#tabpanel-photos').text()).toContain('Photos 0 of 20')
   })
 })
 
