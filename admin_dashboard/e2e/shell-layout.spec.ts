@@ -47,8 +47,13 @@ for (const [name, width] of [
     await page.setViewportSize({ width, height: 800 })
     await signedIn(page)
 
-    const signOut = page.getByRole('button', { name: 'Sign out' })
+    // The account menu (look A): my photo opens it; Sign out is inside, and the card fits.
+    await page.getByRole('button', { name: /Account menu/ }).click()
+    const signOut = page.getByRole('menuitem', { name: 'Sign out' })
     await expect(signOut).toBeVisible()
+    const box = (await page.locator('.account-menu').boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(width)
+    expect(box.y).toBeGreaterThanOrEqual(0)
     await signOut.click()
     await expect(page).toHaveURL(/\/sign-in/)
   })
@@ -59,6 +64,7 @@ test('phone: the user can sign out from the menu', async ({ page }) => {
   await signedIn(page)
 
   await page.getByRole('button', { name: 'Menu' }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.getByRole('button', { name: /Account menu/ }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/sign-in/)
 })

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, LogOut, X } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ChevronDown, ChevronRight, ChevronUp, LogOut, Moon, Sun, UserRound, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { homeFor } from '../router/guard'
 import { useSessionStore } from '../stores/session'
+import { useUiStore } from '../stores/ui'
 import { usePrivateImage } from '../composables/usePrivateImage'
 import { useWaitingCounts } from '../composables/useWaitingCounts'
 import { NAV_ICONS as ICONS, navFor, roleTitle, type NavGroup, type NavItem } from './nav'
@@ -91,14 +92,50 @@ const initials = computed(() =>
     .join(''),
 )
 
+// The account menu (owner pick A, 18 Nov 2026): only my photo (and name when open) at the foot;
+// a click opens a small card with My profile, Night mode and Sign out. Folded, it opens beside
+// the rail; open, above my name. Fixed to the window: the rail clips what overflows it.
+const ui = useUiStore()
+const accountOpen = ref(false)
+const accountAt = ref({ left: 0, bottom: 0 })
+const accountBtn = ref<HTMLElement | null>(null)
+const accountEl = ref<HTMLElement | null>(null)
+function toggleAccount() {
+  if (accountOpen.value) return closeAccount()
+  const button = accountBtn.value
+  if (!button) return
+  const box = button.getBoundingClientRect()
+  const rail = button.closest('aside')?.getBoundingClientRect()
+  accountAt.value = props.compact
+    ? { left: (rail?.right ?? box.right) + 10, bottom: Math.max(8, window.innerHeight - box.bottom) }
+    : { left: box.left, bottom: window.innerHeight - box.top + 8 }
+  accountOpen.value = true
+  void nextTick(() => accountEl.value?.querySelector<HTMLElement>('[role="menuitem"]')?.focus())
+}
+function closeAccount(refocus = false) {
+  accountOpen.value = false
+  if (refocus) accountBtn.value?.focus()
+}
+watch([() => route.name, () => props.compact], () => closeAccount())
+function onAccountPointer(event: PointerEvent) {
+  const target = event.target as Node | null
+  if (!accountOpen.value || !target) return
+  if (accountEl.value?.contains(target) || accountBtn.value?.contains(target)) return
+  closeAccount()
+}
+onMounted(() => document.addEventListener('pointerdown', onAccountPointer))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onAccountPointer))
+
 async function signOut() {
+  closeAccount()
   await session.signOut()
   await router.push({ name: 'sign-in' })
 }
 
 function onKey(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
-  if (menuTitle.value) menuTitle.value = null
+  if (accountOpen.value) closeAccount(true)
+  else if (menuTitle.value) menuTitle.value = null
   else emit('close')
 }
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -207,21 +244,62 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </Teleport>
 
     <div class="who">
-      <RouterLink :to="{ name: 'profile' }" class="me" title="My profile">
+      <button
+        ref="accountBtn"
+        type="button"
+        class="me"
+        aria-haspopup="menu"
+        :aria-expanded="accountOpen"
+        :aria-label="`Account menu, ${session.user?.name_en ?? ''}`"
+        :title="compact ? session.user?.name_en : undefined"
+        @click="toggleAccount"
+      >
         <span class="initials" aria-hidden="true">
           <img v-if="photo" :src="photo" alt="" />
           <template v-else>{{ initials }}</template>
         </span>
-        <span class="me-text">
+        <span class="me-text" aria-hidden="true">
           <b>{{ session.user?.name_en }}</b>
           <span>{{ session.user?.email }}</span>
         </span>
-        <span class="sr-only">My profile</span>
-      </RouterLink>
-      <button type="button" class="sign-out" aria-label="Sign out" title="Sign out" @click="signOut">
-        <LogOut aria-hidden="true" />
+        <ChevronUp class="me-chev" aria-hidden="true" />
       </button>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="accountOpen"
+        ref="accountEl"
+        class="account-menu"
+        :class="{ beside: compact }"
+        role="menu"
+        aria-label="Account"
+        :style="{ left: `${accountAt.left}px`, bottom: `${accountAt.bottom}px` }"
+      >
+        <div class="acc-head">
+          <span class="initials" aria-hidden="true">
+            <img v-if="photo" :src="photo" alt="" />
+            <template v-else>{{ initials }}</template>
+          </span>
+          <span class="acc-text">
+            <b>{{ session.user?.name_en }}</b>
+            <span>{{ session.user?.email }}</span>
+            <em>{{ roleName }}</em>
+          </span>
+        </div>
+        <RouterLink role="menuitem" :to="{ name: 'profile' }" @click="closeAccount()">
+          <UserRound aria-hidden="true" />My profile
+        </RouterLink>
+        <button type="button" role="menuitem" @click="ui.toggleTheme()">
+          <Sun v-if="ui.theme === 'dark'" aria-hidden="true" />
+          <Moon v-else aria-hidden="true" />
+          {{ ui.theme === 'dark' ? 'Day mode' : 'Night mode' }}
+        </button>
+        <button type="button" role="menuitem" class="out" @click="signOut">
+          <LogOut aria-hidden="true" />Sign out
+        </button>
+      </div>
+    </Teleport>
   </aside>
 </template>
 
@@ -402,13 +480,132 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   color: inherit;
-  text-decoration: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease;
 }
-.me:hover {
-  background: rgba(255, 255, 255, 0.05);
+.me:hover,
+.me[aria-expanded='true'] {
+  background: rgba(255, 255, 255, 0.06);
+}
+.me-chev {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--color-rail-muted);
+  transition: transform 200ms var(--ease-out-quint);
+}
+.me[aria-expanded='true'] .me-chev {
+  transform: rotate(180deg);
+}
+
+/* The account card: white, above my name (open rail) or beside my photo (folded rail). */
+.account-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 240px;
+  padding: 6px;
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  box-shadow:
+    0 16px 40px -10px rgba(42, 28, 19, 0.35),
+    0 2px 6px rgba(42, 28, 19, 0.06);
+  font-family: var(--font-sans);
+  transform-origin: bottom left;
+  animation: account-in 180ms var(--ease-out-quint);
+}
+@keyframes account-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+}
+.account-menu.beside {
+  transform-origin: left bottom;
+}
+.acc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--color-rule);
+}
+.acc-text {
+  min-width: 0;
+}
+.acc-text b,
+.acc-text span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acc-text b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.acc-text span {
+  font-size: 11.5px;
+  color: var(--color-intaglio);
+}
+.acc-text em {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+.account-menu [role='menuitem'] {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu [role='menuitem']:hover,
+.account-menu [role='menuitem']:focus-visible {
+  background: var(--color-paper);
+  outline: none;
+}
+.account-menu [role='menuitem'] svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-intaglio);
+}
+.account-menu .out,
+.account-menu .out svg {
+  color: var(--color-crimson);
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-menu {
+    animation: none;
+  }
 }
 .initials {
   flex: none;
@@ -619,8 +816,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   flex: none;
   padding: 0;
 }
-.compact .me-text {
+.compact .me-text,
+.compact .me-chev {
   display: none;
+}
+.compact .me {
+  border-radius: 50%;
 }
 
 /* Phone: the rail is a drawer. */
