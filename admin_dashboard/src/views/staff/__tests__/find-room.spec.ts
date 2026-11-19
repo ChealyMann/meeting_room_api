@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { useSessionStore } from '../../../stores/session'
+import { choosePicker, pickerOptions } from '../../../test-utils/picker'
 import { building, roomItem } from '../../../test-utils/staff'
 import FindRoomView from '../FindRoomView.vue'
 
@@ -110,7 +111,7 @@ afterEach(() => {
 })
 
 async function open() {
-  const wrapper = mount(FindRoomView, { global: { plugins: [router] } })
+  const wrapper = mount(FindRoomView, { global: { plugins: [router] }, attachTo: document.body })
   await flushPromises()
   return wrapper
 }
@@ -122,9 +123,10 @@ const lineOf = (w: Awaited<ReturnType<typeof open>>, name: string) =>
 async function openChip(w: Awaited<ReturnType<typeof open>>, name: string) {
   await w.get(`.chip-${name} .f-open`).trigger('click')
 }
-async function pickTime(w: Awaited<ReturnType<typeof open>>, from: string, to?: string) {
-  await w.get('.chip-when select[aria-label="From"]').setValue(from)
-  if (to) await w.get('.chip-when select[aria-label="To"]').setValue(to)
+/** The time uses the app's own picker, never the browser's list (owner, 19 Nov 2026). */
+async function pickTime(_w: Awaited<ReturnType<typeof open>>, from: string, to?: string) {
+  await choosePicker('when-from', from)
+  if (to) await choosePicker('when-to', to)
   await flushPromises()
 }
 /** Typing waits 250 ms before it asks the server. */
@@ -262,7 +264,7 @@ describe('Find a room filter chips', () => {
     const w = await open()
     await openChip(w, 'when')
     await w.get('.chip-when [data-day="2026-11-16"]').trigger('click')
-    await pickTime(w, '540', '600')
+    await pickTime(w, '09:00', '10:00')
     expect(roomCalls().at(-1)).toMatchObject({ free_dates: '2026-11-16', free_from: '09:00', free_to: '10:00' })
     expect(w.get('.chip-when .f-label').text()).toBe('Mon 16 Nov, 09:00–10:00')
     expect(lineOf(w, 'Mekong Room')).toBe('Free 09:00–10:00')
@@ -299,10 +301,11 @@ describe('Find a room filter chips', () => {
     expect(days).toContain('2026-11-14') // Saturday
     expect(days).toContain('2026-11-15') // Sunday
     expect(w.findAll('.chip-when .row')).toHaveLength(3) // Thu–Sun, Mon–Sun, Mon–Wed
-    const starts = w.findAll('.chip-when select[aria-label="From"] option').map((o) => o.text())
-    expect(starts[1]).toBe('10:30') // it is 10:00
+    expect(w.find('.chip-when select').exists()).toBe(false) // no browser list
+    const starts = await pickerOptions('when-from')
+    expect(starts.slice(0, 2)).toEqual(['Any time', '10:30']) // it is 10:00
     await w.get('.chip-when [data-day="2026-11-13"]').trigger('click')
-    expect(w.findAll('.chip-when select[aria-label="From"] option')[1]!.text()).toBe('07:00')
+    expect((await pickerOptions('when-from'))[1]).toBe('07:00')
   })
 
   it("shows another day with no time from that day's bookings", async () => {
@@ -349,7 +352,7 @@ describe('Find a room filter chips', () => {
     await openChip(w, 'people')
     await w.get('.chip-people [data-people="20"]').trigger('click')
     await openChip(w, 'when')
-    await pickTime(w, '660', '720')
+    await pickTime(w, '11:00', '12:00')
     await w.get('button.clear-all').trigger('click')
     await flushPromises()
     expect(roomCalls().at(-1)).toEqual({ is_bookable: 'true', page: '1', size: '24' })
@@ -360,7 +363,7 @@ describe('Find a room filter chips', () => {
     allRooms = []
     const w = await open()
     await openChip(w, 'when')
-    await pickTime(w, '660', '720')
+    await pickTime(w, '11:00', '12:00')
     expect(w.text()).toContain('No room is free then')
     expect(w.find('button.clear').exists()).toBe(true)
   })

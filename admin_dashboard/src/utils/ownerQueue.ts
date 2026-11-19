@@ -1,11 +1,11 @@
 // The room owner's To review queue (spec 2026-11-05-owner-and-it-pages-design, Part A): the row's
 // process bar ("gap is you"), what an owner checks, and what approving leads to.
 import type { BookingDetail, BookingListItem } from '../api/types'
-import type { RowStep } from './reviewQueue'
+import { confirmText, type RowStep } from './reviewQueue'
 
-/** Sent and Pitika done; then the gap into the steps after the owner: IT setup (IT asked), Confirmed. */
+/** Sent and Pitika done; then the gap into the steps after the owner: Confirmed, IT setup (IT asked). */
 export function ownerRowSteps(item: BookingListItem): RowStep[] {
-  const after = [...(item.has_it ? ['IT setup'] : []), 'Confirmed']
+  const after = ['Confirmed', ...(item.has_it ? ['IT setup'] : [])] // IT is an add-on after Confirmed
   return [
     { label: 'Sent', state: 'done' },
     { label: 'Pitika', state: 'done' },
@@ -15,7 +15,7 @@ export function ownerRowSteps(item: BookingListItem): RowStep[] {
 
 /** What approving leads to (T7: IT setup, T8: confirmed). */
 export function ownerNextStepText(b: BookingDetail): string {
-  return b.has_it ? 'It goes to IT setup next.' : 'It is confirmed, with a door pass.'
+  return confirmText(b.has_it)
 }
 
 /** The notes of the Pitika's approval (also an Admin's backup one), or null. */

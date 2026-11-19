@@ -19,6 +19,7 @@ import BookingActionDialog, { type BookingAction } from './BookingActionDialog.v
 import BookingHistory from '../../components/BookingHistory.vue'
 import { useToast } from '../../composables/useToast'
 import { MEETING_TYPE_LABELS, ROUTE_LABELS, statusLabel } from '../../utils/bookingLabels'
+import { confirmText } from '../../utils/reviewQueue'
 import { formatDay, formatPhnomPenh } from '../../utils/time'
 
 // `adminActions` false (a Pitika): no Admin actions are asked for or shown.
@@ -99,7 +100,7 @@ const stepEffect = computed(() => {
   if (step.value === 'cancel') return 'The room is free again. The booker sees the reason when they open the booking.'
   if (step.value === 'reject') return 'The booking stops and the room is free again.'
   if (actions.value?.stage === 'PITIKA' && props.booking.route === 'R2') return 'It goes to the room owner next.'
-  return props.booking.has_it ? 'It goes to IT setup next.' : 'It is confirmed, with a door pass.'
+  return confirmText(props.booking.has_it)
 })
 
 // The first session's times, and how many more there are: "14:00–15:30 +2 more".

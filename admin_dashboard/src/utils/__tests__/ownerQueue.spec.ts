@@ -34,12 +34,12 @@ describe('ownerRowSteps', () => {
     ])
   })
 
-  it('puts IT setup after the gap when IT help was asked', () => {
+  it('puts IT setup after Confirmed when IT help was asked (an add-on since 19 Nov 2026)', () => {
     expect(ownerRowSteps(item({ has_it: true }))).toEqual([
       { label: 'Sent', state: 'done' },
       { label: 'Pitika', state: 'done' },
-      { label: 'IT setup', state: 'todo', gap: true },
-      { label: 'Confirmed', state: 'todo' },
+      { label: 'Confirmed', state: 'todo', gap: true },
+      { label: 'IT setup', state: 'todo' },
     ])
   })
 })
@@ -47,7 +47,7 @@ describe('ownerRowSteps', () => {
 describe('ownerNextStepText', () => {
   it('says what approving leads to', () => {
     expect(ownerNextStepText(detail({ has_it: false }))).toBe('It is confirmed, with a door pass.')
-    expect(ownerNextStepText(detail({ has_it: true }))).toBe('It goes to IT setup next.')
+    expect(ownerNextStepText(detail({ has_it: true }))).toBe('It is confirmed, with a door pass. IT gets the setup to do.')
   })
 })
 

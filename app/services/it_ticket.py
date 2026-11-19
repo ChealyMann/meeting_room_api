@@ -419,16 +419,28 @@ def _load_for_write(
     return ticket, booking_access.load_booking_for_write(session, ticket.booking_id)
 
 
+# IT is an add-on (owner, 19 Nov 2026): a booking with IT help is confirmed when the last reviewer
+# approves, and its setup runs beside it. SETUP_IN_PROGRESS stays only for bookings sent to IT
+# before that change.
+_SETUP_OPEN = (BookingStatus.SETUP_IN_PROGRESS, BookingStatus.CONFIRMED)
+
+
 def _check_open(booking: Booking, version: int) -> None:
-    """Spec 8.5 steps 4 and 5: the booking's version, then it must be in IT setup."""
+    """Spec 8.5 steps 4 and 5: the booking's version, then the setup must still be open: the
+    booking confirmed (or still in IT setup) and the meeting not started. After the start the
+    setup is missed and cannot change."""
     transitions.check_version(booking, version)
-    if booking.status != BookingStatus.SETUP_IN_PROGRESS:
+    if booking.status not in _SETUP_OPEN or transitions.has_started(booking):
         raise transitions.invalid_transition(booking)
 
 
 def _can_assign(ticket: ITTicket, booking: Booking) -> bool:
-    if booking.status == BookingStatus.SETUP_IN_PROGRESS:
-        return ticket.status != ITStatus.READY
+    """Before the meeting starts while the setup is not Ready; and, on a confirmed booking, while
+    later sessions remain (IT sets up before every session, owner decision, 6 Nov 2026)."""
+    if booking.status not in _SETUP_OPEN:
+        return False
+    if ticket.status != ITStatus.READY and not transitions.has_started(booking):
+        return True
     if booking.status != BookingStatus.CONFIRMED:
         return False
     starts = _starts(booking)
@@ -492,7 +504,9 @@ def assign_staff(
 
 def mark_ready(session: Session, current: CurrentUser, ticket_id: int, version: int) -> ITTicket:
     """T11 (BR-IT-03, B-22): needs at least one assigned user who is active and still holds
-    IT_STAFF. Confirms the booking."""
+    IT_STAFF. Marks only the setup: the booking is already confirmed (owner, 19 Nov 2026), so its
+    version moves on and its status and door pass stay. A booking still in IT setup from before
+    that change is confirmed, as it was."""
     ticket, booking = _load_for_write(session, current, ticket_id)
     _check_open(booking, version)
     staff_ready = any(_is_active_it_staff(session, user) for user in ticket.staff)
@@ -501,6 +515,9 @@ def mark_ready(session: Session, current: CurrentUser, ticket_id: int, version: 
 
     ticket.status = ITStatus.READY.value
     ticket.ready_at = now_utc()
-    transitions.make_confirmed(session, booking, version)
+    if booking.status == BookingStatus.SETUP_IN_PROGRESS:
+        transitions.make_confirmed(session, booking, version)
+    else:
+        transitions.advance(session, booking, version)
     session.commit()
     return ticket

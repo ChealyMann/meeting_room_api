@@ -215,13 +215,18 @@ def test_t3_r2_goes_to_owner(client, frozen, pitika, pending, make_bookable_room
     assert data["rejection"] is None
 
 
-def test_t4_it_forwarded(client, frozen, pitika, pending, auth_headers):
+def test_t4_it_confirmed_and_forwarded(client, frozen, pitika, pending, auth_headers):
+    """IT is an add-on (owner, 19 Nov 2026): the last approval confirms the booking with its door
+    pass, and the IT ticket goes to IT at the same time."""
     booking = pending(it=True)
     response = approve(client, auth_headers(pitika), booking)
     assert response.status_code == 200
     data = response.json()
-    assert (data["status"], data["version"]) == ("SETUP_IN_PROGRESS", 2)
+    assert (data["status"], data["version"]) == ("CONFIRMED", 2)
     assert data["it"]["forwarded_at"] is not None
+    assert data["it"]["status"] == "RECEIVED"
+    assert data["confirmed_at"] == data["it"]["forwarded_at"]  # the same moment
+    assert booking.door_pass is not None
     assert data["reviews"][-1]["notes"] is None
 
 

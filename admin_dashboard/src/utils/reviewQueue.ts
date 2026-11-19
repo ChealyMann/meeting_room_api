@@ -60,12 +60,13 @@ export interface RowStep {
   gap?: boolean
 }
 
-/** Sent, then the steps after Pitika: the room owner (R2), IT setup (IT asked, not R3), Confirmed. */
+/** Sent, then the steps after Pitika: the room owner (R2), Confirmed, then IT setup (IT asked,
+ *  not R3), which is an add-on after Confirmed since 19 Nov 2026 (owner pick F). */
 export function rowSteps(item: BookingListItem): RowStep[] {
   const after = [
     ...(item.route === 'R2' ? ['Room owner'] : []),
-    ...(item.has_it && item.route !== 'R3' ? ['IT setup'] : []),
     'Confirmed',
+    ...(item.has_it && item.route !== 'R3' ? ['IT setup'] : []),
   ]
   return [{ label: 'Sent', state: 'done' }, ...after.map((label, k) => ({ label, state: 'todo' as const, ...(k === 0 ? { gap: true } : {}) }))]
 }
@@ -87,9 +88,13 @@ export function checkLabels(b: BookingDetail): CheckLabel[] {
   return labels
 }
 
+/** What approving after the last review gives: confirmed, and IT's setup beside it (an add-on). */
+export function confirmText(hasIt: boolean): string {
+  return hasIt ? 'It is confirmed, with a door pass. IT gets the setup to do.' : 'It is confirmed, with a door pass.'
+}
+
 /** What approving leads to (T3, T4, T5), and that the food is approved with it. */
 export function nextStepText(b: BookingDetail): string {
-  const next =
-    b.route === 'R2' ? 'It goes to the room owner next.' : b.has_it ? 'It goes to IT setup next.' : 'It is confirmed, with a door pass.'
+  const next = b.route === 'R2' ? 'It goes to the room owner next.' : confirmText(b.has_it)
   return b.catering ? `${next} The food is approved with it.` : next
 }

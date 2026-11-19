@@ -173,7 +173,7 @@ describe('Owner To review', () => {
     const { wrapper } = await mountOwner()
     button(row(wrapper).element, 'Approve')!.click()
     await flushPromises()
-    expect(dialog()?.textContent).toContain('It goes to IT setup next.')
+    expect(dialog()?.textContent).toContain('It is confirmed, with a door pass. IT gets the setup to do.')
     dialog()!.querySelector<HTMLElement>('button.confirm')!.click()
     await flushPromises()
 

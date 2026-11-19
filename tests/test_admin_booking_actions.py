@@ -127,9 +127,9 @@ def test_approve_for_pitika_r2_goes_to_owner(
     assert post(client, auth_headers(admin), b, "approve").json()["status"] == "PENDING_OWNER"
 
 
-def test_approve_for_pitika_with_it_goes_to_setup(client, frozen, admin, booking, auth_headers):
+def test_approve_for_pitika_with_it_confirms(client, frozen, admin, booking, auth_headers):
     b = booking(BookingStatus.PENDING_PITIKA, it=True)
-    assert post(client, auth_headers(admin), b, "approve").json()["status"] == "SETUP_IN_PROGRESS"
+    assert post(client, auth_headers(admin), b, "approve").json()["status"] == "CONFIRMED"
 
 
 def test_active_pitika_blocks_the_admin(client, frozen, admin, booking, make_pitika, auth_headers):

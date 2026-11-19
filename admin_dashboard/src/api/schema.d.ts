@@ -1875,6 +1875,8 @@ export interface components {
             /** Reviews */
             reviews: components["schemas"]["ReviewOut"][];
             rejection: components["schemas"]["RejectionOut"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
             /** Cancelled At */
             cancelled_at: string | null;
             /** Cancel Reason */
@@ -1995,6 +1997,8 @@ export interface components {
             /** Reviews */
             reviews: components["schemas"]["ReviewOut"][];
             rejection: components["schemas"]["RejectionOut"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
             /** Cancelled At */
             cancelled_at: string | null;
             /** Cancel Reason */

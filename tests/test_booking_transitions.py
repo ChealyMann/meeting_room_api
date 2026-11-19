@@ -152,12 +152,13 @@ def test_make_confirmed_adds_door_pass(frozen, db_session, booking):
     assert b.door_pass.passcode.startswith("NBC-")
 
 
-def test_after_last_review_with_it_forwards(frozen, db_session, booking):
+def test_after_last_review_with_it_confirms_and_forwards(frozen, db_session, booking):
     b = booking(it=True, route=BookingRoute.R1)
     transitions.after_last_review(db_session, b, 1)
-    assert (b.status, b.version) == ("SETUP_IN_PROGRESS", 2)
+    assert (b.status, b.version) == ("CONFIRMED", 2)
     assert b.it_ticket.forwarded_at == datetime(2026, 11, 9, 1, 0)
-    assert b.door_pass is None
+    assert b.door_pass is not None
+    assert b.confirmed_at == datetime(2026, 11, 9, 1, 0)
 
 
 def test_after_last_review_without_it_confirms(frozen, db_session, booking):

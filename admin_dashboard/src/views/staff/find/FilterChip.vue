@@ -23,7 +23,8 @@ function onDocClick(event: MouseEvent) {
   if (root.value && !root.value.contains(event.target as Node)) close()
 }
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') close()
+  // An Escape a list inside already used (the time picker) closes only that list.
+  if (event.key === 'Escape' && !event.defaultPrevented) close()
 }
 watch(open, (now) => {
   if (now) {

@@ -263,7 +263,7 @@ describe('IT setup', () => {
     await flushPromises()
 
     expect(dialog()?.textContent).toContain('Mark this setup ready?')
-    expect(dialog()?.textContent).toContain('The booking is confirmed and the booker gets the door pass.')
+    expect(dialog()?.textContent).toContain('The room is ready for the meeting. The booking is already confirmed.')
     expect(dialog()!.querySelector('textarea')).toBeNull()
     dialog()!.querySelector<HTMLElement>('button.confirm')!.click()
     await flushPromises()

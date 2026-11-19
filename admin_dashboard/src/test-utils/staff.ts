@@ -163,6 +163,7 @@ export const bookingDetail = (item: ReturnType<typeof bookingItem>, extra: Recor
   it: null,
   reviews: [],
   rejection: null,
+  confirmed_at: null,
   cancelled_at: null,
   cancel_reason: null,
   cancelled_by: null,
