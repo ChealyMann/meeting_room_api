@@ -1,8 +1,11 @@
 <script setup lang="ts">
 // Inside the When chip: One day / Day to day, the next 14 days in week rows, and a time
 // that is the same every day. Day to day: the first click sets the first day, the next click the
-// last day; a click after that starts again.
+// last day; a click after that starts again. The time uses the app's own picker, never the
+// browser's list (owner, 19 Nov 2026).
 import { computed, ref } from 'vue'
+
+import SearchPicker, { type PickerItem, type PickerWords } from '../../../components/list/SearchPicker.vue'
 
 import { dateNumber, dayLabel, toTime, weekdayShort } from '../rules'
 import { datesOf, isRange, startChoices, type When } from './when'
@@ -55,9 +58,12 @@ const ends = computed(() => {
   for (let m = when.value.start + 30; m <= 18 * 60; m += 30) out.push(m)
   return out
 })
-function setStart(raw: string) {
-  if (raw === '') return set({ start: null, end: null })
-  const start = Number(raw)
+const asItems = (list: number[]): PickerItem[] => list.map((m) => ({ value: m, label: toTime(m) }))
+const FROM_WORDS: PickerWords = { all: 'Any time', search: 'Search times', unknown: 'Any time', none: 'No time left today' }
+const TO_WORDS: PickerWords = { all: '—', search: 'Search times', unknown: '—', none: 'No time' }
+function setStart(value: number | string | null) {
+  if (value === null || value === '') return set({ start: null, end: null })
+  const start = Number(value)
   const end = when.value.end !== null && when.value.end > start ? when.value.end : Math.min(start + 60, 18 * 60)
   set({ start, end })
 }
@@ -106,15 +112,31 @@ const hint = computed(() => {
     <div class="time">
       <span class="lbl">Time{{ isRange(when) ? ' (the same every day)' : '' }}</span>
       <div class="selects">
-        <select aria-label="From" :value="when.start ?? ''" @change="setStart(($event.target as HTMLSelectElement).value)">
-          <option value="">Any time</option>
-          <option v-for="m in starts" :key="m" :value="m">{{ toTime(m) }}</option>
-        </select>
-        <span>to</span>
-        <select aria-label="To" :value="when.end ?? ''" :disabled="when.start === null" @change="set({ end: Number(($event.target as HTMLSelectElement).value) })">
-          <option v-if="when.start === null" value="">—</option>
-          <option v-for="m in ends" :key="m" :value="m">{{ toTime(m) }}</option>
-        </select>
+        <label for="when-from" class="sr-only">From</label>
+        <SearchPicker
+          id="when-from"
+          class="time-pick"
+          mode="field"
+          nullable
+          :searchable="false"
+          :items="asItems(starts)"
+          :words="FROM_WORDS"
+          :model-value="when.start"
+          @update:model-value="setStart"
+        />
+        <span aria-hidden="true">to</span>
+        <label for="when-to" class="sr-only">To</label>
+        <SearchPicker
+          id="when-to"
+          class="time-pick"
+          mode="field"
+          :searchable="false"
+          :disabled="when.start === null"
+          :items="asItems(ends)"
+          :words="TO_WORDS"
+          :model-value="when.end"
+          @update:model-value="(v) => set({ end: v === null ? null : Number(v) })"
+        />
       </div>
       <div class="quick">
         <button
@@ -202,15 +224,16 @@ const hint = computed(() => {
   align-items: center;
   gap: 8px;
 }
-.selects select {
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: 10px;
-  background: var(--color-sheet);
-  color: var(--color-ink);
-  font: inherit;
-  font-size: 13.5px;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.selects .time-pick {
+  width: 132px;
 }
 .quick {
   display: flex;

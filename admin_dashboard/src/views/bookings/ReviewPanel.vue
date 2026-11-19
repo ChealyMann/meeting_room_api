@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // One booking waiting for the Pitika (spec 2026-11-05-pitika-review-design, "The side panel"):
 // a small room photo by the title and the code (the room is in the Details tab's Room section,
-// 17 Nov 2026), a thin step bar (look B, owner pick 16 Nov 2026), a one-line
-// warning, then tabs: the meeting, the food and the IT help, history; then Reject and Approve.
-// Decisions happen in the page's confirm pop-up.
-import { Check, Clock, FileText, TriangleAlert } from 'lucide-vue-next'
+// 17 Nov 2026), a thin step bar (look B, owner pick 16 Nov 2026), a one-line note when there is
+// one, then tabs: the meeting, the food and the IT help, history; then Reject and Approve.
+// Decisions happen in the page's confirm pop-up. No "Starts in … decide before" line (owner,
+// 19 Nov 2026: removed; the row says how soon).
+import { Check, FileText, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { BookingDetail } from '../../api/types'
@@ -21,13 +22,12 @@ import { SLIP_LABEL, useRequestSlip } from '../../composables/useRequestSlip'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory } from '../../utils/bookingHistory'
+import type { HolidayMap } from '../../utils/holidays'
 
 const props = defineProps<{
   booking: BookingDetail
   /** The room's cover photo (full size), or null. */
   photoPath: string | null
-  /** "Starts in …" for a booking starting today, else null. */
-  startsIn: string | null
   /** A booking already decided: where it is now, and only Close (spec 2026-11-05-pitika-decided). */
   readOnly?: boolean
   /** The subtitle while it waits ("Waiting for Pitika", "Waiting for room owner"). */
@@ -36,6 +36,8 @@ const props = defineProps<{
   leadCard?: 'food' | 'it' | null
   /** One note for the reviewer on amber wash (the R4 note, the Pitika's notes), or null. */
   note?: string | null
+  /** Public holidays by day: the sessions on one are marked in When (To review). */
+  holidays?: HolidayMap
 }>()
 const emit = defineEmits<{ close: []; approve: []; reject: [] }>()
 
@@ -77,10 +79,6 @@ const tabs = computed(() => {
     <div class="review-panel">
       <StepProgress :steps="steps" :label="readOnly ? statusLabel(booking.display_status) : (waitingLabel ?? 'Waiting for Pitika')" />
 
-      <p v-if="startsIn && !readOnly" class="warn" title="If nobody decides before it starts, the system rejects it.">
-        <Clock aria-hidden="true" />
-        <span><b>{{ startsIn }}</b> · decide before, or it is rejected</span>
-      </p>
       <p v-if="note" class="warn">
         <TriangleAlert aria-hidden="true" />
         <span>{{ note }}</span>
@@ -89,7 +87,7 @@ const tabs = computed(() => {
       <BookingTabs v-model="tab" :tabs="tabs" class="tab-bar" />
 
       <section v-show="tab === 'details'" id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details">
-        <BookingDetails :booking="booking" />
+        <BookingDetails :booking="booking" :holidays="holidays" />
       </section>
 
       <section v-show="tab === 'history'" id="tabpanel-history" role="tabpanel" aria-labelledby="tab-history">
@@ -147,10 +145,6 @@ const tabs = computed(() => {
   color: var(--color-ink-off);
   font-size: 12px;
   line-height: 1.5;
-}
-.warn b {
-  font-weight: 600;
-  color: var(--color-warn);
 }
 .warn :deep(svg.lucide) {
   flex: none;

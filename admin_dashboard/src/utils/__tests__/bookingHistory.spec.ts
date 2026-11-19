@@ -53,8 +53,11 @@ const it_ = (changes: Record<string, unknown> = {}) => ({
   ...changes,
 })
 
-const bar = (b: BookingDetail) => buildHistory(b).steps.map((s) => `${s.label}:${s.state}`)
-const rows = (b: BookingDetail) => buildHistory(b).events.map((e) => e.label)
+// The first session is Tue 10 Nov 09:00 in Phnom Penh (listItem): before it, and after it started.
+const BEFORE = new Date('2026-11-09T00:00:00Z')
+const AFTER = new Date('2026-11-12T00:00:00Z')
+const bar = (b: BookingDetail, now = BEFORE) => buildHistory(b, now).steps.map((s) => `${s.label}:${s.state}`)
+const rows = (b: BookingDetail, now = BEFORE) => buildHistory(b, now).events.map((e) => e.label)
 
 describe('buildHistory', () => {
   it('waits for Pitika on a shared room', () => {
@@ -103,13 +106,63 @@ describe('buildHistory', () => {
     })
 
     expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'Ended:done'])
-    expect(rows(b)).toEqual(['Sent', 'Approved', 'Confirmed · door pass ready', 'Meeting ended'])
+    expect(rows(b)).toEqual(['Sent', 'Approved', 'Confirmed', 'Meeting ended'])
     const events = buildHistory(b).events
     expect(events[2]).toMatchObject({ at: '4 Nov 2026, 11:00', role: 'system' })
     expect(events[3]).toMatchObject({ at: '10 Nov 2026, 10:30', role: null })
   })
 
-  it('confirms after IT is ready when IT was asked', () => {
+  // IT is an add-on (owner pick F, 19 Nov 2026): Confirmed comes at the last approval, and IT
+  // setup is a step after it: amber while IT works, green when ready, crimson only when missed.
+  it('confirms at the last approval, then IT sets up beside it', () => {
+    const b = booking({
+      has_it: true,
+      status: 'CONFIRMED',
+      display_status: 'CONFIRMED',
+      confirmed_at: LATER,
+      reviews: [review('PITIKA', 'APPROVED', LATER, 'Chan Sophea')],
+      it: it_({ status: 'ASSIGNED', forwarded_at: LATER, assigned_at: NEXT_DAY, staff: [{ id: 8, name_en: 'Sok Pisey' }] }),
+    })
+
+    expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'IT setup:now'])
+    expect(rows(b)).toEqual(['Sent', 'Approved', 'Confirmed', 'Sent to IT', 'Staff assigned', 'Waiting for IT to be ready'])
+    expect(buildHistory(b, BEFORE).events[2]!.at).toBe('4 Nov 2026, 11:00')
+  })
+
+  it('shows the room ready as a done step after Confirmed, and Ended after it', () => {
+    const b = booking({
+      has_it: true,
+      status: 'CONFIRMED',
+      display_status: 'COMPLETED',
+      confirmed_at: LATER,
+      reviews: [review('PITIKA', 'APPROVED', LATER, 'Chan Sophea')],
+      it: it_({ status: 'READY', forwarded_at: LATER, assigned_at: LATER, ready_at: NEXT_DAY }),
+    })
+
+    expect(bar(b, AFTER)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'IT setup:done', 'Ended:done'])
+    expect(rows(b, AFTER)).toEqual(['Sent', 'Approved', 'Confirmed', 'Sent to IT', 'Staff assigned', 'IT ready', 'Meeting ended'])
+  })
+
+  it('marks the IT step crimson when IT missed it, and the booking stays confirmed', () => {
+    const b = booking({
+      has_it: true,
+      status: 'CONFIRMED',
+      display_status: 'CONFIRMED',
+      confirmed_at: LATER,
+      reviews: [review('PITIKA', 'APPROVED', LATER, 'Chan Sophea')],
+      it: it_({ status: 'ASSIGNED', forwarded_at: LATER, assigned_at: LATER }),
+    })
+
+    expect(bar(b, AFTER)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'IT setup:stop'])
+    expect(rows(b, AFTER)).not.toContain('Waiting for IT to be ready')
+  })
+
+  it('shows IT setup still to come while the booking waits for Pitika', () => {
+    const b = booking({ has_it: true, it: it_() })
+    expect(bar(b)).toEqual(['Sent:done', 'Pitika:now', 'Confirmed:todo', 'IT setup:todo'])
+  })
+
+  it('reads an old booking confirmed by IT (no confirm time) in the new order', () => {
     const b = booking({
       has_it: true,
       status: 'CONFIRMED',
@@ -118,12 +171,12 @@ describe('buildHistory', () => {
       it: it_({ status: 'READY', forwarded_at: SENT, assigned_at: LATER, ready_at: NEXT_DAY }),
     })
 
-    expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'IT setup:done', 'Confirmed:done'])
-    expect(rows(b)).toEqual(['Sent', 'Approved', 'Sent to IT', 'Staff assigned', 'IT ready', 'Confirmed · door pass ready'])
+    expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'IT setup:done'])
+    expect(rows(b)).toEqual(['Sent', 'Approved', 'Sent to IT', 'Staff assigned', 'IT ready', 'Confirmed'])
     expect(buildHistory(b).events.at(-1)!.at).toBe('5 Nov 2026, 07:49')
   })
 
-  it('has no confirm row when the system confirmed without IT being ready', () => {
+  it('has no confirm row for an old booking the system confirmed without IT being ready', () => {
     const b = booking({
       has_it: true,
       status: 'CONFIRMED',
@@ -132,8 +185,8 @@ describe('buildHistory', () => {
       it: it_({ forwarded_at: SENT }),
     })
 
-    expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'IT setup:done', 'Confirmed:done'])
-    expect(rows(b)).toEqual(['Sent', 'Approved', 'Sent to IT'])
+    expect(bar(b, AFTER)).toEqual(['Sent:done', 'Pitika:done', 'Confirmed:done', 'IT setup:stop'])
+    expect(rows(b, AFTER)).toEqual(['Sent', 'Approved', 'Sent to IT'])
   })
 
   it("confirms the owner's own room at once, with Pitika not needed", () => {
@@ -145,7 +198,7 @@ describe('buildHistory', () => {
     })
 
     expect(bar(b)).toEqual(['Sent:done', 'Confirmed:done'])
-    expect(rows(b)).toEqual(['Sent', 'Pitika not needed', 'Confirmed · door pass ready'])
+    expect(rows(b)).toEqual(['Sent', 'Pitika not needed', 'Confirmed'])
     expect(buildHistory(b).events[1]).toMatchObject({ role: 'system', name: null })
   })
 
@@ -212,7 +265,7 @@ describe('buildHistory', () => {
 
     expect(bar(b)).toEqual(['Sent:done', 'Pitika:done', 'Room owner:done', 'Confirmed:done', 'Cancelled:stop'])
     const events = buildHistory(b).events
-    expect(events.map((e) => e.label)).toEqual(['Sent', 'Approved', 'Approved', 'Confirmed · door pass ready', 'Cancelled'])
+    expect(events.map((e) => e.label)).toEqual(['Sent', 'Approved', 'Approved', 'Confirmed', 'Cancelled'])
     expect(events[2]).toMatchObject({ name: 'Mann Chealy', role: 'admin', forRole: 'owner' })
     expect(events[4]).toMatchObject({ name: 'Mann Chealy', role: 'admin' })
   })

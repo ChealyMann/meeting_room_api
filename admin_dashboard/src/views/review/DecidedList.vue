@@ -181,7 +181,6 @@ watch(
       :key="`decided-${detail.id}`"
       :booking="detail"
       :photo-path="covers[detail.room.id]?.url ?? null"
-      :starts-in="null"
       :note="(reviewer ?? REVIEWERS.pitika).panelNote(detail)"
       :lead-card="(reviewer ?? REVIEWERS.pitika).leadCard"
       read-only

@@ -21,7 +21,7 @@ export const listItem = (id: number, changes: Record<string, unknown> = {}) => (
   route: 'R1',
   status: 'PENDING_PITIKA',
   display_status: 'PENDING_PITIKA',
-  requester: { id: 4, name_en: 'Sok Dara', name_kh: 'សុខ ដារា' },
+  requester: { id: 4, name_en: 'Sok Dara', name_kh: 'សុខ ដារា', phone: '012 345 678', email: 'sok.dara@nbc.gov.kh' },
   first_session: { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' },
   next_session: { id: 1, date: '2026-11-10', start_time: '09:00', end_time: '10:30' },
   session_count: 3,

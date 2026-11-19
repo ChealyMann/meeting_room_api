@@ -31,11 +31,11 @@ def _it_setup(client, headers, booking_id, staff_id) -> dict:
     Returns the booking as the ready answer shows it."""
     tickets = _ok(client.get(IT_URL, headers=headers))["items"]
     [ticket] = [item for item in tickets if item["booking"]["id"] == booking_id]
-    assert (ticket["status"], ticket["booking"]["status"]) == ("RECEIVED", "SETUP_IN_PROGRESS")
+    assert (ticket["status"], ticket["booking"]["status"]) == ("RECEIVED", "CONFIRMED")
 
     body = {"user_ids": [staff_id], "version": ticket["booking"]["version"]}
     ticket = _ok(client.put(f"{IT_URL}/{ticket['id']}/staff", json=body, headers=headers))
-    assert (ticket["status"], ticket["booking"]["status"]) == ("ASSIGNED", "SETUP_IN_PROGRESS")
+    assert (ticket["status"], ticket["booking"]["status"]) == ("ASSIGNED", "CONFIRMED")
 
     body = {"version": ticket["booking"]["version"]}
     ticket = _ok(client.post(f"{IT_URL}/{ticket['id']}/ready", json=body, headers=headers))
@@ -103,7 +103,9 @@ def test_route_to_confirmed(
         "R3": [],
         "R4": ["PENDING_PITIKA"],
     }[route]
-    expected += ["SETUP_IN_PROGRESS"] if it else []
+    # IT is an add-on (owner, 19 Nov 2026): the booking is confirmed before IT starts, and
+    # IT's Ready keeps it confirmed.
+    expected += ["CONFIRMED"] if it else []
     assert seen == [*expected, "CONFIRMED"]
 
     headers = auth_headers(booker)

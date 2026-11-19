@@ -6,8 +6,23 @@
 // menu"): Add to calendar as the main button, the slip beside it, and a ⋯ menu with the door pass, Copy reference
 // and Cancel booking. Cancel asks right there (reason optional) and sends the version that was
 // read; if someone saved first it says so and offers Reload.
-import { Ban, CalendarPlus, Check, CircleX, Clock, Copy, Ellipsis, FileText, KeyRound, X } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import {
+  Ban,
+  CalendarPlus,
+  Check,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Copy,
+  Ellipsis,
+  FileText,
+  KeyRound,
+  Send,
+  TriangleAlert,
+  Wrench,
+  X,
+} from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue'
 
 import { api } from '../../api'
 import { getBooking, getBookingIcs, getDoorPass } from '../../api/bookings'
@@ -29,6 +44,7 @@ import { useToast } from '../../composables/useToast'
 import { statusLabel } from '../../utils/bookingLabels'
 import { buildHistory, ROLE_LABELS, type HistoryEvent } from '../../utils/bookingHistory'
 import { downloadBlob } from '../../utils/download'
+import { IT_WORDS, itState, type ItState } from '../../utils/itProgress'
 import { dayLabel } from './rules'
 
 const props = defineProps<{ bookingId: number; cover: string | null }>()
@@ -106,6 +122,21 @@ const sessions = computed(() => (booking.value?.sessions ?? []).map((s) => ({ id
 // Tabs (owner pick, 16 Nov 2026, like To review): the status, the steps and the buttons stay; the
 // rest is split into Details, Food & IT, Files and History. Files shows while files can still be
 // added, or when there are some. A new booking opens on Details.
+// IT help is an add-on (owner pick F, 19 Nov 2026): on a confirmed booking the step line says
+// where IT is, one icon and word per state (no dots), and a click opens Food & IT.
+const IT_LINE: Record<ItState, { text: string; tone: 'wait' | 'ok' | 'stop'; icon: Component }> = {
+  sent: { text: `IT setup · ${IT_WORDS.sent}`, tone: 'wait', icon: Send },
+  setting: { text: `IT setup · ${IT_WORDS.setting}`, tone: 'wait', icon: Wrench },
+  ready: { text: IT_WORDS.ready, tone: 'ok', icon: CircleCheck },
+  missed: { text: `IT setup · ${IT_WORDS.missed}`, tone: 'stop', icon: TriangleAlert },
+}
+const itLine = computed(() => {
+  const b = booking.value
+  if (!b || (b.display_status !== 'CONFIRMED' && b.display_status !== 'COMPLETED')) return null
+  const state = itState(b, new Date())
+  return state ? IT_LINE[state] : null
+})
+
 type Tab = 'details' | 'services' | 'files' | 'history'
 const tab = ref<Tab>('details')
 watch(
@@ -268,7 +299,13 @@ async function reload() {
         >
         <small v-if="sessions.length">{{ sessions.length > 1 ? `${sessions.length} sessions` : sessions[0]!.day }}</small>
       </div>
-      <StepProgress :steps="history.steps" label="" />
+      <StepProgress :steps="history.steps" label="">
+        <template v-if="itLine" #right>
+          <button type="button" class="it-line" :class="itLine.tone" title="See the IT help" @click="tab = 'services'">
+            <component :is="itLine.icon" :size="14" aria-hidden="true" />{{ itLine.text }}
+          </button>
+        </template>
+      </StepProgress>
 
       <div v-if="stopNote" class="callout" :class="stopNote.tone">
         <span class="h">{{ stopNote.head }}</span>
@@ -412,6 +449,40 @@ async function reload() {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-intaglio);
+}
+/* The IT setup words on the step line's right (owner pick F): a quiet button to Food & IT. */
+.it-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.it-line.wait {
+  color: var(--color-warn);
+}
+.it-line.ok {
+  color: var(--color-ok);
+}
+.it-line.stop {
+  color: var(--color-crimson);
+}
+.it-line:focus-visible {
+  outline: 2px solid var(--color-crimson);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .it-line:hover {
+    background: var(--color-field-disabled);
+  }
 }
 .callout {
   display: grid;

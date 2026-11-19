@@ -94,12 +94,13 @@ def test_list_other_roles_forbidden(client, frozen, as_staff, as_admin, make_pit
 # --- Approve -----------------------------------------------------------------------------
 
 
-def test_t7_it_forwarded(client, frozen, owner, waiting, auth_headers):
+def test_t7_it_confirmed_and_forwarded(client, frozen, owner, waiting, auth_headers):
     booking = waiting(it=True)
     response = approve(client, auth_headers(owner), booking, notes="  Ok  ")
     assert response.status_code == 200
     data = response.json()
-    assert (data["status"], data["version"]) == ("SETUP_IN_PROGRESS", 2)
+    assert (data["status"], data["version"]) == ("CONFIRMED", 2)
+    assert booking.door_pass is not None
     assert data["it"]["forwarded_at"] is not None
     review = data["reviews"][-1]
     assert (review["stage"], review["decision"], review["notes"]) == ("OWNER", "APPROVED", "Ok")

@@ -2,16 +2,21 @@
 // Food & IT (owner pick, 16 Nov 2026): one card each, with every item, the booker's note, and the
 // answer. Food is checked by Pitika when they approve; IT moves from received to the room being
 // ready. The same cards in My bookings, To review (Pitika and the room owner) and IT setup.
+// IT is an add-on since 19 Nov 2026 (owner pick F): the setup goes on after the booking is
+// confirmed, and a setup not ready when the meeting started says "Not marked ready" in crimson.
 import { MapPin } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { BookingDetail } from '../api/types'
+import { IT_WORDS, itState } from '../utils/itProgress'
 import { formatDay, formatPhnomPenh } from '../utils/time'
 import PanelSection from './PanelSection.vue'
 
 const props = withDefaults(
   defineProps<{
-    booking: Pick<BookingDetail, 'display_status' | 'sessions' | 'catering' | 'it'>
+    /** With `status` and `first_session` (a full booking) the card can tell a missed setup. */
+    booking: Pick<BookingDetail, 'display_status' | 'sessions' | 'catering' | 'it'> &
+      Partial<Pick<BookingDetail, 'status' | 'first_session'>>
     /** Who looks: the booker reads "Your note", everyone else "Booker’s note". */
     viewer: 'booker' | 'staff'
     /** False while the food is not known yet (IT's panel before the booking loads). */
@@ -37,7 +42,7 @@ const noteLabel = computed(() => (props.viewer === 'booker' ? 'Your note' : 'Boo
 const sessionCount = computed(() => props.booking.sessions.length)
 const hhmm = (time: string) => time.slice(0, 5)
 
-type Pill = { text: string; tone: 'ok' | 'wait' }
+type Pill = { text: string; tone: 'ok' | 'wait' | 'stop' }
 const foodPill = computed<Pill | null>(() => {
   const c = props.booking.catering
   if (!c) return null
@@ -49,6 +54,10 @@ const itPill = computed<Pill | null>(() => {
   if (!it) return null
   if (it.status === 'READY') return { text: 'Room ready', tone: 'ok' }
   if (!open.value) return null
+  const b = props.booking
+  if (b.status && b.first_session && itState({ status: b.status, first_session: b.first_session, it }, new Date()) === 'missed') {
+    return { text: IT_WORDS.missed, tone: 'stop' }
+  }
   if (it.status === 'ASSIGNED') return { text: 'Setting up', tone: 'wait' }
   return { text: it.forwarded_at ? 'Sent to IT' : 'Waiting', tone: 'wait' }
 })
@@ -143,6 +152,10 @@ const itPill = computed<Pill | null>(() => {
 .pill.wait {
   background: color-mix(in srgb, var(--color-warn) 12%, var(--color-sheet));
   color: var(--color-warn);
+}
+.pill.stop {
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
 }
 /* "Set up at": one white line on the light IT card, with a pin. */
 .setup-at {

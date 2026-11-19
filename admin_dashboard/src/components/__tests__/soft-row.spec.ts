@@ -38,6 +38,25 @@ describe('SoftRow (look E, owner pick 18 Nov 2026)', () => {
     expect(none.find('.role').exists()).toBe(false)
   })
 
+  it('puts the booker’s phone after the department, to copy with a click (owner pick B “Plain”, 19 Nov 2026)', () => {
+    const wrapper = mount(SoftRow, {
+      props: { ...base, booker: { name: 'Heng Rathana', photo: null, position: 'Officer', department: 'Cabinet', phone: '012 345 678' } },
+      global: { stubs },
+    })
+    const parts = wrapper.get('.foot').element.children
+    const names = [...parts].map((el) => el.className.split(' ')[0])
+    expect(names.indexOf('phone')).toBe(names.indexOf('role') + 1)
+    expect(wrapper.get('.foot .phone .copy-value').text()).toBe('012 345 678')
+  })
+
+  it('shows no phone line when the booker has no phone', () => {
+    const wrapper = mount(SoftRow, {
+      props: { ...base, booker: { name: 'Heng Rathana', photo: null, position: null, department: null, phone: null } },
+      global: { stubs },
+    })
+    expect(wrapper.find('.copy-value').exists()).toBe(false)
+  })
+
   it('has no footer with nothing to put in it, and no button column without buttons', () => {
     const wrapper = mount(SoftRow, { props: base, global: { stubs } })
     expect(wrapper.find('.foot').exists()).toBe(false)

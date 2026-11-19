@@ -3,16 +3,18 @@
 // Rejected tabs) and the IT pages. Look E (owner pick, 18 Nov 2026, from the "signed rows"
 // demos): a time tile (calendar icon, start, a short dash, end; crimson wash when `soon`), the
 // room's photo with the reference on it, the meeting (title, one room line, soft tags) and the
-// buttons; under it a soft cream footer with who booked (face, name, position · department),
-// the status and when it was sent. A click or Enter opens the details.
+// buttons; under it a soft cream footer with who booked (face, name, position · department, and
+// their phone), the status and when it was sent. A click or Enter opens the details;
+// a click on the phone copies it instead.
 // Slots: `line` (the room line: one <span class="bit"> per part, the bars between them are drawn;
 // Lucide icons are sized),
 // `tags` (<span class="soft-tag">, `warn` or `alert` for amber or crimson), `status` (in the
 // footer, before "Sent") and `actions` (the buttons, top right).
-import { CalendarDays, Send } from 'lucide-vue-next'
+import { CalendarDays, Phone, Send } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { bookerRole, type RowBooker } from '../utils/booker'
+import CopyValue from './CopyValue.vue'
 import RoomPhoto from './RoomPhoto.vue'
 import StaffAvatar from './StaffAvatar.vue'
 
@@ -70,6 +72,9 @@ const role = computed(() => (props.booker ? bookerRole(props.booker) : ''))
         <span class="booked-by">Booked by</span>
         <span class="who">{{ booker.name }}</span>
         <span v-if="role" class="role" :title="role">{{ role }}</span>
+        <span v-if="booker.phone" class="phone">
+          <Phone aria-hidden="true" /><CopyValue class="mono" :value="booker.phone" what="Phone" />
+        </span>
       </template>
       <span class="foot-end">
         <slot name="status" />
@@ -395,6 +400,24 @@ h3 {
   font-weight: 600;
   white-space: nowrap;
 }
+/* The phone after the department, behind a thin bar, as plain text (owner pick B, 19 Nov 2026). */
+.phone {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-rule-strong);
+  color: var(--color-ink);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.phone > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--color-crimson);
+}
 .role {
   min-width: 0;
   overflow: hidden;
@@ -485,6 +508,12 @@ h3 {
     order: 4;
     padding-left: 42px;
     margin-top: -4px;
+  }
+  .phone {
+    order: 4;
+    margin-left: 42px;
+    padding-left: 0;
+    border-left: 0;
   }
   .foot-end {
     flex-basis: 100%;

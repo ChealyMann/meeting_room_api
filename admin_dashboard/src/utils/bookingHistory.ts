@@ -2,6 +2,7 @@
 // top, and a timeline of what happened under it, each step with who did it and their role.
 // Everything here is read from the booking the API sends; nothing is stored.
 import type { BookingDetail } from '../api/types'
+import { itState } from './itProgress'
 import { formatDay, formatPhnomPenh } from './time'
 
 export type StepState = 'done' | 'stop' | 'now' | 'todo'
@@ -63,7 +64,8 @@ function stagesOf(route: string): Stage[] {
   return ['PITIKA']
 }
 
-export function buildHistory(b: BookingDetail): BookingHistory {
+/** `now` decides whether a setup IT never marked ready was missed (the meeting started). */
+export function buildHistory(b: BookingDetail, now: Date = new Date()): BookingHistory {
   const stages = stagesOf(b.route)
   const hasIt = b.has_it && b.route !== 'R3'
   const rejection = b.rejection
@@ -78,18 +80,29 @@ export function buildHistory(b: BookingDetail): BookingHistory {
     return 'todo'
   }
   const reviewsDone = stages.every((s) => approved(s))
-  const itDone = !hasIt || !!b.it?.ready_at || b.status === 'CONFIRMED'
+  // A booking cancelled after it was confirmed: the API's confirm time says so (older answers
+  // without it: every review done, and IT ready when IT was asked).
+  const confirmedAt = b.confirmed_at ?? null
   const confirmed =
-    b.status === 'CONFIRMED' || (b.status === 'CANCELLED' && reviewsDone && (!hasIt || !!b.it?.ready_at))
+    b.status === 'CONFIRMED' ||
+    (b.status === 'CANCELLED' && (confirmedAt ? true : reviewsDone && (!hasIt || !!b.it?.ready_at)))
+  // Sent to IT before IT became an add-on (19 Nov 2026): IT still comes before Confirmed.
+  const oldSetup = b.status === 'SETUP_IN_PROGRESS'
+  const it = itState(b, now)
 
   // --- The bar ----------------------------------------------------------------------------
   let steps: ProcessStep[] = [{ label: 'Sent', state: 'done' }]
   for (const stage of stages) steps.push({ label: STAGE_LABEL[stage], state: stageState(stage) })
-  if (hasIt) {
-    const state: StepState = b.status === 'SETUP_IN_PROGRESS' ? 'now' : itDone && reviewsDone ? 'done' : 'todo'
-    steps.push({ label: 'IT setup', state })
+  if (hasIt && oldSetup) {
+    steps.push({ label: 'IT setup', state: 'now' }, { label: 'Confirmed', state: 'todo' })
+  } else {
+    steps.push({ label: 'Confirmed', state: confirmed ? 'done' : 'todo' })
+    // IT is an add-on (owner pick F): a step after Confirmed, crimson only when IT missed it.
+    if (hasIt) {
+      const state: StepState = !confirmed ? 'todo' : it === 'ready' ? 'done' : it === 'missed' ? 'stop' : 'now'
+      steps.push({ label: 'IT setup', state })
+    }
   }
-  steps.push({ label: 'Confirmed', state: confirmed ? 'done' : 'todo' })
   if (b.status === 'CANCELLED') {
     // What never happened is dropped; the cancel ends the line.
     steps = steps.filter((s) => s.state === 'done')
@@ -126,6 +139,18 @@ export function buildHistory(b: BookingDetail): BookingHistory {
     }
   }
 
+  // The confirm row. With the API's confirm time it goes before the IT rows: since IT became an
+  // add-on the booking is confirmed the minute it is sent to IT, and a tie keeps this order.
+  // Older answers have no confirm time: confirmed when IT was ready (after the "IT ready" row),
+  // or when the last review was made; when IT was not ready in time the system confirmed at the
+  // meeting start, which was not recorded: no row then.
+  const confirmRow = () => {
+    const lastReview = stages.length ? approved(stages[stages.length - 1]!)?.reviewed_at : b.created_at
+    const at = confirmedAt ?? (hasIt ? b.it?.ready_at : lastReview)
+    add(at, { kind: 'confirmed', label: 'Confirmed', name: null, role: 'system' })
+  }
+  if (confirmed && confirmedAt) confirmRow()
+
   if (b.it) {
     add(b.it.forwarded_at, { kind: 'toIT', label: 'Sent to IT', name: null, role: 'system' })
     const staff = b.it.staff.map((s) => s.name_en).join(', ')
@@ -138,14 +163,7 @@ export function buildHistory(b: BookingDetail): BookingHistory {
     })
     add(b.it.ready_at, { kind: 'ready', label: 'IT ready', name: null, role: 'it' })
   }
-
-  if (confirmed) {
-    // Confirmed when the last step before it finished. When IT was not ready in time the
-    // system confirms at the meeting start, which the API does not record: no row then.
-    const lastReview = stages.length ? approved(stages[stages.length - 1]!)?.reviewed_at : b.created_at
-    const at = hasIt ? b.it?.ready_at : lastReview
-    add(at, { kind: 'confirmed', label: 'Confirmed · door pass ready', name: null, role: 'system' })
-  }
+  if (confirmed && !confirmedAt) confirmRow()
 
   if (rejection) {
     if (rejection.rejected_by === 'SYSTEM') {
@@ -191,8 +209,10 @@ export function buildHistory(b: BookingDetail): BookingHistory {
     PENDING_OWNER: { label: 'Waiting for the room owner', role: 'owner' },
     SETUP_IN_PROGRESS: { label: 'Waiting for IT to be ready', role: 'it' },
   }
-  const now = waiting[b.status]
-  if (now) events.push({ kind: 'waiting', at: null, name: null, ...now })
+  // A confirmed booking whose setup IT is still doing waits for IT too (the add-on).
+  const itWaiting = b.status === 'CONFIRMED' && (it === 'sent' || it === 'setting')
+  const pending = waiting[itWaiting ? 'SETUP_IN_PROGRESS' : b.status]
+  if (pending) events.push({ kind: 'waiting', at: null, name: null, ...pending })
 
   return { steps, events }
 }

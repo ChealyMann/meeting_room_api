@@ -1754,8 +1754,9 @@ export interface components {
         };
         /**
          * BookerRef
-         * @description Who sent the booking, for the review row's footer (owner pick E, 18 Nov 2026). The name
-         *     and photo are today's; the position and department are as they were when it was sent.
+         * @description Who sent the booking, for the review row's footer (owner pick E, 18 Nov 2026). The name,
+         *     photo, phone and email are today's, so a reviewer reaches the booker on their current number
+         *     (owner, 19 Nov 2026); the position and department are as they were when it was sent.
          */
         BookerRef: {
             /** Id */
@@ -1770,6 +1771,10 @@ export interface components {
             position: string | null;
             /** Department */
             department: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string;
         };
         /** BookingCheck */
         BookingCheck: {
@@ -1870,6 +1875,8 @@ export interface components {
             /** Reviews */
             reviews: components["schemas"]["ReviewOut"][];
             rejection: components["schemas"]["RejectionOut"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
             /** Cancelled At */
             cancelled_at: string | null;
             /** Cancel Reason */
@@ -1990,6 +1997,8 @@ export interface components {
             /** Reviews */
             reviews: components["schemas"]["ReviewOut"][];
             rejection: components["schemas"]["RejectionOut"] | null;
+            /** Confirmed At */
+            confirmed_at: string | null;
             /** Cancelled At */
             cancelled_at: string | null;
             /** Cancel Reason */

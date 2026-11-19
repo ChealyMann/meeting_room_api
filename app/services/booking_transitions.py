@@ -249,16 +249,10 @@ def make_confirmed(session: Session, booking: Booking, version: int) -> None:
     booking_signers.record_signers(session, booking)
 
 
-def forward_it(session: Session, booking: Booking, version: int) -> None:
-    """T4, T7: the IT ticket goes to the IT Lead."""
-    advance(session, booking, version, status=BookingStatus.SETUP_IN_PROGRESS)
-    booking.it_ticket.forwarded_at = clock.now_utc()
-    session.flush()
-
-
 def after_last_review(session: Session, booking: Booking, version: int) -> None:
-    """The last reviewer approved: IT setup when there is an IT ticket, else confirmed."""
+    """The last reviewer approved: confirmed at once. IT help is an add-on (owner, 19 Nov 2026,
+    spec 2026-11-19-it-setup-addon): an IT ticket goes to the IT Lead at the same moment (T4, T7)
+    and the setup runs beside the confirmed booking; it no longer holds the confirmation."""
     if booking.it_ticket is not None:
-        forward_it(session, booking, version)
-    else:
-        make_confirmed(session, booking, version)
+        booking.it_ticket.forwarded_at = clock.now_utc()
+    make_confirmed(session, booking, version)
