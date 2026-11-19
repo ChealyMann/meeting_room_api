@@ -95,7 +95,8 @@ describe('My tasks', () => {
 
   it('has no buttons on the rows, and the panel has only Close', async () => {
     const { wrapper } = await mountAt()
-    expect(wrapper.get('[data-ticket="7"]').findAll('button')).toHaveLength(0)
+    // Only the booker's phone, which a click copies.
+    expect(wrapper.get('[data-ticket="7"]').findAll('button').map((b) => b.classes())).toEqual([expect.arrayContaining(['copy-value'])])
     await wrapper.get('[data-ticket="7"]').trigger('click')
     await flushPromises()
     expect(panel()?.textContent).toContain('Bring the long HDMI cable')

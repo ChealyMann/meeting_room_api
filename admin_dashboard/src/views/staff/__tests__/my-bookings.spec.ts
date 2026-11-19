@@ -355,7 +355,7 @@ describe('My bookings', () => {
     expect(details.querySelector('.sessions-head')?.textContent).toContain('2 sessions')
     expect([...details.querySelectorAll('.panel-section > h3')].map((h) => h.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['When · 2 sessions', 'Room', 'Meeting', 'Booker'])
     const facts = [...details.querySelectorAll('.details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department', 'Phone', 'Email'])
     expect(details.textContent).toContain('1 by email')
     expect(details.textContent).toContain('NBC0042')
   })

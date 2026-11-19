@@ -156,7 +156,8 @@ async function mountAt(path = '/it-setup') {
   return { wrapper, router }
 }
 const row = (wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'], id: number) => wrapper.get(`[data-ticket="${id}"]`)
-const buttons = (root: { findAll: (s: string) => Array<{ text: () => string }> }) => root.findAll('button').map((b) => b.text())
+// The row's action buttons; the booker's phone (a click copies it) is not one of them.
+const buttons = (root: { findAll: (s: string) => Array<{ text: () => string }> }) => root.findAll('button:not(.copy-value)').map((b) => b.text())
 const dialog = () => document.body.querySelector('.action-dialog') as HTMLElement | null
 const panel = () => document.body.querySelector('.it-panel')?.closest('[role="dialog"]') as HTMLElement | null
 
@@ -455,6 +456,6 @@ describe('IT setup', () => {
     expect(panel()!.querySelector('#tabpanel-details')!.textContent).not.toMatch(/set up/i)
     expect(panel()!.textContent).not.toContain('07:30')
     const facts = [...panel()!.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department', 'Phone', 'Email'])
   })
 })

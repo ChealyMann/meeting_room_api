@@ -465,7 +465,6 @@ async function decide() {
       :key="`review-${openBooking.id}`"
       :booking="openBooking"
       :photo-path="coverOf(openBooking.room.id)"
-      :starts-in="null"
       :waiting-label="REVIEWERS.pitika.waitingLabel"
       :lead-card="REVIEWERS.pitika.leadCard"
       :note="REVIEWERS.pitika.panelNote(openBooking)"

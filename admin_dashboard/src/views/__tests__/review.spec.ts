@@ -48,6 +48,8 @@ let items: Array<ReturnType<typeof listItem>>
 let decision: () => Response
 let decidedItems: unknown[] = []
 let holdRejected = false
+// The admin's Holidays list; empty unless a test sets it.
+let holidays: Array<{ holiday_date: string; name_km: string; name_en: string | null }> = []
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -63,6 +65,7 @@ beforeEach(() => {
   bodies.length = 0
   decidedItems = []
   holdRejected = false
+  holidays = []
   items = ITEMS
   decision = () => json({ ...ITEMS[0], status: 'SETUP_IN_PROGRESS' })
   vi.stubGlobal(
@@ -109,6 +112,11 @@ beforeEach(() => {
         })
       }
       if (url.pathname === '/api/v1/rooms') return json({ items: ROOMS, page: 1, size: 100, total: ROOMS.length })
+      if (url.pathname === '/api/v1/public-holidays') {
+        const year = url.searchParams.get('year')
+        const list = holidays.filter((h) => h.holiday_date.startsWith(`${year}-`)).map((h, k) => ({ id: k + 1, remarks: null, created_at: '', updated_at: '', ...h }))
+        return json({ items: list, page: 1, size: 100, total: list.length })
+      }
       return json({ items: [], page: 1, size: 100, total: 0 })
     }),
   )
@@ -199,6 +207,70 @@ describe('ReviewView', () => {
   })
 })
 
+// Holiday alert (owner, 19 Nov 2026): the Khmer name first in the row's tags, "1/3" when some of
+// the days are holidays, the holiday sessions in the panel, and a line in the approve pop-up.
+describe('Holidays', () => {
+  const WATER = { name_km: 'បុណ្យអុំទូក', name_en: 'Water Festival' }
+
+  it('asks for the holidays of the queue’s years once', async () => {
+    await mountReview()
+    expect(calls.filter((c) => c.startsWith('GET /api/v1/public-holidays'))).toEqual(['GET /api/v1/public-holidays?year=2026&page=1&size=100'])
+  })
+
+  it('puts the holiday first in the row’s tags, with 1/3 when only some days are holidays', async () => {
+    holidays = [{ holiday_date: '2026-11-06', ...WATER }]
+    const { wrapper } = await mountReview()
+    // 21 runs on 5, 6 and 7 Nov; 22 is one session on 6 Nov; 23 is on 12 Nov.
+    const tag = (id: number) => row(wrapper, id).find('.soft-tag.holiday')
+    expect(row(wrapper, 21).findAll('.soft-tag')[0]!.text()).toBe('បុណ្យអុំទូក · 1/3')
+    expect(tag(22).text()).toBe('បុណ្យអុំទូក')
+    expect(tag(22).attributes('title')).toBe('Fri 6 Nov 2026 is a public holiday: បុណ្យអុំទូក (Water Festival)')
+    expect(tag(22).classes()).toContain('alert')
+    expect(tag(23).exists()).toBe(false)
+  })
+
+  it('shows no tag when the holidays do not load', async () => {
+    holidays = [{ holiday_date: '2026-11-06', ...WATER }]
+    const fetchMock = vi.mocked(fetch)
+    const real = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation(async (input, init) =>
+      String(input).includes('/public-holidays') ? new Response('{}', { status: 500 }) : real(input, init),
+    )
+    const { wrapper } = await mountReview()
+    expect(wrapper.find('.soft-tag.holiday').exists()).toBe(false)
+    expect(row(wrapper, 22).text()).toContain('Board briefing')
+  })
+
+  it('marks the holiday session in the panel', async () => {
+    holidays = [{ holiday_date: '2026-11-06', ...WATER }]
+    const { wrapper } = await mountReview()
+    await row(wrapper, 21).trigger('click')
+    await flushPromises()
+    const p = document.body.querySelector('.review-panel')!.closest('[role="dialog"]')!
+    expect(p.querySelector('.holiday-flag')?.textContent).toBe('1 on a holiday')
+    expect(p.querySelectorAll('.sessions li.holiday')).toHaveLength(1)
+  })
+
+  it('says the day is a public holiday in the approve pop-up', async () => {
+    holidays = [{ holiday_date: '2026-11-06', ...WATER }]
+    const { wrapper } = await mountReview()
+    const approve = [...row(wrapper, 22).element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Approve')!
+    approve.click()
+    await flushPromises()
+    const note = document.body.querySelector('.action-dialog .holiday-note')
+    expect(note?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Fri 6 Nov is a public holiday · បុណ្យអុំទូក You can still approve it.')
+  })
+
+  it('has no holiday line in the pop-up for a normal day', async () => {
+    const { wrapper } = await mountReview()
+    const approve = [...row(wrapper, 23).element.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Approve')!
+    approve.click()
+    await flushPromises()
+    expect(document.body.querySelector('.action-dialog')).not.toBeNull()
+    expect(document.body.querySelector('.action-dialog .holiday-note')).toBeNull()
+  })
+})
+
 describe('Review panel and decisions', () => {
   const dialog = () => document.body.querySelector('.action-dialog') as HTMLElement | null
   const panel = () => (document.body.querySelector('.review-panel')?.closest('[role="dialog"]') ?? null) as HTMLElement | null
@@ -215,7 +287,7 @@ describe('Review panel and decisions', () => {
     await flushPromises()
   }
 
-  it('opens a booking with a small photo by the title, a thin step bar, a one-line warning, and what to check', async () => {
+  it('opens a booking with a small photo by the title, a thin step bar, and what to check', async () => {
     const { wrapper } = await mountReview()
     await row(wrapper, 21).trigger('click')
     await flushPromises()
@@ -229,9 +301,10 @@ describe('Review panel and decisions', () => {
     expect(p.querySelector('.step-progress .line b')?.textContent).toBe('Waiting for Pitika')
     expect(p.querySelectorAll('.step-progress .seg.done')).toHaveLength(1)
     expect(p.querySelector('.step-progress .seg.now')).not.toBeNull()
-    const warn = p.querySelector('.warn')!
-    expect(warn.textContent?.replace(/\s+/g, ' ').trim()).toBe('Starts in 4 h 40 min · decide before, or it is rejected')
-    expect(warn.getAttribute('title')).toBe('If nobody decides before it starts, the system rejects it.')
+    // No "Starts in … decide before, or it is rejected" line (owner, 19 Nov 2026: removed); the
+    // row's "Starts in" pill stays.
+    expect(p.textContent).not.toContain('Starts in')
+    expect(p.textContent).not.toContain('decide before')
     expect(p.textContent).toContain('Lunch box')
     expect(p.textContent).toContain('Projector setup')
   })
@@ -250,6 +323,8 @@ describe('Review panel and decisions', () => {
       ['Name', 'Sok Dara សុខ ដារា'],
       ['Position', 'Officer'],
       ['Department', 'Operations Payments'],
+      ['Phone', '012 345 678'],
+      ['Email', 'sok.dara@nbc.gov.kh'],
     ])
     delete DETAILS[22]
   })
@@ -369,7 +444,7 @@ describe('Review panel and decisions', () => {
     await flushPromises()
 
     const values = [...panel()!.querySelectorAll('.booker dd')].map((d) => d.textContent?.trim())
-    expect(values).toEqual(['None', 'Sok Dara', 'None', 'Payments'])
+    expect(values).toEqual(['None', 'Sok Dara', 'None', 'Payments', '012 345 678', 'sok.dara@nbc.gov.kh'])
   })
 
   it('lists every session in the panel, and says the food comes at each of them', async () => {
@@ -383,7 +458,7 @@ describe('Review panel and decisions', () => {
     expect(p.querySelector('.sessions-head')?.textContent).toContain('3 sessions')
     expect(p.querySelector('.delivery')?.textContent?.trim()).toBe('The start of every session (3 times)')
     const facts = [...p.querySelectorAll('#tabpanel-details .details dt')].map((d) => d.textContent?.trim())
-    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department'])
+    expect(facts).toEqual(['Room', 'Where', 'Office', 'Seats', 'Meeting type', 'Attendees', 'Purpose', 'Route', 'Invited', 'Sent', 'Staff ID', 'Name', 'Position', 'Department', 'Phone', 'Email'])
   })
 
   it('tells the Pitika on an owner’s own room that only the food and IT are theirs to check', async () => {

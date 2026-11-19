@@ -3,10 +3,13 @@
 // owner's is the same page, 2026-11-05-owner-and-it-pages-design.md Part A): the bookings
 // waiting for them, grouped by urgency, each with the room's photo, what to check and the row
 // bar ("gap is you"). Details are loaded per booking for the labels. What differs between the
-// Pitika and the owner comes from `REVIEWERS`.
+// Pitika and the owner comes from `REVIEWERS`. A booking on a public holiday gets the holiday's
+// Khmer name first in its tags ("· 1/3" when only some days are), its holiday sessions marked in
+// the panel, and a line in the approve pop-up (owner, 19 Nov 2026).
 import {
   Armchair,
   Building2,
+  CalendarHeart,
   Check,
   CircleAlert,
   Clock,
@@ -39,10 +42,12 @@ import { usePanelParam } from '../composables/usePanelParam'
 import { usePhnomPenhToday } from '../composables/usePhnomPenhToday'
 import { reportWaiting } from '../composables/useWaitingCounts'
 import { pageLabel } from '../layouts/nav'
+import { useHolidays } from '../composables/useHolidays'
 import { useResourceList } from '../composables/useResourceList'
 import { useToast } from '../composables/useToast'
 import { useSessionStore } from '../stores/session'
 import { tabFrom, type Tab } from '../utils/decided'
+import { holidayTag } from '../utils/holidays'
 import { groupByUrgency, startsIn } from '../utils/reviewQueue'
 import { FILTER_WORDS } from '../utils/pickerWords'
 import { rowBooker } from '../utils/booker'
@@ -118,6 +123,13 @@ onMounted(async () => {
     // no photos and no room filter: the rows show the plain tile
   }
 })
+
+// Public holidays, for the years the queue's days are in.
+const { holidays, need: needHolidays } = useHolidays()
+/** The booking's days: every session once its details are in, else the first one. */
+const datesOf = (b: BookingListItem) => details.value[b.id]?.sessions.map((s) => s.date) ?? [b.first_session.date]
+watch([items, details], () => void needHolidays(items.value.flatMap(datesOf)))
+const holidayOf = (b: BookingListItem) => holidayTag(datesOf(b), holidays.value)
 
 const today = usePhnomPenhToday()
 // "Starts in …" counts down; it is worked out again every minute.
@@ -219,6 +231,14 @@ const askEffect = computed(() => {
   if (!asking.value) return ''
   if (asking.value.action === 'reject') return 'The booking stops and the room is free again. The booker sees your reason.'
   return askDetail.value ? R.value.nextStepText(askDetail.value) : ''
+})
+/** Approving a booking on a holiday: "Fri 6 Nov is a public holiday" and the first one's name. */
+const askHoliday = computed(() => {
+  if (asking.value?.action !== 'approve') return null
+  const days = [...new Set(datesOf(asking.value.booking))].filter((d) => holidays.value[d])
+  if (!days.length) return null
+  const list = days.map(shortDay).join(', ')
+  return { text: `${list} ${days.length === 1 ? 'is a public holiday' : 'are public holidays'}`, name: holidays.value[days[0]!]!.name_km }
 })
 const askTimes = computed(() => {
   const b = asking.value?.booking
@@ -358,7 +378,10 @@ async function decide() {
                 <span class="bit"><Users aria-hidden="true" />{{ b.attendees }} people</span>
                 <span class="bit kind" :class="{ governor: isGovernor(b) }"><component :is="kindIcon(b)" aria-hidden="true" />{{ MEETING_TYPE_LABELS[b.meeting_type] ?? b.meeting_type }}</span>
               </template>
-              <template v-if="rowLabels(b).length" #tags>
+              <template v-if="rowLabels(b).length || holidayOf(b)" #tags>
+                <span v-if="holidayOf(b)" class="soft-tag holiday alert" :title="holidayOf(b)!.title"
+                  ><CalendarHeart aria-hidden="true" /><span class="kh">{{ holidayOf(b)!.text }}</span></span
+                >
                 <span v-for="c in rowLabels(b)" :key="c.kind" class="soft-tag" :class="[c.kind, toneOf(c)]"
                   ><component :is="tagIcon(c)" aria-hidden="true" />{{ tagText(c) }}</span
                 >
@@ -383,10 +406,10 @@ async function decide() {
       :key="`review-${openItem.id}`"
       :booking="openDetail"
       :photo-path="covers[openItem.room.id]?.url ?? null"
-      :starts-in="openItem.first_session.date <= today ? startsIn(openItem, now) : null"
       :waiting-label="R.waitingLabel"
       :lead-card="R.leadCard"
       :note="R.panelNote(openDetail)"
+      :holidays="holidays"
       @close="panel.close"
       @approve="ask('approve', openItem)"
       @reject="ask('reject', openItem)"
@@ -412,7 +435,14 @@ async function decide() {
       :field-error="askFieldError"
       @back="asking = null"
       @confirm="decide"
-    />
+    >
+      <div v-if="askHoliday" class="holiday-note">
+        <CalendarHeart aria-hidden="true" />
+        <p>
+          <b>{{ askHoliday.text }}</b> · <span class="kh">{{ askHoliday.name }}</span>{{ ' ' }}<small>You can still approve it.</small>
+        </p>
+      </div>
+    </BookingActionDialog>
   </div>
 </template>
 
@@ -531,5 +561,36 @@ async function decide() {
 }
 .reject {
   background: var(--color-sheet);
+}
+/* The approve pop-up's holiday line: crimson wash, between the booking and the notes box. */
+.holiday-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 24px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-crimson-wash);
+  box-shadow: inset 0 0 0 1px var(--color-danger-line);
+  color: var(--color-crimson);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.holiday-note svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+.holiday-note p {
+  margin: 0;
+}
+.holiday-note b {
+  font-weight: 600;
+}
+.holiday-note small {
+  display: block;
+  color: var(--color-crimson-deep);
+  font-size: 12px;
 }
 </style>
