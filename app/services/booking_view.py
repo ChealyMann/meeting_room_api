@@ -240,6 +240,7 @@ def build_booking_detail(session: Session, booking: Booking, settings: Settings)
         )
         if rejection
         else None,
+        confirmed_at=booking.confirmed_at,
         cancelled_at=booking.cancelled_at,
         cancel_reason=booking.cancel_reason,
         cancelled_by=_person(users.get(booking.cancelled_by)),

@@ -1,6 +1,6 @@
 """IT tickets: spec 9.14, 8.5, B-19, B-22, BR-IT-01..06, BR-APR-07."""
 
-from datetime import time
+from datetime import time, timedelta
 
 import pytest
 from sqlalchemy import event
@@ -24,10 +24,11 @@ def staff(make_user):
 
 @pytest.fixture
 def setup(make_user, make_bookable_room, make_booking):
-    """A booking in IT setup; `build(**options)` returns it. Its ticket is `booking.it_ticket`."""
+    """A confirmed booking whose IT ticket was sent to IT (IT is an add-on since 19 Nov 2026);
+    `build(**options)` returns it. Its ticket is `booking.it_ticket`."""
 
     def build(**options):
-        options.setdefault("status", BookingStatus.SETUP_IN_PROGRESS)
+        options.setdefault("status", BookingStatus.CONFIRMED)
         options.setdefault("forwarded", True)
         return make_booking(make_bookable_room(), make_user(roles=["STAFF"]), it=True, **options)
 
@@ -286,7 +287,7 @@ def test_t10_assign(client, frozen, lead, staff, setup, auth_headers, db_session
     assert data["booking"]["version"] == 2
     db_session.expire_all()
     assert booking.version == 2
-    assert booking.status == BookingStatus.SETUP_IN_PROGRESS
+    assert booking.status == BookingStatus.CONFIRMED
 
 
 def test_assign_stale_version(client, frozen, lead, staff, setup, auth_headers):
@@ -321,11 +322,26 @@ def test_assign_technician_notes_refuse_html(client, frozen, lead, staff, setup,
     assert "technician_notes" in fields(response)
 
 
-def test_assign_wrong_state(client, frozen, lead, staff, setup, auth_headers):
-    confirmed = setup(status=BookingStatus.CONFIRMED)
-    assert error(assign(client, auth_headers(lead), confirmed, [staff.id])) == (
+def test_assign_after_the_meeting_started_is_refused(
+    client, frozen, lead, staff, setup, auth_headers
+):
+    """Missed: now 08:00, its only session started 07:00."""
+    started = setup(sessions=((DAY - timedelta(days=1), time(7), time(9)),))
+    assert error(assign(client, auth_headers(lead), started, [staff.id])) == (
         409,
         "INVALID_TRANSITION",
+    )
+
+
+def test_assign_on_a_confirmed_booking_before_it_starts(
+    client, frozen, lead, staff, setup, auth_headers
+):
+    booking = setup()
+    response = assign(client, auth_headers(lead), booking, [staff.id])
+    assert response.status_code == 200
+    assert (response.json()["status"], response.json()["booking"]["status"]) == (
+        "ASSIGNED",
+        "CONFIRMED",
     )
 
 
@@ -342,8 +358,13 @@ def test_reassign_replaces(client, frozen, lead, staff, make_user, setup, auth_h
 # --- Ready (T11) -------------------------------------------------------------------------
 
 
-def test_t11_ready_confirms(client, frozen, lead, staff, setup, auth_headers, db_session):
+def test_t11_ready_marks_only_the_setup(
+    client, frozen, lead, staff, setup, auth_headers, db_session
+):
+    """The booking is already confirmed: Ready marks the setup and moves the version on, and the
+    door pass stays the same."""
     booking = setup(assigned_staff=(staff,))
+    passcode = booking.door_pass.passcode
     response = ready(client, auth_headers(lead), booking)
     assert response.status_code == 200
     data = response.json()
@@ -352,9 +373,29 @@ def test_t11_ready_confirms(client, frozen, lead, staff, setup, auth_headers, db
     assert data["booking"]["status"] == "CONFIRMED"
     db_session.expire_all()
     assert booking.status == BookingStatus.CONFIRMED
-    assert booking.door_pass is not None
+    assert booking.door_pass.passcode == passcode
     assert booking.it_ticket.status == ITStatus.READY
     assert booking.version == 2
+
+
+def test_ready_on_an_old_booking_still_in_it_setup_confirms_it(
+    client, frozen, lead, staff, setup, auth_headers, db_session
+):
+    """A booking sent to IT before the change keeps the old way."""
+    booking = setup(status=BookingStatus.SETUP_IN_PROGRESS, assigned_staff=(staff,))
+    assert ready(client, auth_headers(lead), booking).json()["booking"]["status"] == "CONFIRMED"
+    db_session.expire_all()
+    assert booking.door_pass is not None
+
+
+def test_ready_after_the_meeting_started_is_refused(
+    client, frozen, lead, staff, setup, auth_headers
+):
+    """Missed: the setup cannot change after the start (now 08:00, it started 07:00)."""
+    booking = setup(
+        assigned_staff=(staff,), sessions=((DAY - timedelta(days=1), time(7), time(9)),)
+    )
+    assert error(ready(client, auth_headers(lead), booking)) == (409, "INVALID_TRANSITION")
 
 
 def test_ready_before_assign(client, frozen, lead, setup, auth_headers):
@@ -393,8 +434,9 @@ def test_ready_stale_and_wrong_status(client, frozen, lead, staff, setup, auth_h
     headers = auth_headers(lead)
     booking = setup(assigned_staff=(staff,))
     assert error(ready(client, headers, booking, version=9)) == (409, "STALE_VERSION")
-    done = setup(status=BookingStatus.CONFIRMED, assigned_staff=(staff,))
-    assert error(ready(client, headers, done)) == (409, "INVALID_TRANSITION")
+    version = ready(client, headers, booking).json()["booking"]["version"]
+    again = ready(client, headers, booking, version=version)  # already Ready
+    assert error(again) == (409, "INVALID_TRANSITION")
 
 
 def test_staff_item_shows_inactive(client, frozen, lead, make_user, setup, auth_headers):

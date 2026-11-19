@@ -262,6 +262,9 @@ class BookingDetail(BookingListItem):
     it: ITOut | None
     reviews: list[ReviewOut]
     rejection: RejectionOut | None
+    # When it was confirmed: at the last approval, or (bookings sent to IT before 19 Nov 2026)
+    # when IT was ready or the meeting started. Null until then.
+    confirmed_at: UtcDateTime | None
     cancelled_at: UtcDateTime | None
     cancel_reason: str | None
     cancelled_by: PersonRef | None  # null: the system cancelled it (B-27)
