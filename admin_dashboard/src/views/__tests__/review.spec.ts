@@ -498,7 +498,7 @@ describe('Review panel and decisions', () => {
     await click(button(row(wrapper, 21).element, 'Approve'))
 
     expect(dialog()?.textContent).toContain('Approve this booking?')
-    expect(dialog()?.textContent).toContain('It goes to IT setup next. The food is approved with it.')
+    expect(dialog()?.textContent).toContain('It is confirmed, with a door pass. IT gets the setup to do. The food is approved with it.')
     await click(dialog()!.querySelector<HTMLElement>('button.confirm')!)
 
     expect(calls).toContain('POST /api/v1/pitika/bookings/21/approve')

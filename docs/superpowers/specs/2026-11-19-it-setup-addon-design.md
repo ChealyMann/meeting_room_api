@@ -27,7 +27,7 @@ setup runs beside it.
   "IT setup · Not marked ready" (triangle); a click opens the Food & IT tab. The green band
   "Confirmed · the room is yours" stays on top.
 - History's process bar gets the same fourth circle; its timeline is in time order, so
-  "Confirmed · door pass ready" now comes before "Sent to IT", "Staff assigned" and "IT ready".
+  "Confirmed" (owner, 19 Nov 2026: no "door pass ready") now comes before "Sent to IT", "Staff assigned" and "IT ready".
 
 ## Non-goals
 

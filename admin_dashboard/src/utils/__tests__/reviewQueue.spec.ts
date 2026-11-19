@@ -58,10 +58,11 @@ describe('rowSteps', () => {
 
   it('starts with Sent done, then a gap into the first step after Pitika', () => {
     expect(labels({ route: 'R1', has_it: false })).toEqual(['Sent:done', 'Confirmed:todo:gap'])
-    expect(labels({ route: 'R1', has_it: true })).toEqual(['Sent:done', 'IT setup:todo:gap', 'Confirmed:todo'])
+    // IT is an add-on (owner pick F, 19 Nov 2026): it comes after Confirmed.
+    expect(labels({ route: 'R1', has_it: true })).toEqual(['Sent:done', 'Confirmed:todo:gap', 'IT setup:todo'])
     expect(labels({ route: 'R2', has_it: false })).toEqual(['Sent:done', 'Room owner:todo:gap', 'Confirmed:todo'])
-    expect(labels({ route: 'R2', has_it: true })).toEqual(['Sent:done', 'Room owner:todo:gap', 'IT setup:todo', 'Confirmed:todo'])
-    expect(labels({ route: 'R4', has_it: true })).toEqual(['Sent:done', 'IT setup:todo:gap', 'Confirmed:todo'])
+    expect(labels({ route: 'R2', has_it: true })).toEqual(['Sent:done', 'Room owner:todo:gap', 'Confirmed:todo', 'IT setup:todo'])
+    expect(labels({ route: 'R4', has_it: true })).toEqual(['Sent:done', 'Confirmed:todo:gap', 'IT setup:todo'])
   })
 })
 
@@ -90,7 +91,7 @@ describe('checkLabels', () => {
 describe('nextStepText', () => {
   it('says what approving leads to, and that the food goes with it', () => {
     expect(nextStepText(detail({ route: 'R2' }))).toBe('It goes to the room owner next.')
-    expect(nextStepText(detail({ has_it: true }))).toBe('It goes to IT setup next.')
+    expect(nextStepText(detail({ has_it: true }))).toBe('It is confirmed, with a door pass. IT gets the setup to do.')
     expect(nextStepText(detail())).toBe('It is confirmed, with a door pass.')
     expect(nextStepText(detail({ catering: { packages: [] } }))).toBe(
       'It is confirmed, with a door pass. The food is approved with it.',

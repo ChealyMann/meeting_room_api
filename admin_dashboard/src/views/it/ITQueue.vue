@@ -284,7 +284,7 @@ defineExpose({ live })
       :reference="asking.ticket.booking.reference_code"
       :day="formatDay(asking.ticket.booking.first_session.date)"
       :times="askTimes"
-      :effect="asking.step === 'assign' ? 'They see it in My tasks.' : 'The booking is confirmed and the booker gets the door pass.'"
+      :effect="asking.step === 'assign' ? 'They see it in My tasks.' : 'The room is ready for the meeting. The booking is already confirmed.'"
       :busy="busy"
       :allowed="asking.step === 'ready' || picked.length > 0"
       :error="askError"

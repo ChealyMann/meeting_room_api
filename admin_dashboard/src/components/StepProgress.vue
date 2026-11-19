@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The steps of a booking as a thin bar (owner pick, 16 Nov 2026, look B): one segment per step,
 // green done, amber now, crimson stopped, grey to come; under it "Step 2 of 4" and where it
-// is ("Waiting for Pitika"). Used on top of every booking pop-up.
+// is ("Waiting for Pitika"). Used on top of every booking pop-up. The `right` slot replaces those
+// words (the booker's IT setup words, owner pick F, 19 Nov 2026).
 import { computed } from 'vue'
 
 import type { ProcessStep } from '../utils/bookingHistory'
@@ -47,7 +48,7 @@ const words = computed(() => props.label ?? where.value.words)
     </ol>
     <p class="line">
       <span>Step {{ where.at }} of {{ steps.length }}</span>
-      <b v-if="words" :class="where.tone">{{ words }}</b>
+      <slot name="right"><b v-if="words" :class="where.tone">{{ words }}</b></slot>
     </p>
   </div>
 </template>

@@ -529,6 +529,55 @@ describe('Tabs on my booking', () => {
     expect(buttonIn(panel()!, 'ប័ណ្ណស្នើ (Word)')).toBeTruthy()
   })
 
+  // IT is an add-on (owner pick F, 19 Nov 2026): a fourth step after Confirmed, and its words on
+  // the right of the step line; a click there opens Food & IT.
+  const withIt = (it: Record<string, unknown>, first = '2026-11-16') =>
+    bookingDetail(
+      { ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED', has_it: true, first_session: { id: 80, date: first, start_time: '09:00', end_time: '10:00' } },
+      { it: { ...IT, ...it }, reviews: [PITIKA_YES], confirmed_at: '2026-11-12T07:05:00Z' },
+    )
+  const segs = () => [...panel()!.querySelectorAll('.step-progress .seg')].map((s) => s.className.replace('seg', '').trim())
+  const itLine = () => panel()!.querySelector<HTMLButtonElement>('.step-progress button.it-line')
+
+  it('shows IT setup after Confirmed on the step line, and opens Food & IT from it', async () => {
+    detail8 = withIt({ status: 'ASSIGNED', ready_at: null })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(panel()!.querySelector('.band')?.textContent).toContain('Confirmed')
+    expect(segs()).toEqual(['done', 'done', 'done', 'now'])
+    expect(panel()!.querySelector('.step-progress .line span')?.textContent).toBe('Step 4 of 4')
+    expect(itLine()?.textContent?.trim()).toBe('IT setup · Setting up')
+    expect(itLine()?.classList).toContain('wait')
+    itLine()!.click()
+    await flushPromises()
+    expect(tabPanel('services').style.display).toBe('')
+  })
+
+  it('says Room ready in green, and Not marked ready in crimson when IT missed it', async () => {
+    detail8 = withIt({})
+    let w = await open()
+    await openCard(w, 'Team sync')
+    expect(segs()).toEqual(['done', 'done', 'done', 'done'])
+    expect(itLine()?.textContent?.trim()).toBe('Room ready')
+    expect(itLine()?.classList).toContain('ok')
+    w.unmount()
+
+    detail8 = withIt({ status: 'ASSIGNED', ready_at: null }, '2026-11-12') // started 09:00, now 10:00
+    w = await open()
+    await openCard(w, 'Team sync')
+    expect(segs()).toEqual(['done', 'done', 'done', 'stop'])
+    expect(itLine()?.textContent?.trim()).toBe('IT setup · Not marked ready')
+    expect(itLine()?.classList).toContain('stop')
+  })
+
+  it('shows no IT words on a booking without IT help', async () => {
+    detail8 = bookingDetail({ ...WAITING, status: 'CONFIRMED', display_status: 'CONFIRMED' }, { reviews: [PITIKA_YES] })
+    const w = await open()
+    await openCard(w, 'Team sync')
+    expect(segs()).toEqual(['done', 'done', 'done'])
+    expect(itLine()).toBeNull()
+  })
+
   it('shows each food item with the amount, the note, and who checked it', async () => {
     detail8 = DONE_FULL()
     const w = await open()
@@ -577,6 +626,10 @@ describe('Tabs on my booking', () => {
     expect(approved.querySelector('.name')?.textContent?.trim()).toBe('Chan Sophea')
     expect(approved.querySelector('.role')?.textContent?.trim()).toBe('Pitika')
     expect(approved.querySelector('.time')?.textContent?.trim()).toBe('12 Nov 2026, 14:05')
+    // The label has its line to itself, so a long one never wraps (owner,
+    // 19 Nov 2026: "one line only"); the time sits on the who line, at its end.
+    expect(approved.querySelector('.line1 .time')).toBeNull()
+    expect(approved.querySelector('.who .time')).not.toBeNull()
     expect(approved.querySelector('.note')?.textContent?.trim()).toBe('Food is fine for 8.')
     expect(h.querySelector('.steps')).toBeNull()
   })

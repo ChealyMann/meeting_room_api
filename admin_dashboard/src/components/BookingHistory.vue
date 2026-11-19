@@ -83,11 +83,12 @@ const ROLE_ICON: Record<RoleKey, Component> = {
       <li v-for="(e, i) in history.events" :key="i" :class="`t-${KIND[e.kind].tone}`">
         <span class="dot" aria-hidden="true"><component :is="KIND[e.kind].icon" /></span>
         <div class="body">
+          <!-- The label has the line to itself, so it never wraps (owner, 19 Nov 2026: "one line
+               only"); the time ends the who line. -->
           <div class="line1">
             <b class="label">{{ e.label }}</b>
-            <span v-if="e.at" class="time">{{ e.at }}</span>
           </div>
-          <div v-if="e.name || e.role" class="who">
+          <div v-if="e.name || e.role || e.at" class="who">
             <template v-if="e.name">
               <span class="name">{{ e.name }}</span>
               <span v-if="e.role" class="sep" aria-hidden="true">·</span>
@@ -99,6 +100,7 @@ const ROLE_ICON: Record<RoleKey, Component> = {
               <span class="for">for</span>
               <span class="role"><component :is="ROLE_ICON[e.forRole]" aria-hidden="true" />{{ ROLE_LABELS[e.forRole] }}</span>
             </template>
+            <span v-if="e.at" class="time">{{ e.at }}</span>
           </div>
           <p v-if="e.note" class="note">{{ e.note }}</p>
         </div>
@@ -273,13 +275,20 @@ const ROLE_ICON: Record<RoleKey, Component> = {
   padding-top: 5px;
 }
 .label {
+  min-width: 0;
+  overflow: hidden;
   font-weight: 600;
   color: var(--tone);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .t-neutral .label {
   color: var(--color-ink);
 }
+/* At the end of the who line; alone on that line when the row names nobody. */
 .time {
+  margin-left: auto;
+  padding-left: 12px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-intaglio);

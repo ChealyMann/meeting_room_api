@@ -366,6 +366,15 @@ describe('BookingPanel Admin actions', () => {
     expect(panel()?.textContent).toContain('Cancelled')
   })
 
+  it('says an approval with IT help confirms it (IT is an add-on since 19 Nov 2026)', async () => {
+    actions = { cancel: true, approve: true, reject: true, stage: 'PITIKA' }
+    current = detail({ route: 'R1', has_it: true })
+    await mountAt('/bookings?id=12')
+
+    await click(panelButton('Approve'))
+    expect(step()?.textContent).toContain('It is confirmed, with a door pass. IT gets the setup to do.')
+  })
+
   it('shows a 403 on approve and reloads the actions', async () => {
     actions = { cancel: true, approve: true, reject: true, stage: 'PITIKA' }
     actionAnswer = () => json({ error: { code: 'FORBIDDEN', message: 'This office has an active Pitika. Ask them to decide.', fields: {} } }, 403)
