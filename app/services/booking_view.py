@@ -86,6 +86,8 @@ def _booker(booking: Booking) -> BookerRef:
         avatar_url=avatar_url(user),
         position=sent.get("position"),
         department=sent.get("department"),
+        phone=user.phone,
+        email=user.email,
     )
 
 

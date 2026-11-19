@@ -67,6 +67,7 @@ def test_list_item_booker_card(client, frozen, db_session, pitika, pending, auth
     }
     booking.requester.user_avatar = "7/face.jpg"
     booking.requester.name_en = "Heng Rathana"
+    booking.requester.phone = "012 345 678"
     db_session.flush()
 
     item = client.get(LIST, headers=auth_headers(pitika)).json()["items"][0]
@@ -77,7 +78,27 @@ def test_list_item_booker_card(client, frozen, db_session, pitika, pending, auth
         "avatar_url": f"/api/v1/users/{booking.requester.id}/avatar",
         "position": "Officer",
         "department": "Statistics Department",
+        "phone": "012 345 678",
+        "email": booking.requester.email,
     }
+
+
+def test_booker_contact_is_current(client, frozen, db_session, pitika, pending, auth_headers):
+    """Phone and email are today's (owner, 19 Nov 2026): a booker who changes their number after
+    sending is still called on the right one. The copy kept when sent stays as it was."""
+    booking = pending()
+    sent_phone = booking.requester_info["phone"]
+    booking.requester.phone = "097 88 12 345"
+    db_session.flush()
+
+    item = client.get(LIST, headers=auth_headers(pitika)).json()["items"][0]
+    assert item["requester"]["phone"] == "097 88 12 345"
+    detail = client.get(f"/api/v1/bookings/{booking.id}", headers=auth_headers(pitika)).json()
+    assert (detail["requester"]["phone"], detail["requester"]["email"]) == (
+        "097 88 12 345",
+        booking.requester.email,
+    )
+    assert detail["requester_info"]["phone"] == sent_phone
 
 
 def test_list_without_province_is_empty(client, frozen, make_user, pending, auth_headers):
