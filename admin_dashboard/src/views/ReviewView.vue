@@ -14,11 +14,11 @@ import {
   CircleAlert,
   Clock,
   ListChecks,
-  Lock,
   MapPin,
   MessageSquareText,
   Monitor,
   Star,
+  UserLock,
   Users,
   UtensilsCrossed,
   X,
@@ -181,7 +181,7 @@ const tagText = (c: Label) => {
 /** The row's tags leave out "With Governor": the room line already says the meeting type. */
 const rowLabels = (b: BookingListItem) => labelsOf(b).filter((c) => c.kind !== 'governor')
 const TAG_ICONS: Record<string, unknown> = {
-  private: Lock,
+  private: UserLock,
   food: UtensilsCrossed,
   it: Monitor,
   r4: ListChecks,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Step 4, Review & confirm: what people most want to double-check first (room, time), then four
 // tiles you click to change, each with a quiet pencil. The API's holiday warnings sit above them.
-import { CircleAlert, Lock, Pencil } from 'lucide-vue-next'
+import { CircleAlert, Pencil, UserLock } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import AttachmentList from '../../../components/AttachmentList.vue'
@@ -53,7 +53,7 @@ const cover = computed(() => props.room.photos[0]?.url ?? null)
         <b>{{ room.name_en }}</b>
         <span class="kh">{{ room.name_kh }}</span>
       </div>
-      <span v-if="room.is_private" class="pill"><Lock :size="12" aria-hidden="true" />Private</span>
+      <span v-if="room.is_private" class="pill"><UserLock :size="12" aria-hidden="true" />Private</span>
     </div>
 
     <button type="button" class="rv-time" aria-label="Change the times" @click="emit('jump', 1)">

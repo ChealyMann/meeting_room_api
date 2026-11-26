@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Step 2, Meeting details in soft fields: grey fields with the label inside, an icon on the left;
 // the field being typed in turns white with a dark outline. Red only for a real error.
-import { FileText, Lock, Mail, Minus, Plus, Type, Users, X } from 'lucide-vue-next'
+import { FileText, Mail, Minus, Plus, Type, UserLock, Users, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import AttachmentList from '../../../components/AttachmentList.vue'
@@ -150,7 +150,7 @@ const removeEmail = (e: string) => (draft.value.emails = draft.value.emails.filt
 
     <template v-if="room.is_private">
       <div class="sf area" :class="{ bad: errors.justification }">
-        <Lock class="ic" :size="17" aria-hidden="true" />
+        <UserLock class="ic" :size="17" aria-hidden="true" />
         <textarea id="bf-why" v-model="draft.justification" name="justification" rows="3" placeholder=" " />
         <label for="bf-why">Why this private room</label>
       </div>
