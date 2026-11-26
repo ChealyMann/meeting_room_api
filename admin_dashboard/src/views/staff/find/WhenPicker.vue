@@ -46,6 +46,10 @@ const weeks = computed(() => {
   }
   return rows
 })
+// Seven columns, Mon to Sun, that fill the box (owner, 20 Nov 2026: no empty gap on the right).
+// The first week starts under its own weekday; the later weeks start on Monday anyway.
+const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const column = (d: string) => WEEK.indexOf(weekdayShort(d)) + 1
 const dayClass = (d: string) => ({
   on: d === when.value.first || d === when.value.last,
   mid: d > when.value.first && d < when.value.last,
@@ -93,11 +97,12 @@ const hint = computed(() => {
     <div class="weeks" role="group" :aria-label="when.mode === 'range' ? 'From day to day' : 'Day'">
       <div v-for="(row, i) in weeks" :key="i" class="row">
         <button
-          v-for="d in row"
+          v-for="(d, j) in row"
           :key="d"
           type="button"
           class="day"
           :class="dayClass(d)"
+          :style="i === 0 && j === 0 ? { gridColumnStart: column(d) } : undefined"
           :data-day="d"
           :aria-pressed="d === when.first || d === when.last"
           :aria-label="dayLabel(d)"
@@ -167,14 +172,14 @@ const hint = computed(() => {
   gap: 6px;
 }
 .row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 .day {
   display: grid;
   justify-items: center;
-  width: 52px;
+  min-width: 0;
   padding: 6px 0;
   border: 1px solid var(--color-rule);
   border-radius: 12px;
@@ -193,13 +198,13 @@ const hint = computed(() => {
   line-height: 1.2;
 }
 .day.mid {
-  border-color: var(--color-field-disabled);
-  background: var(--color-field-disabled);
+  border-color: var(--color-crimson-wash);
+  background: var(--color-crimson-wash);
 }
 .day.on {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-  color: var(--color-sheet);
+  border-color: var(--color-crimson-fill);
+  background: var(--color-crimson-fill);
+  color: #fff;
 }
 .day.on span {
   color: inherit;
@@ -251,8 +256,8 @@ const hint = computed(() => {
   cursor: pointer;
 }
 .quick button.on {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-  color: var(--color-sheet);
+  border-color: var(--color-crimson-fill);
+  background: var(--color-crimson-fill);
+  color: #fff;
 }
 </style>

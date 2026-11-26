@@ -14,13 +14,16 @@ import { getDaySchedule, listBookableRooms } from '../../api/staff'
 import type { RoomDaySchedule, RoomListItem } from '../../api/types'
 import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
-import { formatDay, phnomPenhClock } from '../../utils/time'
+import { useSessionStore } from '../../stores/session'
+import { phnomPenhClock } from '../../utils/time'
 import OfflineNote from '../../components/list/OfflineNote.vue'
 import RefreshButton from '../../components/list/RefreshButton.vue'
+import { SEARCH_FROM } from '../../components/list/SearchPicker.vue'
 import RoomCard from './RoomCard.vue'
 import FilterChip from './find/FilterChip.vue'
+import PlaceList, { type PlaceBuilding, type PlaceOffice } from './find/PlaceList.vue'
 import WhenPicker from './find/WhenPicker.vue'
-import { anyTime, bookQuery, datesOf, freeQuery, hasTime, isRange, PICK_DAYS, whenLabel, whenSet, type When } from './find/when'
+import { anyTime, bookQuery, countLine, datesOf, freeQuery, hasTime, isRange, PICK_DAYS, whenLabel, whenSet, type When } from './find/when'
 import { busySpans, nowLine, roomHours, toMin, toTime, daysFrom, type NowLine } from './rules'
 import './staff.css'
 
@@ -162,30 +165,50 @@ onBeforeUnmount(() => {
 })
 
 // Offices, buildings and equipment for the chips. Each list is read once; a failure hides its chip.
-const offices = ref<{ id: number; label: string }[]>([])
-const buildings = ref<{ id: number; office: number; label: string }[]>([])
+const offices = ref<PlaceOffice[]>([])
+const buildings = ref<PlaceBuilding[]>([])
 const equipmentList = ref<{ id: number; name: string }[]>([])
 onMounted(async () => {
   const [o, b, e] = await Promise.allSettled([listOffices(api), listBuildings(api), listEquipment(api)])
-  if (o.status === 'fulfilled') offices.value = o.value.filter((x) => x.is_active).map((x) => ({ id: x.id, label: x.name_en }))
+  if (o.status === 'fulfilled')
+    offices.value = o.value
+      .filter((x) => x.is_active)
+      .map((x) => ({ id: x.id, en: x.name_en, kh: x.name_kh ?? '', province: x.province ?? null }))
   if (b.status === 'fulfilled')
-    buildings.value = b.value.filter((x) => x.is_active).map((x) => ({ id: x.id, office: x.location_id, label: x.name_kh || x.name_en }))
+    buildings.value = b.value
+      .filter((x) => x.is_active)
+      .map((x) => ({ id: x.id, office: x.location_id, en: x.name_en, kh: x.name_kh ?? '' }))
   if (e.status === 'fulfilled') equipmentList.value = e.value.filter((x) => x.is_active).map((x) => ({ id: x.id, name: x.name }))
 })
-const officeBuildings = computed(() => buildings.value.filter((b) => office.value === 'all' || b.office === office.value))
 const showPlace = computed(() => offices.value.length > 1 || buildings.value.length > 1)
+/** The offices in the user's province come first in the list. */
+const myProvince = computed(() => useSessionStore().user?.province ?? null)
 function pickOffice(id: 'all' | number) {
   office.value = id
   building.value = 'all'
 }
+/** One click picks; a building picks its office too. */
+function pickPlace(o: 'all' | number, b: 'all' | number) {
+  office.value = o
+  building.value = b
+}
 const placeLabel = computed(() => {
-  if (building.value !== 'all') return buildings.value.find((b) => b.id === building.value)?.label ?? 'Building'
-  if (office.value !== 'all') return offices.value.find((o) => o.id === office.value)?.label ?? 'Office'
+  const o = offices.value.find((x) => x.id === office.value)
+  const b = buildings.value.find((x) => x.id === building.value)
+  if (b) return o ? `${o.en.replace(/ Branch$/, '')} · ${b.en}` : b.en
+  if (o) return o.en
   return offices.value.length > 1 ? 'Office' : 'Building'
 })
 const equipmentLabel = computed(() =>
   equipment.value.length ? equipmentList.value.filter((e) => equipment.value.includes(e.id)).map((e) => e.name).join(', ') || 'Equipment' : 'Equipment',
 )
+// Equipment: a search box for a long list, and what is picked as tags with × (owner, 20 Nov 2026).
+const equipmentQuery = ref('')
+const shownEquipment = computed(() => {
+  const q = equipmentQuery.value.trim().toLowerCase()
+  return q ? equipmentList.value.filter((e) => e.name.toLowerCase().includes(q)) : equipmentList.value
+})
+const pickedEquipment = computed(() => equipmentList.value.filter((e) => equipment.value.includes(e.id)))
 function toggleEquipment(id: number, on: boolean) {
   equipment.value = on ? [...equipment.value, id] : equipment.value.filter((x) => x !== id)
 }
@@ -207,9 +230,7 @@ function lineOf(room: RoomListItem): NowLine {
   if (booked >= hours.close - hours.open) return { tone: 'alert', text: 'Full' }
   return { tone: 'off', text: `${busy.length} ${busy.length === 1 ? 'booking' : 'bookings'} that day` }
 }
-const countText = computed(() =>
-  hasTime(when.value) ? `${total.value} free` : `${total.value} ${total.value === 1 ? 'room' : 'rooms'}`,
-)
+const count = computed(() => countLine(when.value, pickDays.value, today.value, total.value))
 const anySet = computed(
   () =>
     !!query.value.trim() ||
@@ -244,7 +265,7 @@ const KINDS = [
     <header class="st-head head">
       <div>
         <h1>Find a room</h1>
-        <p>{{ formatDay(today) }} · {{ countText }}</p>
+        <p class="count-line"><b :class="{ free: count.free }">{{ count.count }}</b>{{ count.rest }}</p>
       </div>
       <RefreshButton :live="live" />
     </header>
@@ -288,39 +309,25 @@ const KINDS = [
         @clear="pickOffice('all')"
       >
         <template #icon><Building2 :size="16" aria-hidden="true" /></template>
-        <template v-if="offices.length > 1">
-          <span class="box-lbl">Office</span>
-          <div class="quick">
-            <button type="button" data-office="all" :class="{ on: office === 'all' }" @click="pickOffice('all')">All offices</button>
-            <button v-for="o in offices" :key="o.id" type="button" :data-office="o.id" :class="{ on: office === o.id }" @click="pickOffice(o.id)">
-              {{ o.label }}
-            </button>
-          </div>
-        </template>
-        <template v-if="officeBuildings.length > 1">
-          <span class="box-lbl">Building</span>
-          <div class="quick">
-            <button type="button" data-building="all" :class="{ on: building === 'all' }" @click="building = 'all'">All buildings</button>
-            <button
-              v-for="b in officeBuildings"
-              :key="b.id"
-              type="button"
-              class="kh"
-              :data-building="b.id"
-              :class="{ on: building === b.id }"
-              @click="building = b.id"
-            >
-              {{ b.label }}
-            </button>
-          </div>
-        </template>
+        <PlaceList :offices="offices" :buildings="buildings" :office="office" :building="building" :mine="myProvince" @pick="pickPlace" />
       </FilterChip>
 
       <FilterChip v-if="equipmentList.length" class="chip-equipment" :label="equipmentLabel" :set="equipment.length > 0" @clear="equipment = []">
         <template #icon><Monitor :size="16" aria-hidden="true" /></template>
         <span class="box-lbl">The room must have</span>
+        <label v-if="equipmentList.length >= SEARCH_FROM" class="pl-search">
+          <Search :size="16" aria-hidden="true" />
+          <input v-model="equipmentQuery" type="search" placeholder="Search equipment" aria-label="Search equipment" />
+        </label>
+        <p v-if="pickedEquipment.length" class="eq-tags">
+          <span v-for="e in pickedEquipment" :key="e.id" class="eq-tag">
+            {{ e.name }}<button type="button" :aria-label="`Remove ${e.name}`" @click="toggleEquipment(e.id, false)"><X :size="13" aria-hidden="true" /></button>
+          </span>
+          <button type="button" class="eq-clear" @click="equipment = []">Clear</button>
+        </p>
+        <p v-if="!shownEquipment.length" class="eq-none">No equipment matches "{{ equipmentQuery.trim() }}"</p>
         <div class="checks">
-          <label v-for="e in equipmentList" :key="e.id">
+          <label v-for="e in shownEquipment" :key="e.id">
             <input type="checkbox" :data-equipment="e.id" :checked="equipment.includes(e.id)" @change="toggleEquipment(e.id, ($event.target as HTMLInputElement).checked)" />
             {{ e.name }}
           </label>
@@ -376,7 +383,13 @@ const KINDS = [
   justify-content: space-between;
   gap: 16px;
 }
-.offline {
+.count-line b {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+.count-line b.free {
+  color: var(--color-ok);
+}.offline {
   margin: 18px 0 0;
 }
 .bar {
@@ -434,15 +447,83 @@ const KINDS = [
   cursor: pointer;
 }
 .quick button.on {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-  color: var(--color-sheet);
+  border-color: var(--color-crimson-fill);
+  background: var(--color-crimson-fill);
+  color: #fff;
 }
 .checks {
   display: grid;
   gap: 2px;
   max-height: 260px;
   overflow: auto;
+}
+.pl-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 10px;
+  background: var(--color-sheet);
+  color: var(--color-ink-off);
+}
+.pl-search:focus-within {
+  border-color: var(--color-crimson);
+  box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.12);
+}
+.pl-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+.eq-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.eq-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 999px;
+  background: var(--color-crimson-wash);
+  color: var(--color-crimson);
+  font-size: 12px;
+  font-weight: 500;
+}
+.eq-tag button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.eq-clear {
+  margin-left: auto;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--color-crimson);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.eq-none {
+  margin: 0;
+  color: var(--color-ink-off);
+  font-size: 13px;
 }
 .checks label {
   display: flex;
@@ -456,7 +537,7 @@ const KINDS = [
 .checks input {
   width: 16px;
   height: 16px;
-  accent-color: var(--color-ink);
+  accent-color: var(--color-crimson-fill);
 }
 .clear-all {
   padding: 4px;

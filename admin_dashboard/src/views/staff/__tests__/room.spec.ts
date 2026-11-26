@@ -93,9 +93,39 @@ describe('Room details', () => {
   it('shows the room, its photos and its equipment', async () => {
     const w = await open()
     expect(w.find('h1').text()).toBe('Mekong Room')
-    expect(w.findAll('.gal-dots button')).toHaveLength(2)
+    // Look A "Split": small photos under the big one instead of dots.
+    expect(w.findAll('.thumbs button')).toHaveLength(2)
+    expect(w.find('.gal-dots').exists()).toBe(false)
+    await w.findAll('.thumbs button')[1]!.trigger('click')
+    expect(w.findAll('.thumbs button')[1]!.attributes('aria-current')).toBe('true')
+    expect(w.get('.gal img.on').attributes('alt')).toBe('Mekong Room, photo 2')
     expect(w.text()).toContain('Smart TV')
     expect(calls.some((c) => c.startsWith('/api/v1/rooms/12/schedule?from=2026-11-12&to=2026-11-18'))).toBe(true)
+  })
+
+  it('shows the facts with icons, the description and good to know (look A "Split")', async () => {
+    const w = await open()
+    expect(w.findAll('.facts > span').map((s) => s.text())).toEqual(['14 seats', '50 m²', 'Floor 2'])
+    expect(w.get('.about').text()).toBe('A bright room by the river.')
+    expect(w.findAll('.equip li').map((li) => li.text())).toEqual(['Smart TV'])
+    const know = w.findAll('.know > div').map((row) => [row.get('dt').text(), row.get('dd').text()])
+    expect(know).toEqual([
+      ['Open', '08:00–17:00 every day'],
+      ['Room type', 'Meeting room'],
+      ['Building', 'Head office'],
+      ['Office', 'NBC'],
+    ])
+  })
+
+  it('names the owner of a room that has one', async () => {
+    Object.assign(ROOM, { owner: { id: 4, name_en: 'Chan Sophea', name_kh: 'ចាន់ សុភា' } })
+    try {
+      const w = await open()
+      const owner = w.findAll('.know > div').find((row) => row.get('dt').text() === 'Owner')!
+      expect(owner.get('dd').text()).toBe('Chan Sophea')
+    } finally {
+      Object.assign(ROOM, { owner: null })
+    }
   })
 
   it('offers the next 7 days, Saturday and Sunday too', async () => {
