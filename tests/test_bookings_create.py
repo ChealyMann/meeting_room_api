@@ -6,8 +6,9 @@ from datetime import datetime, time, timedelta
 import pytest
 from sqlalchemy import func, select
 
-from app.constants.booking import BookingStatus
-from app.models import Booking, BookingDoorPass, BookingReview, BookingSession
+from app.constants.booking import BookingStatus, SignerRole
+from app.models import Booking, BookingDoorPass, BookingReview, BookingSession, BookingSigner
+from app.services import clock
 from tests.booking_helpers import DAY, URL, book, error, fields
 
 NEXT_DAY = DAY + timedelta(days=1)
@@ -85,6 +86,26 @@ def test_r3_confirmed_with_door_pass(
     assert re.fullmatch(r"NBC-\d{5}", door_pass.passcode)
     # Last end DAY 10:00 local = 03:00 UTC.
     assert door_pass.expires_at == datetime(2026, 11, 10, 3, 0)
+
+
+def test_r3_saves_confirm_time_and_slip_signers(
+    client, frozen, db_session, make_user, make_bookable_room, auth_headers
+):
+    # An R3 booking is confirmed at send like any confirm: the confirm time and the request
+    # slip's signers are kept, so its opinion boxes are signed (gap found 26 Nov 2026).
+    owner = make_user(roles=["ROOM_OWNER"])
+    room = make_bookable_room(private=True, owner=owner)
+    response = book(client, auth_headers(owner), room.id)
+    assert response.status_code == 201
+    data = response.json()
+    booking = db_session.get(Booking, data["id"])
+    db_session.refresh(booking)
+    assert booking.confirmed_at == clock.now_utc()
+    assert data["confirmed_at"] is not None
+    signers = db_session.scalars(
+        select(BookingSigner).where(BookingSigner.booking_id == data["id"])
+    ).all()
+    assert SignerRole.MAKER in {s.role for s in signers}
 
 
 def test_r4_own_private_room_with_food(

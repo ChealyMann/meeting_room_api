@@ -71,6 +71,16 @@ def _is_pitika_of(current: CurrentUser, booking: Booking) -> bool:
     return province is not None and province == room_province(booking.room)
 
 
+def _is_it_lead_of(current: CurrentUser, booking: Booking) -> bool:
+    """An IT Lead of the room's province, once the booking was sent to IT (BR-IT-01). An IT Lead
+    works only in their own province (owner, 17 Nov 2026), also when opening one booking."""
+    ticket = booking.it_ticket
+    if not current.has_role(RoleCode.IT_LEAD) or ticket is None or not ticket.forwarded_at:
+        return False
+    province = pitika_province(current)
+    return province is not None and province == room_province(booking.room)
+
+
 def _is_assigned_it_staff(session: Session, current: CurrentUser, booking: Booking) -> bool:
     ticket = booking.it_ticket
     if ticket is None or not current.has_role(RoleCode.IT_STAFF):
@@ -82,14 +92,13 @@ def _is_assigned_it_staff(session: Session, current: CurrentUser, booking: Booki
 
 
 def can_view(session: Session, current: CurrentUser, booking: Booking) -> bool:
-    """Booker, Admin, the room owner, a Pitika of the room's province, the IT Lead once the
-    booking is forwarded, or an IT Staff user assigned to the ticket."""
+    """Booker, Admin, the room owner, a Pitika of the room's province, an IT Lead of the room's
+    province once the booking is forwarded, or an IT Staff user assigned to the ticket."""
     if booking.requester_id == current.id or current.has_role(RoleCode.ADMIN):
         return True
     if booking.room.room_owner_id == current.id or _is_pitika_of(current, booking):
         return True
-    ticket = booking.it_ticket
-    if current.has_role(RoleCode.IT_LEAD) and ticket is not None and ticket.forwarded_at:
+    if _is_it_lead_of(current, booking):
         return True
     return _is_assigned_it_staff(session, current, booking)
 

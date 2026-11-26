@@ -84,6 +84,25 @@ def test_it_lead_before_and_after_forward(world, db_session):
     assert access.can_view(db_session, current, world.booking)
 
 
+def test_it_lead_of_another_province_cannot_view(
+    world, make_user, make_division, make_department, make_location, db_session
+):
+    # Owner, 17 Nov 2026: an IT Lead works only in their own province (BR-IT-08), also when
+    # they open one booking (or its files) by its id.
+    world.booking.it_ticket.forwarded_at = clock.now_utc()
+    db_session.flush()
+    far = make_division(make_department(make_location(province="SIEM_REAP")))
+    far_lead = make_user(roles=["IT_LEAD"], division=far)
+    assert not access.can_view(db_session, world.current(far_lead), world.booking)
+
+
+def test_it_lead_without_office_cannot_view(world, make_user, db_session):
+    world.booking.it_ticket.forwarded_at = clock.now_utc()
+    db_session.flush()
+    nowhere = make_user(roles=["IT_LEAD"], division_id=None)
+    assert not access.can_view(db_session, world.current(nowhere), world.booking)
+
+
 def test_it_lead_cannot_view_a_booking_without_it(world, make_booking, db_session):
     plain = make_booking(world.room, world.booker, status=BookingStatus.CONFIRMED)
     assert not access.can_view(db_session, world.current(world.lead), plain)
