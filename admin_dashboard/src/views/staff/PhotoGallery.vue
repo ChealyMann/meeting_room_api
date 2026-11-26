@@ -2,14 +2,15 @@
 // A room's photos filling their box: they fade into each other (nothing slides), with dots,
 // arrows on hover and the arrow keys. No photo: the door tile from RoomPhoto.
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 
 import { apiBaseUrl } from '../../api'
 import type { PhotoOut } from '../../api/types'
 import RoomPhoto from '../../components/RoomPhoto.vue'
 
-const props = defineProps<{ photos: PhotoOut[]; name: string }>()
-const shown = ref(0)
+// `dots: false` when the page shows its own small photos; `v-model:shown` shares the photo shown.
+const props = withDefaults(defineProps<{ photos: PhotoOut[]; name: string; dots?: boolean }>(), { dots: true })
+const shown = defineModel<number>('shown', { default: 0 })
 watch(
   () => props.photos,
   () => (shown.value = 0),
@@ -39,7 +40,7 @@ function key(e: KeyboardEvent) {
     <template v-if="photos.length > 1">
       <button type="button" class="gal-arrow prev" aria-label="Last photo" @click.stop="step(-1)"><ChevronLeft :size="18" /></button>
       <button type="button" class="gal-arrow next" aria-label="Next photo" @click.stop="step(1)"><ChevronRight :size="18" /></button>
-      <div class="gal-dots">
+      <div v-if="dots" class="gal-dots">
         <button
           v-for="(p, n) in photos"
           :key="p.id"

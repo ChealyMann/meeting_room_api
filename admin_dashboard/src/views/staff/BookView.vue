@@ -2,7 +2,7 @@
 // Book a room (Staff): four steps on the left, the side card on the right, no page scroll on a
 // computer. Step 1 is the week table; the time picked on the room page arrives in the query.
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../../api'
@@ -17,6 +17,7 @@ import { useLiveRefresh } from '../../composables/useLiveRefresh'
 import { usePhnomPenhToday } from '../../composables/usePhnomPenhToday'
 import { useToast } from '../../composables/useToast'
 import { addDays, phnomPenhClock } from '../../utils/time'
+import { isTouchDevice } from '../../utils/touch'
 import MeetingStep from './book/MeetingStep.vue'
 import { meetingErrors, type MeetingErrors } from './book/meetingErrors'
 import ReviewStep from './book/ReviewStep.vue'
@@ -69,14 +70,38 @@ const reached = ref(1)
 const now = () => toMin(phnomPenhClock(new Date()))
 const hours = computed(() => (room.value ? roomHours(room.value) : { open: 480, close: 1080 }))
 
-// The week window: page 0 is the next 7 days from today (weekends too); the arrows move 7 days.
+// The week window: page 0 starts today (weekends too); the arrows move one window. A window is 7
+// days, or fewer when the table is narrow (iPad, owner 20 Nov 2026: "fewer days"), so every day
+// column keeps a picked pill's "07:00–08:00" on one line. On a touch screen (an iPad, even with a
+// trackpad) the pill's × always shows (104px a column); with only a mouse it shows on hover (84px),
+// so a laptop keeps 7 days.
+const MIN_COLUMN = isTouchDevice() ? 104 : 84
+const perView = ref(WEEK)
 const firstPage = () => {
   if (!first) return 0
   const index = daysFrom(today.value, WEEK * 12).indexOf(first.date)
-  return index < 0 ? 0 : Math.floor(index / WEEK)
+  return index < 0 ? 0 : Math.floor(index / perView.value)
 }
 const page = ref(firstPage())
-const days = computed(() => daysFrom(today.value, WEEK * (page.value + 1)).slice(WEEK * page.value))
+const days = computed(() => daysFrom(today.value, perView.value * (page.value + 1)).slice(perView.value * page.value))
+const tableBox = ref<HTMLElement | null>(null)
+let sizer: ResizeObserver | null = null
+function fitDays(width: number) {
+  if (!width) return
+  // 52px of hour labels, then columns 6px apart.
+  const fit = Math.max(3, Math.min(WEEK, Math.floor((width - 52 + 6) / (MIN_COLUMN + 6))))
+  if (fit === perView.value) return
+  const firstShown = perView.value * page.value
+  perView.value = fit
+  page.value = Math.floor(firstShown / fit) // keep the first day in view
+}
+watch(tableBox, (el) => {
+  sizer?.disconnect()
+  if (!el || typeof ResizeObserver === 'undefined') return
+  sizer = new ResizeObserver(([entry]) => fitDays(entry?.contentRect.width ?? 0))
+  sizer.observe(el)
+})
+onBeforeUnmount(() => sizer?.disconnect())
 const range = computed(() => `${dayLabel(days.value[0]!)} – ${dayLabel(days.value[days.value.length - 1]!)}`)
 
 async function loadWeek() {
@@ -101,7 +126,10 @@ onMounted(async () => {
     failed.value = true
   }
 })
-watch(page, () => loadWeek().catch(() => (failed.value = true)))
+watch(
+  () => days.value.join(),
+  () => loadWeek().catch(() => (failed.value = true)),
+)
 // Quiet refresh: a time someone else just booked turns busy here with no click.
 useLiveRefresh(() => (room.value ? loadWeek() : undefined))
 
@@ -259,6 +287,7 @@ function back() {
                 <ChevronRight :size="16" aria-hidden="true" />
               </button>
             </div>
+            <div ref="tableBox" class="table-box" />
             <WeekTable
               :days="days"
               :hours="hours"

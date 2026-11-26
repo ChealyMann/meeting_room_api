@@ -1,11 +1,13 @@
 <script setup lang="ts">
-// A room (Staff): the photo fills the page with the name, facts and equipment on it, and a
-// floating "Book a time" card. Continue opens the booking with that time already picked.
-import { ArrowRight, Clock, Lock } from 'lucide-vue-next'
+// A room (Staff), look A "Split" (owner pick, 20 Nov 2026): the big photo with small photos under
+// it, then the status, the names and the facts, the description, what is in the room and good to
+// know; the "Book a time" card stays on the right while the page scrolls. Nothing is written on
+// the photo. Continue opens the booking with that time already picked.
+import { ArrowRight, Building2, Check, Clock, Layers, MapPin, Ruler, Tag, User, UserLock, Users } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { api } from '../../api'
+import { api, apiBaseUrl } from '../../api'
 import { getRoomSchedule } from '../../api/bookings'
 import { getRoom } from '../../api/rooms'
 import { listHolidays } from '../../api/staff'
@@ -27,6 +29,7 @@ const room = ref<RoomDetail | null>(null)
 const busy = ref<ScheduleItem[]>([])
 const holidays = ref<PublicHolidayOut[]>([])
 const failed = ref(false)
+const shown = ref(0)
 
 const now = () => toMin(phnomPenhClock(new Date()))
 const hours = computed(() => (room.value ? roomHours(room.value) : { open: 480, close: 1080 }))
@@ -37,6 +40,8 @@ const days = computed(() =>
     .slice(0, 7),
 )
 const line = computed(() => nowLine(busySpans(busy.value, today.value), hours.value, today.value, today.value, now()))
+const about = computed(() => room.value?.description || room.value?.short_desc || '')
+const openText = computed(() => `${toTime(hours.value.open)}–${toTime(hours.value.close)}`)
 
 onMounted(async () => {
   try {
@@ -65,27 +70,68 @@ function pick(p: { date: string; a: number; b: number }) {
 <template>
   <section class="st-page room-page">
     <p v-if="failed" class="st-empty" role="alert"><b>This room could not load</b></p>
-    <div v-else-if="room" class="stage">
-      <div class="hero">
-        <PhotoGallery :photos="room.photos" :name="room.name_en" />
-        <div class="shade" aria-hidden="true" />
-        <div class="title">
-          <span class="st-now now on-photo" :class="line.tone"><Clock :size="14" aria-hidden="true" />{{ line.text }}</span>
-          <h1>{{ room.name_en }}</h1>
-          <p class="kh">{{ room.name_kh }}</p>
-          <p class="facts">
-            <span>{{ room.capacity }} seats</span><span>{{ room.floor.floor_label }}</span><span class="kh">{{ room.building.name_kh }}</span>
-            <span v-if="room.size_sqm">{{ room.size_sqm }} sq m</span>
-            <span v-if="room.is_private"><Lock :size="13" aria-hidden="true" />Private</span>
+    <div v-else-if="room" class="room">
+      <div class="info">
+        <div class="photos">
+          <div class="main">
+            <PhotoGallery v-model:shown="shown" :photos="room.photos" :name="room.name_en" :dots="false" />
+            <span v-if="room.photos.length > 1" class="count">{{ shown + 1 }} / {{ room.photos.length }}</span>
+          </div>
+          <div v-if="room.photos.length > 1" class="thumbs">
+            <button
+              v-for="(p, n) in room.photos"
+              :key="p.id"
+              type="button"
+              :aria-label="`Photo ${n + 1}`"
+              :aria-current="n === shown"
+              @click="shown = n"
+            >
+              <img :src="`${apiBaseUrl}${p.url}`" alt="" loading="lazy" />
+            </button>
+          </div>
+        </div>
+
+        <div class="names">
+          <p class="tags">
+            <span class="st-now now" :class="line.tone"><Clock :size="14" aria-hidden="true" />{{ line.text }}</span>
+            <span v-if="room.is_private" class="lock"><UserLock :size="13" aria-hidden="true" />Private</span>
           </p>
-          <p v-if="room.equipment.length" class="equip">
-            <span v-for="e in room.equipment" :key="e.id"><component :is="iconFor(e.icon)" v-if="iconFor(e.icon)" :size="14" aria-hidden="true" />{{ e.name }}</span>
+          <p class="kh">{{ room.name_kh }}</p>
+          <h1>{{ room.name_en }}</h1>
+          <p class="facts">
+            <span><Users :size="14" aria-hidden="true" /><b class="num">{{ room.capacity }}</b> seats</span>
+            <span v-if="room.size_sqm"><Ruler :size="14" aria-hidden="true" /><b class="num">{{ room.size_sqm }}</b> m²</span>
+            <span><Layers :size="14" aria-hidden="true" />{{ room.floor.floor_label }}</span>
           </p>
         </div>
+
+        <p v-if="about" class="about">{{ about }}</p>
+
+        <div class="two">
+          <section v-if="room.equipment.length" aria-labelledby="in-room">
+            <h2 id="in-room" class="h-sec">In the room</h2>
+            <ul class="equip">
+              <li v-for="e in room.equipment" :key="e.id">
+                <span class="ico"><component :is="iconFor(e.icon) ?? Check" :size="16" aria-hidden="true" /></span>{{ e.name }}
+              </li>
+            </ul>
+          </section>
+          <section aria-labelledby="good-to-know">
+            <h2 id="good-to-know" class="h-sec">Good to know</h2>
+            <dl class="know">
+              <div><Clock :size="14" aria-hidden="true" /><dt>Open</dt><dd><span class="num">{{ openText }}</span> every day</dd></div>
+              <div><Tag :size="14" aria-hidden="true" /><dt>Room type</dt><dd>{{ room.category.name_en }}</dd></div>
+              <div><Building2 :size="14" aria-hidden="true" /><dt>Building</dt><dd>{{ room.building.name_en }}</dd></div>
+              <div><MapPin :size="14" aria-hidden="true" /><dt>Office</dt><dd>{{ room.location.name_en }}</dd></div>
+              <div v-if="room.owner"><User :size="14" aria-hidden="true" /><dt>Owner</dt><dd>{{ room.owner.name_en }}</dd></div>
+            </dl>
+          </section>
+        </div>
       </div>
+
       <aside class="card" aria-label="Book a time">
         <h2>Book a time</h2>
-        <p v-if="room.is_private" class="private"><Lock :size="13" aria-hidden="true" />Pitika and the room owner both check it</p>
+        <p v-if="room.is_private" class="private"><UserLock :size="13" aria-hidden="true" />Pitika and the room owner both check it</p>
         <TimePick :days="days" :today="today" :now="now()" :hours="hours" :busy="busy" :holidays="holidays" cta="Continue" @pick="pick" />
         <button type="button" class="more" @click="router.push({ name: 'book', params: { roomId } })">
           Several days? Pick on the calendar<ArrowRight :size="14" aria-hidden="true" />
@@ -96,105 +142,205 @@ function pick(p: { date: string; a: number; b: number }) {
 </template>
 
 <style scoped>
-.room-page {
-  padding: 20px 24px 24px;
+/* The page padding is the shared .st-page one, the same as Find a room (owner, 20 Nov 2026). */
+.room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 404px;
+  gap: 36px;
+  align-items: start;
 }
-.stage {
+.info {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+}
+/* Photos: the big one, then the small ones in a row. */
+.photos {
+  display: grid;
+  gap: 8px;
+}
+/* The photo takes the screen height that is left, so the name and facts show without scrolling
+   (owner, 20 Nov 2026). */
+.main {
   position: relative;
-  flex: 1;
-  min-height: 600px;
-}
-.hero {
-  position: absolute;
-  inset: 0;
   overflow: hidden;
-  border-radius: 26px;
+  height: clamp(240px, calc(100vh - 430px), 500px);
+  border-radius: 18px;
+  background: var(--color-field-disabled);
 }
-.hero :deep(.gal-arrow.next) {
-  right: 456px;
-}
-.shade {
+.count {
   position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: linear-gradient(to top, rgba(15, 8, 6, 0.84) 0%, rgba(15, 8, 6, 0.28) 42%, rgba(15, 8, 6, 0) 64%);
-  pointer-events: none;
-}
-.title {
-  position: absolute;
-  right: 460px;
-  bottom: 36px;
-  left: 40px;
+  right: 12px;
+  bottom: 12px;
   z-index: 2;
-  color: #fff;
-}
-.on-photo {
-  padding: 5px 12px 5px 10px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(20, 10, 8, 0.62);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
-.on-photo.ok {
-  color: #2f6b3f;
+.thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
-.on-photo.alert {
-  color: #991b1b;
+.thumbs button {
+  flex: 0 0 auto;
+  width: 96px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--color-field-disabled);
+  opacity: 0.72;
+  cursor: pointer;
+  transition: opacity 160ms ease, border-color 160ms ease;
 }
-.on-photo.off {
-  color: #6b5243;
+.thumbs button[aria-current='true'] {
+  border-color: var(--color-ink);
+  opacity: 1;
+}
+.thumbs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (hover: hover) and (pointer: fine) {
+  .thumbs button:hover {
+    opacity: 1;
+  }
+}
+/* Status, names and facts. */
+.names {
+  display: grid;
+  gap: 8px;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+}
+.lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-warn);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+/* Khmer over English (owner, 20 Nov 2026; DESIGN.md "Two Names Rule"). */
+.kh {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-kh);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 h1 {
-  margin: 14px 0 0;
-  font-size: 40px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-.kh {
-  font-family: var(--font-kh);
-}
-.title > .kh {
-  margin: 4px 0 0;
-  color: rgba(255, 255, 255, 0.8);
+  margin: -6px 0 0;
+  color: var(--color-intaglio);
   font-size: 16px;
+  font-weight: 500;
 }
 .facts {
   display: flex;
   flex-wrap: wrap;
-  margin: 14px 0 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
+  gap: 6px 18px;
+  margin: 4px 0 0;
+  color: var(--color-intaglio);
+  font-size: 13.5px;
 }
 .facts > span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  white-space: nowrap;
 }
-.facts > span + span::before {
-  content: '·';
-  margin: 0 10px;
-  opacity: 0.45;
+.num {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.about {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--color-ink-off);
+}
+/* In the room | Good to know */
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-rule);
+}
+.h-sec {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 .equip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.equip li {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-  margin: 16px 0 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 12.5px;
-}
-.equip span {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  font-size: 13.5px;
 }
+.ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--color-field-disabled);
+  color: var(--color-intaglio);
+}
+.know {
+  display: grid;
+  margin: 0;
+}
+.know > div {
+  display: grid;
+  grid-template-columns: 22px 100px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-rule);
+  font-size: 13.5px;
+}
+.know > div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.know svg {
+  color: var(--color-intaglio);
+}
+.know dt {
+  color: var(--color-intaglio);
+}
+.know dd {
+  min-width: 0;
+  margin: 0;
+}
+/* The card stays on the right while the page scrolls. */
 .card {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 3;
-  width: 404px;
-  max-height: calc(100% - 48px);
-  overflow: auto;
+  position: sticky;
+  top: 0; /* the page's own top padding already keeps it off the edge */
   padding: 24px;
   border-radius: 22px;
   background: var(--color-sheet);
@@ -236,36 +382,44 @@ h1 {
     text-decoration: underline;
   }
 }
+/* Narrow: one column; the card comes right after the names and facts. */
 @media (max-width: 1000px) {
-  .stage {
-    min-height: 0;
+  .room {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
   }
-  .hero {
-    position: relative;
-    inset: auto;
-    height: 440px;
+  .main {
+    height: auto;
+    aspect-ratio: 16 / 10;
   }
-  .hero :deep(.gal-arrow.next) {
-    right: 16px;
-  }
-  .title {
-    right: 24px;
-    bottom: 24px;
-    left: 24px;
+  .info {
+    display: contents;
   }
   .card {
     position: static;
-    width: auto;
-    max-height: none;
-    margin-top: 16px;
+    order: 1;
+  }
+  .about,
+  .two {
+    order: 2;
   }
 }
 @media (max-width: 640px) {
-  h1 {
-    font-size: 28px;
+  .main {
+    aspect-ratio: 4 / 3;
   }
-  .equip {
-    display: none;
+  .thumbs button {
+    width: 76px;
+  }
+  .names > .kh {
+    font-size: 24px;
+  }
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .know > div {
+    grid-template-columns: 22px 92px minmax(0, 1fr);
   }
 }
 </style>

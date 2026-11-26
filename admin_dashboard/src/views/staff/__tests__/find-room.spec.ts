@@ -29,7 +29,10 @@ const busy = (start: string, end: string) => ({
 const calls: string[] = []
 const place = (id: number, name: string, office: number) => ({ ...building(id, name), name_kh: '', location_id: office, is_active: true })
 const kit = (id: number, name: string) => ({ id, name, icon: null, sort_order: id, is_active: true })
-let offices: Array<{ id: number; name_en: string }> = []
+let offices: Array<{ id: number; name_en: string; name_kh?: string; province?: { code: string; name_en: string; name_kh: string } }> = []
+let kits: ReturnType<typeof kit>[] = []
+const PP = { code: 'PHNOM_PENH', name_en: 'Phnom Penh', name_kh: 'ភ្នំពេញ' }
+const KAMPOT = { code: 'KAMPOT', name_en: 'Kampot', name_kh: 'កំពត' }
 let allRooms: ReturnType<typeof roomItem>[]
 let room3: unknown[] = []
 
@@ -59,6 +62,7 @@ beforeEach(async () => {
   allRooms = THREE
   room3 = []
   offices = [{ id: 3, name_en: 'Head Office' }]
+  kits = [kit(4, 'Projector'), kit(7, 'Video call')]
   reachEnd = null
   vi.stubGlobal('IntersectionObserver', FakeObserver)
   vi.stubGlobal(
@@ -85,7 +89,7 @@ beforeEach(async () => {
       if (url.pathname === '/api/v1/locations')
         return json({ items: offices.map((o) => ({ ...o, is_active: true })), page: 1, size: 100, total: offices.length })
       if (url.pathname === '/api/v1/equipment')
-        return json({ items: [kit(4, 'Projector'), kit(7, 'Video call')], page: 1, size: 100, total: 2 })
+        return json({ items: kits, page: 1, size: 100, total: kits.length })
       if (url.pathname === '/api/v1/room-schedule') {
         const ids = (p.get('room_ids') ?? '').split(',').map(Number)
         const of = (id: number) => (id === 1 ? [busy('14:00', '15:00')] : id === 2 ? [busy('09:30', '11:00')] : id === 3 ? room3 : [])
@@ -143,7 +147,8 @@ describe('Find a room', () => {
     expect(names(w)).toEqual(['Mekong Room', 'Bassac Room', 'Governor Room'])
     expect(roomCalls()).toEqual([{ is_bookable: 'true', page: '1', size: '24' }])
     expect(dayCalls()).toEqual(['/api/v1/room-schedule?date=2026-11-12&room_ids=1%2C2%2C3'])
-    expect(w.text()).toContain('3 rooms')
+    // The line under the title says what the list shows; the date is in the top bar (owner, 20 Nov 2026).
+    expect(w.get('.count-line').text()).toBe('3 rooms') // no date, also on a phone (owner, 20 Nov 2026)
   })
 
   it('says until when each room is free or in use today', async () => {
@@ -159,6 +164,20 @@ describe('Find a room', () => {
     expect(card('Mekong Room')).toContain('ok')
     expect(card('Bassac Room')).toContain('alert')
     expect(card('Governor Room')).toContain('ok')
+  })
+
+  it('shows seats and floor, and keeps the whole description in the title of its one line', async () => {
+    const w = await open()
+    const card = w.findAll('.room-card').find((c) => c.find('h2').text() === 'Mekong Room')!
+    expect(card.findAll('.facts > span').map((s) => s.text())).toEqual(['14 seats', 'Floor 2'])
+    expect(card.find('.desc').text()).toBe('4K screen / VC')
+    expect(card.find('.desc').attributes('title')).toBe('4K screen / VC')
+  })
+
+  it('shows no description line when the room has none', async () => {
+    allRooms = [roomItem(1, 'Mekong Room', { short_desc: null })]
+    const w = await open()
+    expect(w.find('.room-card .desc').exists()).toBe(false)
   })
 
   it('offers Request on a private room and Book on a shared one', async () => {
@@ -190,7 +209,7 @@ describe('Find a room', () => {
     await flushPromises()
     expect(roomCalls().at(-1)).toMatchObject({ building_id: '2', page: '1' })
     expect(names(w)).toEqual(['Bassac Room'])
-    await w.get('.chip-place [data-building="all"]').trigger('click')
+    await w.get('.chip-place [data-office="all"]').trigger('click') // "All offices" clears the building too
     await w.get('[role="radio"][data-kind="private"]').trigger('click')
     await flushPromises()
     expect(roomCalls().at(-1)).toMatchObject({ is_private: 'true' })
@@ -259,6 +278,84 @@ describe('Find a room', () => {
   })
 })
 
+describe('Find a room office list (look A "One search list", owner pick 20 Nov 2026)', () => {
+  const rows = (w: Awaited<ReturnType<typeof open>>) =>
+    w.findAll('.chip-place .pl-row').map((r) => r.attributes('data-office') ? `office ${r.attributes('data-office')}` : `building ${r.attributes('data-building')}`)
+
+  it('lists each office with its buildings under it, English over Khmer, and one click picks', async () => {
+    offices = [
+      { id: 3, name_en: 'Head Office', name_kh: 'ទីស្នាក់ការកណ្តាល' },
+      { id: 5, name_en: 'Sensok Branch', name_kh: 'សាខាសែនសុខ' },
+    ]
+    const w = await open()
+    await openChip(w, 'place')
+    expect(rows(w)).toEqual(['office all', 'office 3', 'building 1', 'building 2', 'office 5'])
+    expect(w.get('.chip-place [data-office="3"]').text()).toBe('Head Officeទីស្នាក់ការកណ្តាល')
+    expect(w.get('.chip-place [data-building="2"]').classes()).toContain('sub')
+    // Tree lines (owner pick, 20 Nov 2026): an office's buildings hang from one line under it.
+    expect(w.findAll('.chip-place .pl-tree').map((t) => t.findAll('[data-building]').length)).toEqual([2])
+    await w.get('.chip-place [data-building="2"]').trigger('click')
+    await flushPromises()
+    // A building picks its office too, and the chip names both.
+    expect(roomCalls().at(-1)).toMatchObject({ location_id: '3', building_id: '2' })
+    expect(w.get('.chip-place .f-label').text()).toBe('Head Office · Annex')
+  })
+
+  it('finds an office or a building by English or Khmer', async () => {
+    offices = [
+      { id: 3, name_en: 'Head Office', name_kh: 'ទីស្នាក់ការកណ្តាល' },
+      { id: 5, name_en: 'Sensok Branch', name_kh: 'សាខាសែនសុខ' },
+    ]
+    const w = await open()
+    await openChip(w, 'place')
+    await w.get('.chip-place .pl-search input').setValue('annex')
+    expect(rows(w)).toEqual(['office 3', 'building 2'])
+    await w.get('.chip-place .pl-search input').setValue('សែនសុខ')
+    expect(rows(w)).toEqual(['office 5'])
+    await w.get('.chip-place .pl-search input').setValue('zzz')
+    expect(w.get('.chip-place .pl-none').text()).toBe('No office or building matches "zzz"')
+  })
+
+  it('puts the offices in the user\'s province first', async () => {
+    offices = [
+      { id: 5, name_en: 'Kampot Branch', province: KAMPOT },
+      { id: 3, name_en: 'Head Office', province: PP },
+    ]
+    useSessionStore().user = { province: PP, roles: [] } as never
+    const w = await open()
+    await openChip(w, 'place')
+    expect(w.find('.chip-place .pl-group').exists()).toBe(false) // no headings (owner, 20 Nov 2026)
+    expect(rows(w)).toEqual(['office all', 'office 3', 'building 1', 'building 2', 'office 5'])
+  })
+})
+
+describe('Find a room equipment list', () => {
+  it('searches a long list, shows what is picked as tags, and clears', async () => {
+    kits = ['Projector', 'Video call', 'Microphone', 'Speaker', 'Whiteboard', 'Wi-Fi', 'Flip chart'].map((n, i) => kit(i + 1, n))
+    const w = await open()
+    await openChip(w, 'equipment')
+    await w.get('.chip-equipment .pl-search input').setValue('video')
+    expect(w.findAll('.chip-equipment [data-equipment]').map((c) => c.attributes('data-equipment'))).toEqual(['2'])
+    await w.get('.chip-equipment [data-equipment="2"]').setValue(true)
+    await flushPromises()
+    expect(w.findAll('.chip-equipment .eq-tag').map((t) => t.text())).toEqual(['Video call'])
+    await w.get('.chip-equipment .eq-tag button').trigger('click')
+    await flushPromises()
+    expect(roomCalls().at(-1)!.equipment_ids).toBeUndefined()
+    await w.get('.chip-equipment .pl-search input').setValue('')
+    await w.get('.chip-equipment [data-equipment="1"]').setValue(true)
+    await w.get('.chip-equipment .eq-clear').trigger('click')
+    await flushPromises()
+    expect(roomCalls().at(-1)!.equipment_ids).toBeUndefined()
+  })
+
+  it('has no search box for a short list', async () => {
+    const w = await open()
+    await openChip(w, 'equipment')
+    expect(w.find('.chip-equipment .pl-search').exists()).toBe(false)
+  })
+})
+
 describe('Find a room filter chips', () => {
   it('asks for rooms free at a time on one day, and Book carries that time', async () => {
     const w = await open()
@@ -268,7 +365,7 @@ describe('Find a room filter chips', () => {
     expect(roomCalls().at(-1)).toMatchObject({ free_dates: '2026-11-16', free_from: '09:00', free_to: '10:00' })
     expect(w.get('.chip-when .f-label').text()).toBe('Mon 16 Nov, 09:00–10:00')
     expect(lineOf(w, 'Mekong Room')).toBe('Free 09:00–10:00')
-    expect(w.text()).toContain('3 free')
+    expect(w.get('.count-line').text()).toBe('3 rooms free on Mon 16 Nov, 09:00–10:00')
     await w.get('[aria-label="Book Mekong Room"]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({ date: '2026-11-16', start: '09:00', end: '10:00' })
@@ -284,6 +381,7 @@ describe('Find a room filter chips', () => {
     await w.findAll('.chip-when .quick button').find((b) => b.text() === 'Morning')!.trigger('click')
     await flushPromises()
     expect(roomCalls().at(-1)).toMatchObject({ free_dates: '2026-11-16,2026-11-17,2026-11-18', free_from: '08:00', free_to: '12:00' })
+    expect(w.get('.count-line').text()).toBe('3 rooms free on all 3 days, Mon 16 – Wed 18 Nov, 08:00–12:00')
     expect(w.get('.chip-when .f-label').text()).toBe('Mon 16 – Wed 18 Nov (3 days), 08:00–12:00')
     expect(lineOf(w, 'Bassac Room')).toBe('Free all 3 days')
     await w.get('[aria-label="Book Bassac Room"]').trigger('click')
@@ -301,6 +399,9 @@ describe('Find a room filter chips', () => {
     expect(days).toContain('2026-11-14') // Saturday
     expect(days).toContain('2026-11-15') // Sunday
     expect(w.findAll('.chip-when .row')).toHaveLength(3) // Thu–Sun, Mon–Sun, Mon–Wed
+    // Seven columns, Mon to Sun: the first week starts under its own weekday (Thursday = 4).
+    expect(w.get('.chip-when .day').attributes('style')).toContain('grid-column-start: 4')
+    expect(w.get('.chip-when [data-day="2026-11-16"]').attributes('style')).toBeUndefined()
     expect(w.find('.chip-when select').exists()).toBe(false) // no browser list
     const starts = await pickerOptions('when-from')
     expect(starts.slice(0, 2)).toEqual(['Any time', '10:30']) // it is 10:00

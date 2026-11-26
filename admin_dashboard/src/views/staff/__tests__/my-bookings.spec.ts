@@ -94,13 +94,21 @@ async function open(query = '') {
   await flushPromises()
   return w
 }
-const titles = (w: VueWrapper) => w.findAll('.bk-card h3').map((h) => h.text())
+// Layout 2 "Folders on the left" (owner pick, 20 Nov 2026): soft rows (look E) grouped by day,
+// and folders (Coming up, Waiting, Confirmed, Past & cancelled) instead of tabs and chips.
+const rowsOf = (w: VueWrapper) => w.findAll('.soft-row')
+const titles = (w: VueWrapper) => rowsOf(w).map((r) => r.get('h3').text())
+const rowOf = (w: VueWrapper, title: string) => rowsOf(w).find((r) => r.get('h3').text() === title)!
+const folders = (w: VueWrapper) => w.findAll('.folder').map((f) => `${f.get('.label').text()} ${f.get('.n').text()}`)
+async function openFolder(w: VueWrapper, label: string) {
+  await w
+    .findAll('.folder')
+    .find((f) => f.get('.label').text() === label)!
+    .trigger('click')
+}
 const panel = () => document.body.querySelector('.side-panel, [role="dialog"]')
 async function openCard(w: VueWrapper, title: string) {
-  await w
-    .findAll('.bk-card')
-    .find((c) => c.get('h3').text() === title)!
-    .trigger('click')
+  await rowOf(w, title).trigger('click')
   await flushPromises()
 }
 function buttonIn(root: Element, text: string) {
@@ -113,23 +121,55 @@ async function more() {
 }
 
 describe('My bookings', () => {
-  it('lists what is coming up, with counts on the tabs', async () => {
+  it('lists what is coming up, with counts on the folders', async () => {
     const w = await open()
     expect(titles(w)).toEqual(['Budget review', 'Team sync'])
-    const tabs = w.findAll('[role="tab"]').map((t) => t.text().replace(/\s+/g, ' '))
-    expect(tabs).toEqual(['Coming up 2', 'Past & cancelled 2'])
+    expect(folders(w)).toEqual(['Coming up 2', 'Waiting 1', 'Confirmed 1', 'Past & cancelled 2'])
+    expect(w.get('.folder[aria-current="page"] .label').text()).toBe('Coming up')
   })
 
-  it('has no Door pass button on the cards (owner pick, 13 Nov 2026)', async () => {
+  it('has no buttons on the rows: the door pass is in the pop-up (owner pick, 13 Nov 2026)', async () => {
     const w = await open()
-    for (const card of w.findAll('.bk-card')) expect(card.text()).not.toContain('Door pass')
-    expect(w.findAll('.bk-card button')).toHaveLength(0)
+    expect(w.findAll('.soft-row button')).toHaveLength(0)
   })
 
-  it('lists cancelled and completed under Past & cancelled', async () => {
+  it('lists cancelled and completed under Past & cancelled, newest first', async () => {
     const w = await open()
-    await w.findAll('[role="tab"]')[1]!.trigger('click')
+    await openFolder(w, 'Past & cancelled')
     expect(titles(w)).toEqual(['Old plan', 'Kick-off'])
+    expect(w.get('.folder[aria-current="page"] .label').text()).toBe('Past & cancelled')
+  })
+
+  it("says in the row's footer where the booking is and what happens next, with an icon", async () => {
+    mine = [
+      SOON,
+      WAITING,
+      bookingItem(30, 'Owner check', 'PENDING_OWNER', '2026-11-17'),
+      bookingItem(31, 'Private sync', 'PENDING_PITIKA', '2026-11-18', { room: { ...SOON.room, is_private: true } }),
+      bookingItem(32, 'With IT', 'CONFIRMED', '2026-11-19', { has_it: true }),
+    ]
+    const w = await open()
+    const foot = (title: string) => {
+      const row = rowOf(w, title)
+      return [row.get('.stt').text(), row.get('.nx').text(), row.find('.stt svg').exists()]
+    }
+    expect(foot('Budget review')).toEqual(['Confirmed', 'Door pass ready', true])
+    expect(foot('Team sync')).toEqual(['Waiting for Pitika', 'Pitika checks it next', true])
+    expect(foot('Owner check')).toEqual(['Waiting for the room owner', 'Private room · the owner decides', true])
+    expect(foot('Private sync')).toEqual(['Waiting for Pitika', 'Pitika checks it next, then the room owner', true])
+    expect(foot('With IT')).toEqual(['Confirmed', 'Door pass ready · IT sets up the room', true])
+    // Never a coloured dot for a status (owner rule).
+    expect(w.findAll('.soft-row .dot')).toHaveLength(0)
+  })
+
+  it('shows the room line and the tags: Private, Food, IT help', async () => {
+    mine = [bookingItem(33, 'Full', 'PENDING_PITIKA', '2026-11-16', { room: { ...SOON.room, is_private: true }, has_catering: true, has_it: true })]
+    const w = await open()
+    const row = rowOf(w, 'Full')
+    expect(row.findAll('.line .bit').map((b) => b.text())).toEqual(['x', 'Mekong Room', '2nd floor · A', '8'])
+    expect(row.findAll('.soft-tag').map((t) => t.text())).toEqual(['Private', 'Food', 'IT help'])
+    expect(row.get('.ref').text()).toBe('NBC-26-33')
+    expect(row.get('.sent').text()).toBe('Sent Tue 10 Nov, 09:00')
   })
 
   it('opens the details from ?booking=', async () => {
@@ -152,7 +192,7 @@ describe('My bookings', () => {
     expect(useConfirm().current.value).toBeNull()
     expect(bodies['POST /api/v1/bookings/7/cancel']).toEqual({ version: 3 })
     expect(titles(w)).toEqual(['Team sync'])
-    await w.findAll('[role="tab"]')[1]!.trigger('click')
+    await openFolder(w, 'Past & cancelled')
     expect(titles(w)).toContain('Budget review')
   })
 
@@ -655,7 +695,7 @@ describe('Tabs on my booking', () => {
   })
 })
 
-describe('Finding a booking (owner pick, 16 Nov 2026: look A)', () => {
+describe('Finding a booking (owner pick, 20 Nov 2026: layout 2, folders on the left)', () => {
   // Now: Thu 12 Nov 2026, 10:00 in Phnom Penh.
   const at = (date: string, start = '09:00', end = '10:00') => ({ id: 1, date, start_time: start, end_time: end })
   const NOW_ON = bookingItem(21, 'Board talk', 'CONFIRMED', '2026-11-12', { next_session: at('2026-11-12', '09:30', '11:00') })
@@ -663,47 +703,81 @@ describe('Finding a booking (owner pick, 16 Nov 2026: look A)', () => {
   const WEEK = bookingItem(23, 'Team sync', 'PENDING_PITIKA', '2026-11-16', { room: { ...SOON.room, name_en: 'Bassac Room' } })
   const LATER = bookingItem(24, 'Year plan', 'PENDING_OWNER', '2026-11-30')
   const STARTED = bookingItem(25, 'Long training', 'CONFIRMED', '2026-11-09', { session_count: 5, next_session: at('2026-11-13', '14:00', '16:00') })
-  const groups = (w: VueWrapper) => w.findAll('.group').map((g) => [g.get('h2').text(), g.findAll('.bk-card h3').map((h) => h.text())])
-  const chips = (w: VueWrapper) => w.findAll('.chip').map((c) => c.text().replace(/\s+/g, ' '))
+  const groups = (w: VueWrapper) =>
+    w.findAll('section.day').map((g) => {
+      const head = g.get('h2')
+      const day = head.text().replace(head.get('.n').text(), '').trim()
+      return [day, head.get('.n').text(), g.findAll('.soft-row h3').map((h) => h.text())]
+    })
   beforeEach(() => {
     mine = [NOW_ON, TOMORROW, WEEK, LATER, STARTED, GONE, DONE]
   })
 
-  it('groups Coming up by Today, Tomorrow, Later this week and Later, by the next session', async () => {
+  it('groups Coming up by the day of the next session, with a count on each day', async () => {
     const w = await open()
     expect(groups(w)).toEqual([
-      ['Today', ['Board talk']],
-      ['Tomorrow', ['Budget review', 'Long training']],
-      ['Later this week', ['Team sync']],
-      ['Later', ['Year plan']],
+      ['Today · Thu 12 Nov', '01', ['Board talk']],
+      ['Fri 13 Nov', '02', ['Budget review', 'Long training']],
+      ['Mon 16 Nov', '01', ['Team sync']],
+      ['Mon 30 Nov', '01', ['Year plan']],
     ])
+    expect(w.get('.day-head.today').text()).toContain('Today')
+    expect(w.findAll('.day-head.today')).toHaveLength(1)
   })
 
-  it('shows the next session on the card, not the first one, and says when one is under way', async () => {
+  it('shows the next session on the row, not the first one, and says when one is under way', async () => {
     const w = await open()
-    const card = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Long training')!
-    expect(card.findAll('.date > *').map((p) => p.text())).toEqual(['FRI', '13', 'NOV'])
-    expect(card.get('.meta').text()).toContain('14:00–16:00')
-    expect(card.get('.meta').text()).toContain('+4 more')
-    const now = w.findAll('.bk-card').find((c) => c.get('h3').text() === 'Board talk')!
-    expect(now.findAll('.pill').map((p) => p.text())).toEqual(['Confirmed'])
+    const long = rowOf(w, 'Long training')
+    expect([long.get('.start').text(), long.get('.end').text()]).toEqual(['14:00', '16:00'])
+    expect(long.get('.more').text()).toBe('5 days')
+    expect(long.get('.time .day').text()).toBe('Fri 13')
+    const now = rowOf(w, 'Board talk')
     expect(now.classes()).toContain('is-live')
-    expect(now.get('.now-line').text()).toBe('Now · until 11:00')
-    expect(w.findAll('.now-line')).toHaveLength(1)
-    expect(w.findAll('.bk-card.is-live')).toHaveLength(1)
+    expect(now.get('.stt').text()).toBe('Happening now')
+    expect(now.get('.nx').text()).toBe('Until 11:00 · your door pass works until then')
+    expect(now.get('.time .day').text()).toBe('Today')
+    expect(now.find('.soon-pill').exists()).toBe(false)
+    expect(w.findAll('.soft-row.is-live')).toHaveLength(1)
   })
 
-  it('filters Coming up by status chips with counts', async () => {
+  it('says how soon a meeting later today starts', async () => {
+    mine = [bookingItem(26, 'Lunch talk', 'CONFIRMED', '2026-11-12', { first_session: at('2026-11-12', '14:30', '15:00'), next_session: at('2026-11-12', '14:30', '15:00') })]
     const w = await open()
-    expect(chips(w)).toEqual(['All 5', 'Waiting 2', 'Confirmed 3'])
-    await w.findAll('.chip')[1]!.trigger('click')
-    expect(titles(w)).toEqual(['Team sync', 'Year plan'])
-    expect(w.findAll('.chip')[1]!.attributes('aria-pressed')).toBe('true')
-    await w.findAll('.chip')[2]!.trigger('click')
-    expect(titles(w)).toEqual(['Board talk', 'Budget review', 'Long training'])
+    expect(rowOf(w, 'Lunch talk').get('.soon-pill').text()).toBe('Starts in 4 h 30 min')
   })
 
-  it('searches by title, room or reference, on both tabs', async () => {
+  it('filters Coming up by the Waiting and Confirmed folders, with counts', async () => {
+    const w = await open()
+    expect(folders(w)).toEqual(['Coming up 5', 'Waiting 2', 'Confirmed 3', 'Past & cancelled 2'])
+    await openFolder(w, 'Waiting')
+    expect(titles(w)).toEqual(['Team sync', 'Year plan'])
+    expect(w.get('.folder[aria-current="page"] .label').text()).toBe('Waiting')
+    await openFolder(w, 'Confirmed')
+    expect(titles(w)).toEqual(['Board talk', 'Budget review', 'Long training'])
+    await openFolder(w, 'Coming up')
+    expect(titles(w)).toHaveLength(5)
+  })
+
+  it('says when a folder is empty, and Show all brings every booking back', async () => {
+    mine = [TOMORROW]
+    const w = await open()
+    await openFolder(w, 'Waiting')
+    expect(w.text()).toContain('No booking is waiting for approval.')
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Show all')!
+      .trigger('click')
+    expect(titles(w)).toEqual(['Budget review'])
+  })
+
+  it('says when nothing is coming up', async () => {
+    mine = [GONE]
+    const w = await open()
+    expect(w.text()).toContain('Nothing coming up')
+    expect(titles(w)).toEqual([])
+  })
+
+  it('searches by title, room or reference, in every folder', async () => {
     const w = await open()
     const search = w.get('input[type="search"]')
     await search.setValue('bassac')
@@ -711,8 +785,9 @@ describe('Finding a booking (owner pick, 16 Nov 2026: look A)', () => {
     await search.setValue('NBC-26-24')
     expect(titles(w)).toEqual(['Year plan'])
     await search.setValue('old')
-    await w.findAll('[role="tab"]')[1]!.trigger('click')
+    await openFolder(w, 'Past & cancelled')
     expect(titles(w)).toEqual(['Old plan'])
+    expect(folders(w)).toEqual(['Coming up 0', 'Waiting 0', 'Confirmed 0', 'Past & cancelled 1'])
   })
 
   it('says when nothing matches, and Clear search brings the list back', async () => {

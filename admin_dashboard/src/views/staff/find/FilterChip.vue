@@ -76,9 +76,9 @@ defineExpose({ close })
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 .f-chip.set {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-  color: var(--color-sheet);
+  border-color: var(--color-crimson-fill);
+  background: var(--color-crimson-fill);
+  color: #fff;
 }
 .f-open {
   display: inline-flex;
@@ -139,8 +139,8 @@ defineExpose({ close })
   padding: 0 14px;
   border: 0;
   border-radius: 10px;
-  background: var(--color-ink);
-  color: var(--color-sheet);
+  background: var(--color-crimson-fill);
+  color: #fff;
   font: inherit;
   font-size: 13px;
   cursor: pointer;

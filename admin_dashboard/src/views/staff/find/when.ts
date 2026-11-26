@@ -39,6 +39,27 @@ export function whenLabel(when: When, days: string[], today: string): string {
   return `${short(when.first)} – ${short(when.last)} ${month} (${datesOf(when, days).length} days), ${time}`
 }
 
+/** The line under "Find a room": what the list shows (owner pick, 20 Nov 2026). Today's date is
+ *  in the top bar, so it is never repeated; a day is named only when another day is picked.
+ *  "16 rooms" · "8 rooms free today, 14:00–16:00" · "8 rooms free on Mon 23 Nov, 09:00–11:00" ·
+ *  "3 rooms free on all 3 days, Mon 16 – Wed 18 Nov, 08:00–12:00" · "16 rooms on Mon 23 Nov". */
+export function countLine(when: When, days: string[], today: string, total: number): { count: string; rest: string; free: boolean } {
+  const rooms = `${total} ${total === 1 ? 'room' : 'rooms'}`
+  const free = hasTime(when)
+  const time = free ? `, ${toTime(when.start!)}–${toTime(when.end!)}` : ''
+  let rest: string
+  if (isRange(when)) {
+    const month = dayLabel(when.last).split(' ')[2]
+    const span = `${short(when.first)} – ${short(when.last)} ${month}`
+    rest = free ? ` on all ${datesOf(when, days).length} days, ${span}${time}` : ` on ${span}`
+  } else if (when.first === today) {
+    rest = free ? ` today${time}` : ''
+  } else {
+    rest = ` on ${dayLabel(when.first)}${time}`
+  }
+  return { count: free ? `${rooms} free` : rooms, rest, free }
+}
+
 /** The query the rooms list takes: only with a time (the API needs all three). */
 export function freeQuery(when: When, days: string[]) {
   if (!hasTime(when)) return {}

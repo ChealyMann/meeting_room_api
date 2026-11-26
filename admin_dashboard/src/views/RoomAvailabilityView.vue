@@ -8,7 +8,7 @@
 // Hover a booking for its title, times and booker; click it for its drawer (?booking=ID): a booking
 // waiting for Pitika opens the To review panel with Approve and Reject, anything else the Bookings
 // drawer, like the Food list.
-import { ChevronLeft, ChevronRight, CircleAlert, Lock } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, CircleAlert, UserLock } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -392,7 +392,7 @@ async function decide() {
                 <!-- Khmer only (owner, 17 Nov 2026); the search still finds the English name. -->
                 <strong class="kh" :title="row.room.name_en">{{ row.room.name_kh || row.room.name_en }}</strong>
                 <span class="sub">
-                  <Lock v-if="row.room.is_private" class="lock" aria-label="Private" />{{ row.room.floor.floor_label }} ·
+                  <UserLock v-if="row.room.is_private" class="lock" aria-label="Private" />{{ row.room.floor.floor_label }} ·
                   <template v-if="!buildingName && !grouped">{{ row.room.building.name_en }} · </template>{{ row.room.capacity }} seats
                 </span>
               </div>
