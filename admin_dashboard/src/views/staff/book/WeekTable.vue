@@ -2,11 +2,17 @@
 // The week table: half-hour rows in the room's hours, one column per day (weekends too). Click a free
 // cell for 1 hour, or press and drag down for any length; click a picked block to remove it.
 // Busy (masked private ones too) shows "Busy", past is striped, a holiday is marked softly.
+// A picked session is one pill over its cells (look B, owner pick 20 Nov 2026): set in from the
+// column edges, the start bold and the end lighter on one line, a × in a white circle, and the
+// length at the bottom of a long one. The pill only shows: a click on the cells under it removes it.
 import { X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, reactive } from 'vue'
 
 import type { PublicHolidayOut, ScheduleItem } from '../../../api/types'
-import { busySpans, dateNumber, toTime, weekdayShort, monthShort, type Hours, type PickedSession, type Span } from '../rules'
+import { isTouchDevice } from '../../../utils/touch'
+import { busySpans, dateNumber, lenText, toTime, weekdayShort, monthShort, type Hours, type PickedSession, type Span } from '../rules'
+
+const touch = isTouchDevice()
 
 const props = defineProps<{
   days: string[]
@@ -81,11 +87,18 @@ const busyStart = (d: string, i: number) => stateOf(d, i) === 'busy' && (i === 0
 
 onMounted(() => window.addEventListener('pointerup', up))
 onBeforeUnmount(() => window.removeEventListener('pointerup', up))
+const ROW = 22
+const sessionsOn = (d: string) => props.sessions.filter((s) => s.date === d)
+/** Where the pill sits: 2px in from the top and bottom of its cells. */
+const pillStyle = (s: PickedSession) => ({
+  top: `${((s.a - props.hours.open) / SLOT) * ROW + 2}px`,
+  height: `${((s.b - s.a) / SLOT) * ROW - 4}px`,
+})
 const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} ${monthShort(d)}`)
 </script>
 
 <template>
-  <div class="tbl-scroll">
+  <div class="tbl-scroll" :class="{ mouse: !touch }">
     <div class="tbl" :style="{ gridTemplateColumns: `52px repeat(${days.length}, minmax(0, 1fr))` }">
       <div class="tbl-corner" />
       <div
@@ -120,11 +133,20 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
           @click="clickCell(d, i - 1)"
           @keydown="key(d, i - 1, $event)"
         >
-          <span v-if="mineAt(d, i - 1)?.a === startOf(i - 1)" class="cell-label mono"
-            >{{ toTime(mineAt(d, i - 1)!.a) }}–{{ toTime(mineAt(d, i - 1)!.b) }}<X :size="12" aria-hidden="true"
-          /></span>
-          <span v-else-if="busyStart(d, i - 1)" class="cell-busy">Busy</span>
+          <span v-if="busyStart(d, i - 1) && !mineAt(d, i - 1)" class="cell-busy">Busy</span>
         </button>
+        <span
+          v-for="s in sessionsOn(d)"
+          :key="s.a"
+          class="pill"
+          :class="{ half: s.b - s.a <= SLOT, long: s.b - s.a >= 90 }"
+          :style="pillStyle(s)"
+          aria-hidden="true"
+        >
+          <span class="pill-time mono"><b>{{ toTime(s.a) }}</b><span class="pill-end">–{{ toTime(s.b) }}</span></span>
+          <span class="pill-x"><X :size="10" :stroke-width="2.8" /></span>
+          <span v-if="s.b - s.a >= 90" class="pill-len">{{ lenText(s.b - s.a) }}</span>
+        </span>
       </div>
     </div>
   </div>
@@ -196,6 +218,8 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
   transform: none;
 }
 .tbl-col {
+  position: relative;
+  container-type: inline-size;
   display: grid;
   overflow: hidden;
   border-radius: 12px;
@@ -227,26 +251,104 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
   cursor: not-allowed;
 }
 .cell.mine {
-  background: var(--color-crimson-fill);
+  background: transparent;
   box-shadow: none;
 }
 .cell.pending {
   background: var(--color-crimson-wash);
   box-shadow: inset 2px 0 0 var(--color-crimson), inset -2px 0 0 var(--color-crimson);
 }
-.cell-label {
+/* The picked pill (look B) */
+.pill {
   position: absolute;
-  top: 3px;
-  right: 5px;
-  left: 7px;
+  right: 2px;
+  left: 2px;
   z-index: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
+  padding: 5px 23px 5px 6px;
+  border-radius: 10px;
+  /* The solid fill token (like the primary button): --color-crimson is the light text crimson in the
+     night theme and looked pale under white text (owner, 20 Nov 2026). */
+  background: var(--color-crimson-fill);
+  box-shadow: 0 2px 6px rgba(127, 29, 29, 0.28);
   color: #fff;
-  font-size: 11.5px;
-  font-weight: 600;
   pointer-events: none;
+  transition: background-color 140ms ease;
+}
+.pill-time {
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.pill-time b {
+  font-weight: 500;
+  opacity: 1;
+}
+.pill-x {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-crimson-fill);
+  transition: opacity 140ms ease;
+}
+.pill-len {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+/* A half hour is one row: one tight line, the × centred on it. */
+.pill.half {
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.pill.half .pill-time {
+  font-size: 10.5px;
+  line-height: 1;
+}
+.pill.half .pill-x {
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+}
+/* Only a mouse device (owner pick, 20 Nov 2026): the × shows on hover, so the time has the whole
+   pill. A touch device (an iPad, even with a trackpad) always shows the × (owner, 20 Nov 2026). */
+.tbl-scroll.mouse .pill {
+  padding-right: 3px;
+}
+.tbl-scroll.mouse .pill-x {
+  opacity: 0;
+}
+.tbl-scroll.mouse .tbl-col:has(.cell.mine:hover) .pill-x {
+  opacity: 1;
+}
+/* A very narrow column (a phone) still keeps the time whole: the end drops under the start, no ×. */
+@container (max-width: 80px) {
+  .pill {
+    padding-right: 4px;
+  }
+  .pill-x {
+    display: none;
+  }
+  .pill-time {
+    display: grid;
+  }
+  .pill.half .pill-end,
+  .pill-len {
+    display: none;
+  }
 }
 .cell-busy {
   position: absolute;
@@ -260,13 +362,9 @@ const label = (d: string) => (d === props.today ? 'Today' : `${weekdayShort(d)} 
   .cell.free:hover {
     background: var(--color-crimson-wash);
   }
-  .cell.mine:hover {
+  /* Hovering a picked cell darkens its pill (the cells stay clear). */
+  .tbl-col:has(.cell.mine:hover) .pill {
     background: var(--color-crimson-deep);
-  }
-}
-@media (max-width: 1000px) {
-  .tbl {
-    min-width: 700px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
