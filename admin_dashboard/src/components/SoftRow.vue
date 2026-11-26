@@ -9,7 +9,8 @@
 // Slots: `line` (the room line: one <span class="bit"> per part, the bars between them are drawn;
 // Lucide icons are sized),
 // `tags` (<span class="soft-tag">, `warn` or `alert` for amber or crimson), `status` (in the
-// footer, before "Sent") and `actions` (the buttons, top right).
+// footer, before "Sent"), `lead` (the footer's left side when there is no booker: My bookings' status)
+// and `actions` (the buttons, top right).
 import { CalendarDays, Phone, Send } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -66,7 +67,8 @@ const role = computed(() => (props.booker ? bookerRole(props.booker) : ''))
         <div class="acts" @click.stop @keydown.enter.stop><slot name="actions" /></div>
       </div>
     </div>
-    <div v-if="booker || $slots.status || sent" class="foot">
+    <div v-if="booker || $slots.lead || $slots.status || sent" class="foot">
+      <slot name="lead" />
       <template v-if="booker">
         <StaffAvatar class="face" :name="booker.name" :photo="booker.photo" :size="30" />
         <span class="booked-by">Booked by</span>
