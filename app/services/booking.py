@@ -41,7 +41,7 @@ from app.schemas.booking import (
     Problem,
 )
 from app.security import CurrentUser
-from app.services import booking_access, booking_codes
+from app.services import booking_access, booking_codes, booking_signers
 from app.services import booking_scheduling as scheduling
 from app.services import booking_transitions as transitions
 from app.services.booking_view import booking_load_options
@@ -188,6 +188,8 @@ def _new_booking(
         private_justification=body.private_justification,
         route=route,
         status=scheduling.first_status(route),
+        # T2: an R3 booking is confirmed at send, so it keeps its confirm time like any other.
+        confirmed_at=created_at if route == BookingRoute.R3 else None,
         version=1,
         # From the app clock like every other time, so "newest first" follows it.
         created_at=created_at,
@@ -293,7 +295,9 @@ def create_booking(
         lambda code: _new_booking(current, room, body, route, emails, packages, services, code),
     )
     if route == BookingRoute.R3:
+        # Confirmed at send (T2): the door pass and the request slip's signers, as at any confirm.
         transitions.add_door_pass(session, booking)
+        booking_signers.record_signers(session, booking)
     session.commit()
     warnings = scheduling.warnings_for(session, room, body.sessions, body.attendees)
     return booking, warnings
